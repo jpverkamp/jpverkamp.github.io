@@ -1,0 +1,256 @@
+<language title="RHIJ - Run">
+    <code>
+        <pre>
+# preprocess the input
+input = input.upper()
+input = input.strip()
+
+# initialize the program counter
+pc = 0
+
+# initilize the stack
+stack = []
+
+# initilize the depth levels
+depth = [({}, 0)]
+
+# find the labels and methods
+labels = {}
+methods = {}
+currIndex = 0
+for line in input.split("\n"):
+    # look in the line for method headers and labels
+    m1 = re.match("\s*(\w+)\s+(\d+)\s+(\d+)\s*", line)
+    m2 = re.match("\s*\W*(\w+)\W*\s*", line)
+    
+    # branch for methods, then labels
+    if m1:
+        arg = m1.groups()
+        methods[arg[0]] = (currIndex, arg[1], arg[2])
+    elif m2:
+        labels[m2.groups()[0]] = currIndex
+    
+    # update the index
+    currIndex += 1
+        
+# error flag
+error = False
+        </pre>
+        
+        <post>
+        </post>
+    </code>
+    
+    <commands>
+        <command regex="\s*HALT\s*">
+# stop executing
+error = True
+        </command>
+    
+        <command regex="\s*IADD\s*">
+# grab the top two values
+a = stack.pop()
+b = stack.pop()
+
+# add them and put the result on the stack
+stack.append(b + a)
+        </command>
+
+        <command regex="\s*ISUB\s*">
+# grab the top two values
+a = stack.pop()
+b = stack.pop()
+
+# add them and put the result on the stack
+stack.append(b - a)
+        </command>
+
+        <command regex="\s*IAND\s*">
+# grab the top two values
+a = stack.pop()
+b = stack.pop()
+
+# add them and put the result on the stack
+stack.append(b &amp; a)
+        </command>
+
+        <command regex="\s*IOR\s*">
+# grab the top two values
+a = stack.pop()
+b = stack.pop()
+
+# add them and put the result on the stack
+stack.append(b | a)
+        </command>
+
+        <command regex="\s*DUP\s*">
+# grab the top value
+a = stack.pop()
+
+# put it on the stack twice
+stack.append(a)
+stack.append(a)
+        </command>
+
+        <command regex="\s*POP\s*">
+# remove the top value
+stack.pop()
+        </command>
+
+        <command regex="\s*SWAP\s*">
+# grab the top two values
+a = stack.pop()
+b = stack.pop()
+
+# put them back on in the opposite order
+stack.append(a)
+stack.append(b)
+        </command>
+
+        <command regex="\s*IRETURN\s*">
+# grab the index from the depth stack
+l, index = depth.pop()
+        </command>
+
+        <command regex="\s*RFI\s*">
+# this is not necessary
+        </command>
+
+        <command regex="\s*INPUT\s*">
+# ask the user for input
+# TODO: implement this
+        </command>
+
+        <command regex="\s*OUTPUT\s*">
+# output the top value on the stack
+output += str(stack.pop())
+
+# add a line break
+output += "\n"
+        </command>
+
+        <command regex="\s*BIPUSH\s+(\-*\d+)\s*">
+# add the value to the stack
+stack.append(int(arg[0]))
+        </command>
+    
+        <command regex="\s*IFLT\s+(\w+)\s*">
+# grab the top value
+a = stack.pop()
+
+# if it's less than 0, branch
+if a &lt; 0:
+    # loop up the label
+    if labels.has_key(arg[0]):
+        index = labels[arg[0]]
+        
+    # don't have that label
+    else:
+        error = True
+        output = "Label '" + arg[0] + "' could not be found (in IFLT)."
+        </command>
+
+        <command regex="\s*IFEQ\s+(\w+)\s*">
+# grab the top value
+a = stack.pop()
+
+# if it's equal to 0, branch
+if a == 0:
+    # loop up the label
+    if labels.has_key(arg[0]):
+        index = labels[arg[0]]
+        
+    # don't have that label
+    else:
+        error = True
+        output = "Label '" + arg[0] + "' could not be found (in IFEQ)."
+        </command>
+        
+        <command regex="\s*IF_ICMPEQ\s+(\w+)\s*">
+# grab the top two values
+a = stack.pop()
+b = stack.pop()
+
+# if they're equal, branch
+if a == b:
+    # loop up the label
+    if labels.has_key(arg[0]):
+        index = labels[arg[0]]
+        
+    # don't have that label
+    else:
+        error = True
+        output = "Label '" + arg[0] + "' could not be found (in IF_ICMPEQ)."
+        </command>
+        
+        <command regex="\s*GOTO\s+(\w+)\s*">
+# loop up the label
+if labels.has_key(arg[0]):
+    index = labels[arg[0]]
+        
+# don't have that label
+else:
+    error = True
+    output = "Label '" + arg[0] + "' could not be found (in GOTO)."
+        </command>                
+
+        <command regex="\s*ILOAD\s+(\d+)\s*">
+# load a local variable
+if depth[len(depth) - 1][0].has_key(arg[0]):
+    a = depth[len(depth) - 1][0][arg[0]]
+    stack.append(a)
+    
+# the variable has not yet been set
+else:
+    error = True
+    output = "Local variable " + arg[0] + " has not been set (for ILOAD)."
+        </command>
+        
+        <command regex="\s*ISTORE\s+(\d+)\s*">
+# store the variable
+depth[len(depth) - 1][0][arg[0]] = stack.pop()
+        </command>
+
+        <command regex="\s*IINC\s+(\d+)\s+(\-*\d+)\s*">
+# increment a local variable
+if depth[len(depth) - 1][0].has_key(arg[0]):
+    depth[len(depth) - 1][0][arg[0]] = depth[len(depth) - 1][0][arg[0]] + int(arg[1])
+    
+# the variable has not yet been set
+else:
+    error = True
+    output = "Local variable " + arg[0] + " has not been set (for IINC)."
+        </command>
+        
+        <command regex="\s*INVOKEVIRTUAL\s+(\w+)\s*">
+# look up the method header
+if methods.has_key(arg[0]):
+    # build the new local variables
+    l = {}
+    
+    # store the original index (plus 1)
+    si = index
+    
+    # build the local variables
+    index, fromStack, otherLocal = methods[arg[0]]
+    for i in range(int(fromStack)):
+        l[str(int(fromStack) - i - 1)] = stack.pop()
+    for i in range(int(fromStack), int(otherLocal)):
+        l[str(i)] = 0
+        
+    # store it
+    depth.append((l, si))
+
+# no method found with that name
+else:
+    error = True
+    output = "Method '" + arg[0] + "' could not be found (in INVOKEVIRTUAL)."
+        </command>
+        
+        <command regex="\s*LDC_W\s+(\w+)\s*">
+# no constant pool is defined, cannot load one
+error = True
+output = "The constant pool is not defined (in LDC_W."
+        </command>        
+    </commands>
+</language>

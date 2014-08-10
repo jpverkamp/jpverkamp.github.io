@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+        
+        
+
+        <title>Memoization in Racket | jverkamp.com | John-Paul Verkamp</title>
+
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css" />
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.css" />
+        <script src="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.js"></script>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery.transit/0.9.9/jquery.transit.min.js"></script>
+
+        <!-- Highlight.js for syntax highlighting -->
+        <link rel="stylesheet" href="/highlight/styles/tomorrow-night.css" />
+        <script src="/highlight/highlight.pack.js"></script>
+
+        <!-- MathJax for LaTeX support -->
+        <script src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- nanoGallery for Flickr Galleries -->
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/css/themes/light/nanogallery_light.css" />
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/jquery.nanogallery.min.js"></script>
+
+        <!-- Any custom CSS or JS that I've written; this should be kept minimal -->
+        <link rel="stylesheet" href="/custom.css" />
+        <script src="/custom.js"></script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+        <header class="container">
+        <nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="http://jpverkamp.github.io"><span style="color: green;">jv</span>erkamp.com</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav"><li class="dropdown"><a href="http://jpverkamp.github.io/category/archives" class="dropdown-toggle">Archives<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/archives/2004">2004</a></li><li><a href="http://jpverkamp.github.io/category/archives/2005">2005</a></li><li><a href="http://jpverkamp.github.io/category/archives/2006">2006</a></li><li><a href="http://jpverkamp.github.io/category/archives/2007">2007</a></li><li><a href="http://jpverkamp.github.io/category/archives/2008">2008</a></li><li><a href="http://jpverkamp.github.io/category/archives/2009">2009</a></li><li><a href="http://jpverkamp.github.io/category/archives/2010">2010</a></li><li><a href="http://jpverkamp.github.io/category/archives/2011">2011</a></li><li><a href="http://jpverkamp.github.io/category/archives/2012">2012</a></li><li><a href="http://jpverkamp.github.io/category/archives/2013">2013</a></li><li><a href="http://jpverkamp.github.io/category/archives/2014">2014</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/other" class="dropdown-toggle">Other<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/other/board-game-reviews">Board Game Reviews</a></li><li><a href="http://jpverkamp.github.io/category/other/cooking">Cooking</a></li><li><a href="http://jpverkamp.github.io/category/other/movie-reviews">Movie Reviews</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/photography" class="dropdown-toggle">Photography<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/photography/dp-challenge">DP Challenge</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosets">Photosets</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosynth">Photosynth</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/programming" class="dropdown-toggle">Programming<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/programming/by-language">By Language</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-project">By Project</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-source">By Source</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/programming/libraries">Libraries</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/research" class="dropdown-toggle">Research<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/research/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/research/publications">Publications</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/writing" class="dropdown-toggle">Writing<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/writing/by-genre">By Genre</a></li><li><a href="http://jpverkamp.github.io/category/writing/nanowrimo">NaNoWriMo</a></li><li><a href="http://jpverkamp.github.io/category/writing/novels">Novels</a></li><li><a href="http://jpverkamp.github.io/category/writing/other">Other</a></li><li><a href="http://jpverkamp.github.io/category/writing/short-stories">Short Stories</a></li></ul></li></ul>
+
+      <!--
+      <form class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search">
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+      </form>
+      -->
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+        </header>
+
+        <article class="container">
+                <header>
+                        <h1 class="entry-title">Memoization in Racket</h1>
+
+                        <div class="entry-meta">
+                                <span class="posted-on"><time class="entry-date" datetime="2012-10-20"><span class="year">2012</span> <span class="month">Oct</span> <span class="day">20</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://jpverkamp.github.io/category/programming/by-topic/data-structures">Data Structures</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-source/programming-praxis">Programming Praxis</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/category/programming/libraries">Libraries</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-language/scheme">Scheme</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-language/racket">Racket</a></li></ul></span>
+                        </div>
+
+                        <hr />
+                </header>
+                <div class="entry-content">
+                        <p><a href="https://en.wikipedia.org/wiki/Memoization">Memoization</a> is awesome!</p>
+<p>I've already written <a href="http://jpverkamp.github.io/2012/09/29/pickles-and-memoization">one post</a> on the subject in Python, but this time we'll do the same in Racket. It's particularly timely as without it, <a href="http://jpverkamp.github.io/2012/10/20/prime-partitions">today's post</a> on determining the number of prime partitions of a number would take longer to run than I care to wait.</p>
+<!--more-->
+<p>The basic macro isn't actually too bad. Basically, we want to create a function with an associated hash table associating arguments with their result. It doesn't work out so well if the function is non-deterministic or has state of its own, but for a purely functional solution, it's exactly what we're looking for.</p>
+<pre class="scheme"><code>; replace define with a memoized version
+(define-syntax define-memoized
+  (syntax-rules ()
+    [(_ (f args ...) bodies ...)
+     (define f
+       ; store the cache as a hash of args =&gt; result
+       (let ([results (make-hash)])
+         ; need to do this to capture both the names and the values
+         (lambda (args ...)
+           ((lambda vals
+              ; if we haven't calculated it before, do so now
+              (when (not (hash-has-key? results vals))
+                (hash-set! results vals (begin bodies ...)))
+              ; return the cached result
+              (hash-ref results vals))
+            args ...))))]))</code></pre>
+<p>The code gets a bit strange on the inner part as I'm actually creating two functions only to immediately apply the inner one. Why? Because it's the only way that I could think of to capture both the names of the arguments and their values (which are the actual key to the hash). If you have a better solution, I'd love to hear it. :)</p>
+<p>But with that, it's really straight forward to turn a normal function into a memoized one. Here's an example using that particularly poor way of writing Fibonacci:</p>
+<pre class="scheme"><code>; example, fibonacci without memoization
+(define (fib n)
+  (cond
+    [(&lt; n 1) 1]
+    [else (+ (fib (- n 1)) (fib (- n 2)))]))
+
+; example, fibonacci with memoization
+(define-memoized (mfib n)
+  (cond
+    [(&lt; n 1) 1]
+    [else (+ (mfib (- n 1)) (mfib (- n 2)))]))</code></pre>
+<p>So, moment of truth. Does it work?</p>
+<pre class="scheme"><code>&gt; (time (fib 35))
+cpu time: 5022 real time: 5038 gc time: 37
+24157817
+
+&gt; (time (mfib 35))
+cpu time: 0 real time: 0 gc time: 0
+24157817</code></pre>
+<p>I'd say that's a pretty definitive yes. With this, we can calculate values we wouldn't even have considered with the non-memoized version.</p>
+<pre class="scheme"><code>&gt; (time (mfib 1000))
+cpu time: 2 real time: 1 gc time: 0
+113796925398360272257523782552224175572745930353730513145086634176691092536145
+985470146129334641866902783673042322088625863396052888690096969577173696370562
+180400527049497109023054114771394568040040412172632376</code></pre>
+<p>And that's all there is too it. Memoization in Racket. Bam!</p>
+                </div>
+                <div class="entry-footnotes">
+                        <div id="footnotes"><ol></ol></div>
+                </div>
+
+                <div id="disqus_thread"></div>
+<script type="text/javascript">
+var disqus_shortname = "jverkamp";
+var disqus_title = "Memoization in Racket";
+var disqus_url = "http://blog.jverkamp.com/2012/10/20/memoization-in-racket/";
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+        </article>
+
+        <footer class="container" role="contentinfo">
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2012/10/19/small-projects-source-code-on-github">← Small projects source code on GitHub</a></li><li><a href="http://jpverkamp.github.io/category/archives">Archives</a></li><li><a href="http://jpverkamp.github.io/2012/10/20/prime-partitions">Prime Partitions →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2012/10/18/the-evolution-of-flibs">← The Evolution Of Flibs</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/2012/10/20/prime-partitions">Prime Partitions →</a></li></ul></nav>
+
+                <div class="legal">
+                        All posts unless otherwise mentioned are licensed under <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/80x15.png" /></a><br />
+                        Any source code unless otherwise mentioned is licensed under the <a href="http://directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+                </div>
+        </footer>
+</body>
+</html>

@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html>
+<head>
+        
+        
+
+        <title>A 'Tiny' virtual machine in Racket | jverkamp.com | John-Paul Verkamp</title>
+
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css" />
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.css" />
+        <script src="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.js"></script>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery.transit/0.9.9/jquery.transit.min.js"></script>
+
+        <!-- Highlight.js for syntax highlighting -->
+        <link rel="stylesheet" href="/highlight/styles/tomorrow-night.css" />
+        <script src="/highlight/highlight.pack.js"></script>
+
+        <!-- MathJax for LaTeX support -->
+        <script src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- nanoGallery for Flickr Galleries -->
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/css/themes/light/nanogallery_light.css" />
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/jquery.nanogallery.min.js"></script>
+
+        <!-- Any custom CSS or JS that I've written; this should be kept minimal -->
+        <link rel="stylesheet" href="/custom.css" />
+        <script src="/custom.js"></script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+        <header class="container">
+        <nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="http://jpverkamp.github.io"><span style="color: green;">jv</span>erkamp.com</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav"><li class="dropdown"><a href="http://jpverkamp.github.io/category/archives" class="dropdown-toggle">Archives<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/archives/2004">2004</a></li><li><a href="http://jpverkamp.github.io/category/archives/2005">2005</a></li><li><a href="http://jpverkamp.github.io/category/archives/2006">2006</a></li><li><a href="http://jpverkamp.github.io/category/archives/2007">2007</a></li><li><a href="http://jpverkamp.github.io/category/archives/2008">2008</a></li><li><a href="http://jpverkamp.github.io/category/archives/2009">2009</a></li><li><a href="http://jpverkamp.github.io/category/archives/2010">2010</a></li><li><a href="http://jpverkamp.github.io/category/archives/2011">2011</a></li><li><a href="http://jpverkamp.github.io/category/archives/2012">2012</a></li><li><a href="http://jpverkamp.github.io/category/archives/2013">2013</a></li><li><a href="http://jpverkamp.github.io/category/archives/2014">2014</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/other" class="dropdown-toggle">Other<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/other/board-game-reviews">Board Game Reviews</a></li><li><a href="http://jpverkamp.github.io/category/other/cooking">Cooking</a></li><li><a href="http://jpverkamp.github.io/category/other/movie-reviews">Movie Reviews</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/photography" class="dropdown-toggle">Photography<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/photography/dp-challenge">DP Challenge</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosets">Photosets</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosynth">Photosynth</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/programming" class="dropdown-toggle">Programming<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/programming/by-language">By Language</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-project">By Project</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-source">By Source</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/programming/libraries">Libraries</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/research" class="dropdown-toggle">Research<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/research/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/research/publications">Publications</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/writing" class="dropdown-toggle">Writing<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/writing/by-genre">By Genre</a></li><li><a href="http://jpverkamp.github.io/category/writing/nanowrimo">NaNoWriMo</a></li><li><a href="http://jpverkamp.github.io/category/writing/novels">Novels</a></li><li><a href="http://jpverkamp.github.io/category/writing/other">Other</a></li><li><a href="http://jpverkamp.github.io/category/writing/short-stories">Short Stories</a></li></ul></li></ul>
+
+      <!--
+      <form class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search">
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+      </form>
+      -->
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+        </header>
+
+        <article class="container">
+                <header>
+                        <h1 class="entry-title">A 'Tiny' virtual machine in Racket</h1>
+
+                        <div class="entry-meta">
+                                <span class="posted-on"><time class="entry-date" datetime="2013-08-21"><span class="year">2013</span> <span class="month">Aug</span> <span class="day">21</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://jpverkamp.github.io/category/programming/by-topic/programming-languages/virtual-machines">Virtual Machines</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-source/daily-programmer">Daily Programmer</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic/memory">Memory</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic/programming-languages">Programming Languages</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic/assemblers">Assemblers</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic/compilers">Compilers</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-language/scheme">Scheme</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-language/racket">Racket</a></li></ul></span>
+                        </div>
+
+                        <hr />
+                </header>
+                <div class="entry-content">
+                        <p><a href="http://www.reddit.com/r/dailyprogrammer/comments/1kqxz9/080813_challenge_132_intermediate_tiny_assembler/">Today's challenge</a> at /r/dailyprogrammer asks to implement an assembler for a small virtual machine. It has only 16 <a href="https://en.wikipedia.org/wiki/mnemonics">Assembly language#Opcode mnemonics and extended mnemonics</a> which in unique <a href="https://en.wikipedia.org/wiki/opcodes">Opcode</a> (each instruction can have multiple forms for if they're accessing memory or literals), so it's a simple virtual machine indeed. As a challenge, you're supposed to write an interesting program (I actually wrote a virtual machine as well to test them). As an even better challenge, we're supposed to prove that Tiny is <a href="https://en.wikipedia.org/wiki/Turing_complete">Turing complete</a>. Well, let's get to it!<!--more--></p>
+<p>There's a bit more code than normal, so I made it into its own repository. You can check it out here: <a href="https://github.com/jpverkamp/tiny">tiny on GitHub</a></p>
+<p>First, here's a short version of the specification of the language showing just the opcodes. Many of these instructions have multiple versions depending on if you're accessing memory or using a literal. For example, <code>MOV [0] 5</code> moves the literal value 5 into memory index 0 while <code>MOV [0] [5]</code> moves the value in memory index 5 to 0. In the following table, <code>[a]</code> represents a memory address, <code>a</code> represents a literal and <code>[a]?</code> represents that a value can be either. Here are the opcodes:</p>
+<table class="table table-striped">
+<tbody>
+<tr>
+<td>AND/OR/XOR <code><code>[a]</code></code> <code>[b]?</code></td>
+<td><code>[a]</code> = <code>[a]</code> and/or/xor <code>[b]?</code></td>
+<td><code>0x00 - 0x05</code></td>
+</tr>
+<tr>
+<td>NOT <code>[a]</code></td>
+<td><code>[a]</code> = not <code>[a]</code></td>
+<td><code>0x06</code></td>
+</tr>
+<tr>
+<td>MOV <code>[a]</code> <code>[b]?</code></td>
+<td><code>[a]</code> = <code>[b]?</code></td>
+<td><code>0x07 - 0x08</code></td>
+</tr>
+<tr>
+<td>RANDOM <code>[a]</code></td>
+<td><code>[a]</code> = a random byte</td>
+<td><code>0x09</code></td>
+</tr>
+<tr>
+<td>ADD/SUB <code>[a]</code> <code>[b]?</code></td>
+<td><code>[a]</code> = <code>[a]</code> plus/minus <code>[b]?</code></td>
+<td><code>0x0a - 0x0d</code></td>
+</tr>
+<tr>
+<td>JMP <code>[x]?</code></td>
+<td>jump to instruction <code>[x]?</code></td>
+<td><code>0x0e - 0x0f</code></td>
+</tr>
+<tr>
+<td>JZ <code>[x]?</code> <code>[a]?</code></td>
+<td>jump to instruction <code>[x]?</code> if <code>[a]?</code> is zero</td>
+<td><code>0x10 - 0x13</code></td>
+</tr>
+<tr>
+<td>JEQ/JLS/JGT <code>[x]?</code> <code>[a]</code> <code>[b]?</code></td>
+<td>jump to instruction <code>[x]?</code> if <code>[a]</code> = / < / > <code>[b]?</code></td>
+<td><code>0x14 - 0x1f</code></td>
+</tr>
+<tr>
+<td>HALT</td>
+<td>stop the program</td>
+<td><code>0xff</code></td>
+</tr>
+<tr>
+<td>APRINT/DPRINT <code>[a]?</code></td>
+<td>print <code>[a]?</code> as an ASCII character or a decimal</td>
+<td><code>0x20 - 0x23</code></td>
+</tr>
+</tbody>
+</table>
+<p>That <code>a</code> can be literal for <code>JZ</code> is a little strange (why would we jump if a literal value is zero or not?), but other than that, everything seems pretty standard. So what's the first step? For me, I want to define the structure of the eventual virtual machine. The original code calls for 256 cells of memory, each of which can hold a byte. But since we eventually want to simulate an arbitrary Turing machine (one of the ways to prove Turing completeness), we're going to have unlimited memory instead. For that, we'll use a hash:</p>
+<pre class="scheme"><code>; Represent memory as a hash to allow for unlimited memory
+(define current-memory (make-parameter (make-hasheq)))
+(define memory
+  (case-lambda
+    [(key)     (hash-ref! (current-memory) key 0)]
+    [(key val) (hash-set! (current-memory) key val)]))</code></pre>
+<p>This gives us two important pieces. Whenever we run the function, we'll <code><a href="http://docs.racket-lang.org/search/index.html?q=paramterize">paramterize</a></code> over <code>current-memory</code> so that each function has it's own memory space. Technically, this also allows for a future expansion I want to add: function calls. For now though, all we have to know is that <code>memory</code> acts as a parameter itself. Calling it with one argument reads a value (memory defaults to all zeros, <code>hash-ref!</code> sets a default in the hash if the value doesn't currently exist); calling it with two write a new value. So something like <code>(memory a (+ (memory a) (memory b))</code> is a direct translation of <code>ADD [a] [b]</code>.</p>
+<p>In addition to that, we want a program counter. That will just be another simple parameter:</p>
+<pre class="scheme"><code>; Represent the current program counter
+(define current-pc (make-parameter 0))</code></pre>
+<p>And finally, a third parameter to help <code>HALT</code> along:</p>
+<pre class="scheme"><code>; Set this to halt the virtual machine
+(define currently-running (make-parameter #f))</code></pre>
+<p>Okay, we have all of that. But now we need some instructions. I would like to abstract this out as much as possible (so we can easily change out for more languages), so everything will be stored in a pair of data structures. We'll have a hash from mnemonic to a list of possible implementations and a another that goes from opcodes to a specific version. Something like this:</p>
+<pre class="scheme"><code>; Store instructions for the current virtual machine
+(define-struct multiop (arity ops) #:transparent)
+(define-struct op (name arity code pattern app) #:transparent)
+(define current-instructions (make-parameter (make-hasheq)))
+(define current-opcodes      (make-parameter (make-hasheq)))</code></pre>
+<p>A <code>multiop</code> associates a mnemonic with multiple <code>op</code>s, each of which has the opcode, variable pattern (which are memory references and which are literals), and an application for that function written in Racket. Of course, we don't want to have to enter there all manually, that's a lot of copying and pasting. We'd rather type something like this:</p>
+<pre class="scheme"><code>(define-op (AND a b)
+  [#x01 ([a] [b]) (? (a b) (memory a (bitwise-and (memory a) (memory b))))]
+  [#x02 ([a] b  ) (? (a b) (memory a (bitwise-and (memory a) b)))]))</code></pre>
+<p>So here's a macro that will do exactly that:</p>
+<pre class="scheme"><code>; Macro to define instructions
+; Add them both to the name -&gt; multiop hash and the opcode -&gt; op hash
+(define-syntax-rule (define-op (NAME ARGS ...) [OPCODE (PARAMS ...) APP] ...)
+  (let ()
+    (define arity (length '(ARGS ...)))
+
+    (define ops
+      (for/list ([opcode  (in-list '(OPCODE ...))]
+                 [pattern (in-list '((PARAMS ...) ...))]
+                 [app     (in-list (list APP ...))])
+        (op 'NAME arity opcode pattern app)))
+
+    (hash-set! (current-instructions) 'NAME (multiop arity ops))
+
+    (for/list ([opcode (in-list '(OPCODE ...))]
+               [op     (in-list ops)])
+      (hash-set! (current-opcodes) opcode op))
+
+    (void)))</code></pre>
+<p>Essentially, it does exactly what it says on the tin: defines an op. To do that, we do some pattern matching magic to pull apart a sequence of rules. I'm not going to go through it piece by piece, but trust that it does work.</p>
+<p>With that, we can define any of our opcodes. But we don't want to. There's still a heck of a lot of copying and pasting between different sets. For example, <code>AND</code>/<code>OR</code>/<code>XOR</code>/<code>ADD</code>/<code>SUB</code> (and <code>AND</code> actually) are all the same except for the operator they apply. So let's write another layer of macros to handle that:</p>
+<pre class="scheme"><code>(define-syntax-rule (define-simple-pair NAME OP1 OP2 f)
+  (define-op (NAME a b)
+    [OP1 ([a] [b]) (? (a b) (memory a (f (memory a) (memory b))))]
+    [OP2 ([a] b  ) (? (a b) (memory a (f (memory a) b)))]))
+
+(define-simple-pair AND #x00 #x01 bitwise-and)
+(define-simple-pair OR  #x02 #x03 bitwise-ior)
+(define-simple-pair XOR #x04 #x05 bitwise-xor)
+
+(define-simple-pair MOV #x07 #x08 (? (a b) b))
+
+(define-simple-pair ADD #x0a #x0b +)
+(define-simple-pair SUB #x0c #x0d -)</code></pre>
+<p>Easy enough. Some though, we can't do this way and have to just write. Like <code>NOT</code> and <code>RANDOM</code>:</p>
+<pre class="scheme"><code>(define-op (NOT a)
+  [#x06 ([a]) (? (a) (memory a (bitwise-not (memory a))))])
+
+(define-op (RANDOM a)
+  [#x09 ([a]) (? (a) (memory a (random 256)))])</code></pre>
+<p>Since they don't match any other parameter patterns, the first two jumps we have to define separately as well:</p>
+<pre class="scheme"><code>(define-op (JMP x)
+  [#x0e ([x]) (? (x) (current-pc (memory x)))]
+  [#x0f (x)   (? (x) (current-pc x))])
+
+(define-op (JZ x a)
+  [#x10 ([x] [a]) (? (x a) (when (zero? (memory a)) (current-pc (memory x))))]
+  [#x11 ([x] a)   (? (x a) (when (zero? a) (current-pc (memory x))))]
+  [#x12 (x   [a]) (? (x a) (when (zero? (memory a)) (current-pc x)))]
+  [#x13 (x   a)   (? (x a) (when (zero? a) (current-pc x)))])</code></pre>
+<p>But now we can write a macro for the other three:</p>
+<pre class="scheme"><code>(define-syntax-rule (define-comparison-jump NAME OP1 OP2 OP3 OP4 f)
+  (define-op (NAME x a b)
+    [OP1 ([x] [a] [b]) (? (x a b) (when (f (memory a) (memory b)) (current-pc (memory x))))]
+    [OP2 (x   [a] [b]) (? (x a b) (when (f (memory a) (memory b)) (current-pc x)))]
+    [OP3 ([x] [a] b)   (? (x a b) (when (f (memory a) b) (current-pc (memory x))))]
+    [OP4 (x   [a] b)   (? (x a b) (when (f (memory a) b) (current-pc x)))]))
+
+(define-comparison-jump JEQ #x14 #x15 #x16 #x17 =)
+(define-comparison-jump JLS #x18 #x19 #x1a #x1b &lt;)
+(define-comparison-jump JGT #x1c #x1d #x1e #x1f &gt;)</code></pre>
+<p>Then finally, we have <code>HALT</code> and the print functions:</p>
+<pre class="scheme"><code>(define-op (HALT)
+  [#xff () (? () (currently-running #f))])
+
+(define-syntax-rule (define-print NAME OP1 OP2 f)
+  (define-op (NAME a)
+    [OP1 ([a]) (? (a) (f (memory a)))]
+    [OP2 (a)   (? (a) (f a))]))
+
+(define-print APRINT #x20 #x21 (? (byte) (display (integer-&gt;char byte))))
+(define-print DPRINT #x22 #x23 (? (byte) (display byte)))</code></pre>
+<p>There we have it. Everything is nicely defined. Now we can get into the real meat of the code: parsing, assembling, and running.</p>
+<p>First parsing. This is actually trivial. Since everything in the input is either a symbol, a number, or a list, Racket's <code>read</code> function will handle it just fine:</p>
+<pre class="scheme"><code>; Parse instructions from input
+(define (parse [in (current-input-port)])
+  (port-&gt;list read in))</code></pre>
+<p>All <code>port->list</code> will do is repeatedly call the first argument on the second. This will give us a list of symbols, numbers, and numbers in lists, something like this:</p>
+<pre class="scheme"><code>&gt; (define TEST-CODE "
+MOV [0] 5
+MOV [1] 7
+ADD [0] [1]
+DPRINT [0]
+HALT
+")
+&gt; (call-with-input-string TEST-CODE parse)
+'(MOV (0) 5 MOV (1) 7 ADD (0) (1) DPRINT (0) HALT)</code></pre>
+<p>Next, we have to assemble the functions. Since that's the actual problem at hand, we'll look at that a little more carefully although it's not a terribly long function. First, the entire function:</p>
+<pre class="scheme"><code>; Assemble a list of ops
+(define (assemble code)
+  (cond
+    [(null? code) '()]
+    [else
+     (define name (first code))
+     (define multiop (hash-ref (current-instructions) name))
+     (define params (take (rest code) (multiop-arity multiop)))
+     (define op
+       (let loop ([ops (multiop-ops multiop)])
+         (cond
+           [(null? ops)
+            (error 'assemble "unmatched pattern ~a for ~a\n" params name)]
+           [(matched-patterns? params (op-pattern (first ops)))
+            (first ops)]
+           [else
+            (loop (rest ops))])))
+     `(,(op-code op) ,@"@"(flatten params) . ,(assemble (drop code (+ 1 (multiop-arity multiop)))))]))</code></pre>
+<p>The first interesting part is the decoding. We'll pull the <code>first</code> thing in the current <code>code</code> list out as the mnemonic. That lets us access the <code>(current-instructions)</code> hash and figure out the arity of the function we're working on. After that, we'll use the <code>let loop</code> to find which op matches that (to get the op code). That needs the <code>matched-patterns?</code> function:</p>
+<pre class="scheme"><code>; Match two patterns of possibly matching lists
+(define (matched-patterns? ls1 ls2)
+  (or (and (null? ls1) (null? ls2))
+      (and (not (null? ls1))
+           (not (null? ls2))
+           (or (and (list? (first ls1))
+                    (list? (first ls2))
+                    (matched-patterns? (rest ls1) (rest ls2)))
+               (and (not (list? (first ls1)))
+                    (not (list? (first ls2)))
+                    (matched-patterns? (rest ls1) (rest ls2)))))))</code></pre>
+<p>It looks complicated, but all it says is that the patterns have to be the same length and when there's a list in one, it has to be in both. That way <code>((a) b)</code> will match <code>((0) 5)</code> but not <code((0) (5))</code>.</p>
+<p>Finally, we build the opcode with this line:</p>
+<pre class="scheme"><code>`(,(op-code op) ,@"@"(flatten params) . ,(assemble (drop code (+ 1 (multiop-arity multiop)))))</code></pre>
+<p>It uses quasiquote to build the list, but if you're not familiar with that, it's essentially the same as this:</p>
+<pre class="scheme"><code>(append (list (op-code op)) (flatten params) (assemble (drop code (+ 1 (multiop-arity multiop)))))</code></pre>
+<p>And that's it. Now we can assemble the code:</p>
+<pre class="scheme"><code>&gt; (assemble (call-with-input-string TEST-CODE parse))
+'(8 0 5 8 1 7 10 0 1 34 0 255)</code></pre>
+<p>It doesn't print in hex, but those are the correct values. To see them in hex, we can use these:</p>
+<pre class="scheme"><code>(define (format-hex byte)
+  (format (if (&lt; byte 16) "0x0~x" "0x~x") byte))
+
+(define (bytecode-&gt;string code)
+  (string-join (map format-hex code) " "))</code></pre>
+<pre class="scheme"><code>&gt; (bytecode-&gt;string (assemble (call-with-input-string TEST-CODE parse)))
+"0x08 0x00 0x05 0x08 0x01 0x07 0x0a 0x00 0x01 0x22 0x00 0xff"</code></pre>
+<p>That would be the end of the actual challenge. But I already have all of these functions defined, so let's go ahead and run them! The <code>run</code> function isn't actually any longer than the <code>assemble</code> function:</p>
+<pre class="scheme"><code>; Run a given assembled code
+(define (run code)
+  (define vcode (list-&gt;vector code))
+  (parameterize ([current-pc 0] [current-memory (make-hasheq)] [currently-running #t])
+    (let loop ()
+      (define op (hash-ref (current-opcodes) (vector-ref vcode (current-pc))))
+      (define args
+        (for/list ([i (in-range (+ 1 (current-pc)) (+ 1 (current-pc) (op-arity op)))])
+          (vector-ref vcode i)))
+      (current-pc (+ (current-pc) 1 (op-arity op))) ; Apply first to not break jumps
+      (apply (op-app op) args)
+      (when (currently-running)
+        (loop)))))</code></pre>
+<p>Essentially, we turn the code into a vector (since we're going to be jumping around a bit). Then we use the <code>(current-opcodes)</code> hash to look up the function. <code>args</code> come from the code vector</code>. About the only sneaky part of this code is that we update the <code>pc</code> before we run the code. As the note mentions, this is so that the jumps will work correctly when they override it. Then, so long as we haven't called <code>HALT</code> we just keep looping.</p>
+<p>I did originally have a heck of a time getting this to work correctly since I wasn't updating the <code>pc</code> correctly. You need 1 for the opcode <strong>and</strong> 1 for each argument that you're consuming. Oops. :)</p>
+<p>But now we can run our code:</p>
+<pre class="scheme"><code>&gt; (run (assemble (call-with-input-string TEST-CODE parse)))
+12</code></pre>
+<p>If you remember correctly, this function was supposed to add 5 and 7. Looks like a job well done. :) For something a little more complicated though, why don't we try multiplying two numbers (the example given in the original problem). I wrote a function <code>tiny</code> which parses, assembles, and then runs any code you give it, here is the results:</p>
+<pre class="bash"><code>source:
+MOV [0] 5
+MOV [1] 7
+MOV [2] 0
+MOV [3] 0
+DPRINT [0]
+APRINT 42
+DPRINT [1]
+APRINT 61
+JEQ 32 [1] [3]
+ADD [3] 1
+ADD [2] [0]
+JMP 20
+MOV [0] [2]
+DPRINT [0]
+HALT
+
+bytecode:
+0x08 0x00 0x05 0x08
+0x01 0x07 0x08 0x02
+0x00 0x08 0x03 0x00
+0x22 0x00 0x21 0x2a
+0x22 0x01 0x21 0x3d
+0x15 0x20 0x01 0x03
+0x0b 0x03 0x01 0x0a
+0x02 0x00 0x0f 0x14
+0x07 0x00 0x02 0x22
+0x00 0xff
+
+running:
+5*7=35</code></pre>
+<p>Looks pretty good, eh?</p>
+<p>We still have one more step though. We want to be able to prove that Tiny is <a href="https://en.wikipedia.org/wiki/Turing_complete">Turing complete</a>. One way to do that is to be able to simulate a Turing machine. That sounds simple(ish), let's do that. :)</p>
+<p><b>A while later.</b></p>
+<p><del>Okay, so it's not so simple. It's possible to get close, but I don't think the language as stated is actually Turing complete... I don't have a format proof, but so far as informal goes, there's a strictly finite address space. Once you've written a Tiny program, you know exactly how many memory address you will have (anything like this: <code>[a]</code>), which means simulating a Turing machine is out of the question so far as I can tell. I'd love to be proven wrong though; leave a comment if you can figure out how to do it.</del></p>
+<p><b>Update 22 August 2013</b>: You can also prove it by only allowing for unbounded integers in memory cells: <a href="http://jpverkamp.github.io/2013/08/22/tiny-turing-completeness-without-mmov">‘Tiny’ Turing completeness without MMOV</a></p>
+<p>Other than that, it seems like we need one more instruction. You could add a few to make it cleaner, but it can be done with just this:</p>
+<p><code>MMOV [a] [b]</code> - set <code>M[M[A]]</code> = <code>M[M[B]]</code></p>
+<p>Essentially, this gives us the ability to set memory based on an address also in memory. This way, we can actually encode vectors or any other manner of more complicated data structure. Given that though, we have enough to encode any arbitrary Turing machine in Tiny.</p>
+<p>To do so, we'll start with the definition for a Turing machine <a href="https://en.wikipedia.org/wiki/on_Wikipedia">Turing machine</a>:</p>
+<ul>
+        <li>Q is a finite, non-empty set of <i>states</i></li>
+        <li>Γ is a finite, non-empty set of the <i>tape alphabet/symbols</i></li>
+        <li>b ∋ Γ is the <i>blank symbol</i> (the only symbol allowed to occur on the tape infinitely often at any step during the computation)</li>
+        <li>∑ ⊆ {b} ∪ Γ is the set of <i>input symbols</i></li>
+        <li>q<sub>0</sub> ∋ Q is the <i>initial state</i></li>
+        <li>F ⊆ Q is the set of <i>final</i> or <i>accepting states</i>.</li>
+        <li>δ is a <a href="https://en.wikipedia.org/wiki/partial_function">partial function</a> called the <i><a href="https://en.wikipedia.org/wiki/transition_function">transition function</a></i>, where L is left shift, R is right shift. (A relatively uncommon variant allows "no shift", say N, as a third element of the latter set.)</li>
+</ul>
+<p>We're going to simplify that a little bit by assuming that the blank symbol is 0 (and that 0 ∋ Γ), so b no longer needs to be defined and ∑ = Γ. Furthermore, we'll restrict F to only a single state. This is a valid transition since you can add transitions from all previous final states to F that do not modify the tape.</p>
+<p>With all that, we're going to have a function something like this:</p>
+<pre class="scheme"><code>; Convert a Turing machine into a Tiny program
+(define (turing-&gt;tiny states      ; A list of values (must be eq?-able) denoting states
+                      symbols     ; A list of values (ditto) denoting symbols on the tape, default is 0
+                      start-state ; The starting state (must be in states)
+                      final-state ; The halt state (ditto)
+                      transition  ; A list of lists of the form (current-state current-symbol next-state write-symbol move-tape)
+                                  ;   states and symbols must come from their respective lists
+                                  ;   move-tape must be either L or R for left and right respectively
+                      initial     ; The initial tape (list of symbols)
+                      )
+  ...)</code></pre>
+<p>Inside of that function, we'll first want to set up a few transition functions to convert from states and symbols to integers:</p>
+<pre class="scheme"><code>; Assign an integer value to each state and symbol
+(define state-&gt;index (for/hash ([i (in-naturals)] [v (in-list states)]) (values v i)))
+(define symbol-&gt;index (for/hash ([i (in-naturals)] [v (in-list symbols)]) (values v i)))</code></pre>
+<p>Then we can start converting. For my case, I'm going to assign the first memory addresses as follows:</p>
+<ul>
+<li><code>M[0]</code> = current state, starts as <code>start-state</code></li>
+<li><code>M[1]</code> = current tape pointer, starts at 4</li>
+<li><code>M[2]</code> = 3, so we can use <code>MMOV</code> to access <code>M[3]</code></li>
+<li><code>M[3]</code> = variable to store the current symbol, starts as 0</li>
+<li><code>M[4+]</code> = initial tape</li>
+</ul>
+<p>To generate this, we'll have to output the following code:</p>
+<pre class="scheme"><code>`(; Store the current state in M[0]
+  MOV [0] ,(hash-ref state-&gt;index start-state)
+  ; Store the current tape pointer in M[1]
+  MOV [1] 4
+  ; M[2] stores the 3 offset so we can use mmov, M[3] is for the current state
+  MOV [2] 3
+  ; Encode initial state in M[4] ... (tape expands infinitely to the right)
+  ,@"@"(apply
+     append
+     (for/list ([offset (in-naturals)]
+                [value (in-list initial)])
+       `(MOV [,(+ 4 offset)] ,(hash-ref symbol-&gt;index value))))
+  ...)</code></pre>
+<p>We're going straight to the parsed version of Tiny. It seems more sensible than outputting a string only to read it right back in... That's what Lisp-like languages do after all, treat code and data as one.</p>
+<p>Next, we want to do the main loop. Here we'll check if we're in the <code>final-state</code>. If so, <code>JMP</code> to a <code>HALT</code>. Otherwise, <code>JMP</code> to the first code block. Something like this:</p>
+<pre class="scheme"><code>...
+; Halt if we're in the final state, otherwise enter the main body
+JEQ ,(+ 15 (* 3 (length initial))) [0] ,(hash-ref state-&gt;index final-state)
+JMP ,(+ 16 (* 3 (length initial)))
+HALT
+...</code></pre>
+<p>Finally, we need to encode the states. Essentially, we need to check two things: the current state and the symbol at the tape pointer. If they both match a given transition, use that. Otherwise, keep going. Here's where we need <code>MMOV</code>. We'll need it twice: first to copy the value from the tape pointer to <code>M[3]</code> so we can actually work with it then later to copy it back if we actually use this block. One particularly unfortunate bit about this code is the lack of relative offsets. There's a reason that compiler writers often seem just a bit mad... :)</p>
+<pre class="scheme"><code>...
+; Encode the transitions
+,@"@"(apply
+   append
+   (for/list ([offset (in-naturals)]
+              [each (in-list transition)])
+     ; Get the offset of this transition block
+     (define block-offset (+ 16 (* 3 (length initial)) (* 29 offset)))
+     ; Unpack each transition
+     (define-values (current-state current-symbol next-state write-symbol move-tape)
+       (apply values each))
+     ; Jump over if we don't match
+     `(MMOV [2] [1] ; Set M[M[2]] = M[3] to M[M[1]] = M[tape index]
+       JEQ ,(+ block-offset 9) [0] ,(hash-ref state-&gt;index current-state)
+       JMP ,(+ block-offset 29)
+       JEQ ,(+ block-offset 15) [3] ,(hash-ref symbol-&gt;index current-symbol)
+       JMP ,(+ block-offset 29)
+       ; We match, update the symbol and state
+       MOV [0] ,(hash-ref state-&gt;index next-state)
+       MOV [3] ,(hash-ref symbol-&gt;index write-symbol)
+       ; Write that value back into memory
+       MMOV [1] [2] ; Set M[M[1]] = M[tape index] to M[M[2]] = M[3]
+       ; Move the tape
+       ,@"@"(if (eq? move-tape 'R)
+             '(ADD [1] 1)
+             '(SUB [1] 1))
+       ; Loop back to get a new function
+       JMP ,(+ 9 (* 3 (length initial))))))
+; Halt if we get an invalid transition
+HALT))</code></pre>
+<p>And that's all there is to it. Theoretically, we have something that will let us take any Turing machine and compile it to a Tiny program. One problem is that it won't actually work with the bytecode as specified if the Turning machines start getting large. Since we only have direct addressing, we can't jump further than instruction 255. Since we're using 29 bytes per block and a header of 16 bytes, that only leaves us room for about 8 transitions... Still, the code I'm using will work fine since under the hood I'm not actually using bytes--so I'm not going to fix it at the time being.</p>
+<p>Let's try compiling a few test Turing programs.</p>
+<p>First, here's on that will turn a list of 1s into a list of 2s:</p>
+<pre class="scheme"><code>(define ones-to-twos
+  (make-tiny-turing
+   '(start one halt)
+   '(0 1 2)
+   'start
+   'halt
+   '((start 1 start 2 R)
+     (start 0 halt  0 R))))</code></pre>
+<p>As long as it sees 1s, it will change them and move right. As soon as it sees a 0 (so we're off the input), it will stop. Let's try it:</p>
+<pre class="scheme"><code>Tiny version:
+0: MOV (0) 0
+3: MOV (1) 4
+6: MOV (2) 3
+9: MOV (4) 1
+12: MOV (5) 1
+15: MOV (6) 1
+18: JEQ 24 (0) 2
+22: JMP 25
+24: HALT
+25: MMOV (2) (1)
+28: JEQ 34 (0) 0
+32: JMP 54
+34: JEQ 40 (3) 1
+38: JMP 54
+40: MOV (0) 0
+43: MOV (3) 2
+46: MMOV (1) (2)
+49: ADD (1) 1
+52: JMP 18
+54: MMOV (2) (1)
+57: JEQ 63 (0) 0
+61: JMP 83
+63: JEQ 69 (3) 0
+67: JMP 83
+69: MOV (0) 2
+72: MOV (3) 0
+75: MMOV (1) (2)
+78: ADD (1) 1
+81: JMP 18
+83: HALT
+
+Bytecode:
+0x08 0x00 0x00 0x08
+0x01 0x04 0x08 0x02
+0x03 0x08 0x04 0x01
+0x08 0x05 0x01 0x08
+0x06 0x01 0x17 0x18
+0x00 0x02 0x0f 0x19
+0xff 0xf0 0x02 0x01
+0x17 0x22 0x00 0x00
+0x0f 0x36 0x17 0x28
+0x03 0x01 0x0f 0x36
+0x08 0x00 0x00 0x08
+0x03 0x02 0xf0 0x01
+0x02 0x0b 0x01 0x01
+0x0f 0x12 0xf0 0x02
+0x01 0x17 0x3f 0x00
+0x00 0x0f 0x53 0x17
+0x45 0x03 0x00 0x0f
+0x53 0x08 0x00 0x02
+0x08 0x03 0x00 0xf0
+0x01 0x02 0x0b 0x01
+0x01 0x0f 0x12 0xff
+
+Input:
+(1 1 1)
+
+Result:
+(2 2 2)</code></pre>
+<p>That's actually really cool looking... Let's try something a bit more complicated: a doubling function. Given a list of 1s of any length, double it.</p>
+<pre class="scheme"><code>(define double-list
+  (make-tiny-turing
+   '(start goto-end goto-start loop restart clear halt)
+   '(0 1 start old new)
+   'start
+   'halt
+   '(; Mark the starting position
+     (start      1     goto-end   start R)
+     ; Go to the first 0, replace it with new
+     (goto-end   old   goto-end   old   R)
+     (goto-end   new   goto-end   new   R)
+     (goto-end   0     goto-start new   L)
+     (goto-end   1     goto-end   1     R)
+     ; Go back to the start
+     (goto-start start loop       start R)
+     (goto-start old   goto-start old   L)
+     (goto-start new   goto-start new   L)
+     (goto-start 1     goto-start 1     L)
+     ; Loop back or check if we're done
+     (loop       old   loop       old   R)
+     (loop       new   restart    new   L)
+     (loop       1     goto-end   old   R)
+     ; Go back to the start symbol
+     (restart    old   restart    old   L)
+     (restart    start clear      1     R)
+     ; Write out all 1s
+     (clear      old   clear      1     R)
+     (clear      new   clear      1     R)
+     (clear      0     halt       0     R))))</code></pre>
+<p>And here's it running:</p>
+<pre class="scheme"><code>&gt; (double-list '(1 1 1))
+Tiny version:
+0: MOV (0) 0
+3: MOV (1) 4
+...
+516: JMP 18
+518: HALT
+
+Bytecode:
+0x08 0x00 0x00 0x08
+0x01 0x04 0x08 0x02
+...
+0x02 0x0b 0x01 0x01
+0x0f 0x12 0xff
+
+Input:
+(1 1 1)
+
+Result:
+(1 1 1 1 1 1)</code></pre>
+<p>You can't ask for better than that. :) I wonder how long it takes to run on a hundred element list?</p>
+<pre class="scheme"><code>&gt; (time (length (double-list (map (λ (_) 1) (range 10)))))
+Tiny version:
+0: MOV (0) 0
+3: MOV (1) 4
+...
+537: JMP 39
+539: HALT
+
+Bytecode:
+0x08 0x00 0x00 0x08
+0x01 0x04 0x08 0x02
+...
+0x0b 0x01 0x01 0x0f
+0x135 0xff
+
+Input:
+(1 1 ... 1 1)
+
+Result:
+(1 1 ... 1 1)
+
+200
+cpu time: 3947 real time: 3922 gc time: 139</code></pre>
+<p>You can't really ask for better than that. :)</p>
+<p>Well, that's it. If it I wanted to be more formal about it, I would have to prove that each possible Turning machine works, but we'll leave that as an exercise to the reader.</p>
+<p>The code for this post is a bit more substantial than normal, so I made a seperate GitHub for it. You can check it out here: <a href="https://github.com/jpverkamp/tiny">tiny on GitHub</a></p>
+                </div>
+                <div class="entry-footnotes">
+                        <div id="footnotes"><ol></ol></div>
+                </div>
+
+                <div id="disqus_thread"></div>
+<script type="text/javascript">
+var disqus_shortname = "jverkamp";
+var disqus_title = "A 'Tiny' virtual machine in Racket";
+var disqus_url = "http://blog.jverkamp.com/2013/08/21/a-tiny-virtual-machine-in-racket/";
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+        </article>
+
+        <footer class="container" role="contentinfo">
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2013/08/17/usenix-2013-day-3">← USENIX 2013 - Day 3</a></li><li><a href="http://jpverkamp.github.io/category/archives">Archives</a></li><li><a href="http://jpverkamp.github.io/2013/08/22/tiny-turing-completeness-without-mmov">'Tiny' Turing completeness without MMOV →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2013/08/13/usenixfoci-2013-five-incidents-one-theme-twitter-spam-as-a-weapon-to-drown-voices-of-protest">← Usenix/FOCI 2013 -- Five incidents, one theme:  Twitter spam as a weapon to drown voices of protest</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/2013/08/22/tiny-turing-completeness-without-mmov">'Tiny' Turing completeness without MMOV →</a></li></ul></nav>
+
+                <div class="legal">
+                        All posts unless otherwise mentioned are licensed under <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/80x15.png" /></a><br />
+                        Any source code unless otherwise mentioned is licensed under the <a href="http://directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+                </div>
+        </footer>
+</body>
+</html>

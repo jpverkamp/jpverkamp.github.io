@@ -1,0 +1,424 @@
+<language title="RHIJ - MIF">
+    <code>
+        <pre>
+# preprocess the input
+input = input.upper()
+input = input.strip()
+        
+# initilize the label and method table
+labels = {}
+methods = {}    
+
+# initilize the byte counter
+pc = 0
+
+# error flag
+error = False   
+        </pre>
+        
+        <post>
+# finish any goto statements
+for match in re.finditer("{{{GOTO\|(\d+)\|(\w+)}}}", output):
+    # pull apart the match
+    pc = match.groups()[0]
+    label = match.groups()[1]
+    
+    # skip if either is not set
+    if pc == None or label == None:
+        continue
+    
+    # does the label exists?
+    if labels.has_key(label):
+        # replace the tag
+        firsts = "{{{GOTO|" + pc + "|" + label + "}}}"
+        offset = cbase.dec2hex(labels[label] - int(pc), bytes = 2, signed = True)
+        output = output.replace(firsts, offset)
+        
+    # otherwise, the label was not found
+    else:
+        error = True
+        output = "Label '" + label + "' could not be found."
+        break
+
+# finish any invoke statements
+methodpc = -1
+for match in re.finditer("{{{INVOKEVIRTUAL\|(\w+)}}}", output):
+    # stop if an error was found
+    if error:
+        break
+
+    # pull apart the match
+    method = match.groups()[0]
+    
+    # skip if it is not set
+    if method == None:
+        continue
+    
+    # does the label exists?
+    if methods.has_key(method):
+        # replace the tag
+        firsts = "{{{INVOKEVIRTUAL|" + method + "}}}"
+        offset = cbase.dec2hex(methods[method][0], bytes = 2, signed = False)
+        output = output.replace(firsts, offset)
+        
+    # otherwise, the label was not found
+    else:
+        error = True
+        output = "Method '" + method + "' could not be found."
+        break
+
+# now build the full output
+if not error:
+    # init new output
+    newoutput = ""
+    l = ""
+    
+    # the constant pool
+    i = 0
+    methods = methods.items()
+    methods.sort()
+    
+    # add the methods
+    for key, value in methods:
+        hex = cbase.dec2hex(value[1] + (64 * 4), bytes = 4, signed = False)
+        for bytepair in hex.split():
+            l += bytepair[2:]
+            
+            if len(l) == 8:
+                newoutput += l + "\n"
+                l = ""
+                
+    # add up to 64 lines
+    while len(newoutput.split("\n")) &lt;= 64:
+        l = "77" + l
+            
+        if len(l) == 8:
+            newoutput += l + "\n"
+            l = "" 
+            
+    # now go through the code
+    for bytepair in output.split():
+        l = bytepair[2:] + l
+            
+        if len(l) == 8:
+            newoutput += l + "\n"
+            l = ""
+    
+    # add to l
+    while len(l) != 8:
+        l = "FF" + l
+    
+    # add to the output
+    newoutput += l
+            
+    # reassign the output
+    output = newoutput
+        </post>
+    </code>
+    
+    <commands>
+        <command regex="\s*HALT\s*">
+# add the opcode
+output += "0xFF"
+
+# add a newline
+output += "\n"
+
+# increment the pc
+pc += 1
+        </command>
+    
+        <command regex="\s*IADD\s*">
+# add the opcode
+output += "0x00"
+
+# add a newline
+output += "\n"
+
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*ISUB\s*">
+# add the opcode
+output += "0x01"
+
+# add a newline
+output += "\n"
+
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*IAND\s*">
+# add the opcode
+output += "0x02"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*IOR\s*">
+# add the opcode
+output += "0x04"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*DUP\s*">
+# add the opcode
+output += "0x10"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*POP\s*">
+# add the opcode
+output += "0x11"
+
+# add a newline
+output += "\n"
+        </command>
+
+        <command regex="\s*SWAP\s*">
+# add the opcode
+output += "0x12"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*IRETURN\s*">
+# add the opcode
+output += "0x20"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*RFI\s*">
+# add the opcode
+output += "0x21"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*INPUT\s*">
+# add the opcode
+output += "0x30"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*OUTPUT\s*">
+# add the opcode
+output += "0x31"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 1
+        </command>
+
+        <command regex="\s*BIPUSH\s+(\-*\d+)\s*">
+# add the opcode
+output += "0x40"
+output += " "
+
+# add the hex representation of the argument
+output += cbase.dec2hex(int(arg[0]), bytes = 1, signed = True)
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 2
+        </command>
+    
+        <command regex="\s*IFLT\s+(\w+)\s*">
+# add the opcode
+output += "0x50"
+output += " "
+
+# add the hex representation of the argument
+output += "{{{GOTO|" + str(pc) + "|" + arg[0] + "}}}"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 3
+        </command>
+
+        <command regex="\s*IFEQ\s+(\w+)\s*">
+# add the opcode
+output += "0x51"
+output += " "
+
+# add the hex representation of the argument
+output += "{{{GOTO|" + str(pc) + "|" + arg[0] + "}}}"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 3
+        </command>
+        
+        <command regex="\s*IF_ICMPEQ\s+(\w+)\s*">
+# add the opcode
+output += "0x52"
+output += " "
+
+# add the hex representation of the argument
+output += "{{{GOTO|" + str(pc) + "|" + arg[0] + "}}}"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 3
+        </command>
+        
+        <command regex="\s*GOTO\s+(\w+)\s*">
+# add the opcode
+output += "0x58"
+output += " "
+
+# add the hex representation of the argument
+output += "{{{GOTO|" + str(pc) + "|" + arg[0] + "}}}"
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 3
+        </command>                
+
+        <command regex="\s*ILOAD\s+(\d+)\s*">
+# add the opcode
+output += "0x60"
+output += " "
+
+# add the hex representation of the argument
+output += cbase.dec2hex(int(arg[0]), bytes = 1, signed = False)
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 2
+        </command>
+        
+        <command regex="\s*ISTORE\s+(\d+)\s*">
+# add the opcode
+output += "0x61"
+output += " "
+
+# add the hex representation of the argument
+output += cbase.dec2hex(int(arg[0]), bytes = 1, signed = False)
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 2
+        </command>
+
+        <command regex="\s*IINC\s+(\d+)\s+(\-*\d+)\s*">
+# add the opcode
+output += "0x70"
+output += " "
+
+# add the hex representation of the first argument
+output += cbase.dec2hex(int(arg[0]), bytes = 1, signed = False)
+output += " "
+
+# add the hex representation of the second argument
+output += cbase.dec2hex(int(arg[1]), bytes = 1, signed = True)
+
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 3
+        </command>
+        
+        <command regex="\s*INVOKEVIRTUAL\s+(\w+)\s*">
+# add the opcode
+output += "0x80"
+output += " "
+
+# add the hex representation of the first argument
+output += "{{{INVOKEVIRTUAL|" + arg[0] + "}}}"
+
+# add a newline
+output += "\n"
+
+# increment the pc
+pc += 3
+        </command>
+        
+        <command regex="\s*LDC_W\s+(\w+)\s*">
+# add the opcode
+output += "0x81"
+output += " "
+
+# add the hex representation of the first argument
+output += cbase.dec2hex(int(arg[0]), bytes = 2, signed = False)
+
+# add a newline
+output += "\n"
+
+# increment the pc
+pc += 3
+        </command>        
+        
+        <command regex="\s*(\w+)\s+(\d+)\s+(\d+)\s*">
+# add the value to the method table
+methods[arg[0]] = (len(methods), pc)
+
+# add the method header
+output += cbase.dec2hex(int(arg[1]), bytes = 2, signed = False)
+output += " "
+output += cbase.dec2hex(int(arg[2]), bytes = 2, signed = False)
+        
+# add a newline
+output += "\n"
+        
+# increment the pc
+pc += 4
+        </command>
+
+        <command regex="\s*\W*(\w+)\W*\s*">
+# add this value to the label table
+labels[arg[0]] = pc
+        </command>   
+    </commands>
+</language>

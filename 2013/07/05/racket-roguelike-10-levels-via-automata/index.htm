@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+        
+        
+
+        <title>Racket Roguelike 10: Levels via automata! | jverkamp.com | John-Paul Verkamp</title>
+
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css" />
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.css" />
+        <script src="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.js"></script>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery.transit/0.9.9/jquery.transit.min.js"></script>
+
+        <!-- Highlight.js for syntax highlighting -->
+        <link rel="stylesheet" href="/highlight/styles/tomorrow-night.css" />
+        <script src="/highlight/highlight.pack.js"></script>
+
+        <!-- MathJax for LaTeX support -->
+        <script src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- nanoGallery for Flickr Galleries -->
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/css/themes/light/nanogallery_light.css" />
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/jquery.nanogallery.min.js"></script>
+
+        <!-- Any custom CSS or JS that I've written; this should be kept minimal -->
+        <link rel="stylesheet" href="/custom.css" />
+        <script src="/custom.js"></script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+        <header class="container">
+        <nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="http://jpverkamp.github.io"><span style="color: green;">jv</span>erkamp.com</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav"><li class="dropdown"><a href="http://jpverkamp.github.io/category/archives" class="dropdown-toggle">Archives<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/archives/2004">2004</a></li><li><a href="http://jpverkamp.github.io/category/archives/2005">2005</a></li><li><a href="http://jpverkamp.github.io/category/archives/2006">2006</a></li><li><a href="http://jpverkamp.github.io/category/archives/2007">2007</a></li><li><a href="http://jpverkamp.github.io/category/archives/2008">2008</a></li><li><a href="http://jpverkamp.github.io/category/archives/2009">2009</a></li><li><a href="http://jpverkamp.github.io/category/archives/2010">2010</a></li><li><a href="http://jpverkamp.github.io/category/archives/2011">2011</a></li><li><a href="http://jpverkamp.github.io/category/archives/2012">2012</a></li><li><a href="http://jpverkamp.github.io/category/archives/2013">2013</a></li><li><a href="http://jpverkamp.github.io/category/archives/2014">2014</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/other" class="dropdown-toggle">Other<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/other/board-game-reviews">Board Game Reviews</a></li><li><a href="http://jpverkamp.github.io/category/other/cooking">Cooking</a></li><li><a href="http://jpverkamp.github.io/category/other/movie-reviews">Movie Reviews</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/photography" class="dropdown-toggle">Photography<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/photography/dp-challenge">DP Challenge</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosets">Photosets</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosynth">Photosynth</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/programming" class="dropdown-toggle">Programming<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/programming/by-language">By Language</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-project">By Project</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-source">By Source</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/programming/libraries">Libraries</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/research" class="dropdown-toggle">Research<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/research/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/research/publications">Publications</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/writing" class="dropdown-toggle">Writing<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/writing/by-genre">By Genre</a></li><li><a href="http://jpverkamp.github.io/category/writing/nanowrimo">NaNoWriMo</a></li><li><a href="http://jpverkamp.github.io/category/writing/novels">Novels</a></li><li><a href="http://jpverkamp.github.io/category/writing/other">Other</a></li><li><a href="http://jpverkamp.github.io/category/writing/short-stories">Short Stories</a></li></ul></li></ul>
+
+      <!--
+      <form class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search">
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+      </form>
+      -->
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+        </header>
+
+        <article class="container">
+                <header>
+                        <h1 class="entry-title">Racket Roguelike 10: Levels via automata!</h1>
+
+                        <div class="entry-meta">
+                                <span class="posted-on"><time class="entry-date" datetime="2013-07-05"><span class="year">2013</span> <span class="month">July</span> <span class="day">5</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://jpverkamp.github.io/category/programming/by-source/7drl">7DRL</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic/games">Games</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic/games/roguelikes">Roguelikes</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-language/racket">Racket</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-project/games/racket-roguelike">Racket Roguelike</a></li></ul></span>
+                        </div>
+
+                        <hr />
+                </header>
+                <div class="entry-content">
+                        <p><a href="http://jpverkamp.github.io/2013/06/28/racket-roguelike-9-daedalus-wrath">Last week</a> we made mazes on a regular grid using the <a href="http://jpverkamp.github.io/2013/04/11/perlin-and-simplex-noise-in-racket">noise generators</a>. That was pretty neat, but it got me thinking. What other ways do we have to procedurally generate interesting level patterns? <!--more--></p>
+<p>Well, one option would be to use <a href="https://en.wikipedia.org/wiki/cellular_automaton">cellular automaton</a>. I've written about them <a href="http://jpverkamp.github.io/2012/10/03/elementary-cellular-automaton">before</a>, but in summary, they're basically applying a set of rules to a regular grid resulting in emergent features. In this case, our rule will be simple. Start with an empty grid seeded with a random central tile. From there, randomly generate new tiles, making them walkable if and only if there is 1-3 walkable tiles around them. This means that they have to be connected and they can't be too connected (allowing for branches but nothing more).</p>
+<p>The first problem we have with that is that our current setup doesn't really allow for taking a tile's neighbors into account when generating content. So we'll have to directly access the level's tile hash. It's suboptimal (since we're breaking the abstraction), but it will work.</p>
+<p>The second problem is that we can't rely on the normal terrain generation to work since it's too regular. Since we build the terrain when it's seen and always from top left to bottom right, we'll always get the same (poor) levels. We can get around this though. Any time the level generation function is called that means we're generating a new region. So clear the current region around that tile and then repeatedly randomly fill it back in.</p>
+<p>So how does the code for this look?</p>
+<pre class="scheme"><code>; Use a cellular automaton to generate levels
+(define (cellular seed x y)
+  ; Get the current level
+  (define current-level (get-level (current-depth)))
+
+  ; Helper to count neighboring grass tiles
+  (define (grass? at)
+    (eq? #\. (thing-get (hash-ref current-level at empty) 'character #\space)))
+  (define (count at)
+    (for*/sum ([xi (in-range -1 2)]
+               [yi (in-range -1 2)]
+               #:unless (= 0 xi yi))
+      (if (grass? (+ at (pt xi yi))) 1 0)))
+
+  ; Now randomly set some percentage of the surrounding tiles
+  (define region-size 10)
+
+  ; Clear the area first
+  (for* ([xi (in-range (- x region-size) (+ x region-size 1))]
+         [yi (in-range (- y region-size) (+ y region-size 1))])
+    (hash-set! current-level (pt xi yi) (make-thing wall)))
+
+  ; Set the center tile
+  (hash-set! current-level (pt x y) (make-thing grass))
+
+  ; Random grow
+  (for ([i (in-range (* region-size region-size region-size))])
+    ; Choose a random point from the nearby area
+    (define new-pt (+ (pt x y)
+                      (pt (- (random (* region-size 2)) region-size)
+                          (- (random (* region-size 2)) region-size))))
+
+    ; Set the new tile if we have 3 or less neighbors
+    ; And this tile hasn't already been set
+    ; Some become stairs instead
+    (when (&lt;= 1 (count new-pt) 2)
+      (hash-set! current-level new-pt
+                 (if (zero? (random 100))
+                     (make-thing stairs-up)
+                     (make-thing grass)))))
+
+  ; Return our tile
+  (hash-ref current-level (pt x y)))</code></pre>
+<p>Theoretically, the comments should be all you need to understand what's going on.</p>
+<p>So how does it look?</p>
+<p><a data-toggle="lightbox" href="http://jpverkamp.github.io/2013/07/05/racket-roguelike-10-levels-via-automata/Cellular-growth-1.png"><img src="http://jpverkamp.github.io/2013/07/05/racket-roguelike-10-levels-via-automata/Cellular-growth-1.png" /></a></p>
+<p>Basically, we have a nice warren of tightly curving caves. It really reminds me a fair bit of <a href="http://jpverkamp.github.io/2010/02/06/sandbox-its-alive">Sandbox</a>. Some day I want to go back to that...</p>
+<p>So that's one non-noise based level generation script. What else can we do?</p>
+<p>This time I'm going back way to the dawn of my computing experience. Something nearing two decades ago, I started programming in <a href="https://en.wikipedia.org/wiki/Qbasic">Qbasic</a> (yup). One of my favorite programs from that time? Bugs. Basically, I started a bunch of random points on the screen, each of which would <a href="https://en.wikipedia.org/wiki/random_walk">random walk</a> for a while, drawing a line. In the end, you'd get something like this:</p>
+<p><a href="https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Random_walk_in2D_closeup.png/510px-Random_walk_in2D_closeup.png"><img alt="" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Random_walk_in2D_closeup.png/510px-Random_walk_in2D_closeup.png" class="alignnone" width="255" height="300" /></a></p>
+<p>That looks a lot like the sorts of caves we might want to generate. So let's do it!</p>
+<pre class="scheme"><code>; Generate levels using skittering bugs
+(define (bugs seed x y)
+  (define current-level (get-level (current-depth)))
+
+  ; When a tile is requested, spread out from it for a while
+  (let loop ([i 0] [x x] [y y])
+    (define at (pt x y))
+
+    ; Clear unset neighbors
+    (for* ([xi (in-range -1 2)] [yi (in-range -1 2)])
+      (define ati (+ at (pt xi yi)))
+      (when (not (hash-has-key? current-level ati))
+        (hash-set! current-level ati (make-thing wall))))
+
+    ; Set the current tile
+    (hash-set! current-level at
+               (if (zero? (random 100))
+                   (make-thing stairs-up)
+                   (make-thing grass)))
+
+    ; Wonder around
+    (when (&lt; i 10)
+      (loop (+ i 1) (+ x (random 3) -1) (+ y (random 3) -1))))
+
+  ; Return the tile
+  (hash-ref current-level (pt x y)))</code></pre>
+<p>Basically, we use the same idea as before. When the function is called, spread out from there. That stops the nearby area from having to generate. So we get nice regions centered on each non-generated text.</p>
+<p>And how does this one look?</p>
+<p><a data-toggle="lightbox" href="http://jpverkamp.github.io/2013/07/05/racket-roguelike-10-levels-via-automata/Bug-growth.png"><img src="http://jpverkamp.github.io/2013/07/05/racket-roguelike-10-levels-via-automata/Bug-growth.png" /></a></p>
+<p>It looks a lot like the cellular growth, but this time we have a lot more open caverns (as expected, each generating block will tend to form a room). What's nice is that there are all sorts of parameters to tweak. So we could make all sorts of rooms.</p>
+<p>In any case, it's entirely too late now, so I really should be getting to sleep. One of these days I'll work ahead on these. :)</p>
+<p>As always, if you'd like to see all of the code for this project, you can do so on GitHub: - <a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike/tree/day-10">Racket Roguelike - Day 10</a> - <a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike">Racket Roguelike - Up to date</a></p>
+<p>If you'd like to try it yourself, you'll need to have both <a href="http://git-scm.com/">Git</a> and <a href="http://racket-lang.org/">Racket</a> and run the following series of commands:</p>
+<pre class="bash"><code>git clone git://github.com/jpverkamp/racket-roguelike.git
+cd racket-roguelike
+git checkout day-10
+git submodule init
+git submodule update
+racket main.rkt</code></pre>
+<div><h3 class="ranking-title">Racket Roguelike</h3><ol><li><a href="http://jpverkamp.github.io/2013/04/04/racket-roguelike-1-a-gui-screens-io-and-you">Racket Roguelike 1: A GUI, screens, I/O, and you!</a></li><li><a href="http://jpverkamp.github.io/2013/04/11/racket-roguelike-2-infinite-caves">Racket Roguelike 2: Infinite caves!</a></li><li><a href="http://jpverkamp.github.io/2013/04/18/racket-roguelike-3-rats-rats-everywhere">Racket Roguelike 3: Rats, rats, everywhere!</a></li><li><a href="http://jpverkamp.github.io/2013/04/25/racket-roguelike-4-slightly-smarter-critters">Racket Roguelike 4: Slightly smarter critters!</a></li><li><a href="http://jpverkamp.github.io/2013/05/02/racket-roguelike-5-armors-and-weapons-and-potions-oh-my">Racket Roguelike 5: Armors and weapons and potions, oh my!</a></li><li><a href="http://jpverkamp.github.io/2013/05/10/racket-roguelike-6-dig-deeper">Racket Roguelike 6: Dig deeper!</a></li><li><a href="http://jpverkamp.github.io/2013/05/17/racket-roguelike-7-into-darkness">Racket Roguelike 7: Into darkness!</a></li><li><a href="http://jpverkamp.github.io/2013/06/21/racket-roguelike-8-a-million-words">Racket Roguelike 8: A million words!</a></li><li><a href="http://jpverkamp.github.io/2013/06/28/racket-roguelike-9-daedalus-wrath">Racket Roguelike 9: Daedalus' wrath!</a></li><li><a href="http://jpverkamp.github.io/2013/07/05/racket-roguelike-10-levels-via-automata">Racket Roguelike 10: Levels via automata!</a></li></ol></div>
+                </div>
+                <div class="entry-footnotes">
+                        <div id="footnotes"><ol></ol></div>
+                </div>
+
+                <div id="disqus_thread"></div>
+<script type="text/javascript">
+var disqus_shortname = "jverkamp";
+var disqus_title = "Racket Roguelike 10: Levels via automata!";
+var disqus_url = "http://blog.jverkamp.com/2013/07/05/racket-roguelike-10-levels-via-automata/";
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+        </article>
+
+        <footer class="container" role="contentinfo">
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2013/06/29/a-programming-puzzle-ffn-n">← A programming puzzle: f(f(n)) = -n</a></li><li><a href="http://jpverkamp.github.io/category/archives">Archives</a></li><li><a href="http://jpverkamp.github.io/2013/07/07/despicable-me-2">Despicable Me 2 →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2013/06/29/a-programming-puzzle-ffn-n">← A programming puzzle: f(f(n)) = -n</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/2013/07/19/racket-roguelike-post-mortem">Racket Roguelike: Post-mortem →</a></li></ul></nav>
+
+                <div class="legal">
+                        All posts unless otherwise mentioned are licensed under <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/80x15.png" /></a><br />
+                        Any source code unless otherwise mentioned is licensed under the <a href="http://directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+                </div>
+        </footer>
+</body>
+</html>

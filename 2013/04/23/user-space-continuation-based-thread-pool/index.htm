@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+        
+        
+
+        <title>User space continuation-based thread pool | jverkamp.com | John-Paul Verkamp</title>
+
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css" />
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.css" />
+        <script src="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.js"></script>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery.transit/0.9.9/jquery.transit.min.js"></script>
+
+        <!-- Highlight.js for syntax highlighting -->
+        <link rel="stylesheet" href="/highlight/styles/tomorrow-night.css" />
+        <script src="/highlight/highlight.pack.js"></script>
+
+        <!-- MathJax for LaTeX support -->
+        <script src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- nanoGallery for Flickr Galleries -->
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/css/themes/light/nanogallery_light.css" />
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/jquery.nanogallery.min.js"></script>
+
+        <!-- Any custom CSS or JS that I've written; this should be kept minimal -->
+        <link rel="stylesheet" href="/custom.css" />
+        <script src="/custom.js"></script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+        <header class="container">
+        <nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="http://jpverkamp.github.io"><span style="color: green;">jv</span>erkamp.com</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav"><li class="dropdown"><a href="http://jpverkamp.github.io/category/archives" class="dropdown-toggle">Archives<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/archives/2004">2004</a></li><li><a href="http://jpverkamp.github.io/category/archives/2005">2005</a></li><li><a href="http://jpverkamp.github.io/category/archives/2006">2006</a></li><li><a href="http://jpverkamp.github.io/category/archives/2007">2007</a></li><li><a href="http://jpverkamp.github.io/category/archives/2008">2008</a></li><li><a href="http://jpverkamp.github.io/category/archives/2009">2009</a></li><li><a href="http://jpverkamp.github.io/category/archives/2010">2010</a></li><li><a href="http://jpverkamp.github.io/category/archives/2011">2011</a></li><li><a href="http://jpverkamp.github.io/category/archives/2012">2012</a></li><li><a href="http://jpverkamp.github.io/category/archives/2013">2013</a></li><li><a href="http://jpverkamp.github.io/category/archives/2014">2014</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/other" class="dropdown-toggle">Other<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/other/board-game-reviews">Board Game Reviews</a></li><li><a href="http://jpverkamp.github.io/category/other/cooking">Cooking</a></li><li><a href="http://jpverkamp.github.io/category/other/movie-reviews">Movie Reviews</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/photography" class="dropdown-toggle">Photography<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/photography/dp-challenge">DP Challenge</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosets">Photosets</a></li><li><a href="http://jpverkamp.github.io/category/photography/photosynth">Photosynth</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/programming" class="dropdown-toggle">Programming<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/programming/by-language">By Language</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-project">By Project</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-source">By Source</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/programming/libraries">Libraries</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/research" class="dropdown-toggle">Research<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/research/by-topic">By Topic</a></li><li><a href="http://jpverkamp.github.io/category/research/publications">Publications</a></li></ul></li><li class="dropdown"><a href="http://jpverkamp.github.io/category/writing" class="dropdown-toggle">Writing<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://jpverkamp.github.io/category/writing/by-genre">By Genre</a></li><li><a href="http://jpverkamp.github.io/category/writing/nanowrimo">NaNoWriMo</a></li><li><a href="http://jpverkamp.github.io/category/writing/novels">Novels</a></li><li><a href="http://jpverkamp.github.io/category/writing/other">Other</a></li><li><a href="http://jpverkamp.github.io/category/writing/short-stories">Short Stories</a></li></ul></li></ul>
+
+      <!--
+      <form class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input type="text" class="form-control" placeholder="Search">
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+      </form>
+      -->
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+        </header>
+
+        <article class="container">
+                <header>
+                        <h1 class="entry-title">User space continuation-based thread pool</h1>
+
+                        <div class="entry-meta">
+                                <span class="posted-on"><time class="entry-date" datetime="2013-04-23"><span class="year">2013</span> <span class="month">Apr</span> <span class="day">23</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://jpverkamp.github.io/category/programming/by-topic/concurrency">Concurrency</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-topic/continuations">Continuations</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/category/programming/libraries">Libraries</a></li><li><a href="http://jpverkamp.github.io/category/programming/by-language/racket">Racket</a></li></ul></span>
+                        </div>
+
+                        <hr />
+                </header>
+                <div class="entry-content">
+                        <p>I'm perhaps a little late to last week's <a title="Reddit: DailyProgrammer" href="http://www.reddit.com/r/dailyprogrammer/">DailyProgrammer</a> challenge to <a title="[04/01/13] Challenge #122 [Intermediate] User-Space Threading" href="http://www.reddit.com/r/dailyprogrammer/comments/1ceai7/040113_challenge_122_intermediate_userspace/">implement a user-space threading system</a>, without using any sort of built in thread library, but it just sounded too interesting to pass up.<!--more--></p>
+<p>The full challenge states that we are to:</p>
+<blockquote>Your goal is to implement an <em>efficient</em> and <em>dynamic</em> user-level threading library. You may implement this in any language and on any platform, but you may not use any existing threading code or implementation, such as the Win32 threading code or the UNIX pthreads lib. You may call system functions (such as interrupts and signals), but again cannot defer any thread-specific work to the operating system.</blockquote>
+<p>The only two solutions posted thus far use <a title="JavaScript solution" href="http://www.reddit.com/r/dailyprogrammer/comments/1ceai7/040113_challenge_122_intermediate_userspace/c9foc4n">JavaScript's setTimeout method</a> (which arguably is already thread specific functionality) or <a title="Haskell solution" href="http://www.reddit.com/r/dailyprogrammer/comments/1ceai7/040113_challenge_122_intermediate_userspace/c9g27et">Haskell and the 'free' monad</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. For a bit of variety, I'll be using <a href="https://en.wikipedia.org/wiki/continuations">continuations</a>, essentially to implement <a href="https://en.wikipedia.org/wiki/coroutines">coroutines</a> with manual scheduling.</p>
+<p>Before we get started, if you'd like to follow along, you can do so here: - <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/continuation-thread-pool.rkt">continuation thread pool on GitHub</a></p>
+<p>That being said, essentially, we need two methods:</p>
+<ul>
+        <li><code>(threads thunk ...)</code> - takes a series of thunks and runs them in parallel</li>
+        <li><code>(yield)</code> - within a thread, turns over control to the next thread in the pool</li>
+</ul>
+<p>Even before that, we're going to want a bit of structure. First, we'll wrap the thread data up in a structure:</p>
+<pre class="scheme"><code>; Store the current state of a thread
+(define-struct thread-state (continuation) #:mutable)</code></pre>
+<p>All that we're going to save is a continuation. If you haven't looked into continuations, the essential idea is that it's a function that wraps up 'everything that you need to do next' if you were to suspend the current execution of the function. For example (using <code>call/cc</code> as the alias for <code>call-with-current-continuation</code> to capture the continuation):</p>
+<pre class="scheme"><code>&gt; (+ 1 (call/cc (lambda (k) (+ 2 (k 3)))))
+4</code></pre>
+<p>Why this works is that <code>call/cc</code> captures <code>(+ 1 ...)</code> as a function. We then later apply that function to 3 for the result of 4, completely ignoring the <code>(+ 2 ...)</code> part. If that makes sense, great! If not... well, perhaps you should read up a bit more on continuations... They're an amazingly powerful construct that allows for some remarkably powerful control flow structures. In this case, just know that we can always treat them as a function which can suspend control and later to call it with what we want it to return.</p>
+<p>So essentially, we're going to set up each <code>thread-state</code> with a psuedo-continuation. But we'll get to that in a second. We still haven't set up the data structure for the <code>thread-pool</code>:</p>
+<pre class="scheme"><code>; Store a collection of threads in a pool
+(define-struct thread-pool (all current switch-count) #:mutable)
+
+; Create a new, empty thread pool
+(define (make-empty-thread-pool)
+  (make-thread-pool '() '() 0))
+
+; Allow for multiple thread pools
+(define current-thread-pool
+  (make-parameter (make-empty-thread-pool)))
+
+; Get the number of context switches out of the current thread pool
+(define (get-switch-count [pool (current-thread-pool)])
+  (thread-pool-switch-count pool))</code></pre>
+<p>The <code>switch-count</code> isn't strictly necessary, but it will allow us to do some amount of performance evaluation when all is said and done. Other than that, <code>all</code> will hold a list of all of the threads that we're dealing with while <code>current</code> is that same list only advanced to the currently executing thread. So we're not doing anything fancy with thread priorities, although we could easily do so by replacing <code>current</code> with a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> rather than a simple list<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>.</p>
+<p>So how do we do all of that? Well, here is <code>threads</code> to create the initial state:</p>
+<pre class="scheme"><code>; Run a given list of thunks in parallel
+(define (threads . thunks)
+  (call-with-current-continuation
+   (lambda (k)
+     (when (null? thunks) (error 'threads "must specify at least one thread"))
+
+     ; Unwrap the current pool
+     (define pool (current-thread-pool))
+
+     ; Create the initial thread states
+     (define threads
+       (map
+        (lambda (thunk) (thread-state (lambda (_) (k (thunk)))))
+        thunks))
+
+     ; Store them in the pool
+     (set-thread-pool-current! pool (append (thread-pool-current pool) threads))
+     (set-thread-pool-all! pool (append (thread-pool-all pool) threads))
+
+     ; Start the first thread
+     (define first-k (thread-state-continuation (car (thread-pool-current pool))))
+     (first-k (void)))))</code></pre>
+<p>So basically, we get a thread pool (I'll show you some of the advantages of doing it this way later), create the threads, store them in the thread pool structure, and start the first thread. Everything should be good to go.</p>
+<p>(There's also a sneaky part there where we capture the continuation immediately and us it in each thread. I'll get to that too later.)</p>
+<p>But for everything to work, we also need <code>yield</code>:</p>
+<pre class="scheme"><code>; Yield control of the current thread to the next thread in the current pool
+(define (yield)
+  (call-with-current-continuation
+   (lambda (k)
+     ; Unwrap the current pool
+     (define pool (current-thread-pool))
+
+     ; Store the current thread state
+     (define thread (car (thread-pool-current pool)))
+     (set-thread-state-continuation! thread k)
+
+     ; Advance to the next thread
+     (set-thread-pool-current! pool (cdr (thread-pool-current pool)))
+     (when (null? (thread-pool-current pool))
+       (set-thread-pool-current! pool (thread-pool-all pool)))
+     (set-thread-pool-switch-count! pool (+ 1 (thread-pool-switch-count pool)))
+
+     ; Run that thread
+     (define next-k (thread-state-continuation (car (thread-pool-current pool))))
+     (next-k (void)))))</code></pre>
+<p>When it is first called, this will capture the continuation for the current thread. The first step that it will do when unwrapping is return from the <code>yield</code> itself, but after that it will hand control back to the other, previous continuations. This is then stored in the first (running) thread's <code>thread-state</code> and then the <code>thread-pool</code> is advanced to the next <code>thread</code>, which is then run just as the first was started in <code>threads</code>.</p>
+<p>So how can we use something like that? Well, let's implement the fairly standard 'tick tock' test for threads:</p>
+<pre class="scheme"><code>(define (tick-tock-test)
+  (parameterize ([current-thread-pool (make-empty-thread-pool)])
+    (threads
+     ; Keep printing tick
+     (lambda ()
+       (let loop ()
+         (printf "tick\n")
+         (yield)
+         (loop)))
+     ; Keep printing tock
+     (lambda ()
+       (let loop ()
+         (printf "tock\n")
+         (yield)
+         (loop))))))</code></pre>
+<p>Run it<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span> and you should see something like this:</p>
+<pre class="scheme"><code>&gt; (tick-tock-test)
+tick
+tock
+tick
+tock
+tick
+tock
+...</code></pre>
+<p>Exactly what we were looking for. But the real strength comes in when you try to do some more interesting examples. For example, let's calculate Fibonacci values in parallel. Remember when I mentioned capturing a continuation in <code>threads</code>? This is when it comes in handy:</p>
+<pre class="scheme"><code>(define (fibonacci-test)
+  (define (fib n)
+      (yield)
+      (if (&lt;= n 1)
+          1
+          (+ (fib (- n 1)) (fib (- n 2)))))
+
+  (parameterize ([current-thread-pool (make-empty-thread-pool)])
+    (threads
+     (lambda () (list 20 (fib 20)))
+     (lambda () (list 10 (fib 10))))))</code></pre>
+<p>Take a moment and guess what you think that should do.</p>
+<p>In traditional threads, it wouldn't do anything, since threads don't generally return anything. But in this case, the threads have a continuation that will return from <code>threads</code> (the initial one we captured). So whichever thread returns first (and finally gets back to that original continuation) will return a value. So if we test it:</p>
+<pre class="scheme"><code>&gt; (fibonacci-test)
+'(10 89)</code></pre>
+<p>So essentially, we've implemented the <code>amb</code> operator first described back in a variation on McCarthy’s amb operator for ambiguous choice<span class="footnote"><sup><a href="#footnote-4">[4]</a></sup></span>. It may not be exactly what you're looking for in a threading system, but if that's the case, you can always use a different one. :) More seriously, if you don't want the <code>thread-pool</code> to exit when the first thread has a value, just don't return.</p>
+<p>As our next test, let's figure out just how efficient it is<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>. So we'll use the <code>switch-count</code> functionality we built in earlier:</p>
+<pre class="scheme"><code>
+(define (timing-test)
+  (define iterations 1000000)
+
+  (parameterize ([current-thread-pool (make-empty-thread-pool)])
+    (time
+     (threads
+      (lambda ()
+        (let loop ([i 0])
+          (when (&lt; i iterations)
+            (yield)
+            (loop (+ i 1)))))))
+    (printf "~a context switches (target: ~a)\n"
+            (get-switch-count)
+            iterations)))</code></pre>
+<p>So how long does it take to do 1 million switches?</p>
+<pre class="scheme"><code>&gt; (timing-test)
+cpu time: 9479 real time: 10969 gc time: 2489
+1000000 context switches (target: 1000000)</code></pre>
+<p>Honestly, that's pretty terrible for a threading system. That works out to ~10 ms per context switch and we're not even doing any other work as of yet. As we found out in a <a href="http://jpverkamp.github.io/2013/04/16/adventures-in-optimization-re-typed-racket">previous optimization post</a>, we can do a heck of a lot of relatively complex mathematics in 20 ms, so perhaps we can do better?</p>
+<p>Well, the main problem is the overhead involved in continuations, so we really can't. Each time we use <code>call-with-current-continuation</code>, we have to copy the entire stack and any variables so that we can resume the state. Every time we use it, we have to make another copy, just in case we want to resume that same continuation more than once (it's really quite a powerful construct). There are forms of continuations that we could use instead, limiting either how much we have to remember or how often we can reset to that point, but that's beyond the scope of this post. Perhaps another day.</p>
+<p>If you'd like to see all of the code in one place, you can do so here: - <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/continuation-thread-pool.rkt">continuation thread pool on GitHub</a></p>
+<p>That code also contains a series of <code>(module+ test ...)</code> blocks, each of which can be run with <code>raco test continuation-thread-pool.rkt</code>. That's such nice functionality, it's a shame I'm just finding out about it now.</p>
+                </div>
+                <div class="entry-footnotes">
+                        <div id="footnotes"><ol><li><a name="footnote-1"></a>I still stand by the saying that <a href="https://en.wikipedia.org/wiki/monads">Monad</a> are black magic...</li><li><a name="footnote-2"></a>Actually, just replacing the list with a queue would remove the need for both data structures since we could take threads from one end and push them on the other. But queues aren't built in to most Schemes.</li><li><a name="footnote-3"></a>And immediately break it, because infinite loop...</li><li><a name="footnote-4"></a>John McCarthy. A Basis for a Mathematical Theory of Computation. In <em>Computer Programming And Formal Systems</em> by P. Braffort and D. Hirschberg (Ed.), 1963.</li><li><a name="footnote-5"></a>That was one of the original requirements after all.</li></ol></div>
+                </div>
+
+                <div id="disqus_thread"></div>
+<script type="text/javascript">
+var disqus_shortname = "jverkamp";
+var disqus_title = "User space continuation-based thread pool";
+var disqus_url = "http://blog.jverkamp.com/2013/04/23/user-space-continuation-based-thread-pool/";
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+        </article>
+
+        <footer class="container" role="contentinfo">
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2013/04/18/racket-roguelike-3-rats-rats-everywhere">← Racket Roguelike 3: Rats, rats, everywhere!</a></li><li><a href="http://jpverkamp.github.io/category/archives">Archives</a></li><li><a href="http://jpverkamp.github.io/2013/04/25/oblivion">Oblivion →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://jpverkamp.github.io/2013/04/18/racket-roguelike-3-rats-rats-everywhere">← Racket Roguelike 3: Rats, rats, everywhere!</a></li><li><a href="http://jpverkamp.github.io/category/programming">Programming</a></li><li><a href="http://jpverkamp.github.io/2013/04/25/racket-roguelike-4-slightly-smarter-critters">Racket Roguelike 4: Slightly smarter critters! →</a></li></ul></nav>
+
+                <div class="legal">
+                        All posts unless otherwise mentioned are licensed under <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/80x15.png" /></a><br />
+                        Any source code unless otherwise mentioned is licensed under the <a href="http://directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+                </div>
+        </footer>
+</body>
+</html>
