@@ -1,5 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-08T00:05:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Onwards and upwards</title><link href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards" /><id>urn:uuid:3d69145f-292b-c8aa-9e92-1151fa3a6bf2</id><updated>2014-08-08T00:05:00Z</updated><summary type="html"><![CDATA[<p>Huh. Things suddenly look a bit different around here, don't they?</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-13T14:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Number words</title><link href="http://blog.jverkamp.com/2014/08/13/number-words" /><id>urn:uuid:67236730-531b-effa-30b3-b69308ea8187</id><updated>2014-08-13T14:00:00Z</updated><summary type="html"><![CDATA[<p>Today's five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
+<blockquote>
+Given a positive integer, return all the ways that the integer can be represented by letters using the mapping 1 -> A, 2 -> B, …, 26 -> Z. For instance, the number 1234 can be represented by the words ABCD, AWD and LCD.
+</blockquote>
+]]></summary><content type="html"><![CDATA[<p>Today's five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
+<blockquote>
+Given a positive integer, return all the ways that the integer can be represented by letters using the mapping 1 -> A, 2 -> B, …, 26 -> Z. For instance, the number 1234 can be represented by the words ABCD, AWD and LCD.
+</blockquote>
+<!--more-->
+<p>That may look fairly straight forward. Basically, it's a <a href="https://en.wikipedia.org/wiki/parsing">parsing</a>/<a href="https://en.wikipedia.org/wiki/lexing">lexing</a> problem. You take a string as input and break it into a series of tokens (in this case, numbers 1-26); then each token is converted into a letter.</p>
+<p>Unfortunately, it's a bit more complicated than that, since the grammar is ambiguous. Taking the example <code>1234</code> from above, should you parse that as <code>1 2 3 4 = ABCD</code>? Or what about <code>1 23 4 = AWD</code>? Or even <code>12 3 4 = LCD</code>? In a nutshell, we have to do all of them. So we want some sort of branching lexer that will try all possible routes.</p>
+<p>So let's start with a function that meta-function that can make such a parser:</p>
+<pre class="scheme"><code>; Make an optional parser
+; If the regex matches, add it to each possible next parse
+; If it does not, return an empty list (to be appendable)
+(define (make-parser re)
+  (λ (str)
+    (match str
+      [(regexp re (list _ n rest))
+       (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
+      [any
+       '()])))</code></pre>
+<p>Looks a bit funny, (especially since we haven't defined <code>number-&gt;words</code> yet), but basically we try to match the regular expression. If that works, make the recursive call (to <code>number-&gt;words</code>) and then append that string (as a character via <code>n->char</code>) to each recursive result. If there are no recursive results, this <code>map</code> will return an empty list. Likewise, if the regular expression doesn't match.</p>
+<p>Next step, write the two parsers. We want to parse either a single digit number or a two digit number:</p>
+<pre class="scheme"><code>; Create parsers for valid 1 digit and 2 digit letter numbers
+(define parse-1 (make-parser #px"([1-9])(.*)"))
+(define parse-2 (make-parser #px"(1[0-9]|2[0-6])(.*)"))</code></pre>
+<p>That's what makes the ambiguity the most interesting. If only <code>0</code> were a valid digit... As it is, there are four possible cases (and these two functions handle them all!):</p>
+<ul>
+    <li><code>str</code> starts with 1 and a digit 0-9, parse both</li>
+    <li><code>str</code> starts with 2 and a digit 0-6, parse both</li>
+    <li><code>str</code> starts with 2 and a digit 7-9, parse 2 digits only</li>
+    <li><code>str</code> starts with 3-9, parse 1 digit only</li>
+</ul>
+<p>And finally, try both:</p>
+<pre class="scheme"><code>; Base case, so we can stop eventually
+(if (equal? str "")
+    '("")
+    (append (parse-1 str) (parse-2 str)))</code></pre>
+<p>The base case looks a bit funny, since you might assume that if neither case matches we'll get there. That's the difference between the empty list <code>'()</code> and the list containing just an empty string <code>'("")</code>. In the latter, there's nothing to map against, ergo necessary.</p>
+<p>And then all we need is the <code>n->char</code> function:</p>
+<pre class="scheme"><code>; Convert a number 1-26 to a letter A-Z
+(define (n-&gt;char n) (integer-&gt;char (+ 64 (string-&gt;number n))))</code></pre>
+<p>And that's it. Put it all together:</p>
+<pre class="scheme"><code>; Given 1-26 mapping to A-Z, determine all possible words represented by a number
+; Correctly resolve ambiguities where 1234 -&gt; 1 2 3 4 = ABCD / 1 23 4 -&gt; AWD / 12 3 4 -&gt; LCD
+(define (number-&gt;words str)
+  ; Convert a number 1-26 to a letter A-Z
+  (define (n-&gt;char n) (integer-&gt;char (+ 64 (string-&gt;number n))))
+
+  ; Make an optional parser
+  ; If the regex matches, add it to each possible next parse
+  ; If it does not, return an empty list (to be appendable)
+  (define (make-parser re)
+    (λ (str)
+      (match str
+        [(regexp re (list _ n rest))
+         (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
+        [any
+         '()])))
+
+  ; Create parsers for valid 1 digit and 2 digit letter numbers
+  (define parse-1 (make-parser #px"([1-9])(.*)"))
+  (define parse-2 (make-parser #px"(1[0-9]|2[0-6])(.*)"))
+
+  ; Base case, so we can stop eventually
+  (if (equal? str "")
+      '("")
+      (append (parse-1 str) (parse-2 str))))</code></pre>
+<p>Let's give it a try:</p>
+<pre class="scheme"><code>&gt; (number-&gt;words "1234")
+'("ABCD" "AWD" "LCD")
+
+&gt; (number-&gt;words "8675309")
+'("HFGECI")
+
+&gt; (length (number-&gt;words "85121215231518124"))
+
+1181
+
+&gt; (number-&gt;words "85121215231518124")
+'(... "HELLOWORLD" ...)</code></pre>
+<p>I could claim that I just happen to know the number code for <code>HELLOWORLD</code>, but really I wrote a quick inverse function:</p>
+<pre class="scheme"><code>; Convert words back to numbers
+(define (words-&gt;number str)
+  (define (char-&gt;n c) (number-&gt;string (- (char-&gt;integer c) 64)))
+  (apply ~a (for/list ([c (in-string str)]) (char-&gt;n c))))</code></pre>
+<p>Shiny!</p>
+<p>Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/number-words.rkt">number-words.rkt</a></p>]]></content></entry><entry><title>Onwards and upwards</title><link href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards" /><id>urn:uuid:3d69145f-292b-c8aa-9e92-1151fa3a6bf2</id><updated>2014-08-08T00:05:00Z</updated><summary type="html"><![CDATA[<p>Huh. Things suddenly look a bit different around here, don't they?</p>
 <p>Long story short, I finally finished a project that I've been working on off and on for the better part of two years: converting my blog to a static website.</p>
 ]]></summary><content type="html"><![CDATA[<p>Huh. Things suddenly look a bit different around here, don't they?</p>
 <p>Long story short, I finally finished a project that I've been working on off and on for the better part of two years: converting my blog to a static website.</p>
@@ -743,42 +831,4 @@ You lose. :(</code></pre>
 <p>One interesting thing that a lot of people have been talking about is the rape analogue when King Stefan drugs Meleficent and removes her wings. Honestly, I thought it was well done. Rape is a problem in our modern culture and if this gets people talking then that's a good thing. I'm not sure that murder was the proper response (even if there was far more than just this one reason), but that makes the conversation even better.</p>
 <p>All together, solid. It's another in a line of movies that I wanted to rank higher, but it's just been a good year for movies. Based on some of the visuals alone--and the guts to make such a dark echo of a Disney film--I think... #4.</p>
 <div><h3 class="ranking-title">2014 Movie Rankings</h3><ol><li><a href="http://blog.jverkamp.com/2014/02/15/the-lego-movie">The Lego Movie</a></li><li><a href="http://blog.jverkamp.com/2014/04/05/captain-america-the-winter-soldier">Captain America: The Winter Soldier</a></li><li><a href="http://blog.jverkamp.com/2014/06/08/x-men-days-of-future-past">X-Men: Days of Future Past</a></li><li><a href="http://blog.jverkamp.com/2014/06/14/maleficent">Maleficent</a></li><li><a href="http://blog.jverkamp.com/2014/05/10/the-amazing-spider-man-2">The Amazing Spider-Man 2</a></li><li><a href="http://blog.jverkamp.com/2014/03/29/divergent">Divergent</a></li></ol></div>
-<p>Side note: My wife's name is <a href="https://en.wikipedia.org/wiki/Aurora_(Disney)">Aurora</a>. We pretty much had to catch Maleficient.</p>]]></content></entry><entry><title>Call stack bracket matcher</title><link href="http://blog.jverkamp.com/2014/06/11/call-stack-bracket-matcher" /><id>urn:uuid:85b873db-f3b6-d39f-6194-e0122474be7b</id><updated>2014-06-11T14:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://programmingpraxis.com/2014/06/10/balanced-delimiters-2/">Five minute post</a> from Programming Praxis:</p>
-<blockquote>
-Write a function to return true/false after looking at a string. Examples of strings that pass:
-
-<code>{}, [], (), a(b)c, abc[d], a(b)c{d[e]}</code>
-
-Examples of strings that don’t pass:
-
-<code>{], (], a(b]c, abc[d}, a(b)c{d[e}]</code>
-</blockquote>
-]]></summary><content type="html"><![CDATA[<p><a href="http://programmingpraxis.com/2014/06/10/balanced-delimiters-2/">Five minute post</a> from Programming Praxis:</p>
-<blockquote>
-Write a function to return true/false after looking at a string. Examples of strings that pass:
-
-<code>{}, [], (), a(b)c, abc[d], a(b)c{d[e]}</code>
-
-Examples of strings that don’t pass:
-
-<code>{], (], a(b]c, abc[d}, a(b)c{d[e}]</code>
-</blockquote>
-<!--more-->
-<p>The basic idea you have to deal with here is that you need a stack of which brackets you're matching. It's easy enough if there's only one pair, but what if you have two nested pairs:</p>
-<p><code>a(b[c]d)e</code></p>
-<p>Then, once you hit the opening <code>(</code>, you have to look for a <code>)</code>, but once you see the <code>[</code>, you need to see a <code>]</code> <em>first</em>, while still looking for the <code>)</code> after. Sounds like a stack for me.</p>
-<p>It would be perfectly acceptable to keep a stack around as a variable and loop over the string. Heck, that's what I did in <a href="https://github.com/jpverkamp/wombat-ide/blob/master/ide/src/wombat/gui/text/BracketMatcher.java">Wombat's bracket matcher</a>. But since we're working with Scheme, let's do something a little more recursive:</p>
-<pre class="scheme"><code>(define (match-brackets [matching #f])
-  (define pairs '((#\( . #\)) (#\{ . #\}) (#\[ . #\])))
-  (define c (read-char))
-  (cond
-    [(eof-object? c)            (not (not matching))]
-    [(assoc c pairs)            =&gt; (λ (pair) (and (match-brackets (cdr pair))
-                                                  (match-brackets matching)))]
-    [(eq? c matching)           #t]
-    [(member c (map cdr pairs)) #f]
-    [else                       (match-brackets matching)]))</code></pre>
-<p>'But what?' you might say, where is the stack? How do we remember the first bracket we're matching when we get to the second? Well that's the beauty of the stack. Easy time we see a bracket (the second case of the <code>cond</code>), we recur with the new matching character. That call will short circuit if it sees the matching bracket (the third case), a mismatched bracket (the fourth), or an early end of string (the first, only returning valid if we're in the outermost part of the loop where <code>matching</code> is <code>#f</code>).</p>
-<p>And that's pretty much it. One last trick is that we also get implicit position within the string, because of the state maintained by <code>read-char</code>, so we don't even have to explicitly recur down the string. Just calling <code>match-brackets</code> will do it for us, and sequential calls (as in the second case) work as they need to.</p>
-<p>Shiny!</p>
-<p>Source: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/match-brackets.rkt">match-brackets.rkt</a></p>]]></content></entry></feed>
+<p>Side note: My wife's name is <a href="https://en.wikipedia.org/wiki/Aurora_(Disney)">Aurora</a>. We pretty much had to catch Maleficient.</p>]]></content></entry></feed>
