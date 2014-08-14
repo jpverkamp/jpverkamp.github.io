@@ -1,0 +1,899 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2013-09-27T14:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:7b18d2e9-64b6-aacc-62b5-b6dc9696e597</id><entry><title>Large scale asynchronous DNS scans</title><link href="http://blog.jverkamp.com/2013/09/27/large-scale-asynchronous-dns-scans" /><id>urn:uuid:77b15f46-f68d-8769-32c6-d833a7f9ca58</id><updated>2013-09-27T14:00:00Z</updated><summary type="html"><![CDATA[<p>On Monday we <a href="http://blog.jverkamp.com/2013/09/23/extending-racket-structs-to-bitfields">laid out a framework</a> for converting structures into bytes. On Wednesday, we used that to <a href="http://blog.jverkamp.com/2013/09/25/extending-rackets-dns-capabilities">enhance Racket's UDP and DNS capabilities</a>. Today, we're going to take that all one step further and scan large portions of the Internet. The end goal will be to look for <a href="http://blog.jverkamp.com/2013/02/09/isma-2013-aims-5-dns-based-censorship">DNS-based</a> on a worldwide scale.</p>
+]]></summary><content type="html"><![CDATA[<p>On Monday we <a href="http://blog.jverkamp.com/2013/09/23/extending-racket-structs-to-bitfields">laid out a framework</a> for converting structures into bytes. On Wednesday, we used that to <a href="http://blog.jverkamp.com/2013/09/25/extending-rackets-dns-capabilities">enhance Racket's UDP and DNS capabilities</a>. Today, we're going to take that all one step further and scan large portions of the Internet. The end goal will be to look for <a href="http://blog.jverkamp.com/2013/02/09/isma-2013-aims-5-dns-based-censorship">DNS-based</a> on a worldwide scale.</p>
+<!--more-->
+<p>To that end, there are several steps that we're going to want to go through:</p>
+<ol start="0">
+    <li>Process any command line parameters (so I can tune the results)</li>
+    <li>Load lists of targets, resolvers, and IP to country mappings</li>
+    <li>Find a set of active resolvers in as many countries as we can</li>
+    <li>Scan each target at each active resolver</li>
+    <li>Analyze results, looking for signs of censorship</li>
+</ol>
+<p>Let's start at the top. First, we're going to be using <a href="http://www.alexa.com/">Alexa Top sites</a> for our targets. This should give us at least a list of sites that would be popular enough to attract a censor's notice, although by no means an obvious one. Second, we'll be using the <a href="http://dev.maxmind.com/geoip/legacy/geolite/">MaxMind GeoLite free database</a> to look up the country for a given IP address. They're all fine data sources, but we do want to tune a few parameters. Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=command-line">command-line</a></code> function will do exactly what we want:</p>
+<pre class="scheme"><code>; ----- ----- ----- ----- -----
+; 0) Get command line parameters
+
+(define alexa-top-n (make-parameter 100))
+(define resolvers/country (make-parameter 5))
+(define timeout (make-parameter 5.0))
+
+(command-line
+ #:program "scan.rkt"
+ #:once-each
+ [("-n" "--alexa-top-n")
+  n
+  "Scan the top n Alexa ranked sites (default = 100)"
+  (alexa-top-n (string-&gt;number n))]
+ [("-r" "--resolvers")
+  r
+  "The maximum number of resolvers to use per country (default = 5)"
+  (resolvers/country (string-&gt;number r))]
+ [("-t" "--timeout")
+  t
+  "Timeout for DNS requests (default = 5.0 seconds)"
+  (timeout (string-&gt;number t))])</code></pre>
+<p>The structure of each part within <code>#:once-each</code> block has four parts:</p>
+<ul>
+    <li>A list containing the short and long forms of the argument</li>
+    <li>The variable that will be bound to the arguments value (as a string)</li>
+    <li>Help text to display when the user requests <code>--help</code></li>
+    <li>Code to run with the aforementioned parameter</li>
+</ul>
+<p><code><a href="http://docs.racket-lang.org/search/index.html?q=Parameters">Parameters</a></code> do help with this, allowing for mutation of a sort. Straight forward. Next we load the data. First, check to make sure that the definitions we need exist:</p>
+<pre class="scheme"><code>; ----- ----- ----- ----- -----
+; 1) Load data
+
+(unless (and (file-exists? "targets.txt")
+             (file-exists? "resolvers.txt")
+             (file-exists? "ip-mappings.csv"))
+  (for-each displayln
+            '("Error: Data file(s) not found. Please ensure that the following files exist:"
+              "- targets.txt - a list of hostnames (one per line) to scan"
+              "- resolvers.txt - a list of open DNS resolvers (one per line) to scan with"
+              "- ip-mappings.csv - a list of IP -&gt; country mappings (numeric-ip-from, numeric-ip-to, ip-from, ip-to, country)"))
+  (exit))</code></pre>
+<p>Next, let's load in the list of targets. This isn't strictly the file you can get from Alexa, but rather a list of hostnames, one per line. We could read them in directly with the <code><a href="http://docs.racket-lang.org/search/index.html?q=file->lines">file->lines</a></code> function, but that does more work that strictly speaking we need (since we only want the first <code>alexa-top-n</code> of them). So instead, we'll use a <code>for</code> loop with multiple conditions--with this form, they stop as soon as the first iterator to run out does:</p>
+<pre class="scheme"><code>; 1a) Load list of targets (dynamically?) (Alexa Top n)
+(debug "Loading list of targets, keeping top ~a" (alexa-top-n))
+(define targets
+  (call-with-input-file "targets.txt"
+    (λ (fin)
+      (for/list ([i (in-range (alexa-top-n))]
+                 [line (in-lines fin)])
+        line))))</code></pre>
+<p>Resolvers is going to be much the same. It will be a list of IPs, one per line. This time we can use <code><a href="http://docs.racket-lang.org/search/index.html?q=file->lines">file->lines</a></code>:</p>
+<pre class="scheme"><code>; 1b) Load list of resolvers (from Drew)
+(debug "Loading resolvers")
+(define resolvers (file-&gt;lines "resolvers.txt"))</code></pre>
+<p>Finally, we want to be able to map IPs to countries. We'll use MaxMind's data for this. Their file (at least the one we'll use) is a list of comma-separated values of the following form:</p>
+<p><code>from-ip, to-ip, numeric-from, numeric-to, country code, country</code></p>
+<p>The third and fourth entries are the IPs from the first and second, just in a numeric form. If you have the IP 8.7.245.0, you get 8*256<sup>3</sup>+7*256<sup>2</sup>+245*256+0 = 134739200. For example:</p>
+<p><code>"8.7.245.0","8.10.6.242","134739200","134874866","US","United States"</code></p>
+<p>It's not perfect, but it's certainly something we can massage into shape. But what we really want is a lookup to turn an IP into a country. If we turn the data into a sorted vector, we can do a <a href="https://en.wikipedia.org/wiki/binary_search">binary search</a> to perform the lookups much more quickly.</p>
+<p>The format isn't particularly optimal, but we can massage it easily enough. What we really want though is to be able to search it. So what we'll do is build a function that contains the data as a sorted vector. That way we can use a <a href="https://en.wikipedia.org/wiki/binary_search">binary search</a> to (much) more quickly scan through</p>
+<pre class="scheme"><code>; 1c) Load list of IP/country mappings (dynamically?) (GeoMind Lite)
+; format is csv: ip-from, ip-to, numeric-from, numeric-to, code, country
+; Lookup using a binary search
+(debug "Loading IP -&gt; country database")
+(define ip-&gt;country
+  ; Load data into a sorted vector of lists: numeric-from, numeric-to, country
+  (let ([data
+         (list-&gt;vector
+          (sort
+           (for/list ([line (in-list (file-&gt;lines "ip-mappings.csv"))])
+             (match-define (list-rest _ _ ip-from ip-to cc country)
+               (string-split line ","))
+             (list (string-&gt;number (string-trim ip-from "\""))
+                   (string-&gt;number (string-trim ip-to "\""))
+                   (string-trim
+                    (string-join
+                     (reverse (map (λ (x) (string-trim x "\"")) country)) " "))))
+           (λ (a b)
+             (&lt; (first a) (first b)))))])
+    ; Perform a binary search for the given IP
+    (λ (ip)
+      (cond
+        [(string? ip) (ip-&gt;country (ip-&gt;number ip))]
+        [else
+         (let loop ([lo 0] [hi (vector-length data)])
+           (define mid (quotient (+ lo hi) 2))
+           (match-define (list ip-from ip-to country) (vector-ref data mid))
+           (cond
+             [(&lt;= ip-from ip ip-to) country]
+             [(or (= lo mid)
+                  (= mid hi))       #f]
+             [(&lt; ip ip-from)        (loop lo mid)]
+             [(&gt; ip ip-to)          (loop mid hi)]
+             [else                  (error 'ip-&gt;country "unknown ip ~a" ip)]))]))))</code></pre>
+<p>Now we get to the interesting part. The next part that we want to do is to narrow the full list of resolvers. No matter how quickly our code runs, it's not going to be easily able to run tens of thousands of queries on tens of millions of resolvers in a reasonable amount of time. All we really want is ~5 resolvers per country.</p>
+<p>First, let's reorganize our list of resolvers by country. Technically, we could have done this as we loaded them, but it's quick enough, let's do it now:</p>
+<pre class="scheme"><code>; ----- ----- ----- ----- -----
+; 2) Find a small set of resolvers per country
+
+; 2a) Split the list of resolvers by country
+(debug "Reorganizing resolvers by country")
+(define resolvers-by-country (make-hash))
+(for ([ip (in-list resolvers)])
+  (with-handlers ([exn? (λ _ (printf "skipping ~an" ip))])
+    (define country (ip-&gt;country ip))
+    (when country
+      (define new-set (set-add (hash-ref! resolvers-by-country country (set)) ip))
+      (hash-set! resolvers-by-country country new-set))))</code></pre>
+<p>The <code><a href="http://docs.racket-lang.org/search/index.html?q=with-handlers">with-handlers</a></code> part isn't strictly speaking necessary, but my list of resolvers has a few non-IPs in it. Rather than filtering them out beforehand, this will just ignore them as we go.</p>
+<p>Next, we'll scan them using a reference hostname. For our purposes, we're using <code>www.google.com</code>, seeing as it's likely to be well known enough to always resolved. There are cases where Google is censored, but for the moment, that doesn't actually matter. We're not looking to see if we get a correct response back, but rather any (valid) response at all. If a resolver times out or returns any return code than <code>no-error</code>, ignore it and move on:</p>
+<pre class="scheme"><code>; 2b) Query random IPs in each country
+; 2b-i)  If it returns a valid response, add it to the list
+;        Remove any other IPs within the same /n prefix (avoid same ISPs etc)
+; 2b-ii) If it doesn't, try the next IP in that country
+; 2c) If we have n resolvers for a country, stop looking; if not, go to 2a for them
+(debug "Narrowing resolver list to ~a per country" (resolvers/country))
+(let ([threads-finished 0])
+  (for-each
+   thread-wait
+   (for/list ([(country ips) (in-hash resolvers-by-country)])
+     (thread
+      (thunk
+       (parameterize ([current-dns-timeout (timeout)])
+         (let loop ([ips (shuffle (set-&gt;list ips))]
+                    [active '()])
+           (cond
+             ; No more IPs to scan or found enough
+             [(or (null? ips)
+                  (&gt;= (length active) (resolvers/country)))
+              (set! threads-finished (+ threads-finished 1))
+              (debug "~a/~a: ~a is ~a (~a active) -- ~a" threads-finished (hash-count resolvers-by-country) country (if (&gt;= (length active) (resolvers/country)) "out" "full") (length active) active)
+              (hash-set! resolvers-by-country country active)]
+             ; Got a response, check for no-error and record
+             [(dns-request (first ips) #:a "www.google.com")
+              =&gt; (λ (response)
+                   (match-define (list who what where result) response)
+                   (cond
+                     [(and (eq? (first result) 'no-error)
+                           (not (null? (rest result))))
+                      (loop (rest ips) (cons (first ips) active))]
+                     [else
+                      (loop (rest ips) active)]))]
+             ; Response timed out
+             [else
+              (loop (rest ips) active)]))))))))</code></pre>
+<p>We're using the same technique as several times before with the <code>cond</code> and <code>=></code> clause. Since <code>dns-request</code> returns <code>#f</code> if it times out, it will fall through to the last case, removing that IP but not recording it as active. The first clause is our base case--if we either run out of IPs to check for a given country or find enough, we can stop.</p>
+<p>One bit that's interesting is the first few lines. <code>(for-each thread-wait (for/list ...))</code> will build up the list of threads first (since parameters are evaluated before being sent to the function in Scheme/Racket) and then wait for each of them to finish in turn. This way, we're scanning all of the known countries at once (there are almost 200 of them in the list of resolvers I have) while each country is done sequentially. This does slow the code down a bit when we get to a particularly troublesome country, but it still runs quickly enough.</p>
+<p>Finally, we have the actual body of the code. After all of that set up, the code is actually pretty short:</p>
+<pre class="scheme"><code>; ----- ----- ----- ----- -----
+; 3) Query targets on each resolver
+;    Group by target, for Alexa Top 100 and 5 resolvers/country:
+;      100 requests/resolver
+;      1000 requests/pass
+
+(define output-filename (format "output-~a.txt" (current-milliseconds)))
+(debug "Running queries (output to ~a):" output-filename)
+
+(call-with-output-file output-filename
+  (λ (fout)
+    (define s (make-semaphore 1))
+    (parameterize ([current-dns-timeout (timeout)])
+      (for ([i (in-naturals 1)]
+            [target (in-list targets)])
+        (debug "tScanning ~a/~a: ~a" i (alexa-top-n) target)
+        (for* ([(country ips) (in-hash resolvers-by-country)]
+               [ip (in-list ips)])
+          (dns-request/async
+           ip #:a target
+           (λ (host type query response)
+             (define result (list* host country query response))
+             (call-with-semaphore
+              s
+              (thunk
+               (write result fout)
+               (newline fout)
+               (flush-output fout))))))
+        (sleep (+ 1.0 (timeout)))))))</code></pre>
+<p>Rather than parallelizing by country, this time we will be target. We'll take all of the resolvers we've found (up to a thousand) and ask all of them at once about a given target asynchronously. Any responses we get will call the provided callback, writing them to file (with a semaphore to make sure we don't mix lines in the output).</p>
+<p>And that's really all there is to it. I'm still analyzing the results, but I've already found a few interesting cases. I'll have another post up about that early next week.</p>
+<p>If you’d like to see the entire code for this project thus far (I've added the scanning code now), you can see it on GitHub: <a href="https://github.com/jpverkamp/dns-world-scan">jpverkamp/dns-world-scan</a>. It’s still a work in progress, but it may just be useful.</p>]]></content></entry><entry><title>Extending Racket's DNS capabilities</title><link href="http://blog.jverkamp.com/2013/09/25/extending-rackets-dns-capabilities" /><id>urn:uuid:34eebdc8-f892-4b70-a505-3adc54ff02ea</id><updated>2013-09-25T14:00:00Z</updated><summary type="html"><![CDATA[<p>As I <a href="http://blog.jverkamp.com/2013/09/23/extending-racket-structs-to-bitfields">mentioned</a> on Monday, I wrote my <a href="http://blog.jverkamp.com/2013/02/09/isma-2013-aims-5-dns-based-censorship">DNS-based censorship</a> around the world--and to do that, I need a fair bit of control over the DNS packets that I'm sending back and over parsing the ones that I get back.</p>
+]]></summary><content type="html"><![CDATA[<p>As I <a href="http://blog.jverkamp.com/2013/09/23/extending-racket-structs-to-bitfields">mentioned</a> on Monday, I wrote my <a href="http://blog.jverkamp.com/2013/02/09/isma-2013-aims-5-dns-based-censorship">DNS-based censorship</a> around the world--and to do that, I need a fair bit of control over the DNS packets that I'm sending back and over parsing the ones that I get back.</p>
+<!--more-->
+<p>Originally, I was writing this code in Python. Python doesn't have a built in DNS library, but <a href="http://www.dnspython.org/">dnspython</a> works is rather solid and does all that I want it to. On the other hand though, I'm starting to move more and more of my code over to Racket--I've found it to be more expressive in a lot of cases (particularly when creating <a href="https://en.wikipedia.org/wiki/domain_specific languages">domain specific languages</a> for solving a problem<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> and (in my experience) it performs a lot better on bigger, easily parallelizable tasks.</p>
+<p>So what does Racket have in terms of DNS? Well, unfortunately all I've been able to find is the built in <code><a href="http://docs.racket-lang.org/search/index.html?q=net/dns">net/dns</a></code> module. It works well enough for simple queries (<code><a href="http://docs.racket-lang.org/search/index.html?q=dns-get-address">dns-get-address</a></code> is certainly straight forward and far easier to direct towards arbitrary DNS servers than I found with dnspython. But unfortunately, that's about all it has. There's no way to control how long the method takes to timeout (without something like <code><a href="http://docs.racket-lang.org/search/index.html?q=sync/timeout">sync/timeout</a></code>), there's no way to see the full set of addresses returned (it seems to just return the first <a href="https://en.wikipedia.org/wiki/A_record">A record (DNS)#A</a> in the response), and no support for asynchronous scans. Essentially, it just won't work on the scale that I'll be working with.</p>
+<p>So what do we need? Well, first I want to build some sort of unified framework on top of the <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/udp">racket/udp</a></code> module<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>. In this case, it already does everything that I want, but I'd rather keep the details as seperated as I can. What I want is these three functions:</p>
+<ul>
+    <li><code>(get-socket port)</code> - returns a UDP socket for the given port, reusing sockets if the same port is requested more than once</li>
+    <li><code>(add-socket-listener! port f)</code> - attach a function to a given socket/port so that any incoming traffic on that port will go to the given callback function</li>
+    <li><code>(remove-socket-listener! port f)</code> - remove a previously attached functions (it will only work if you pass the exact same function, <code>eq?</code> can tell)</li>
+</ul>
+<p>Let's start with the latter two, since the code for those is much simpler. Essentially, we'll have a hash from port numbers to a set of listeners. We'll use a set so that we can add the same listener as many times as we want without actually having to keep copies, although I'm not sure that would actually end up being a problem. In addition, the <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/set">racket/set</a></code> module has versions for <code><a href="http://docs.racket-lang.org/search/index.html?q=set">set</a></code> (using <code>equal?</code>), <code><a href="http://docs.racket-lang.org/search/index.html?q=seteqv">seteqv</a></code>, and <code><a href="http://docs.racket-lang.org/search/index.html?q=seteq">seteq</a></code>.</p>
+<pre class="scheme"><code>; Listeners sorted by port
+; (hash/c port (set/c (remote-host remote-port bytes? -&gt; void)))
+(define listeners (make-hasheq))
+
+(define (add-socket-listener! port listener)
+  (define new-set (set-add (hash-ref listeners port (seteq)) listener))
+  (hash-set! listeners port new-set))
+
+(define (remove-socket-listener! port listener)
+  (define new-set (set-remove (hash-ref listeners port (seteq)) listener))
+  (if (set-empty? new-set)
+      (hash-remove! listeners port)
+      (hash-set! listeners port new-set)))</code></pre>
+<p>As an added bonus, here we can see the contract that a listener will have to have (although we're not enforcing the contracts at the moment). Any function that will work as a listener has to take three arguments: the remote host as a string (will generally be an IP address), the remote port, and the bytes that make up the packet received. The function itself will be in charge of making sure that the packet is actually directed towards our application, since UDP itself doesn't provide any of the guarantees that TCP does to that end.</p>
+<p>Now that we have that, how will <code>get-socket</code> work? Here's what I have, although as you might notice I have a few comments that I'll want to work on later already. But it works well enough for what I need.</p>
+<pre class="scheme"><code>; Get the socket associated with a port, reusing sockets if possible
+; (port -&gt; void)
+(define (get-socket port)
+  (unless (hash-has-key? sockets port)
+    ; Create the new socket, bind it to the given port
+    (define s (udp-open-socket))
+    (udp-bind! s #f port #t)
+
+    ; Create a listening thread for it
+    ; TODO: Allow some way to clean these up?
+    ; TODO: Print out any errors we catch rather than ignoring them
+    (thread
+     (thunk
+      (define b (make-bytes 1024))
+      (let loop ()
+        (sync
+         [handle-evt
+          (udp-receive!-evt s b)
+          (λ (event)
+            ; Unpacket the event
+            (define-values (bytes-received source-hostname source-port)
+              (apply values event))
+
+            ; Send the results to any listeners for that port
+            ; Hope they can deal with anything else random to this port :)
+            (for ([listener (in-set (hash-ref listeners port (set)))])
+              (listener source-hostname
+                        source-port
+                        (subbytes b 0 bytes-received)))
+
+            ; Wait for another event
+            (loop))]))))
+
+    ; Record it
+    (hash-set! sockets port s))
+
+  ; Return the old socket if we had one, new otherwise
+  (hash-ref sockets port))</code></pre>
+<p>First, we check if the port already has a socket in the <code>sockets</code> hash (it's just a straightforward <code>hasheq</code>). If not, we have to create on. The arguments to <code><a href="http://docs.racket-lang.org/search/index.html?q=udp-bind!">udp-bind!</a></code> mean that we aren't sending to a specific host (yet--we'll do that with <code><a href="http://docs.racket-lang.org/search/index.html?q=udp-send-to">udp-send-to</a></code>) and the last <code>#t</code> means that the port can be reused. This is mostly because I'm going to be taking up rather a lot of ports, although I might change this in future versions.</p>
+<p>The second part is the new thread. Basically, each socket has a single listening thread that uses <code><a href="http://docs.racket-lang.org/search/index.html?q=sync">sync</a></code> with <code><a href="http://docs.racket-lang.org/search/index.html?q=udp-receive!-evt">udp-receive!-evt</a></code> to listen for incoming UDP packets (and block until we get one). When we get a packet, go through every listener for that port and send it out. We'll pass along the remote host and port, although passing along the number of bytes isn't actually necessary since we go ahead and cut off the buffer anyways.</p>
+<p>And there you have it. With that, we should be able to write fairly straight forward UDP code. Now we have to build a DNS layer.</p>
+<p>To start out with, we want to be able to provide these two methods and one parameter:</p>
+<ul>
+    <li><code>(dns-request server [#:type value] ...)</code> - make a synchronous DNS request (or more than one) of the given type(s) to the given server (as hostname or IP), return the first response</li>
+    <li><code>(dns-request/async server [#:type value] ... callback)</code> - make an asynchronous DNS request (or more than one) to the given server, calling callback with any responses</li>
+    <li><code>(current-dns-timeout [new-timeout])</code> - get/set the current timeout value; synchronous requests will return <code>'timeout</code> after this time while asynchronous requests will only return during this period; set to <code>#f</code> to disable; default is 5.0 seconds</li>
+</ul>
+<p>On oddity already is the idea that you can make more than one kind of DNS request using keyword paramters. Mainly, I want this library to be more flexible (if I want to use it to look up mail servers for example), and also because it sounded like it would be interesting to implement. And that it was. In the end, we'll be making calls like this:</p>
+<pre class="scheme"><code>(dns-request "8.8.4.4" #:a "google.com")</code></pre>
+<p>If we wanted to find the mailserver for a domain, we should be able to just do this (although it's not implemented as of yet, implementation should be trivial):</p>
+<pre class="scheme"><code>(dns-request "8.8.4.4" #:mx "google.com")</code></pre>
+<p>How does it work? Well, <code>dns-request</code> is actually implemented via <code>dns-request/async</code> (it just waits for the response for you), so we'll start with that:</p>
+<pre class="scheme"><code>; Make an async DNS request
+(define dns-request/async
+  (make-keyword-procedure
+   (λ (keys vals server callback)
+     (for ([key (in-list (map keyword-&gt;symbol keys))]
+           [val (in-list vals)])
+       ...))))</code></pre>
+<p>So far as I can tell, <code><a href="http://docs.racket-lang.org/search/index.html?q=make-keyword-procedure">make-keyword-procedure</a></code> is the easiest / only way to make a procedure that will accept arbitrary keyword parameters. It will pass the keywords and their values as two seperate lists to the procedure given. Any other (non-keyword) parameters will be passed through directly, as is the case here with the <code>server</code> and <code>callback</code>. Interestingly, the order doesn't matter. The keywords will be pulled out and the order will be saved for the rest.</p>
+<p>The for loop will go across the given requests and send each one out in turn. In this case, there's only a single request, setting <code>key</code> to <code>a</code> and <code>val</code> to <code>"google.com"</code>. For some reason, <code>keyword->symbol</code> doesn't actually exist; however, you can create it easily enough with <code>keyword->string</code> and <code>string->symbol</code>.</p>
+<p>After that, we want to choose a random port and ID for the DNS request. The port will be used in the UDP response listeners and the ID will be used to confirm that the request actually came from us.</p>
+<pre class="scheme"><code>...
+; Choose a random port and id for this request
+(define local-port (+ 10000 (random 1000)))
+(define request-id (random 65536))
+...</code></pre>
+<p>After that, we'll use the <a href="http://blog.jverkamp.com/2013/09/23/extending-racket-structs-to-bitfields">bit-struct</a> library to build the actual request.</p>
+<pre class="scheme"><code>...
+; Create the request (error on types we don't deal with yet)
+(define request-packet
+  (case key
+    [(a)
+     (dns-&gt;bytes
+      (build-dns
+       #:id request-id
+       #:rd 1
+       #:qdcount 1
+       #:data
+       (bytes-append          ; query / question
+        (encode-hostname val) ; query is the hostname
+        (bytes 0 1)           ; query type  (1 = Type A, host address)
+        (bytes 0 1)           ; query class (1 = IN, Internet address)
+        )))]
+    [else
+     (error 'dns-request "unknown dns type: ~a" key)]))
+...</code></pre>
+<p>Here's the DNS bit-struct:</p>
+<pre class="scheme"><code>; DNS packets
+(define-bit-struct dns
+  ([id      16]
+   [qr      1]  [opcode  4]  [aa      1]  [tc      1]  [rd      1]
+   [ra      1]  [z       3]  [rcode   4]
+   [qdcount 16]
+   [ancount 16]
+   [nscount 16]
+   [arcount 16]
+   [data    _]))</code></pre>
+<p>Most of these values can be set to 0 (which is the default if they aren't specified). The only ones we need are the ID we specified earlier, <code>#:rd 1</code> which states that we want a recursive query, and <code>#:qdcount 1</code> showing that we have a single question.</p>
+<p>The data format is a bit strange, but since it was specified with <code>_</code>, it wants <code>bytes</code> rather than an integer. In this case, the hostname encoded in a particular manner, than the query type and class (2-byte one for an IPv4 A record).</p>
+<p>The hostname encoding is a sequence of bytes. For each part of the hostname, return one byte that signifies the number of bytes following, then those bytes. So to encode <code>www.google.com</code>, we'll need:</p>
+<pre class="scheme"><code>\3www\6google\3com\0</code></pre>
+<p>Here's how to do that:</p>
+<pre class="scheme"><code>; Encode a hostname in the way DNS expects
+(define (encode-hostname hostname)
+  (bytes-append
+   (apply
+    bytes-append
+    (for/list ([part (in-list (string-split hostname "."))])
+      (bytes-append
+       (bytes (string-length part))
+       (string-&gt;bytes/latin-1 part))))
+   (bytes 0)))</code></pre>
+<p>After we have the packet, we'll get a UDP port using the code we defined earlier:</p>
+<pre class="scheme"><code>...
+; Get a socket
+(define socket (get-socket local-port))
+...</code></pre>
+<p>Next we want to fix the callback this library is expecting and convert it to the form that the UDP library is expecting. Essentially, we want to parse any results from the UDP listener as a DNS packet and verify that it matches the ID we sent. If that's all true, we also want to try to parse any answers returned:</p>
+<pre class="scheme"><code>...
+; Enhance the callback to make sure the response is actually DNS
+(define (real-callback remote-host remote-port buffer)
+  (define dns-packet
+    (with-handlers ([exn? (λ (err) #f)])
+      (bytes-&gt;dns buffer)))
+
+  (when (and dns-packet
+             (= (dns-id dns-packet) request-id)
+             (= (dns-qr dns-packet) 1)
+             (= (dns-z dns-packet) 0))
+    (callback remote-host key val (parse-dns-response dns-packet))))
+
+; Listen for that on the UDP response
+(add-socket-listener! local-port real-callback)
+
+; After the given timeout, remove it again
+(when (current-dns-timeout)
+  (thread
+   (thunk
+    (sleep (current-dns-timeout))
+    (remove-socket-listener! local-port real-callback))))
+...</code></pre>
+<p>If the packet doesn't match, the <code>callback</code> simply isn't called. We'll come back to the <code>parse-dns-response</code> function in a moment. After that, attached the listener to the UDP library. If we have a timeout set, create a new thread here that will automatically remove it after the given time has passed.</p>
+<p>And with that, all that's left is to actually send the packet. <code>udp-send-to</code> will set the destination for us, everything else has already been done in <code>get-socket</code>.</p>
+<pre class="scheme"><code>...
+; Send the packet
+(udp-send-to socket server 53 request-packet)))))</code></pre>
+<p>53 is the standard port for UDP DNS requests.</p>
+<p>That's actually all we need. Granted, we still want to write the synchronous version and deal with parsing the responses. But we're well on the way.</p>
+<p>First, the synchronous version:</p>
+<pre class="scheme"><code>; Make a DNS request, block until the first response is received
+; If multiple requests are specified only the first to return will be returned
+; Timeouts after &lt;code&gt;current-dns-timeout&lt;/code&gt; seconds
+(define dns-request
+  (make-keyword-procedure
+   (λ (keys vals server)
+     ; Values to set in the callback
+     (define response (void))
+     (define response-semaphore (make-semaphore 0))
+
+     ; Make the async request, pass callback setting our values
+     (keyword-apply
+      dns-request/async
+      keys vals
+      (list server
+            (λ response-data
+              (set! response response-data)
+              (semaphore-post response-semaphore))))
+
+     ; Wait until we have a response
+     (sync/timeout
+      (current-dns-timeout)
+      [handle-evt
+       response-semaphore
+       (λ _ response)]))))</code></pre>
+<p>Essentially, we create our own callback (the second starting <code>(λ response-data ...)</code>). Since our semaphore starts at 0, it will block the <code>sync/timeout</code> until it has a non-zero value--as incremented by <code>semaphore-post</code>. If <code>(current-dns-timeout)</code> happens to be <code>#f</code>, <code>sync/timeout</code> will do exactly what we want and never time out. In all cases, we directly return the response if we get one. Otherwise, <code>sync/timeout</code> will return <code>#f</code>.</p>
+<p>Finally, we need to actually deal with the parsing.</p>
+<pre class="scheme"><code>; Parse a DNS response
+(define (parse-dns-response packet)
+  ; Get the hostname out of the query (which theoretically we sent)
+  (define-values (query-length query-hostname)
+    (decode-hostname (dns-data packet) 0))
+
+  ; Make sure we got a response
+  (define rcode (decode-rcode (dns-rcode packet)))
+  (define answers (dns-ancount packet))
+
+  (cond
+    ; Valid response with at least one answer
+    [(and (eq? rcode 'no-error) (&gt; answers 0))
+     (define data (dns-data packet))
+     (let loop ([c 0]
+                [i (+ query-length 4)]
+                [answers '()])
+       (cond
+         ; Done, return
+         [(or (&gt;= c (dns-ancount packet))
+              (&gt;= i (bytes-length data)))
+          (cons rcode (reverse answers))]
+         ; Add another response
+         [else
+          (define-values (answer-length answer-hostname) (decode-hostname data i))
+          (define answer-type     (bytes-&gt;number data (+ i answer-length 0) (+ i answer-length 2)))
+          (define answer-class    (bytes-&gt;number data (+ i answer-length 2) (+ i answer-length 4)))
+          (define answer-ttl      (bytes-&gt;number data (+ i answer-length 4) (+ i answer-length 8)))
+          (define answer-rdlength (bytes-&gt;number data (+ i answer-length 8) (+ i answer-length 10)))
+          (define answer-rdata    (subbytes      data (+ i answer-length 10) (+ i answer-length 10 answer-rdlength)))
+
+          ; We're only interested in A records
+          (cond
+            ; Got an a record
+            [(= answer-type 1)
+             ; Decode the answer IP address
+             (define answer-ip (string-join (map number-&gt;string (bytes-&gt;list answer-rdata)) "."))
+             (loop (+ c 1)
+                   (+ i answer-length 10 answer-rdlength)
+                   (cons (list 'A answer-class answer-ip) answers))]
+            ; Got something else, just record it
+            [else
+             (loop (+ c 1)
+                   (+ i answer-length 10 answer-rdlength)
+                   (cons (list answer-type answer-class answer-rdata)))])]))]
+    ; Reponse is not data
+    [else
+     (list rcode)]))</code></pre>
+<p>That's certainly a sizeable chunk of code, but it should be relatively straight forward. Essentially, we'll make sure we actually have answers. If we do, loop through processing one at a time. It's not as clean as I would like, since the the answers can be of variable length, but it's still relatively straight forward. We could also re-use the <code>bit-struct</code> library to parse the type, class, TTL, and data length, but because the answer name is a variable length (it uses the same format we discussed earlier), it's not particularly straight forward<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>.</p>
+<p>Other than that, we're just returning a list of pairs, where each pair is the record type and the decoded data. So far, we only know how to deal with class 1 A records and their IPs, but I'll add more as I go. For the most part, data will be IPv4 / IPv6 addresses, hostnames, and occasionally raw text.</p>
+<p>One oddity here that I hadn't previously mentioned is that you don't always have to encode the hostname as I mentioned above. Since DNS packets are generally limited to only 512 bytes, every bit saved is worth it. To that end, they have pointers that allow you to reference other hostnames previously defined. Something like this:</p>
+<pre class="scheme"><code>; Read a DNS encoded hostname, return bytes read and the name
+(define (decode-hostname buffer [start 0])
+  (cond
+    ; Not enough data
+    [(&gt;= start (bytes-length buffer))
+     (values 0 #f)]
+    ; Pointer based hostname
+    [(&gt;= (bytes-ref buffer start) 64)
+     (values 2
+             (format "pointer: ~x~x"
+                     (bytes-ref buffer start)
+                     (bytes-ref buffer (+ start 1))))]
+    ; Normal hostname
+    [else
+     (let loop ([i start] [chunks '()])
+       (cond
+         [(= 0 (bytes-ref buffer i))
+          (values
+           (+ 1 (length chunks) (apply + (map bytes-length chunks)))
+           (string-join (reverse (map bytes-&gt;string/utf-8 chunks)) "."))]
+         [else
+          (define length (bytes-ref buffer i))
+          (define chunk (subbytes buffer (+ i 1) (+ i 1 length)))
+          (loop (+ i 1 length) (cons chunk chunks))]))]))</code></pre>
+<p>And that's all we need to get everything working. Let's try it out:</p>
+<pre class="scheme"><code>&gt; (dns-request "8.8.4.4" #:a "google.com")
+'("8.8.4.4"
+  a
+  "google.com"
+  (no-error
+   (A 1 "74.125.225.68") (A 1 "74.125.225.71") (A 1 "74.125.225.72")
+   (A 1 "74.125.225.78") (A 1 "74.125.225.67") (A 1 "74.125.225.73")
+   (A 1 "74.125.225.64") (A 1 "74.125.225.69") (A 1 "74.125.225.66")
+   (A 1 "74.125.225.70") (A 1 "74.125.225.65")))</code></pre>
+<p>That's a fair few IP addresses. :) What if we try the asyncronous version:</p>
+<pre class="scheme"><code>&gt; (define (callback host type query response)
+    (printf "~a says ~a for ~a is at ~a\n" host query type response))
+&gt; (dns-request/async "8.8.4.4" #:a "google.com" callback)
+&gt; (dns-request/async "8.8.4.4" #:a "facebook.com" callback)
+8.8.4.4 says google.com for a is at (no-error (A 1 74.125.225.69) ...)
+8.8.4.4 says facebook.com for a is at (no-error (A 1 173.252.110.27))</code></pre>
+<p>That way we can send more than one request at a time and deal with them as we come back. Perfect for what I'm working on. I'll have another post about that when it's done--either later this week or early next. *fingers crossed*</p>
+<p>If you'd like to see the entire code for this project thus far, you can see it on GitHub: <a href="https://github.com/jpverkamp/dns-world-scan">jpverkamp/dns-world-scan</a>. It's still very much a work in progress, but it may just be useful.</p>]]></content></entry><entry><title>USENIX 2013 - Day 3</title><link href="http://blog.jverkamp.com/2013/08/17/usenix-2013-day-3" /><id>urn:uuid:07f8a365-41ab-c153-5278-717f46f306c2</id><updated>2013-08-17T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today's the third and final day. Since I had to fly out in the afternoon, I didn't get a chance to go to as many talks today, but so it goes. There was really interesting talk that I'm sad to have missed (<a href="https://www.usenix.org/conference/usenixsecurity13/dismantling-megamos-crypto-wirelessly-lockpicking-vehicle-immobilizer">Dismantling Megamos Crypto: Wirelessly Lockpicking a Vehicle Immobilizer</a>) but it'll be nice to be home. Here are the talks that I did make it to and found particularly interesting though:]]></summary><content type="html"><![CDATA[<p>Today's the third and final day. Since I had to fly out in the afternoon, I didn't get a chance to go to as many talks today, but so it goes. There was really interesting talk that I'm sad to have missed (<a href="https://www.usenix.org/conference/usenixsecurity13/dismantling-megamos-crypto-wirelessly-lockpicking-vehicle-immobilizer">Dismantling Megamos Crypto: Wirelessly Lockpicking a Vehicle Immobilizer</a>) but it'll be nice to be home. Here are the talks that I did make it to and found particularly interesting though:<!--more--></p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/measuring-practical-impact-dnssec-deployment">Measuring the Practical Impact of DNSSEC Deployment</a></h2>
+<p>Wilson Lian, <em>University of California, San Diego; </em>Eric Rescorla, <em>RTFM, Inc.;</em> Hovav Shacham and Stefan Savage, <em>University of California, San Diego</em></p>
+<p>DNSSEC is supposed to be an extension of DNS that will fix the security problems the original DNS authors just didn't think would be an issues all those decades ago when they first created the protocol. The problem is, DNSSEC is not particularly widely deployed as of yet. Worse yet, in some cases (they found only 0.22%, but still some) just turning on DNSSEC was enough to break pages--although interestingly the majority of those were in the Asia Pacific network. On top of that, they found that a further 1-2% of sites that did not actually validate incorrect DNSSEC entries, just trusting them implicitly. There is some good news though: apparently Comcast has actually correctly rolled out DNSSEC to their servers, correctly invalidating nearly 98% of the bad records. No matter your thoughts on Comcast, that's at least one thing that they've gotten right.</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/zmap-fast-internet-wide-scanning-and-its-security-applications">ZMap: Fast Internet-wide Scanning and Its Security Applications</a></h2>
+<p>Zakir Durumeric, Eric Wustrow, and J. Alex Halderman,<em>University of Michigan</em></p>
+<p>This tool would have been rather useful to have when I was working on <a href="http://blog.jverkamp.com/2013/01/31/scanning-for-dns-resolvers">DNS scanning the Internet</a>. Granted, our tests have tiered scans based on previous results that wouldn't work as well with ZMap, but it's still a step in the right direction. Essentially, it's an improvement for nmap designed to scan the entire IPv4 address space. Traditionally, this would take months--they claim that ZMap can do it in hours. It's definitely something to keep in mind for future studies.</p>
+<p style="text-align: center;">* * * * *</p>
+<p>And that's it for USENIX. Hopefully, I'll be able to come back next year, but even more hopefully I'll have graduated by then. We'll see what my next employer thinks of the idea.</p>]]></content></entry><entry><title>USENIX 2013 - Day 2</title><link href="http://blog.jverkamp.com/2013/08/16/usenix-2013-day-2" /><id>urn:uuid:6dc006bd-ed2a-1967-5bc2-2833dfdd2910</id><updated>2013-08-16T00:00:00Z</updated><summary type="html"><![CDATA[<p>Day 2/3. There's really not much more to say, so how about getting right to the interesting talks:]]></summary><content type="html"><![CDATA[<p>Day 2/3. There's really not much more to say, so how about getting right to the interesting talks:<!--more--></p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/you-are-how-you-click-clickstream-analysis-sybil-detection">You Are How You Click: Clickstream Analysis for Sybil Detection</a></h2>
+<p>Gang Wang and Tristan Konolige, <em>University of California, Santa Barbara; </em>Christo Wilson, <em>Northeastern University; </em>Xiao Wang, <em>Renren Inc.; </em>Haitao Zheng and Ben Y. Zhao, <em>University of California, Santa Barbara</em></p>
+<p>Sybils are apparently exactly what I found when I was studying <a href="http://blog.jverkamp.com/2013/08/13/usenixfoci-2013-five-incidents-one-theme-twitter-spam-as-a-weapon-to-drown-voices-of-protest">Twitter censorship</a>: automated accounts. In this instance, the presentation talked about finding Sybils not by what their accounts look like (they also note that accounts are getting more sophisticated), but rather by how they behave. In general, normal users aren't nearly as focused on a single type of activity and don't click things nearly as quickly as bots. They present a fairly standard clustering method based on this which they claim is extremely accurate. It could be beaten using more human-like behavior, but the idea is that would be prohibitively expensive for bots to maintain. We'll see...</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/alice-warningland-large-scale-field-study-browser-security-warning">Alice in Warningland: A Large-Scale Field Study of Browser Security Warning Effectiveness</a></h2>
+<p>Devdatta Akhawe, <em>University of California, Berkeley;</em>Adrienne Porter Felt, <em>Google, Inc.</em></p>
+<p>Have you ever tried to visit a website and instead been greeted with a warning page saying the the page is hosting malware / has an invalid SSL certificate? This presentation goes fairly in depth with information from both Firefox and Chome, showing various behaviors of users when confronted with such warning pages. In their estimate, the goal is for 0% of people to skip these warnings, although in practice it's a bit higher than that--but interestingly lower than the expected. One particularly interesting point I found is that in general Firefox users are less likely than Chrome users to click through the warnings. Are Firefox users more paranoid? Are the Firefox warnings just harder to skip? It's an interesting study in any case.</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/empirical-study-vulnerability-rewards-programs">An Empirical Study of Vulnerability Rewards Programs</a></h2>
+<p>Matthew Finifter, Devdatta Akhawe, and David Wagner, <em>University of California, Berkeley</em></p>
+<p>This presentation went something into depth talking about bug bounties used in both <a href="https://www.mozilla.org/security/bug-bounty.html">Firefox</a> and <a href="https://www.google.com/about/appsecurity/reward-program/">Chrome</a>. For security researchers (or anyone really), a high priority or critical bug can net several thousand dollars so it's a reasonable deal. Going through their analysis though, the total payout to date for either Mozilla or Google was less than it would cost to hire a dedicated security developer and found even more bugs. Also interesting is the difference in prize distribution: Chrome's prizes range from $500 to $10,000, with a median at $1000. Firefox on the other hand always awarded $3,000. Essentially, it's the lottery principal: Chrome will earn you less on average but there's the chance for so much more. Also, they found that it's not uncommon for people that find several of these bugs to get hired. Overall, it's a really interesting program. I should look into a bit more... :)</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/security-picture-gesture-authentication">On the Security of Picture Gesture Authentication</a></h2>
+<p>Ziming Zhao and Gail-Joon Ahn, <em>Arizona State University and GFS Technology, Inc.; </em>Jeong-Jin Seo, <em>Arizona State University;</em> Hongxin Hu, <em>Delaware State University</em></p>
+<p>A new form of authentication used in Windows 8 is to allow the user to choose a picture and then set three gestures (from tap, circle, and line) in order to log in. It turns out that most people seem to choose people, although any one of these tends to lower the number of points that would actually be chosen for any particular set of gestures. Essentially: people are not much better at choosing secure gesture than they are secure passwords. It's theoretically harder for computers to break (there's the physical problem of entering them for one), but in practice not nearly variable enough.</p>
+<p style="text-align: center;">* * * * *</p>
+<p> One more day to go!</p>]]></content></entry><entry><title>USENIX 2013 - Day 1</title><link href="http://blog.jverkamp.com/2013/08/15/usenix-2013-day-1" /><id>urn:uuid:7e815e8a-89a9-dace-cf96-5f36613a4d7a</id><updated>2013-08-15T00:00:00Z</updated><summary type="html"><![CDATA[<p>Perhaps unsurprisingly, there were fewer papers today that I was particularly interested--given that FOCI is directly related to my area of research. Still, computer security is a very useful field and one that I'm keen to learn more about. I only went to two of the sessions today (it's always unfortunate when they run two interesting sessions at the same time) and here are some of the talks I found particularly interesting:]]></summary><content type="html"><![CDATA[<p>Perhaps unsurprisingly, there were fewer papers today that I was particularly interested--given that FOCI is directly related to my area of research. Still, computer security is a very useful field and one that I'm keen to learn more about. I only went to two of the sessions today (it's always unfortunate when they run two interesting sessions at the same time) and here are some of the talks I found particularly interesting:<!--more--></p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/greystar-fast-and-accurate-detection-sms-spam-numbers-large-cellular">Greystar: Fast and Accurate Detection of SMS Spam Numbers in Large Cellular Networks Using Gray Phone Space</a></h2>
+<p>Nan Jiang, <em>University of Minnesota;</em> Yu Jin and Ann Skudlark, <em>AT&amp;T Labs;</em> Zhi-Li Zhang, <em>University of Minnesota</em></p>
+<p>The first talk of the day was essentially about SMS / text message spam. They seemed to have some pretty nice data about how spammers actually send out such messages; showing that something like 4.5 billion spam texts were sent in 2012, up 45% from the year before. They showed that since phone numbers are so regular, spammers can essentially just text an entire block. This is contrary to email where you have to have a list of email addresses to really get anywhere. With that though, you can do a fair amount to automatically detect such spammers on the network even without complete control just by watching numbers that don't normally get text messages. It's a neat concept and a field that will certainly keep growing in the coming years.</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/practical-comprehensive-bounds-surreptitious-communication-over-dns">Practical Comprehensive Bounds on Surreptitious Communication over DNS</a></h2>
+<p>Vern Paxson, <em>University of California, Berkeley, and International Computer Science Institute;</em> Mihai Christodorescu, <em>Qualcomm Research;</em> Mobin Javed,<em>University of California, Berkeley; </em>Josyula Rao, Reiner Sailer, Douglas Lee Schales, and Marc Ph. Stoecklin,<em>IBM Research;</em> Kurt Thomas, <em>University of California, Berkeley; </em>Wietse Venema, <em>IBM Research;</em> Nicholas Weaver, <em>International Computer Science Institute and University of California, San Diego</em></p>
+<p>That's one heck of an author list. :) It makes sense though, it was a rather in depth paper with some impressive data. Basically, they took the idea of communicating over DNS (basically, running your own DNS server and abusing the DNS protocol) and went with the most covert methods they could think of. One in particular was sending requests of different types in order to encode messages. From that, they analyzed some 230 billion DNS records, looking for statistically significant patterns... and they found them. They found 59 channels in those queries that so far as I understand weren't previously known. Crazy stuff that; but it really makes me want to try to implement one of these systems on my home computer...</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/let-me-answer-you-exploiting-broadcast-information-cellular-networks">Let Me Answer That for You: Exploiting Broadcast Information in Cellular Networks</a></h2>
+<p>Nico Golde, Kévin Redon, and Jean-Pierre Seifert,<em>Technische Universität Berlin and Deutsche Telekom Innovation Laboratories</em></p>
+<p>This paper was kind of terrifying. Essentially, they talked about known vulnerabilities with the older GSM network that almost all cell phones still run on if they have to fall back to it. Essentially, they found that with a cheap phone (on the order of $20) and custom firmware, they could:</p>
+<ul>
+        <li>Impersonate and intercept calls for any particular user on a network without them even noticing</li>
+        <li>Intercept many users within the same area (something like 1/10 per phone)</li>
+        <li>DoS an entire geographical area (which could be on the order of many smaller cities)</li>
+</ul>
+<p>The scariest part about all of this? There's pretty much nothing that can / will be done to stop it. The GSM protocol is old and basically set in stone based on how much it would cost to replace. So hopefully at least no one actually malicious actually uses this idea...</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/traf%EF%AC%81cking-fraudulent-accounts-role-underground-market-twitter-spam-and">Trafﬁcking Fraudulent Accounts: The Role of the Underground Market in Twitter Spam and Abuse</a></h2>
+<p>Kurt Thomas, <em>University of California, Berkeley, and Twitter;</em> Damon McCoy, <em>George Mason University;</em>Chris Grier, <em>University of California, Berkeley, and International Computer Science Institute;</em> Alek Kolcz,<em>Twitter; </em>Vern Paxson, <em>University of California, Berkeley, and International Computer Science Institute</em></p>
+<p>I actually cited a previous, similar version of this paper in <a href="http://blog.jverkamp.com/2013/08/13/usenixfoci-2013-five-incidents-one-theme-twitter-spam-as-a-weapon-to-drown-voices-of-protest">my Twitter paper</a> where they essentially proved that people are selling massive quantities of Twitter accounts. In this case, they went through a number of vendors and purchased accounts, finding that just these few dozen vendors accounted for something like 20% of the all the spam accounts on Twitter. They also found that just about anyone can order said accounts with an average price of only $0.04 each and taking only a day to arrive. Unfortunately (or perhaps not), many of the services will resell accounts or otherwise work against their customers, but it's still interesting. What's good though is that they worked with Twitter to shut down virtually all of the accounts of this type. The best part about that was perhaps the messages they say on the spam-as-a-service forums after that: "Temporarily not selling Twitter accounts". Oops. :)</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/usenixsecurity13/velocity-censorship-high-fidelity-detection-microblog-post-deletions">The Velocity of Censorship: High-Fidelity Detection of Microblog Post Deletions</a></h2>
+<p>Tao Zhu, <em>Independent Researcher;</em> David Phipps,<em>Bowdoin College;</em> Adam Pridgen, <em>Rice University;</em>Jedidiah R. Crandall, <em>University of New Mexico; </em>Dan S. Wallach, <em>Rice University</em></p>
+<p>This paper was similar to some I've already read before, essentially talking about how China censors its own internal microblogging networks (since Twitter is blocked entirely(more or less)). What they found was that new posts of a sensitive nature will be blocked within 1-2 minutes and that it's not terribly difficult to get yourself on a watchlist where your posts will be deleted. It's even more interesting to see how Chinese users get around such problems, essentially using their equivalent of homonyms. Rather than words that sound similar, they use characters that look <em>almost </em>the same. It's easy for a human reader to 'fix' the mistake, but much harder for a computer to automatically detect it.</p>
+<p style="text-align: center;">* * * * *</p>
+<p>Well, that's all for today. It's only the first day of three, but I'm already tired. It's amazing how intense sitting in a room and watching / listening to people talk for a day can be...</p>]]></content></entry><entry><title>FOCI 2013</title><link href="http://blog.jverkamp.com/2013/08/14/foci-2013" /><id>urn:uuid:24aabdcc-426c-e045-a104-a9c2d6ca65cf</id><updated>2013-08-14T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today was the <a href="http://blog.jverkamp.com/2013/08/13/usenixfoci-2013-five-incidents-one-theme-twitter-spam-as-a-weapon-to-drown-voices-of-protest">Five incidents, one theme</a>. Here are a few short summaries of the other papers that are particularly related to my own interests:]]></summary><content type="html"><![CDATA[<p>Today was the <a href="http://blog.jverkamp.com/2013/08/13/usenixfoci-2013-five-incidents-one-theme-twitter-spam-as-a-weapon-to-drown-voices-of-protest">Five incidents, one theme</a>. Here are a few short summaries of the other papers that are particularly related to my own interests:<!--more--></p>
+<p style="text-align: center;">* * * * *``</p>
+<h2 title=""><a href="https://www.usenix.org/anatomy-web-censorship-pakistan">The Anatomy of Web Censorship in Pakistan</a></h2>
+<p>Zubair Nabi, <em>Information Technology University, Pakistan </em>Presented by Mobin Javed, <em>University of California, Berkeley</em></p>
+<p>As one might assume, this presentation was about the details of Pakistan's censorship. It is a far more focused paper than <a href="http://blog.jverkamp.com/2012/08/06/usenixfoci-inferring-mechanics-of-web-censorship-around-the-world">my own</a> or other works, but this lets them take a more detailed work. Essentially, they find a changing system((Which always seems to happen)), from an ISP-level censorship before April to a completely state owned, country wide system afterward. Over time, various sites have been blocked entirely (YouTube) or in part (specific videos). Overall, it's an in-depth look at the Pakistani case, which hasn't been done before, but there's nothing particularly unique in how Pakistani censorship works.</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/foci13/internet-censorship-iran-first-look">Internet Censorship in Iran: A First Look</a></h2>
+<p>Simurgh Aryan and Homa Aryan, <em>Aryan Censorship Project; </em>J. Alex Halderman, <em>University of Michigan</em></p>
+<p>Like the previous presentation, this paper talks about censorship in Iran. As an indicator of just how serious a problem this is, the paper was written pseudonymously with the exception of Alex Halderman. Given that though, Iran's censorship system is particularly interesting in it's scale. With the exception of the Great Firewall of China, it's one of the most complicated systems in the world. They perform HTTP Host filtering, DNS hijacking, port/protocol based throttling, and even keyword based filtering (which to my knowledge had only previously been confirmed in China). In addition, they make use of a private IP space (10.10.0.0/16) within the country, making study from outside difficult. Like others though, the system is constantly changing, making studies like this difficult.</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/foci13/towards-illuminating-censorship-monitors-model-facilitate-evasion">Towards Illuminating a Censorship Monitor's Model to Facilitate Evasion</a></h2>
+<p>Sheharbano Khattak, <em>Independent Researcher; </em>Mobin Javed, <em>University of California, Berkeley;</em> Philip D. Anderson, <em>Independent Researcher; </em>Vern Paxson, <em>University of California, Berkeley, and International Computer Science Institute</em></p>
+<p>This presentation aims to develop a system capable of analyzing a censorship system directly, determining its capabilities and then evading it using a custom built solution. In this case, they look into five key features:</p>
+<ol>
+        <li>Creation -- What parts of the TCP handshake is the censor looking for?</li>
+        <li>TCP/IP reassembly -- What degree of fragmentation can the censor deal with?</li>
+        <li>State management -- How much state does a censor maintain and can that be overwhelmed?</li>
+        <li>Teardown -- When is state clear (RST / FIN)?</li>
+        <li>Protocol inspection -- Is the censor scanning for certain protocols / applications (Tor)?</li>
+</ol>
+<p>While they only scanned China's Great Firewall so far, it seems like a promising method. I'd like to see it extended to other countries. There was also a rather interesting discussion both during and after the talk about the ethics of this sort of research. Is it ethical to DoS the Great Firewall?</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/foci13/towards-censorship-analyser-tor">Towards a Censorship Analyser for Tor</a></h2>
+<p>Philipp Winter, <em>The Tor Project and Karlstad University</em></p>
+<p>Being pretty much <em>the</em> name when it comes to anti-censorship tools (that and proxies), Tor is always well represented as censorship and privacy related conferences--FOCI being no exception. Essentially, this presentation talked about the problem of getting good measurements in countries where direct access is hard to come by. Essentially, they want to build a system that anyone can run and that can phone home anonymously--hopefully side stepping the issue that just running these tools is dangerous in some countries. It doesn't seem like they have a particularly wide selection of tools as of yet, but it does seem to be a good start.</p>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/foci13/lost-edge-finding-your-way-dnssec-signposts">Lost in the Edge: Finding Your Way with DNSSEC Signposts</a></h2>
+<p>Charalampos Rotsos, Heidi Howard, and David Sheets, <em>University of Cambridge;</em> Richard Mortier, <em>University of Nottingham;</em> Anil Madhavapeddy, Amir Chaudhry, and Jon Crowcroft, <em>University of Cambridge</em></p>
+<p>Given that this is a computer science conference with people particularly interested in privacy and anonymity, it's interesting the number of people that maintain their own servers. One problem with that though, is how do you connect everything? How can you talk to personally managed devices? Well, one problem is that NATs and other technologies have made it hard to directly connect to people. As you may be able to guess from the title, the authors' suggestion is to use DNS and domains directly. It seems like a neat idea--and really makes me want to run my own DNS server. It certainly makes me more interested in running my own server one day...</p>
+<p>As a side note, I found this quote particularly amusing:</p>
+<blockquote>"DNS servers can play games. As long as they appear to deliver a syntactically correct response to every query, they can fiddle the semantics." --RFC3234</blockquote>
+<p style="text-align: center;">* * * * *</p>
+<h2 title=""><a href="https://www.usenix.org/conference/foci13/reducing-latency-tor-circuits-unordered-delivery">Reducing Latency in Tor Circuits with Unordered Delivery</a></h2>
+<p>Michael F. Nowlan, David Wolinsky, and Bryan Ford, <em>Yale University</em></p>
+<p>Here's the second expected Tor paper of the day. Essentially, they note that as more and more users in an area use Tor there will be bottlenecks because of how the TCP queue works--packets have to be delivered in order. They fix it using two of their own protocols: uTCP and uTLS (the u stands for un-ordered). Basically, they allow for consistency and ordering as TCP does but also allow packets to be delivered out of ordered, thus speeding up delivery in these instances.</p>
+<p style="text-align: center;">* * * * *</p>
+<p>At the end of the day, we had a rump session. Here are a few questions / comments / concerns:</p>
+<ul>
+        <li>Countries share a lot of data; how does this interfere with projects like Tor?</li>
+        <li>Anonymity is great; but what about terrorists?</li>
+        <li>"Anonymity is when no one knows who you are talking to--even the person you are talking to. Privacy is communicating without being overheard."</li>
+        <li>There are a lot of badly worded restrictions on exports of exactly the kind of thing the FOCI community works on.</li>
+</ul>]]></content></entry><entry><title>Usenix/FOCI 2013 -- Five incidents, one theme:  Twitter spam as a weapon to drown voices of protest</title><link href="http://blog.jverkamp.com/2013/08/13/usenixfoci-2013-five-incidents-one-theme-twitter-spam-as-a-weapon-to-drown-voices-of-protest" /><id>urn:uuid:b7b3daa1-ad5d-29ea-fce6-ab90e76cd96d</id><updated>2013-08-13T14:00:00Z</updated><summary type="html"><![CDATA[<p>Another year, another Usenix Security Symposium. Like last year, I'll be presenting a paper at FOCI<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> (Free and Open Communications on the Internet) entitled: <em>Five incidents, one theme: Twitter spam as a weapon to drown voices of protest</em>:</p>
+<blockquote>Social networking sites, such as Twitter and Facebook, have become an impressive force in the modern world with user bases larger than many individual countries. With such influence, they have become important in the process of worldwide politics. Those seeking to be elected often use social networking accounts to promote their agendas while those opposing them may seek to either counter those views or drown them in a sea of noise. Building on previous work that analyzed a Russian event where Twitter spam was used as a vehicle to suppress political speech, we inspect five political events from 2011 and 2012: two related to China and one each from Syria, Russia, and Mexico. Each of these events revolved around popular Twitter hashtags which were inundated with spam tweets intended to overwhelm the original content.
+
+We find that the nature of spam varies sufficiently across incidents such that generalizations are hard to draw. Also, spammers are evolving to mimic human activity closely. However, a common theme across all incidents was that the accounts used to send spam were registered in blocks and had automatically generated usernames. Our findings can be used to guide defense mechanisms to counter political spam on social networks.</blockquote>
+<p>You can download the paper and slides here: - <a href="http://research.jverkamp.com/papers/verkamp-foci-2013.pdf">paper</a> - <a href="http://research.jverkamp.com/papers/verkamp-foci-2013-slides.pdf">slides</a></p>
+<p>The rest of my research can be found here: <a title="jverkamp - Research" href="http://research.jverkamp.com/">http://research.jverkamp.com</a></p>]]></summary><content type="html"><![CDATA[<p>Another year, another Usenix Security Symposium. Like last year, I'll be presenting a paper at FOCI<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> (Free and Open Communications on the Internet) entitled: <em>Five incidents, one theme: Twitter spam as a weapon to drown voices of protest</em>:</p>
+<blockquote>Social networking sites, such as Twitter and Facebook, have become an impressive force in the modern world with user bases larger than many individual countries. With such influence, they have become important in the process of worldwide politics. Those seeking to be elected often use social networking accounts to promote their agendas while those opposing them may seek to either counter those views or drown them in a sea of noise. Building on previous work that analyzed a Russian event where Twitter spam was used as a vehicle to suppress political speech, we inspect five political events from 2011 and 2012: two related to China and one each from Syria, Russia, and Mexico. Each of these events revolved around popular Twitter hashtags which were inundated with spam tweets intended to overwhelm the original content.
+
+We find that the nature of spam varies sufficiently across incidents such that generalizations are hard to draw. Also, spammers are evolving to mimic human activity closely. However, a common theme across all incidents was that the accounts used to send spam were registered in blocks and had automatically generated usernames. Our findings can be used to guide defense mechanisms to counter political spam on social networks.</blockquote>
+<p>You can download the paper and slides here: - <a href="http://research.jverkamp.com/papers/verkamp-foci-2013.pdf">paper</a> - <a href="http://research.jverkamp.com/papers/verkamp-foci-2013-slides.pdf">slides</a></p>
+<p>The rest of my research can be found here: <a title="jverkamp - Research" href="http://research.jverkamp.com/">http://research.jverkamp.com</a></p>]]></content></entry><entry><title>Authorship attribution: Part 3</title><link href="http://blog.jverkamp.com/2013/08/06/authorship-attribution-part-3" /><id>urn:uuid:72bc9eab-cae2-bed3-2d2e-ba4e961d1da3</id><updated>2013-08-06T14:00:00Z</updated><summary type="html"><![CDATA[<p>So far, we've had three different ideas for figuring out the author of an unknown paper (top n word ordering in <a href="http://blog.jverkamp.com/2013/07/30/authorship-attribution-part-1">Part 1</a> and stop word frequency / 4-grams in <a href="http://blog.jverkamp.com/2013/08/02/authorship-attribution-part-2">Part 2</a>). Here's something interesting though from the comments on the <a title="JK Rowling" href="http://programmingpraxis.com/2013/07/19/j-k-rowling/">Programming Praxis post</a>:</p>
+<blockquote><cite>Globules</cite> said
+<small>July 19, 2013 at 12:29 PM</small>
+Patrick Juola has a <a href="http://languagelog.ldc.upenn.edu/nll/?p=5315" rel="nofollow">guest post on Language Log</a> describing the approach he took.</blockquote>
+]]></summary><content type="html"><![CDATA[<p>So far, we've had three different ideas for figuring out the author of an unknown paper (top n word ordering in <a href="http://blog.jverkamp.com/2013/07/30/authorship-attribution-part-1">Part 1</a> and stop word frequency / 4-grams in <a href="http://blog.jverkamp.com/2013/08/02/authorship-attribution-part-2">Part 2</a>). Here's something interesting though from the comments on the <a title="JK Rowling" href="http://programmingpraxis.com/2013/07/19/j-k-rowling/">Programming Praxis post</a>:</p>
+<blockquote><cite>Globules</cite> said
+<small>July 19, 2013 at 12:29 PM</small>
+Patrick Juola has a <a href="http://languagelog.ldc.upenn.edu/nll/?p=5315" rel="nofollow">guest post on Language Log</a> describing the approach he took.</blockquote>
+<!--more-->
+<p>If you read through this though, there are some interesting points. Essentially, the worked with only a single known novel from JK Rowling (which I don't have): <a href="http://www.amazon.com/gp/product/0316228583/ref=as_li_ss_tl?ie=UTF8&amp;camp=1789&amp;creative=390957&amp;creativeASIN=0316228583&amp;linkCode=as2&amp;tag=jverkampcom-20&quot;>The Casual Vacancy</a><img src=&quot;http://ir-na.amazon-adsystem.com/e/ir?t=jverkampcom-20&amp;l=as2&amp;o=1&amp;a=0316228583">The Casual Vacancy</a>. Theoretically that will help, since it's more likely to be similar in style than the Harry Potter books; although that seems to defeat the idea of an author having a universal writing style. Other than that though, they analyzed three other Brittish crime authors. So the works they used are completely different.</p>
+<p>Another change is that, rather than analyzing the entire document as a whole, they broken each text into 1000 word chunks. This should theoretically help with outliers and somewhat offset the fact that there is a significantly smaller library. On the other hand though, as the author talks about more and more features, I can't help but feel that they choose features specifically to out JK Rowling as the author... In their results, they have a 6/5 split favoring JK Rowling for one test, a 4/4/3 favoring her for another, and a 8/3 against JK Rowling in the third. So it's still not a particularly solid conclusion...</p>
+<p>In any case, I still do have one more test to run based on their article (if you're read the <a title="authorship attribution source code" href="https://github.com/jpverkamp/small-projects/tree/master/authorship">source on GitHub</a> you've probably already seen this): word length. That's actually the most successful of their tests, with the 6/5 split, so theoretically it might work out better?</p>
+<p>At this point, the code is almost trivial to write. Basically, we'll take the <a href="http://blog.jverkamp.com/2013/07/30/authorship-attribution-part-1">previous top n word code</a> and cut out most of it:</p>
+<pre class="scheme"><code>; Calculate the relative frequencies of stop words in a text
+(define (word-lengths [in (current-input-port)])
+  ; Store the length counts
+  (define counts (make-hash))
+
+  ; Count all of the base words in the text
+  (for* ([line (in-lines in)]
+         [word (in-list (string-split line))])
+    (define len (string-length word))
+    (hash-set! counts len (add1 (hash-ref counts len 0))))
+
+  counts)</code></pre>
+<p>And that's all there is to it. Yes, it does treat punctuation as part of word length. That's perfectly expected (if not entirely optimal). Let's see it in action:</p>
+<pre class="scheme"><code>&gt; (define cc-hash (with-input-from-file "Cuckoo's Calling.txt" word-lengths))
+&gt; (for/list ([i (in-range 1 10)])
+    (hash-ref cc-hash i 0))
+'(0.031 0.134 0.222 0.173 0.122 0.103 0.083 0.053 0.033)
+
+&gt; (define dh-lengths (with-input-from-file "Deathly Hallows.txt" word-lengths))
+&gt; (for/list ([i (in-range 1 10)])
+    (hash-ref dh-lengths i 0))
+'(0.045 0.138 0.211 0.174 0.128 0.100 0.078 0.051 0.034)</code></pre>
+<p>To the naked eye, those look pretty dang similar. In fact, they are:</p>
+<pre class="scheme"><code>&gt; (cosine-similarity cc-hash dh-hash)
+0.964</code></pre>
+<p>That looks good, but does it work overall? Here are the by-book results:</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.979</td><td>Jordan, Robert</td><td>The Path of Daggers</td></tr>
+<tr><td>2</td><td>0.975</td><td>Jordan, Robert</td><td>Knife of Dreams</td></tr>
+<tr><td>3</td><td>0.973</td><td>Jordan, Robert</td><td>Crossroads of Twilight</td></tr>
+<tr><td>4</td><td>0.972</td><td>Croggon, Alison</td><td>The Gift</td></tr>
+<tr><td>5</td><td>0.971</td><td>Pratchett, Terry</td><td>Equal Rites</td></tr>
+<tr><td>6</td><td>0.970</td><td>Butcher, Jim</td><td>Furies of Calderon</td></tr>
+<tr><td>7</td><td>0.970</td><td>Jordan, Robert</td><td>A Crown of Swords</td></tr>
+<tr><td>8</td><td>0.969</td><td>Jordan, Robert</td><td>Winter's Heart</td></tr>
+<tr><td>9</td><td>0.968</td><td>Jordan, Robert</td><td>The Gathering Storm</td></tr>
+<tr><td>10</td><td>0.967</td><td>Jordan, Robert</td><td>A Memory of Light</td></tr>
+</table>
+<p>Not so good... It turns out that these numbers are similar across pretty much all English language texts. The lowest score for any book I have is still 0.902. Perhaps the by-author results will do better:</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.964</td><td>Jordan, Robert</td></tr>
+<tr><td>2</td><td>0.964</td><td>Croggon, Alison</td></tr>
+<tr><td>3</td><td>0.959</td><td>Robinson, Kim Stanley</td></tr>
+<tr><td>4</td><td>0.956</td><td>Rowling, J.K.</td></tr>
+<tr><td>5</td><td>0.952</td><td>Stephen, King</td></tr>
+</table>
+<p>That's not so bad at least. There are a fair number of authors further down the list (I don't know if I've mentioned this, but I have 35 authors and over 200 books in my sample set). But it's still not perfect. It's still pretty interesting to see though.</p>
+<p>Well, I think that about wraps up this series. It's about how I found it when doing my undergraduate research: interesting and you can get some neat results, but ultimately you have to do a fair bit of tuning to get any meaningful results. I hope you found it as interesting as I did.</p>
+<p>As always, if you'd like to see the full source code for this post, you can find it on GitHub: <a title="authorship attribution source code" href="https://github.com/jpverkamp/small-projects/tree/master/authorship">authorship attribution</a></p>]]></content></entry><entry><title>Authorship attribution: Part 2</title><link href="http://blog.jverkamp.com/2013/08/02/authorship-attribution-part-2" /><id>urn:uuid:fe1312ae-965b-5a1e-bfa7-57247bcb7007</id><updated>2013-08-02T14:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://blog.jverkamp.com/2013/07/30/authorship-attribution-part-1">Last time</a>, we used word rank to try to figure out who could possibly have written Cuckoo's calling. It didn't work out so well, but we at least have a nice framework in place. So perhaps we can try a few more ways of turning entire novels into a few numbers. ]]></summary><content type="html"><![CDATA[<p><a href="http://blog.jverkamp.com/2013/07/30/authorship-attribution-part-1">Last time</a>, we used word rank to try to figure out who could possibly have written Cuckoo's calling. It didn't work out so well, but we at least have a nice framework in place. So perhaps we can try a few more ways of turning entire novels into a few numbers. <!--more--></p>
+<p>Rather than word rank, how about <a href="https://en.wikipedia.org/wiki/stop_word">stop word</a> frequency. Essentially, stop words are small words such as articles and prepositions that don't always carry much weight for a sentence's meaning. On the other hand though, those are exactly the same words that appear most commonly, so perhaps the frequencies will tell us something more.</p>
+<p>The code is actually rather similar. To start out with, we want to load in a set of stop words. There are dozens of lists out there; any of them will work.</p>
+<pre class="scheme"><code>; Load the stop words
+(define stop-words
+  (with-input-from-file "stop-words.txt"
+    (lambda ()
+      (for/set ([line (in-lines)]) (fix-word line)))))</code></pre>
+<p>With that, we just need to count the occurances of each word and then normalize. This will help when some books have more or less stop words overall.</p>
+<pre class="scheme"><code>; Calculate the relative frequencies of stop words in a text
+(define (stop-word-frequency [in (current-input-port)])
+  ; Store the frequency and word count
+  (define counts (make-hash))
+  (define total (make-parameter 0.0))
+
+  ; Loop across the input text
+  (for* ([line (in-lines in)]
+         [word (in-list (string-split line))])
+    (define fixed (fix-word word))
+
+    (when (set-member? stop-words fixed)
+      (total (+ (total) 1))
+      (hash-set! counts word (add1 (hash-ref counts word 0)))))
+
+  ; Normalize and return frequencies
+  ; Use the order in the stop words file
+  (for/vector ([word (in-set stop-words)])
+    (/ (hash-ref counts word 0)
+       (total))))</code></pre>
+<p>Using Cuckoo's Calling and a particular list with 50 words, we have:</p>
+<pre class="scheme"><code>&gt; (with-input-from-file "../target.txt" stop-word-frequency)
+'#(0.043 0.003 0.000 0.002 0.026
+   ...
+   0.001 0.000 0.000 0.000 0.000)</code></pre>
+<p>Well that doesn't mean much to us. Hopefully it means more to the computer. :)</p>
+<p>So how similar does this one say Cuckoo's Calling and the Deathly Hallows are?</p>
+<pre class="scheme"><code>&gt; (let ([a (with-input-from-file "Cuckoo's Calling.txt" stop-word-frequency)]
+        [b (with-input-from-file "Deathly Hallows.txt" stop-word-frequency)])
+    (cosine-similarity a b))
+0.877</code></pre>
+<p>That's a lot higher! Unfortunately, that doesn't really mean that they're more similar than the other test. For all we know, everything could be more similar. So let's try the entire library again:</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.896</td><td>Stephen, King</td><td>Wizard and Glass</td></tr>
+<tr><td>2</td><td>0.896</td><td>Rowling, J.K.</td><td>Harry Potter and the Order of the Phoenix</td></tr>
+<tr><td>3</td><td>0.895</td><td>Riordan, Rick</td><td>The Mark of Athena</td></tr>
+<tr><td>4</td><td>0.891</td><td>Jordan, Robert</td><td>Knife of Dreams</td></tr>
+<tr><td>5</td><td>0.891</td><td>Riordan, Rick</td><td>The Lost Hero</td></tr>
+<tr><td>6</td><td>0.888</td><td>Jordan, Robert</td><td>A Crown of Swords</td></tr>
+<tr><td>7</td><td>0.888</td><td>Riordan, Rick</td><td>The Son of Neptune</td></tr>
+<tr><td>8</td><td>0.887</td><td>Croggon, Alison</td><td>The Singing</td></tr>
+<tr><td>9</td><td>0.887</td><td>Stephen, King</td><td>The Drawing of the Three</td></tr>
+<tr><td>10</td><td>0.884</td><td>Jordan, Robert</td><td>Crossroads of Twilight</td></tr>
+</table>
+<p>Well, that's good and bad. It's unfortunate that it's not first, but we actually have a Harry Potter book in the top 10! The rest aren't that low down either, mostly appearing in the top 25. That should help with the author averages:</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.876</td><td>Jordan, Robert</td></tr>
+<tr><td>2</td><td>0.876</td><td>Rowling, J.K.</td></tr>
+<tr><td>3</td><td>0.873</td><td>Stephen, King</td></tr>
+<tr><td>4</td><td>0.865</td><td>Martin, George R. R.</td></tr>
+<tr><td>5</td><td>0.851</td><td>Riordan, Rick</td></tr>
+</table>
+<p>None too shabby! It's a bit surprising that Robert Jordan is up at the top, but if we only consider authors that were actually around to write Cuckoo's Calling, JK Rowling is actually at the top of the list.</p>
+<p>Still, can we do better?</p>
+<p>Here's another idea (that I used in my <a href="blog.jverkamp.com/category/programming/anngram/">previous work</a>): <a href="https://en.wikipedia.org/wiki/n-grams">n-grams</a>. Essentially, take constant sized slices of text, completely ignoring the content. So if you were dealing with the text 'THE DUCK QUACKS' and 4-grams, you would have these:</p>
+<pre>'THE '  'HE D'  'E DU'  ' DUC'  'DUCK'
+'UCK '  'CK Q'  'K QU'  ' QUA'  'QUAC'
+'UACK'</pre>
+<p>How does this help us? Well, in addition to keeping track of the most common words, n-grams will capture the relationships between words. Theoretically, this extra information might help out. So how do we measure it?</p>
+<pre class="scheme"><code>; Calculate n gram frequencies
+(define (n-gram-frequency [in (current-input-port)] #:n [n 4] #:limit [limit 100])
+
+  ; Store counts and total to do frequency later
+  (define counts (make-hash))
+
+  ; Keep a circular buffer of text, read char by char
+  (define n-gram (make-string 4 #\nul))
+  (for ([c (in-port read-char in)])
+    (set! n-gram (substring (string-append n-gram (string c)) 1))
+    (hash-set! counts n-gram (add1 (hash-ref counts n-gram 0))))
+
+  ; Find the top limit many values
+  (define top-n
+    (take
+     (sort
+      (for/list ([(key val) (in-hash counts)])
+        (list val key))
+      (lambda (a b) (&gt; (car a) (car b))))
+     limit))
+
+  ; Cacluate the frequency of just those
+  (define total (* 1.0 (for/sum ([vk (in-list top-n)]) (car vk))))
+  (for/hash ([vk (in-list top-n)])
+    (values (cadr vk) (/ (car vk) total))))</code></pre>
+<p>It's pretty much the same as the previous code. The only difference is the code to read the n-grams rather than the words, but that should be pretty straight forward. It's certainly not the most efficient, but it's fast enough. It can churn through a few hundred books in a few minutes. Good enough for me.</p>
+<p>How does it perform though?</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.777</td><td>Stephen, </td><td>Wizard and Glass</td></tr>
+<tr><td>2</td><td>0.764</td><td>Jordan, Robert</td><td>The Gathering Storm</td></tr>
+<tr><td>3</td><td>0.757</td><td>Card, Orson Scott</td><td>Heart Fire</td></tr>
+<tr><td>4</td><td>0.757</td><td>Card, Orson Scott</td><td>Children of the Mind</td></tr>
+<tr><td>5</td><td>0.756</td><td>Stephen, </td><td>Song of Susannah</td></tr>
+<tr><td>6</td><td>0.756</td><td>Stephen, </td><td>The Dark Tower</td></tr>
+<tr><td>7</td><td>0.753</td><td>Butcher, Jim</td><td>White Night</td></tr>
+<tr><td>8</td><td>0.751</td><td>Butcher, Jim</td><td>Turn Coat</td></tr>
+<tr><td>9</td><td>0.746</td><td>Butcher, Jim</td><td>Captain's Fury</td></tr>
+<tr><td>10</td><td>0.746</td><td>Butcher, Jim</td><td>Side Jobs</td></tr>
+</table>
+<p>That's not so good. How about the averages?</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.731</td><td>Stephen, King,</td></tr>
+<tr><td>2</td><td>0.724</td><td>Martin, George R. R.</td></tr>
+<tr><td>3</td><td>0.715</td><td>Jordan, Robert</td></tr>
+<tr><td>4</td><td>0.708</td><td>Butcher, Jim</td></tr>
+<tr><td>5</td><td>0.698</td><td>Robinson, Kim Stanley</td></tr>
+</table>
+<p>It turns out that JK Rowling is actually second from the bottom. Honestly, I'm not sure what this says. Did I mess up the algorithm? Well then why are Steven King, Robert Jordan, and Jim Butcher still so high up?</p>
+<p>I still have a few more ideas though. Next week it is!</p>]]></content></entry><entry><title>Authorship attribution: Part 1</title><link href="http://blog.jverkamp.com/2013/07/30/authorship-attribution-part-1" /><id>urn:uuid:23f33073-b708-175b-27ad-ca213020f15b</id><updated>2013-07-30T14:00:00Z</updated><summary type="html"><![CDATA[<p>About two weeks ago, the new crime fiction novel <a href="http://www.amazon.com/gp/product/0316206849/ref=as_li_ss_tl?ie=UTF8&amp;camp=1789&amp;creative=390957&amp;creativeASIN=0316206849&amp;linkCode=as2&amp;tag=jverkampcom-20">Cuckoo's Calling</a> was revealed to have actually been written by J.K. Rowling under the pseudonym Robert Galbraith. What's interesting is exactly how they came to that conclusion. Here's a quote from <a title="J.K. Rowling’s Secret: A Forensic Linguist Explains How He Figured It Out" href="http://entertainment.time.com/2013/07/15/j-k-rowlings-secret-a-forensic-linguist-explains-how-he-figured-it-out/">Time</a> magazine (via <a title="J K Rowling" href="http://programmingpraxis.com/2013/07/19/j-k-rowling/">Programming Praxis</a>):</p>
+]]></summary><content type="html"><![CDATA[<p>About two weeks ago, the new crime fiction novel <a href="http://www.amazon.com/gp/product/0316206849/ref=as_li_ss_tl?ie=UTF8&amp;camp=1789&amp;creative=390957&amp;creativeASIN=0316206849&amp;linkCode=as2&amp;tag=jverkampcom-20">Cuckoo's Calling</a> was revealed to have actually been written by J.K. Rowling under the pseudonym Robert Galbraith. What's interesting is exactly how they came to that conclusion. Here's a quote from <a title="J.K. Rowling’s Secret: A Forensic Linguist Explains How He Figured It Out" href="http://entertainment.time.com/2013/07/15/j-k-rowlings-secret-a-forensic-linguist-explains-how-he-figured-it-out/">Time</a> magazine (via <a title="J K Rowling" href="http://programmingpraxis.com/2013/07/19/j-k-rowling/">Programming Praxis</a>):</p>
+<!--more-->
+<blockquote>As one part of his work, Juola uses a program to pull out the hundred most frequent words across an author’s vocabulary. This step eliminates rare words, character names and plot points, leaving him with words like of and but, ranked by usage. Those words might seem inconsequential, but they leave an authorial fingerprint on any work.
+
+“Propositions and articles and similar little function words are actually very individual,” Juola says. “It’s actually very, very hard to change them because they’re so subconscious.”</blockquote>
+<p>It's actually pretty similar to what I did a few years ago for my undergraduate thesis: <a title="AnnGram" href="http://blog.jverkamp.com/category/programming/anngram/">AnnGram</a>. In that case, I used a similar technique to what they described above, <a href="https://en.wikipedia.org/wiki/n-grams">n-grams</a>, and <a href="https://en.wikipedia.org/wiki/self_organizing maps">Self organizing map</a> to classify works by author. It's been awhile, but let's take a crack at re-implementing some of these techniques.</p>
+<p>(If you'd like to follow along, you can see the full code here: <a href="https://github.com/jpverkamp/small-projects/tree/master/authorship">authorship attribution on github</a>)</p>
+<p>First, we'll use the technique described above. The idea is to take the most common words throughout a book and rank them. Theoretically, this will give us a unique fingerprint for each author that should be able to identify them even under a pseudonym.</p>
+<p>Let's start by cleaning up the words. For the time being, we want only alphabetic characters and only in lowercase. That way we should avoid position in sentences and the like. This should be an easy enough way to do that:</p>
+<pre class="scheme"><code>; Remove non word characters
+(define (fix-word word)
+  (list-&gt;string
+   (for/list ([c (in-string word)]
+              #:when (char-alphabetic? c))
+     (char-downcase c))))</code></pre>
+<p>Easy enough. So let's actually count the words. To start, we'll keep a hash of counts. They're easy enough to work with in Racket, albeit not quite so easy as say Python. With that, we only need to loop through the words in the text:</p>
+<pre class="scheme"><code>; Store the word counts
+(define counts (make-hash))
+
+; Count all of the base words in the text
+(for* ([line (in-lines in)]
+       [word (in-list (string-split line))])
+  (define fixed (fix-word word))
+  (hash-set! counts fixed (add1 (hash-ref counts fixed 0))))</code></pre>
+<p>Using the three argument form of <code>hash-ref</code> allows us to specify a default. That way the <code>hash</code> is effectively acting like Python's <code>defaultdict</code> (a particular favorite data structure of mine).</p>
+<p>After we've done that, we can find the <code>top-n</code> most common words:</p>
+<pre class="scheme"><code>; Extract the top limit words
+(define top-n
+  (map first
+       (take
+        (sort
+         (for/list ([(word count) (in-hash counts)])
+           (list word count))
+         (lambda (a b) (&gt; (second a) (second b))))
+        limit)))</code></pre>
+<p>Finally, we want to replace the count with the ordering. Later, we'll try using the relative frequencies but at the moment the ordering will do well enough. Since we're going to later use a default value of 0 which should be near to a low rank, we'll count down.</p>
+<pre class="scheme"><code>; Add an order to each, descending
+(for/hash ([i (in-range limit 0 -1)]
+           [word (in-list top-n)])
+  (values word i)))</code></pre>
+<p>All together, this can take a text file (as input port) and return the most common words. For example, using Cuckoo's Calling:</p>
+<pre class="scheme"><code>&gt; (with-input-from-file "Cuckoo's Calling.txt" word-rank)
+'#hash(("the" . 10)  ("to" . 9)   ("and" . 8)
+       ("a" . 7)     ("of" . 6)   ("he" . 5)
+       ("was" . 4)   ("she" . 3)  ("in" . 2)
+       ("her" . 1))</code></pre>
+<p>If the post was correct (and they did identify JK Rowling after all), then this should be a similar ordering for any book written by her while other authors will be slightly different. Let's take for example the text of the 7th Harry Potter book:</p>
+<pre class="scheme"><code>&gt; (with-input-from-file "Deathly Hallows.txt" word-rank)
+'#hash(("the" . 10)  ("and" . 9)    ("" . 8)
+       ("to" . 7)    ("of" . 6)     ("he" . 5)
+       ("a" . 4)     ("harry" . 3)  ("was" . 2)
+       ("it" . 1))</code></pre>
+<p>It seems that <i>and</i> has moved up, <i>a</i> and <i>she</i> have swapped, and <i>harry</i> is there--It's pretty impressive that's the 7th most common word in the entire book but rather unlikely to appear in Cuckoo's Calling. But overall, it's pretty similar. So let's try to compare it to a few more books.</p>
+<p>We do need one more peace first though. We need to be able to tell how similar two books are. In this case, we'll use the idea of <a href="https://en.wikipedia.org/wiki/cosine_similarity">cosine similarity</a>. Essentially, given two vectors we can calculate the angle between them. The more similar two vectors are, the closer to zero the result will be.</p>
+<p>One problem is that we have hashes instead of vectors. We can't even guarantee that the same words will appear in two different lists. So first, we'll unify the keys. Add zeros for missing words, put them in the same order, and we have vectors we can measure:</p>
+<pre class="scheme"><code>; Calculate the similarity between two vectors
+; If inputs are hashes, merge them before calculating similarity
+(define (cosine-similarity a b)
+  (cond
+    [(and (hash? a) (hash? b))
+     (define keys
+       (set-&gt;list (set-union (list-&gt;set (hash-keys a))
+                             (list-&gt;set (hash-keys b)))))
+     (cosine-similarity
+      (for/vector ([k (in-list keys)]) (hash-ref a k 0))
+      (for/vector ([k (in-list keys)]) (hash-ref b k 0)))]
+    [else
+     (define cossim (acos (/ (dot-product a b) (* (magnitude a) (magnitude b)))))
+     (- 1.0 (/ (abs cossim) (/ pi 2)))]))</code></pre>
+<p>The last line normalizes it to the range [0, 1.0] where the higher the number, the better match. This isn't strictly necessary, but I think it looks nicer. :)</p>
+<p>Finally, we can calculate the similarity between two books. So how similar are Cuckoo's Calling and the Deathly Hallows?</p>
+<pre class="scheme"><code>&gt; (let ([a (with-input-from-file "Cuckoo's Calling.txt" word-rank)]
+        [b (with-input-from-file "Deathly Hallows.txt" word-rank)])
+    (cosine-similarity a b))
+0.6965</code></pre>
+<p>About 70% (not that the numbers mean particularly much). So let's try a few more.</p>
+<p>Unfortunately, I don't have much in the way of crime fiction--I'm more interested in science fiction and fantasy. But that should work well enough. Using a bit of framework (<a href="https://github.com/jpverkamp/small-projects/blob/master/authorship/main.rkt">linky</a>), we can measure this easily enough.</p>
+<p>So, who among the author I have could have written Cuckoo's Calling? Here are the most similar books:</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.740</td><td>Butcher, Jim</td><td>Storm Front</td></tr>
+<tr><td>2</td><td>0.739</td><td>Butcher, Jim</td><td>Side Jobs</td></tr>
+<tr><td>3</td><td>0.738</td><td>Butcher, Jim</td><td>Turn Coat</td></tr>
+<tr><td>4</td><td>0.736</td><td>Butcher, Jim</td><td>Small Favor</td></tr>
+<tr><td>5</td><td>0.735</td><td>Butcher, Jim</td><td>White Night</td></tr>
+<tr><td>6</td><td>0.734</td><td>Butcher, Jim</td><td>Cold Days</td></tr>
+<tr><td>7</td><td>0.731</td><td>Butcher, Jim</td><td>Proven Guilty</td></tr>
+<tr><td>8</td><td>0.729</td><td>Butcher, Jim</td><td>Ghost Story</td></tr>
+<tr><td>9</td><td>0.728</td><td>Stirling, S. M. & Meier, Shirley</td><td>Shadow's Son</td></tr>
+<tr><td>10</td><td>0.728</td><td>Stephen, King</td><td>Wizard and Glass</td></tr>
+<tr><td>11</td><td>0.728</td><td>Lovegrove, James</td><td>The Age of Zeus</td></tr>
+<tr><td>12</td><td>0.726</td><td>Butcher, Jim</td><td>Dead Beat</td></tr>
+<tr><td>13</td><td>0.726</td><td>Duncan, Glen</td><td>Last Werewolf, The</td></tr>
+<tr><td>14</td><td>0.724</td><td>Butcher, Jim</td><td>Fool Moon</td></tr>
+<tr><td>15</td><td>0.723</td><td>Stephen, King</td><td>The Drawing of the Three</td></tr>
+<tr><td>16</td><td>0.723</td><td>Adams, Douglas</td><td>So Long, and Thanks for All the Fish</td></tr>
+<tr><td>17</td><td>0.722</td><td>Stephen, King</td><td>The Dark Tower</td></tr>
+<tr><td>18</td><td>0.718</td><td>Lovegrove, James</td><td>The Age of Odin</td></tr>
+<tr><td>19</td><td>0.718</td><td>Butcher, Jim</td><td>Changes</td></tr>
+<tr><td>20</td><td>0.715</td><td>Chima, Cinda Williams</td><td>The Wizard Heir</td></tr>
+</table>
+<p>Perhaps it's not surprising that Jim Butcher's books are at the top of the list. After all, it's about the closest thing that I have to crime fiction. Still, it doesn't look good that absolutely none of JK Rowling's books are in the top 20. In fact, we have to go all of the way down to 43 to find Harry Potter and the Half-Blood Prince, with a score of 0.704.</p>
+<p>What if we average each author's books? Perhaps JK Rowling is more consistently matched against Cuckoo's Calling?</p>
+<table class="table table-striped">
+<tr><td>1</td><td>0.714</td><td>Stephen, King</td></tr>
+<tr><td>2</td><td>0.709</td><td>Butcher, Jim</td></tr>
+<tr><td>3</td><td>0.704</td><td>Briggs, Patricia</td></tr>
+<tr><td>4</td><td>0.704</td><td>Benson, Amber</td></tr>
+<tr><td>5</td><td>0.698</td><td>Robinson, Kim Stanley</td></tr>
+<tr><td>6</td><td>0.694</td><td>Colfer, Eoin</td></tr>
+<tr><td>7</td><td>0.693</td><td>Jordan, Robert</td></tr>
+<tr><td>8</td><td>0.692</td><td>Rowling, J.K.</td></tr>
+<tr><td>9</td><td>0.687</td><td>Steele, Allen</td></tr>
+<tr><td>10</td><td>0.687</td><td>Orwell, George</td></tr>
+<tr><td>11</td><td>0.682</td><td>Croggon, Alison</td></tr>
+<tr><td>12</td><td>0.681</td><td>Adams, Douglas</td></tr>
+<tr><td>13</td><td>0.680</td><td>Riordan, Rick</td></tr>
+<tr><td>14</td><td>0.679</td><td>Card, Orson Scott</td></tr>
+<tr><td>15</td><td>0.671</td><td>Brin, David</td></tr>
+<table class="table table-striped">
+
+Not so much better, that. I have a few ideas though. Perhaps in a few days, we'll see what we can do.
+
+If you'd like to see the full source, you can do so here: <a href="https://github.com/jpverkamp/small-projects/tree/master/authorship">authorship attribution on github</a>]]></content></entry></feed>
