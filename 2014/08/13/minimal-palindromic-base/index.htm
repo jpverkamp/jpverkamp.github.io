@@ -4,7 +4,7 @@
         
         
 
-        <title>Number words | jverkamp.com | John-Paul Verkamp</title>
+        <title>Minimal palindromic base | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
 
@@ -68,101 +68,99 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Number words</h1>
+                        <h1 class="entry-title">Minimal palindromic base</h1>
 
                         <div class="entry-meta">
                                 <span class="posted-on"><time class="entry-date" datetime="2014-08-13"><span class="year">2014</span> <span class="month">Aug</span> <span class="day">13</span></time></span>
-                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-source/programming-praxis">Programming Praxis</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-topic/word-games">Word Games</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/scheme">Scheme</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/racket">Racket</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-topic/regular-expressions">Regular Expressions</a></li></ul></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-topic/mathematics">Mathematics</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-source/programming-praxis">Programming Praxis</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/scheme">Scheme</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/racket">Racket</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p>Today's five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
+                        <p>What's this? Two posts in one day? Well, <a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">writing a static blog generator</a> can do that. :)</p>
+<p>Another easily phrased challenge:</p>
 <blockquote>
-Given a positive integer, return all the ways that the integer can be represented by letters using the mapping 1 -> A, 2 -> B, …, 26 -> Z. For instance, the number 1234 can be represented by the words ABCD, AWD and LCD.
+    <p>We have a simple little problem today: Given an integer n > 2, find the minimum b > 1 for which n base b is a palindrome.</p>
+    <p>-- <a href="http://programmingpraxis.com/2014/08/05/minimal-palindromic-base/">Minimal Palindromic Base</a> via Programming Praxis</p>
 </blockquote>
 <!--more-->
-<p>That may look fairly straight forward. Basically, it's a <a href="https://en.wikipedia.org/wiki/parsing">parsing</a>/<a href="https://en.wikipedia.org/wiki/lexing">lexing</a> problem. You take a string as input and break it into a series of tokens (in this case, numbers 1-26); then each token is converted into a letter.</p>
-<p>Unfortunately, it's a bit more complicated than that, since the grammar is ambiguous. Taking the example <code>1234</code> from above, should you parse that as <code>1 2 3 4 = ABCD</code>? Or what about <code>1 23 4 = AWD</code>? Or even <code>12 3 4 = LCD</code>? In a nutshell, we have to do all of them. So we want some sort of branching lexer that will try all possible routes.</p>
-<p>So let's start with a function that meta-function that can make such a parser:</p>
-<pre class="scheme"><code>; Make an optional parser
-; If the regex matches, add it to each possible next parse
-; If it does not, return an empty list (to be appendable)
-(define (make-parser re)
-  (λ (str)
-    (match str
-      [(regexp re (list _ n rest))
-       (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
-      [any
-       '()])))</code></pre>
-<p>Looks a bit funny, (especially since we haven't defined <code>number-&gt;words</code> yet), but basically we try to match the regular expression. If that works, make the recursive call (to <code>number-&gt;words</code>) and then append that string (as a character via <code>n->char</code>) to each recursive result. If there are no recursive results, this <code>map</code> will return an empty list. Likewise, if the regular expression doesn't match.</p>
-<p>Next step, write the two parsers. We want to parse either a single digit number or a two digit number:</p>
-<pre class="scheme"><code>; Create parsers for valid 1 digit and 2 digit letter numbers
-(define parse-1 (make-parser #px"([1-9])(.*)"))
-(define parse-2 (make-parser #px"(1[0-9]|2[0-6])(.*)"))</code></pre>
-<p>That's what makes the ambiguity the most interesting. If only <code>0</code> were a valid digit... As it is, there are four possible cases (and these two functions handle them all!):</p>
-<ul>
-    <li><code>str</code> starts with 1 and a digit 0-9, parse both</li>
-    <li><code>str</code> starts with 2 and a digit 0-6, parse both</li>
-    <li><code>str</code> starts with 2 and a digit 7-9, parse 2 digits only</li>
-    <li><code>str</code> starts with 3-9, parse 1 digit only</li>
-</ul>
-<p>And finally, try both:</p>
-<pre class="scheme"><code>; Base case, so we can stop eventually
-(if (equal? str "")
-    '("")
-    (append (parse-1 str) (parse-2 str)))</code></pre>
-<p>The base case looks a bit funny, since you might assume that if neither case matches we'll get there. That's the difference between the empty list <code>'()</code> and the list containing just an empty string <code>'("")</code>. In the latter, there's nothing to map against, ergo necessary.</p>
-<p>And then all we need is the <code>n->char</code> function:</p>
-<pre class="scheme"><code>; Convert a number 1-26 to a letter A-Z
-(define (n-&gt;char n) (integer-&gt;char (+ 64 (string-&gt;number n))))</code></pre>
-<p>And that's it. Put it all together:</p>
-<pre class="scheme"><code>; Given 1-26 mapping to A-Z, determine all possible words represented by a number
-; Correctly resolve ambiguities where 1234 -&gt; 1 2 3 4 = ABCD / 1 23 4 -&gt; AWD / 12 3 4 -&gt; LCD
-(define (number-&gt;words str)
-  ; Convert a number 1-26 to a letter A-Z
-  (define (n-&gt;char n) (integer-&gt;char (+ 64 (string-&gt;number n))))
+<p>More specifically, consider the number 15:</p>
+<div>$$15_{10} = 1111_2 = 120_3 = 33_4 = 30_5 = 23_6 = 21_7 = 17_8 = 16_9$$</div>
+<div>$$15_{10} = 14_{11} = 13_{12} = 12_{13} = 11_{14} = 10_{15}$$</div>
+<p>In this case, <code>2</code> is our golden number, since <code>1111</code> is a palindrome. But if it wasn't, 14 is the next case, with <code>11</code>.</p>
+<p>So, what do we need? Well, first we want a generic way to convert bases. We could use different characters up to base 64, but we'll eventually get beyond that. So instead, we'll use lists of digits, each of which can be any integer:</p>
+<pre class="scheme"><code>; Convert a decimal number n to base b
+(define (rebase n b)
+  (let loop ([n n] [ls '()])
+     (if (= n 0)
+        ls
+        (loop (quotient n b)
+              (cons (remainder n b) ls)))))</code></pre>
+<pre class="scheme"><code>&gt; (rebase 15 2)
+'(1 1 1 1)
 
-  ; Make an optional parser
-  ; If the regex matches, add it to each possible next parse
-  ; If it does not, return an empty list (to be appendable)
-  (define (make-parser re)
-    (λ (str)
-      (match str
-        [(regexp re (list _ n rest))
-         (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
-        [any
-         '()])))
+&gt; (rebase 15 5)
+'(3 0)
 
-  ; Create parsers for valid 1 digit and 2 digit letter numbers
-  (define parse-1 (make-parser #px"([1-9])(.*)"))
-  (define parse-2 (make-parser #px"(1[0-9]|2[0-6])(.*)"))
+&gt; (rebase 15 10)
+'(1 5)
 
-  ; Base case, so we can stop eventually
-  (if (equal? str "")
-      '("")
-      (append (parse-1 str) (parse-2 str))))</code></pre>
-<p>Let's give it a try:</p>
-<pre class="scheme"><code>&gt; (number-&gt;words "1234")
-'("ABCD" "AWD" "LCD")
+&gt; (rebase 15 14)
+'(1 1)</code></pre>
+<p>Looks good. Next, we'll use a macro we've often used before: <code><a href="http://docs.racket-lang.org/search/index.html?q=for/first">for/first</a></code>. It's perfect for our uses, since it will return the first value that is non-<code>#f</code>. In this case, our base:</p>
+<pre class="scheme"><code>; Find the minimal base b such that n in base b is a palindrome
+(define (minimal-palindromic-base n)
+  (for/first ([b (in-naturals 2)]
+              #:when (let ([nb (rebase n b)])
+                       (equal? nb (reverse nb))))
+    b))</code></pre>
+<p>Bam. Let's try a few:</p>
+<pre class="scheme"><code>&gt; (minimal-palindromic-base 15)
+2
 
-&gt; (number-&gt;words "8675309")
-'("HFGECI")
+&gt; (minimal-palindromic-base 1234)
+22
 
-&gt; (length (number-&gt;words "85121215231518124"))
+&gt; (rebase 1234 22)
+'(2 12 2)
 
-1181
+&gt; (minimal-palindromic-base 8675309)
+8675308</code></pre>
+<p>Huh. I think <a href="https://en.wikipedia.org/wiki/867-5309/Jenny">Jenny</a> has a secret. :)</p>
+<p>That's pretty much it for the puzzle as stated, but there are still a few things that we can do. For example, we've only seen small examples. What if we want to find the number with the largest minimal palindromic base:</p>
+<pre class="scheme"><code>; Find the number n which has the largest palindromic base
+(define (maximal-minimal-palindromic-base n-min n-max)
+  (for/fold ([b -1] [n #f]) ([i (in-range n-min (+ n-max 1))])
+    (define mpb (minimal-palindromic-base i))
+    (if (&gt; i b)
+        (values mpb i)
+        (values b   n))))</code></pre>
+<p>I may or may not have just wanted an excuse to use a crazy long function name. :)</p>
+<p>Give it a try:</p>
+<pre class="scheme"><code>&gt; (maximal-minimal-palindromic-base 100 200)
+7
+200
 
-&gt; (number-&gt;words "85121215231518124")
-'(... "HELLOWORLD" ...)</code></pre>
-<p>I could claim that I just happen to know the number code for <code>HELLOWORLD</code>, but really I wrote a quick inverse function:</p>
-<pre class="scheme"><code>; Convert words back to numbers
-(define (words-&gt;number str)
-  (define (char-&gt;n c) (number-&gt;string (- (char-&gt;integer c) 64)))
-  (apply ~a (for/list ([c (in-string str)]) (char-&gt;n c))))</code></pre>
-<p>Shiny!</p>
-<p>Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/number-words.rkt">number-words.rkt</a></p>
+&gt; (rebase 200 7)
+'(4 0 4)</code></pre>
+<p>Error, <code>maximal-minimal-palindromic-base</code> not found!</p>
+<p>Okay, more seriously, what does that even look like? Let's <code><a href="http://docs.racket-lang.org/search/index.html?q=plot">plot</a></code>!</p>
+<pre class="scheme"><code>(require plot)
+
+; Plot a whole range of minimal palindromic bases
+(define (plot-minimal-palindromic-bases n-min n-max)
+  (plot (lines (for/list ([i (in-range n-min (+ n-max 1))])
+                 (vector i (minimal-palindromic-base i)))
+               #:color 6
+               #:label "minimal palindromic base")))</code></pre>
+<p>Basically, we're going to draw a chart relating each number to it's minimal palindromic base.</p>
+<pre class="scheme"><code>(plot-minimal-palindromic-bases 1 100)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-100.png"><img src="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-100.png" /></a></p>
+<pre class="scheme"><code>(plot-minimal-palindromic-bases 1 1000)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png"><img src="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png" /></a></p>
+<p>Looks like like there's basically two behaviors. A background noise of really low bases (binary or trinary is often palindromic just because there aren't many digits) and a few spikes growing ever larger. Neat.</p>
+<p>And that's it. Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/minimal-palindromic-base.rkt">minimal-palindromic-base.rkt</a></p>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>
@@ -171,8 +169,8 @@ Given a positive integer, return all the ways that the integer can be represente
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "Number words";
-var disqus_url = "http://blog.jverkamp.com/2014/08/13/number-words/";
+var disqus_title = "Minimal palindromic base";
+var disqus_url = "http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -185,7 +183,7 @@ var disqus_url = "http://blog.jverkamp.com/2014/08/13/number-words/";
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">← Onwards and upwards</a></li><li><a href="http://blog.jverkamp.com/category/archives">Archives</a></li><li><a href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base">Minimal palindromic base →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/08/07/langtons-ant">← Langton's ant</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base">Minimal palindromic base →</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/08/13/number-words">← Number words</a></li><li><a href="http://blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/08/13/number-words">← Number words</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
 
                 <div class="legal">
                         All posts unless otherwise mentioned are licensed under <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/80x15.png" /></a><br />

@@ -1,5 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-13T14:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Number words</title><link href="http://blog.jverkamp.com/2014/08/13/number-words" /><id>urn:uuid:67236730-531b-effa-30b3-b69308ea8187</id><updated>2014-08-13T14:00:00Z</updated><summary type="html"><![CDATA[<p>Today's five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-13T17:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Minimal palindromic base</title><link href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base" /><id>urn:uuid:dccae1c2-8231-ed96-21a1-54145cd10b47</id><updated>2014-08-13T17:00:00Z</updated><summary type="html"><![CDATA[<p>What's this? Two posts in one day? Well, <a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">writing a static blog generator</a> can do that. :)</p>
+<p>Another easily phrased challenge:</p>
+<blockquote>
+    <p>We have a simple little problem today: Given an integer n > 2, find the minimum b > 1 for which n base b is a palindrome.</p>
+    <p>-- <a href="http://programmingpraxis.com/2014/08/05/minimal-palindromic-base/">Minimal Palindromic Base</a> via Programming Praxis</p>
+</blockquote>
+]]></summary><content type="html"><![CDATA[<p>What's this? Two posts in one day? Well, <a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">writing a static blog generator</a> can do that. :)</p>
+<p>Another easily phrased challenge:</p>
+<blockquote>
+    <p>We have a simple little problem today: Given an integer n > 2, find the minimum b > 1 for which n base b is a palindrome.</p>
+    <p>-- <a href="http://programmingpraxis.com/2014/08/05/minimal-palindromic-base/">Minimal Palindromic Base</a> via Programming Praxis</p>
+</blockquote>
+<!--more-->
+<p>More specifically, consider the number 15:</p>
+<div>$$15_{10} = 1111_2 = 120_3 = 33_4 = 30_5 = 23_6 = 21_7 = 17_8 = 16_9$$</div>
+<div>$$15_{10} = 14_{11} = 13_{12} = 12_{13} = 11_{14} = 10_{15}$$</div>
+<p>In this case, <code>2</code> is our golden number, since <code>1111</code> is a palindrome. But if it wasn't, 14 is the next case, with <code>11</code>.</p>
+<p>So, what do we need? Well, first we want a generic way to convert bases. We could use different characters up to base 64, but we'll eventually get beyond that. So instead, we'll use lists of digits, each of which can be any integer:</p>
+<pre class="scheme"><code>; Convert a decimal number n to base b
+(define (rebase n b)
+  (let loop ([n n] [ls '()])
+     (if (= n 0)
+        ls
+        (loop (quotient n b)
+              (cons (remainder n b) ls)))))</code></pre>
+<pre class="scheme"><code>&gt; (rebase 15 2)
+'(1 1 1 1)
+
+&gt; (rebase 15 5)
+'(3 0)
+
+&gt; (rebase 15 10)
+'(1 5)
+
+&gt; (rebase 15 14)
+'(1 1)</code></pre>
+<p>Looks good. Next, we'll use a macro we've often used before: <code><a href="http://docs.racket-lang.org/search/index.html?q=for/first">for/first</a></code>. It's perfect for our uses, since it will return the first value that is non-<code>#f</code>. In this case, our base:</p>
+<pre class="scheme"><code>; Find the minimal base b such that n in base b is a palindrome
+(define (minimal-palindromic-base n)
+  (for/first ([b (in-naturals 2)]
+              #:when (let ([nb (rebase n b)])
+                       (equal? nb (reverse nb))))
+    b))</code></pre>
+<p>Bam. Let's try a few:</p>
+<pre class="scheme"><code>&gt; (minimal-palindromic-base 15)
+2
+
+&gt; (minimal-palindromic-base 1234)
+22
+
+&gt; (rebase 1234 22)
+'(2 12 2)
+
+&gt; (minimal-palindromic-base 8675309)
+8675308</code></pre>
+<p>Huh. I think <a href="https://en.wikipedia.org/wiki/867-5309/Jenny">Jenny</a> has a secret. :)</p>
+<p>That's pretty much it for the puzzle as stated, but there are still a few things that we can do. For example, we've only seen small examples. What if we want to find the number with the largest minimal palindromic base:</p>
+<pre class="scheme"><code>; Find the number n which has the largest palindromic base
+(define (maximal-minimal-palindromic-base n-min n-max)
+  (for/fold ([b -1] [n #f]) ([i (in-range n-min (+ n-max 1))])
+    (define mpb (minimal-palindromic-base i))
+    (if (&gt; i b)
+        (values mpb i)
+        (values b   n))))</code></pre>
+<p>I may or may not have just wanted an excuse to use a crazy long function name. :)</p>
+<p>Give it a try:</p>
+<pre class="scheme"><code>&gt; (maximal-minimal-palindromic-base 100 200)
+7
+200
+
+&gt; (rebase 200 7)
+'(4 0 4)</code></pre>
+<p>Error, <code>maximal-minimal-palindromic-base</code> not found!</p>
+<p>Okay, more seriously, what does that even look like? Let's <code><a href="http://docs.racket-lang.org/search/index.html?q=plot">plot</a></code>!</p>
+<pre class="scheme"><code>(require plot)
+
+; Plot a whole range of minimal palindromic bases
+(define (plot-minimal-palindromic-bases n-min n-max)
+  (plot (lines (for/list ([i (in-range n-min (+ n-max 1))])
+                 (vector i (minimal-palindromic-base i)))
+               #:color 6
+               #:label "minimal palindromic base")))</code></pre>
+<p>Basically, we're going to draw a chart relating each number to it's minimal palindromic base.</p>
+<pre class="scheme"><code>(plot-minimal-palindromic-bases 1 100)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-100.png"><img src="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-100.png" /></a></p>
+<pre class="scheme"><code>(plot-minimal-palindromic-bases 1 1000)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png"><img src="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png" /></a></p>
+<p>Looks like like there's basically two behaviors. A background noise of really low bases (binary or trinary is often palindromic just because there aren't many digits) and a few spikes growing ever larger. Neat.</p>
+<p>And that's it. Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/minimal-palindromic-base.rkt">minimal-palindromic-base.rkt</a></p>]]></content></entry><entry><title>Number words</title><link href="http://blog.jverkamp.com/2014/08/13/number-words" /><id>urn:uuid:67236730-531b-effa-30b3-b69308ea8187</id><updated>2014-08-13T14:00:00Z</updated><summary type="html"><![CDATA[<p>Today's five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
 <blockquote>
 Given a positive integer, return all the ways that the integer can be represented by letters using the mapping 1 -> A, 2 -> B, …, 26 -> Z. For instance, the number 1234 can be represented by the words ABCD, AWD and LCD.
 </blockquote>
@@ -820,15 +908,4 @@ You lose. :(</code></pre>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/06/17/factor-trees/tree-863029.png"><img src="http://blog.jverkamp.com/2014/06/17/factor-trees/tree-863029.png" /></a></p>
 <pre class="scheme"><code>&gt; (render-factor-tree (factor-tree 1048576))</code></pre>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/06/17/factor-trees/tree-1048576.png"><img src="http://blog.jverkamp.com/2014/06/17/factor-trees/tree-1048576.png" /></a></p>
-<p>And that's about it. Quick enough (even if the rendering probably took a bit more than five minutes when I first wrote it). As always, you can see the entire code for this (and most of my other small projects) on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/factor-tree.rkt">factor-tree.rkt</a></p>]]></content></entry><entry><title>Maleficent</title><link href="http://blog.jverkamp.com/2014/06/14/maleficent" /><id>urn:uuid:67cdf30d-4ca2-e1ab-6aeb-b9b9c3be4a29</id><updated>2014-06-14T00:00:00Z</updated><summary type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/06/14/maleficent/maleficent.jpg" class="pull-left"><img src="http://blog.jverkamp.com/2014/06/14/maleficent/maleficent.jpg" /></a></p>
-<p>Maleficient was magnificent.</p>
-]]></summary><content type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/06/14/maleficent/maleficent.jpg" class="pull-left"><img src="http://blog.jverkamp.com/2014/06/14/maleficent/maleficent.jpg" /></a></p>
-<p>Maleficient was magnificent.</p>
-<!--more-->
-<p>Well. Not really. But it's fun to say. :)</p>
-<p>More acurately, Maleficient was surprisingly good. I seem to be saying that a lot this year, but it's still true. Based on the trailers, I was mostly going because I thought <a href="https://en.wikipedia.org/wiki/Angelina_Jolie">Angelina Jolie</a> would make an awesome villain (she did) and I thought the raising of the wall of thorns scene looked cool (it did).</p>
-<p>Unfortunately, other than Jolie, I wasn't particularly thrilled with any of the other characters. <a href="https://en.wikipedia.org/wiki/Sharlto_Copley">Sharlto Copley's</a> King Stefen did 'evil' well enough and <a href="https://en.wikipedia.org/wiki/Elle_Fanning">Elle Fanning</a> certainly had the right blend of innocent/clueless, but I just felt they could have done better. On the other hand, Jolie carries the movie almost by herself. She really fits the role that well.</p>
-<p>One interesting thing that a lot of people have been talking about is the rape analogue when King Stefan drugs Meleficent and removes her wings. Honestly, I thought it was well done. Rape is a problem in our modern culture and if this gets people talking then that's a good thing. I'm not sure that murder was the proper response (even if there was far more than just this one reason), but that makes the conversation even better.</p>
-<p>All together, solid. It's another in a line of movies that I wanted to rank higher, but it's just been a good year for movies. Based on some of the visuals alone--and the guts to make such a dark echo of a Disney film--I think... #4.</p>
-<div><h3 class="ranking-title">2014 Movie Rankings</h3><ol><li><a href="http://blog.jverkamp.com/2014/02/15/the-lego-movie">The Lego Movie</a></li><li><a href="http://blog.jverkamp.com/2014/04/05/captain-america-the-winter-soldier">Captain America: The Winter Soldier</a></li><li><a href="http://blog.jverkamp.com/2014/06/08/x-men-days-of-future-past">X-Men: Days of Future Past</a></li><li><a href="http://blog.jverkamp.com/2014/06/14/maleficent">Maleficent</a></li><li><a href="http://blog.jverkamp.com/2014/05/10/the-amazing-spider-man-2">The Amazing Spider-Man 2</a></li><li><a href="http://blog.jverkamp.com/2014/03/29/divergent">Divergent</a></li></ol></div>
-<p>Side note: My wife's name is <a href="https://en.wikipedia.org/wiki/Aurora_(Disney)">Aurora</a>. We pretty much had to catch Maleficient.</p>]]></content></entry></feed>
+<p>And that's about it. Quick enough (even if the rendering probably took a bit more than five minutes when I first wrote it). As always, you can see the entire code for this (and most of my other small projects) on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/factor-tree.rkt">factor-tree.rkt</a></p>]]></content></entry></feed>
