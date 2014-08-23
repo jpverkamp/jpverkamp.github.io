@@ -1,5 +1,698 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-22T23:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Ludum Dare 30: Sandbox Battle</title><link href="http://blog.jverkamp.com/2014/08/22/ludum-dare-30-sandbox-battle" /><id>urn:uuid:60fce17b-2d64-c87b-a259-90aa26aa5803</id><updated>2014-08-22T23:00:00Z</updated><summary type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-23T12:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Ludum Dare 30: Hints of a game</title><link href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game" /><id>urn:uuid:7e16e7ce-b97f-2d28-ba95-ea26c1b8a027</id><updated>2014-08-23T12:00:00Z</updated><summary type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
+]]></summary><content type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
+<!--more-->
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png" /></a></p>
+<p>(I'll include a demo at the bottom of the post)</p>
+<p>Basically, I went with allowing each box to be controlled individually by the keyboard. There will be some problems with having that many people on the keyboard at once, but we'll deal with that later (if we can).</p>
+<p>One additional thing I wanted (and mostly figured out) is somewhat 'loose' controls. Basically, rather than explicitly dealing with moving only when a key is down, we'll accelerate when the key is down, preserving velocity even after  keys are raised. There will be some small amount of friction as well, to make sure that eventually pieces will slow down.</p>
+<p>It's actually not too hard to implement a system like this:</p>
+<p>First, load in the keybindings from the interface you can see in the screenshot above:</p>
+<pre class="javascript"><code>// Load key bindings
+var loadKeyBindings = function() {
+  keys = {};
+
+  console.log('Loading key bindings...');
+
+  $('#controls table').each(function(i, eli) {
+    var player = parseInt($(eli).attr('data-player'));
+
+    console.log('loading controls for player ' + player);
+
+    $(eli).find('input').each(function(j, elj) {
+      var command = $(elj).attr('name');
+      var key = $(elj).val();
+
+      keys[key] = [player, command, false];
+    });
+  });
+};</code></pre>
+<p>This will put everything into the <code>key</code> array, indexed by key name and storing the player it refers to, the direction you are going (one of <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>), and if that key is currently active (pressed down). If I can, I may add additional key bindings (such as rotation or powerups), otherwise, that's pretty good for the moment.</p>
+<p>Next, we'll add a function to tell when keys are active:</p>
+<pre class="javascript"><code>var onkey = function(event) {
+  switch (event.keyCode) {
+    case  37: key = 'LEFT'; break;
+    case  38: key = 'UP'; break;
+    case  39: key = 'RIGHT'; break;
+    case  40: key = 'DOWN'; break;
+    case  97: key = 'NUM1'; break;
+    case  98: key = 'NUM2'; break;
+    case  99: key = 'NUM3'; break;
+    case 100: key = 'NUM4'; break;
+    case 101: key = 'NUM5'; break;
+    case 102: key = 'NUM6'; break;
+    case 103: key = 'NUM7'; break;
+    case 104: key = 'NUM8'; break;
+    case 105: key = 'NUM9'; break;
+    default: key = String.fromCharCode(event.keyCode).toUpperCase();
+  }
+
+  if (key in keys) {
+    if (event.type == 'keydown') {
+      keys[key][2] = true;
+    } else if (event.type == 'keyup') {
+      keys[key][2] = false;
+    }
+  }
+};</code></pre>
+<p>Longer than I wanted, but it correctly deals with both the numpad and arrow keys, which is kind of necessary if you want to support 4 human players all at the same time. Perhaps I'll implement AIs, but until I do, we're going to have to allow for a bunch of players...</p>
+<p>Okay, so what do we do with all of this information? Well, just like before, we have a <code>tick</code> function:</p>
+<pre class="javascript"><code>var tick = function(event) {
+  $.each(keys, function(i, el) {
+    var player = el[0];
+    var command = el[1];
+    var active = el[2];
+
+    $game = $('#tiles');
+    $tile = $('#tiles *[data-player="' + player + '"]');
+
+    // Update velocity
+    ...
+
+    // Use friction to slow each box down over time
+    ...
+
+    // Cap velocity so we don't go too fast
+    ...
+
+    // Update the current position based on velocity
+    ...
+
+    // Bounce off the edges of the screen
+    ...
+
+    // Finally, update the position
+    $tile.css({'top': top, 'left': left});
+  });
+
+  if (running) {
+    setTimeout(tick, 1000/30);
+  }
+};</code></pre>
+<p>Oof. That's a heck of a function. Luckily, the individual parts aren't <em>that</em> bad. First, we want to update the velocity. This is where the <code>active</code> parameter (the third in each key definition) comes into play:</p>
+<pre class="javascript"><code>// Update velocity
+if (active) {
+  if (command == 'up') {
+    vel[player][1] -= PER_TICK_ACCELERATION;
+  } else if (command == 'down') {
+    vel[player][1] += PER_TICK_ACCELERATION;
+  } else if (command == 'left') {
+    vel[player][0] -= PER_TICK_ACCELERATION;
+  } else if (command == 'right') {
+    vel[player][0] += PER_TICK_ACCELERATION;
+  }
+}</code></pre>
+<p>That's simple enough. As before, we have to decide that <code>up</code> and <code>down</code> are inverted (they almost always are when it comes to computers), but once you've decided that's easy enough.</p>
+<p>Now, outside of that black, the next thing we'll do is apply friction. This way the boxes will slow down over time, forcing players both to pay attention and to let them bounce around like madmen.</p>
+<pre class="javascript"><code>// Use friction to slow each box down over time
+// If we're close enough to zero that friction will accelerate us, just stop
+if (Math.abs(vel[player][0]) &lt; PER_TICK_FRICTION) {
+  vel[player][0] = 0;
+} else {
+  vel[player][0] += (vel[player][0] &gt; 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+}
+
+if (Math.abs(vel[player][1]) &lt; PER_TICK_FRICTION) {
+  vel[player][1] = 0;
+} else {
+  vel[player][1] += (vel[player][1] &gt; 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+}
+
+// Cap velcity so we don't go too fast
+vel[player][0] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][0]));
+vel[player][1] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][1]));</code></pre>
+<p>Also at the end there, we make sure we don't keep accelerating indefinitely. That both helps keep the game a little easier to play and prevents edge cases (such as moving further in one tick than we're allowed).</p>
+<p>Next, we can finally update the position:</p>
+<pre class="javascript"><code>// Update the current position based on velocity
+var left = $tile[0].offsetLeft + vel[player][0];
+var top = $tile[0].offsetTop + vel[player][1];
+
+// Bounce off the edges of the screen
+if (left &lt; 0) {
+  left = 0;
+  vel[player][0] = Math.abs(vel[player][0]);
+} else if (left &gt; $game.width() - $tile.width()) {
+  left = $game.width() - $tile.width();
+  vel[player][0] = -1 * Math.abs(vel[player][0]);
+}
+
+if (top &lt; 0) {
+  top = 0;
+  vel[player][1] = Math.abs(vel[player][1]);
+} else if (top &gt; $game.height() - $tile.height()) {
+  top =  $game.height() - $tile.height();
+  vel[player][1] = -1 * Math.abs(vel[player][1]);
+}</code></pre>
+<p>Once again, we want to clip the positions. This time though, we're actually going to use the velocities we have rather than zeroing them out. Instead: bounce! It's nice, because it makes the game feel more 'realistic' (for some definitions of the word).</p>
+<p>And that's about it. With that, we can have the boxes moving around and interacting as they did last night. We're actually starting to get a game going here. One other tweak is the control code:</p>
+<pre class="javascript"><code>var tiles = new Tiles();
+var controls = new Controls();
+
+var MS_PER_GAME = 60 * 1000;
+var startTime = new Date().getTime();
+var running = true;
+
+$(function() {
+  controls.run();
+});
+
+function tick() {
+  var soFar = new Date().getTime() - startTime;
+  var remainingSec = Math.floor((MS_PER_GAME - soFar) / 1000);
+
+  if (remainingSec &gt; 0) {
+    $('#tiles #countdown').text(remainingSec + ' sec remaining');
+  } else {
+    stop();
+  }
+
+  if (running) {
+    setTimeout(tick, 1000/30);
+  }
+}
+
+function run() {
+  tiles.run();
+  controls.run();
+
+  startTime = new Date().getTime();
+  running = true;
+  tick();
+
+  return false;
+}
+
+function stop() {
+  tiles.stop();
+  controls.stop();
+
+  startTime = new Date().getTime() - MS_PER_GAME;
+  running = false;
+  $('#tiles #countdown').text('game over');
+
+  return false;
+}</code></pre>
+<p>Technically, it's not a gameloop, since everything is done asynchronously via <code>setTimeout</code> (and make <strong>absolutely sure</strong> that you don't use <code>setInterval</code>...), but it's close enough. What this does give us though is a strict time before the game ends. Otherwise, the boxes will eventually fill up, and where's the fun in that? (Although that might be an interesting alternative end condition).</p>
+<p>After that, all I have to figure out is scoring. And I have another 6 hours until the one day mark. If I can make it by then, I'll feel pretty good--and can use all of the rest of the time for polish. I'm thinking some simple music, sound effects, a title screen (initial letters in sand?). Of course, I still have to figure out the scoring algorithm..</p>
+<p>Same as yesterday, the entire source (warning: still ugly) if available on GitHub: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
+<hr />
+<p>Demo:</p>
+<style>
+#controls table {
+  border: 1px solid black;
+  display: inline-block;
+  margin: 1em;
+  padding: 0.5em;
+  border-radius: 0.5em;
+
+}
+
+#controls table td {
+  padding: 0.1em;
+}
+
+#controls table td:first-child {
+  text-align: right;
+}
+
+#controls table input {
+  width: 50px;
+  text-align: center;
+}
+
+#tiles {
+  position: relative;
+  width: 600px;
+  height: 400px;
+  background: black;
+  border: 1px solid black;
+}
+
+#tiles canvas {
+  position: absolute;
+  border: 1px solid black;
+}
+
+#tiles canvas[data-player="0"] { border: 1px solid blue; }
+#tiles canvas[data-player="1"] { border: 1px solid red; }
+#tiles canvas[data-player="2"] { border: 1px solid green; }
+#tiles canvas[data-player="3"] { border: 1px solid hotPink; }
+
+#tiles #countdown {
+  color: white;
+}
+</style>
+<script>
+function Tiles() {
+  var running = false;
+  var allData = {};
+  var ordering = [];
+
+  // Assign an index to each canvas so we can order them
+  $('canvas').each(function(index, canvas) {
+     $(canvas).attr('data-index', index);
+  });
+
+  // Keep a list of the current z-ordering of the canvases
+  $('canvas').each(function(i) { ordering.push(i); });
+
+  // Make them draggable, on drag udate the index
+  $('canvas').draggable({
+      stack: '*',
+      drag: function(event, ui) {
+
+      },
+      stop: function(event, ui) {
+          var i = parseInt($(event.target).attr('data-index'));
+          var index = ordering.indexOf(i);
+          ordering.splice(index, 1);
+          ordering.unshift(i);
+      }
+  });
+
+  // Make a 2D array initialized all to a given valu
+  var make2DArray = function(width, height, def) {
+      var array = new Array(width);
+      for (var x = 0; x < width; x++) {
+          array[x] = new Array(height);
+          for (var y = 0; y < height; y++) {
+              array[x][y] = def;
+          }
+      }
+      return array;
+  }
+
+  // Update the given grid
+  var update = function(data, buffer, width, height) {
+      // Clear the buffer
+      for (var x = 0; x < width; x++) {
+          for (var y = 0; y < height; y++) {
+              buffer[x][y] = 0;
+          }
+      }
+
+      // Update the buffer with falling cells
+      var r = 0, xt = 0, yt = 0;
+      for (var y = height - 1; y >= 0; y--) {
+          for (var x = 0; x < width; x++) {
+              // Skip empty cells
+              if (data[x][y] == 0) continue;
+              xt = x;
+              yt = y;
+
+              // Determine which way it's going to fall
+              r = Math.random();
+              if (r < 0.5) { // Straight down
+                  if (y > 0 && buffer[x][y - 1] == 0) { xt = x; yt = y - 1; }
+              } else if (r < 0.7) { // Down left
+                  if (x > 0 && y > 0 && buffer[x - 1][y - 1] == 0) { xt = x - 1; yt = y - 1; }
+              } else if (r < 0.9) { // Down right
+                  if (x < width - 1 && y > 1 && buffer[x + 1][y - 1] == 0) { xt = x + 1; yt = y - 1; }
+              } else if (r < 0.95) { // Straight left
+                  if (x > 0 && buffer[x - 1][y] == 0) { xt = x - 1; yt = y; }
+              } else { // Straight right
+                  if (x < width - 1 && buffer[x + 1][y] == 0) { xt = x + 1; yt = y; }
+              }
+
+              if (data[xt][yt] != 0) { xt = x; yt = y; }
+
+              // Update the buffer
+              buffer[xt][yt] = data[x][y];
+          }
+      }
+  }
+
+  // Animate a given frame
+  var animate = function(frameIndex, frame) {
+      var start = new Date().getTime();
+
+      var frame_ctx = frame.getContext('2d');
+      frame_ctx.imageSmoothingEnabled = false;
+
+      var width = frame.width;
+      var height = frame.height;
+
+      var data = make2DArray(width, height, 0);
+      var buffer = make2DArray(width, height, 0);
+      var temp;
+      var i = 0, r = 0, g = 0, b = 0, a = 0;
+
+      allData[frameIndex] = data;
+      var imageData = frame_ctx.createImageData(width, height);
+
+      var tick = function() {
+          // Debug: For add a pixel
+          data[width / 2][height - 1] = frameIndex + 1;
+
+          // Update from data to buffer; swap the arrays for the next iteration
+          update(data, buffer, width, height);
+          temp = data;
+          data = buffer;
+          buffer = temp;
+
+          // Detect overlapping buffers, if so swap randomly
+          $('canvas').each(function(otherIndex, other) {
+              // If we're comparing to ourself, we'll always overlap, skip
+              if (frame == other) return;
+
+              // If the two canvases don't overlap, don't look at them
+              var frameBounds = frame.getBoundingClientRect();
+              var otherBounds = other.getBoundingClientRect();
+              if (frameBounds.right < otherBounds.left ||
+                  frameBounds.left > otherBounds.right ||
+                  frameBounds.bottom < otherBounds.top ||
+                  frameBounds.top > otherBounds.bottom) {
+                  return;
+              }
+
+              // We only want this once, so give priority to whichever frame is 'lower' on the screen
+              if (frameBounds.top < otherBounds.top) return;
+
+              // Bail out if we haven't loaded the data yet
+              if (!(frameIndex in allData && otherIndex in allData)) {
+                return;
+              }
+
+              // TODO: Find the actual offset rather than looping over an entire image
+              var otherX, otherY, temp;
+              for (var frameY = 0; frameY < height; frameY++) {
+                  for (var frameX = 0; frameX < width; frameX++) {
+                      otherX = Math.floor(frameBounds.left - otherBounds.left + frameX);
+                      otherY = Math.floor(otherBounds.top - frameBounds.top + frameY);
+
+                      if (0 <= otherX && otherX < width && 0 <= otherY && otherY < height) {
+                          if (allData[frameIndex][frameX][frameY] == 0
+                              /* && allData[otherIndex][otherX][otherY] != 0*/) {
+                              temp = allData[frameIndex][frameX][frameY];
+                              allData[frameIndex][frameX][frameY] = allData[otherIndex][otherX][otherY];
+                              allData[otherIndex][otherX][otherY] = temp;
+                          }
+                      }
+                  }
+              }
+          });
+
+          // Render to the image data
+          for (var y = 0; y < height; y++) {
+              for (var x = 0; x < width; x++) {
+                  i = x + (height - y) * width;
+
+                  r = g = b = 0;
+                  a = 255;
+
+                  if (data[x][y] == 0) {
+                    a = 0;
+                  } else if (data[x][y] == 1) {
+                    b = 255;
+                  } else if (data[x][y] == 2) {
+                    r = 255;
+                  } else if (data[x][y] == 3) {
+                    g = 255;
+                  } else if (data[x][y] == 4) {
+                    r = 246;
+                    g = 96;
+                    b = 171;
+                  }
+
+                  imageData.data[i * 4 + 0] = r;
+                  imageData.data[i * 4 + 1] = g;
+                  imageData.data[i * 4 + 2] = b;
+                  imageData.data[i * 4 + 3] = a;
+              }
+          }
+
+          // Copy back to the GUI
+          frame_ctx.putImageData(imageData, 0, 0);
+
+          if (running) {
+              setTimeout(tick, 1000/60);
+          }
+      }
+      tick();
+  };
+
+  this.run = function() {
+    running = true;
+    $('canvas').each(animate);
+  };
+
+  this.stop = function() {
+    running = false;
+  };
+};
+
+function Controls() {
+  var keys = {};
+  var running = false;
+  var PER_TICK_ACCELERATION = 0.1;
+  var PER_TICK_FRICTION = 0.01;
+  var VELOCITY_CAP = 10;
+
+  var vel = {};
+
+  // Load key bindings
+  var loadKeyBindings = function() {
+    keys = {};
+
+    console.log('Loading key bindings...');
+
+    $('#controls table').each(function(i, eli) {
+      var player = parseInt($(eli).attr('data-player'));
+
+      console.log('loading controls for player ' + player);
+
+      $(eli).find('input').each(function(j, elj) {
+        var command = $(elj).attr('name');
+        var key = $(elj).val();
+
+        keys[key] = [player, command, false];
+      });
+    });
+  };
+
+  var onkey = function(event) {
+    switch (event.keyCode) {
+      case  37: key = 'LEFT'; break;
+      case  38: key = 'UP'; break;
+      case  39: key = 'RIGHT'; break;
+      case  40: key = 'DOWN'; break;
+      case  97: key = 'NUM1'; break;
+      case  98: key = 'NUM2'; break;
+      case  99: key = 'NUM3'; break;
+      case 100: key = 'NUM4'; break;
+      case 101: key = 'NUM5'; break;
+      case 102: key = 'NUM6'; break;
+      case 103: key = 'NUM7'; break;
+      case 104: key = 'NUM8'; break;
+      case 105: key = 'NUM9'; break;
+      default: key = String.fromCharCode(event.keyCode).toUpperCase();
+    }
+
+    if (key in keys) {
+      if (event.type == 'keydown') {
+        keys[key][2] = true;
+      } else if (event.type == 'keyup') {
+        keys[key][2] = false;
+      }
+    }
+  };
+
+  var tick = function(event) {
+    $.each(keys, function(i, el) {
+      var player = el[0];
+      var command = el[1];
+      var active = el[2];
+
+      $game = $('#tiles');
+      $tile = $('#tiles *[data-player="' + player + '"]');
+
+      // Update velocity
+      if (active) {
+        if (command == 'up') {
+          vel[player][1] -= PER_TICK_ACCELERATION;
+        } else if (command == 'down') {
+          vel[player][1] += PER_TICK_ACCELERATION;
+        } else if (command == 'left') {
+          vel[player][0] -= PER_TICK_ACCELERATION;
+        } else if (command == 'right') {
+          vel[player][0] += PER_TICK_ACCELERATION;
+        }
+      }
+
+      // Use friction to slow each box down over time
+      // If we're close enough to zero that friction will accelerate us, just stop
+      if (Math.abs(vel[player][0]) < PER_TICK_FRICTION) {
+        vel[player][0] = 0;
+      } else {
+        vel[player][0] += (vel[player][0] > 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+      }
+
+      if (Math.abs(vel[player][1]) < PER_TICK_FRICTION) {
+        vel[player][1] = 0;
+      } else {
+        vel[player][1] += (vel[player][1] > 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+      }
+
+      // Cap velocity so we don't go too fast
+      vel[player][0] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][0]));
+      vel[player][1] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][1]));
+
+      // Update the current position based on velocity
+      var left = $tile[0].offsetLeft + vel[player][0];
+      var top = $tile[0].offsetTop + vel[player][1];
+
+      // Bounce off the edges of the screen
+      if (left < 0) {
+        left = 0;
+        vel[player][0] = Math.abs(vel[player][0]);
+      } else if (left > $game.width() - $tile.width()) {
+        left = $game.width() - $tile.width();
+        vel[player][0] = -1 * Math.abs(vel[player][0]);
+      }
+
+      if (top < 0) {
+        top = 0;
+        vel[player][1] = Math.abs(vel[player][1]);
+      } else if (top > $game.height() - $tile.height()) {
+        top =  $game.height() - $tile.height();
+        vel[player][1] = -1 * Math.abs(vel[player][1]);
+      }
+
+      // Finally, update the position
+      $tile.css({'top': top, 'left': left});
+    });
+
+    if (running) {
+      setTimeout(tick, 1000/30);
+    }
+  };
+
+  this.run = function() {
+    // Reload keybindings in case they've changed
+    loadKeyBindings();
+
+    // Initialize velocities to zero
+    $game = $('#tiles');
+    $('#tiles canvas').each(function(i, eli) {
+      vel[i] = [0, 0];
+      $(eli).css({
+        top: Math.random() * ($game.height() - $(eli).height()),
+        left: Math.random() * ($game.width() - $(eli).width())
+      });
+    });
+
+    // Add keybindings, we can use the same function since it can check type
+    $(document).unbind('keydown').bind('keydown', onkey);
+    $(document).unbind('keyup').bind('keyup', onkey);
+
+    running = true;
+    tick();
+  }
+
+  this.stop = function() {
+    running = false;
+
+    $(document).unbind('keydown');
+    $(document).unbind('keyup');
+  }
+};
+
+var tiles = new Tiles();
+var controls = new Controls();
+
+var MS_PER_GAME = 60 * 1000;
+var startTime = new Date().getTime();
+var running = true;
+
+$(function() {
+  controls.run();
+});
+
+function tick() {
+  var soFar = new Date().getTime() - startTime;
+  var remainingSec = Math.floor((MS_PER_GAME - soFar) / 1000);
+
+  if (remainingSec > 0) {
+    $('#tiles #countdown').text(remainingSec + ' sec remaining');
+  } else {
+    stop();
+  }
+
+  if (running) {
+    setTimeout(tick, 1000/30);
+  }
+}
+
+function run() {
+  tiles.run();
+  controls.run();
+
+  startTime = new Date().getTime();
+  running = true;
+  tick();
+
+  return false;
+}
+
+function stop() {
+  tiles.stop();
+  controls.stop();
+
+  startTime = new Date().getTime() - MS_PER_GAME;
+  running = false;
+  $('#tiles #countdown').text('game over');
+
+  return false;
+}
+</script>
+<div class="table" id="controls">
+  <table data-player="0">
+    <tr><td colspan="2">Player 1 - Blue</tr>
+    <tr><td>Up</td><td><input name="up" value="W"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="A"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="D"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="S"></input></td></tr>
+  </table>
+
+  <table data-player="1">
+    <tr><td colspan="2">Player 2 - Red</tr>
+    <tr><td>Up</td><td><input name="up" value="I"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="J"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="L"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="K"></input></td></tr>
+  </table>
+
+  <table data-player="2">
+    <tr><td colspan="2">Player 3 - Green</tr>
+    <tr><td>Up</td><td><input name="up" value="UP"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="LEFT"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="RIGHT"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="DOWN"></input></td></tr>
+  </table>
+
+  <table data-player="3">
+    <tr><td colspan="2">Player 4 - Pink</tr>
+    <tr><td>Up</td><td><input name="up" value="NUM8"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="NUM4"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="NUM6"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="NUM2"></input></td></tr>
+  </table>
+</div>
+<div>
+  [ <a href="javascript:run()">Run!</a> ]
+  [ <a href="javascript:stop()">Stop!</a> ]
+</div>
+<div width="600" height="400">
+  <div id="tiles">
+    <p id="countdown"></p>
+    <canvas data-player="0" width="100" height="100"></canvas>
+    <canvas data-player="1" width="100" height="100"></canvas>
+    <canvas data-player="2" width="100" height="100"></canvas>
+    <canvas data-player="3" width="100" height="100"></canvas>
+  </div>
+</div>
+<hr />
+<p>I'm sure there are bugs... And I'm working on it right at the moment. If you have any questions or comments though, feel free to drop me a line below.</p>]]></content></entry><entry><title>Ludum Dare 30: Sandbox Battle</title><link href="http://blog.jverkamp.com/2014/08/22/ludum-dare-30-sandbox-battle" /><id>urn:uuid:60fce17b-2d64-c87b-a259-90aa26aa5803</id><updated>2014-08-22T23:00:00Z</updated><summary type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
 <blockquote>Ludum Dare is a regular accelerated game development Event.  Participants develop games from scratch in a weekend, based on a theme suggested by community.</blockquote>
 <p>More specifically, the goal is to make a game from scratch in 48 hours. You're allowed to use publicly available frameworks and code libraries, but no art or other assets. Previously, I missed the original start time. So although I made my game in 48 hours, it didn't qualify. This time around, I'm starting on time.</p>
 ]]></summary><content type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
@@ -1265,272 +1958,4 @@ Examples of strings that don’t pass:
 <p>'But what?' you might say, where is the stack? How do we remember the first bracket we're matching when we get to the second? Well that's the beauty of the stack. Easy time we see a bracket (the second case of the <code>cond</code>), we recur with the new matching character. That call will short circuit if it sees the matching bracket (the third case), a mismatched bracket (the fourth), or an early end of string (the first, only returning valid if we're in the outermost part of the loop where <code>matching</code> is <code>#f</code>).</p>
 <p>And that's pretty much it. One last trick is that we also get implicit position within the string, because of the state maintained by <code>read-char</code>, so we don't even have to explicitly recur down the string. Just calling <code>match-brackets</code> will do it for us, and sequential calls (as in the second case) work as they need to.</p>
 <p>Shiny!</p>
-<p>Source: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/match-brackets.rkt">match-brackets.rkt</a></p>]]></content></entry><entry><title>What the (be)funge‽</title><link href="http://blog.jverkamp.com/2014/06/10/what-the-befunge%e2%80%bd" /><id>urn:uuid:d4667b97-6b9a-fb0c-7c44-559a97b1f81c</id><updated>2014-06-10T14:00:00Z</updated><summary type="html"><![CDATA[<p>Here's a fun little bit of code for you:</p>
-<pre class="bash"><code>55*4*v    _   v
-v   &lt;&gt;:1-:^
-    |:&lt;$      &lt;    ,*48 &lt;
-    @"@"&gt;0"zzif"&gt;:#,_$      v
-&gt;:3%!|    &gt;0"zzub"&gt;:#,_$^
-     &gt;:5%!|
-v "buzz"0&lt;&gt;:.           ^
-         |!%5:           &lt;
-&gt;:#,_   $&gt;              ^</code></pre>
-<p>Gibberish you say? No! <a href="https://en.wikipedia.org/wiki/Befuge">Befunge</a>!</p>
-]]></summary><content type="html"><![CDATA[<p>Here's a fun little bit of code for you:</p>
-<pre class="bash"><code>55*4*v    _   v
-v   &lt;&gt;:1-:^
-    |:&lt;$      &lt;    ,*48 &lt;
-    @"@"&gt;0"zzif"&gt;:#,_$      v
-&gt;:3%!|    &gt;0"zzub"&gt;:#,_$^
-     &gt;:5%!|
-v "buzz"0&lt;&gt;:.           ^
-         |!%5:           &lt;
-&gt;:#,_   $&gt;              ^</code></pre>
-<p>Gibberish you say? No! <a href="https://en.wikipedia.org/wiki/Befuge">Befunge</a>!</p>
-<!--more-->
-<p>More specifically:</p>
-<blockquote>Befunge is a stack-based, reflective, esoteric programming language. It differs from conventional languages in that programs are arranged on a two-dimensional grid. "Arrow" instructions direct the control flow to the left, right, up or down, and loops are constructed by sending the control flow in a cycle. It has been described as "a cross between Forth and Lemmings."</blockquote>
-<p>-- <a href="https://en.wikipedia.org/wiki/Wikipedia">Befunge</a></p>
-<p>There's not much of a write up this time, since pretty much the entire code is the state machine that actually drives the language. We'll go ahead and assume that we have a whole suite of helper functions (see <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/befunge.rkt">GitHub</a> for details):</p>
-<ul>
-        <li><code>wrapped-vector-ref</code> - <code>vector-ref </code>where indexes out of bounds wrap</li>
-        <li><code>wrapped-vector-set!</code> - likewise for <code>vector-set!</code></li>
-        <li><code>grid-ref</code> - ref for a vector of vectors, using wrapping</li>
-        <li><code>grid-set!</code> - set! for a vector of vectors</li>
-        <li><code>read-befunge</code> - read a befunge program from input</li>
-        <li><code>write-befunge</code> - write a befunge grid out for debugging</li>
-</ul>
-<p>Next, we have the state of the machine. I'll store it in a parameter, so we can access it from a number of helper functions (up in a bit):</p>
-<h3>State functions</h3>
-<pre class="scheme"><code>; Befunge state
-(struct state (x y facing stack grid running) #:transparent #:mutable)
-(define current-state (make-parameter #f))</code></pre>
-<p>Next, said helpers to manipulate the stack, move the pointer, and get the current character. All of them are safe to use even if there is no current state, they just won't do anything.</p>
-<pre class="scheme"><code>; Stack maniuplation. Pop 0 on an empty stack
-(define (pop!)
-  (when (current-state)
-    (define stack (state-stack (current-state)))
-    (if (null? stack)
-        0
-        (begin0
-          (car stack)
-          (set-state-stack! (current-state) (cdr stack))))))
-
-(define (push! v)
-  (when (current-state)
-    (set-state-stack! (current-state) (cons v (state-stack (current-state))))))
-
-; Move in the current direction
-(define (move!)
-  (when (current-state)
-    (case (state-facing (current-state))
-      [(right) (set-state-x! (current-state) (+ (state-x (current-state)) 1))]
-      [(left)  (set-state-x! (current-state) (- (state-x (current-state)) 1))]
-      [(down)  (set-state-y! (current-state) (+ (state-y (current-state)) 1))]
-      [(up)    (set-state-y! (current-state) (- (state-y (current-state)) 1))])))
-
-; Get the current character from the state
-(define (grid-@"@")
-  (if (current-state)
-      (grid-ref (state-grid (current-state))
-                (state-x (current-state))
-                (state-y (current-state)))
-      #\space))</code></pre>
-<h3>Stepper</h3>
-<p>Now it's just a literal translation of the instructions into state transitions. I'll have one function to advance the state to make it easier to make a debugging rendering function:</p>
-<pre class="scheme"><code>; Advance the befunge program to the next step
-(define (step!)
-  (when (and (current-state) (state-running (current-state)))
-    ; Decode the next instruction
-    (define cmd (grid-@"@"))
-    (case cmd
-      ; Push this number on the stack
-      [(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9)
-       (push! (string-&gt;number (string cmd)))]
-      ; Addition: Pop a and b, then push a+b
-      ; Subtraction: Pop a and b, then push b-a
-      ; Multiplication: Pop a and b, then push a*b
-      ; Integer division: Pop a and b, then push b/a, rounded down. If a is zero, ask the user what result they want.[dubious – discuss]
-      ; Modulo: Pop a and b, then push the remainder of the integer division of b/a. If a is zero, ask the user what result they want.[dubious – discuss]
-      ; Greater than: Pop a and b, then push 1 if b&gt;a, otherwise zero.
-      [(#\+ #\- #\* #\/ #\% #\`)
-       (define a (pop!))
-       (define b (pop!))
-       (define op (cdr (assoc cmd `((#\+ . ,+)
-                                    (#\- . ,-)
-                                    (#\* . ,*)
-                                    (#\/ . ,quotient)
-                                    (#\% . ,remainder)
-                                    (#\` . ,(λ (b a) (if (&gt; b a) 1 0)))))))
-       (push! (op b a))]
-      ; Logical NOT: Pop a value. If the value is zero, push 1; otherwise, push zero.
-      [(#\!)
-       (push! (if (zero? (pop!)) 1 0))]
-      ; Change direction
-      [(#\&gt; #\&lt; #\^ #\v)
-       (set-state-facing! (current-state) (cdr (assoc cmd `((#\&gt; . right)
-                                                            (#\&lt; . left)
-                                                            (#\^ . up)
-                                                            (#\v . down)))))]
-      ; Start moving in a random cardinal direction
-      [(#\?)
-       (set-state-facing! (current-state) (list-ref `(right left up down) (random 4)))]
-      ; Pop a value; move right if value=0, left otherwise
-      [(#\_)
-       (set-state-facing! (current-state) (if (zero? (pop!)) 'right 'left))]
-      ; Pop a value; move down if value=0, up otherwise
-      [(#\|)
-       (set-state-facing! (current-state) (if (zero? (pop!)) 'down 'up))]
-      ; Start string mode: push each character's ASCII value all the way up to the next "
-      ; Note: uses one fuel
-      [(#\quote) ; (should be a quote character but that breaks syntax highlighting)
-       (let loop ()
-         (move!)
-         (define c (grid-@"@"))
-         (when (not (equal? c #\quote)) ; ditto
-           (push! (char-&gt;integer c))
-           (loop)))]
-      ; Duplicate value on top of the stack
-      [(#\:)
-       (define v (pop!))
-       (push! v)
-       (push! v)]
-      ; Swap two values on top of the stack
-      [(#\\)
-       (define a (pop!))
-       (define b (pop!))
-       (push! a)
-       (push! b)]
-      ; Pop value from the stack and discard it
-      [(#\$)
-       (pop!)]
-      ; Pop value and output as an integer
-      [(#\.)
-       (display (pop!))
-       (display " ")]
-      ; Pop value and output as ASCII character
-      [(#\,)
-       (display (integer-&gt;char (pop!)))]
-      ; Trampoline: Skip next cell
-      [(#\#)
-       (move!)]
-      ; A "put" call (a way to store a value for later use).
-      ; Pop y, x and v, then change the character at the position (x,y)
-      ; in the program to the character with ASCII value v
-      [(#\p)
-       (define y (pop!))
-       (define x (pop!))
-       (define v (pop!))
-       (grid-set! (state-grid (current-state))
-                  x y
-                  (with-handlers ([exn? (λ _ v)])
-                    (integer-&gt;char v)))]
-      ; A "get" call (a way to retrieve data in storage).
-      ; Pop y and x, then push ASCII value of the character at that position in the program
-      [(#\g)
-       (define y (pop!))
-       (define x (pop!))
-       (define v (grid-@"@"))
-       (push! (if (number? v) v (char-&gt;integer v)))]
-      ; Ask user for a number and push it
-      [(#\&)
-       (display "Enter a number: ")
-       (push! (read))]
-      ; Ask user for a character and push its ASCII value
-      [(#\~)
-       (display "Enter a character: ")
-       (push! (read-char))
-       (newline)]
-      ; End program
-      [(#\@"@")
-       (set-state-running! (current-state) #f)])
-
-    (move!)))</code></pre>
-<p>There are a few interesting cases:</p>
-<ul>
-        <li><code>#\"</code> - nested loop to read the rest of a string (counts as one 'step')</li>
-        <li><code>#\#</code> - one <code>move!</code> is called here, the next at the end of the function</li>
-        <li><code>#\p</code> - we're extending support out to the full <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a> character set, but not every integer represents a code point, so for those store the number instead</li>
-        <li><code>#\@</code> - trust that the caller will actually check the <code>state-running</code> parameter</li>
-</ul>
-<h3>Main loop</h3>
-<p>Around that, we need a loop that just keeps calling <code>step!</code> until <code>state-running</code> is false. Something like this:</p>
-<pre class="scheme"><code>; Run a befunge program
-(define (run-befunge [input   (current-input-port)]
-                     #:debug  [debug #f]
-                     #:fuel   [fuel +inf.0])
-  ; Load the grid
-  (define grid
-    (cond
-      [(input-port? input) (read-befunge input)]
-      [(string? input) (call-with-input-string input read-befunge)]
-      [(vector? input) input]))
-
-  ; Set up initial state (x y facing stack grid running)
-  (parameterize ([current-state (state 0 0 'right '() grid #t)])
-    (let loop ([step 0])
-      (when (and (state-running (current-state))
-                 (&lt; step fuel))
-        (when debug
-          (write-befunge (state-grid (current-state)))
-          (printf "~a x ~a, ~a\nstack: ~a\n\n"
-                  (state-x (current-state))
-                  (state-y (current-state))
-                  (state-facing (current-state))
-                  (state-stack (current-state))))
-
-        (step!)
-        (loop (+ step 1))))))</code></pre>
-<p>I went ahead and stuck in a debug view (which will print out the grid, cursor, and stack on each step) and a limited fuel on the case that we don't want to accidently run a program for forever.</p>
-<h3>Examples</h3>
-<p>And that's all we need. Let's test it with a few sample programs:</p>
-<h4>Hello World (Wikipedia)</h4>
-<pre class="scheme"><code>&gt; (run-befunge)
-&gt;              v ; hello world
-v  ,,,,,"Hello"&lt; ; source: wikipedia
-&gt;48*,          v
-v,,,,,,"World!"&lt;
-&gt;25*,@"@"
-
-Hello World!</code></pre>
-<h4>Hello World (Wikipedia)</h4>
-<pre class="scheme"><code>&gt; (run-befunge)
-&gt;25*"!dlrow ,olleH":v  ; hello world v2
-                 v:,_@"@" ; source: wikipedia
-                 &gt;  ^
-
-Hello, world!</code></pre>
-<h4>Fizz Buzz (RosettaCode)</h4>
-<pre class="scheme"><code>&gt; (run-befunge)
-55*4*v    _   v            ; fizz buzz
-v   &lt;&gt;:1-:^                ; source: rosettacode
-    |:&lt;$      &lt;    ,*48 &lt;
-    @"@"&gt;0"zzif"&gt;:#,_$      v
-&gt;:3%!|    &gt;0"zzub"&gt;:#,_$^
-     &gt;:5%!|
-v "buzz"0&lt;&gt;:.           ^
-         |!%5:           &lt;
-&gt;:#,_   $&gt;              ^
-
-1  2  fizz 4  buzz fizz 7  8  fizz buzz 11  fizz 13  14  fizzbuzz 16  17  fizz 19  buzz fizz 22  23  fizz buzz 26  fizz 28  29  fizzbuzz 31  32  fizz 34  buzz fizz 37  38  fizz buzz 41  fizz 43  44  fizzbuzz 46  47  fizz 49  buzz fizz 52  53  fizz buzz 56  fizz 58  59  fizzbuzz 61  62  fizz 64  buzz fizz 67  68  fizz buzz 71  fizz 73  74  fizzbuzz 76  77  fizz 79  buzz fizz 82  83  fizz buzz 86  fizz 88  89  fizzbuzz 91  92  fizz 94  buzz fizz 97  98  fizz buzz</code></pre>
-<h4>Random digit generator (Wikipedia)</h4>
-<pre class="scheme"><code>&gt; (run-befunge #:fuel 1000)
-v&gt;&gt;&gt;&gt;. ; random digit generator
- 12345 ; source: wikipedia
- ^?^
-&gt; ? ?^
- v?v
-v6789&gt;
-
-4 3 5 7 1 8 5 1 7 3 3 2 6 3 5 8 5 1 4 9 9 2 6 4 5</code></pre>
-<p>Looks pretty good from here!</p>
-<h3>Pretty pretty pictures</h3>
-<p>One last trick, let's do much the same that we did a <a href="http://blog.jverkamp.com/2014/05/28/quadtree-image-compression">bit ago</a> and make a rendering function:</p>
-<h4>Hello World (Wikipedia)</h4>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/06/10/what-the-befunge%e2%80%bd/hello-world.gif"><img src="http://blog.jverkamp.com/2014/06/10/what-the-befunge%e2%80%bd/hello-world.gif" /></a></p>
-<h4>Random digit generator (Wikipedia)</h4>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/06/10/what-the-befunge%e2%80%bd/random.gif"><img src="http://blog.jverkamp.com/2014/06/10/what-the-befunge%e2%80%bd/random.gif" /></a></p>
-<h4>Fizz Buzz (RosettaCode)</h4>
-<p>(Limited to 10 in interest of time)</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/06/10/what-the-befunge%e2%80%bd/fizz-buzz.gif"><img src="http://blog.jverkamp.com/2014/06/10/what-the-befunge%e2%80%bd/fizz-buzz.gif" /></a></p>
-<p>And that's it. Check out the full source on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/befunge.rkt">befunge.rkt</a></p>]]></content></entry></feed>
+<p>Source: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/match-brackets.rkt">match-brackets.rkt</a></p>]]></content></entry></feed>

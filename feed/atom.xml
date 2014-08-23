@@ -1,5 +1,698 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-22T23:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Ludum Dare 30: Sandbox Battle</title><link href="http://blog.jverkamp.com/2014/08/22/ludum-dare-30-sandbox-battle" /><id>urn:uuid:60fce17b-2d64-c87b-a259-90aa26aa5803</id><updated>2014-08-22T23:00:00Z</updated><summary type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-23T12:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Ludum Dare 30: Hints of a game</title><link href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game" /><id>urn:uuid:7e16e7ce-b97f-2d28-ba95-ea26c1b8a027</id><updated>2014-08-23T12:00:00Z</updated><summary type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
+]]></summary><content type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
+<!--more-->
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png" /></a></p>
+<p>(I'll include a demo at the bottom of the post)</p>
+<p>Basically, I went with allowing each box to be controlled individually by the keyboard. There will be some problems with having that many people on the keyboard at once, but we'll deal with that later (if we can).</p>
+<p>One additional thing I wanted (and mostly figured out) is somewhat 'loose' controls. Basically, rather than explicitly dealing with moving only when a key is down, we'll accelerate when the key is down, preserving velocity even after  keys are raised. There will be some small amount of friction as well, to make sure that eventually pieces will slow down.</p>
+<p>It's actually not too hard to implement a system like this:</p>
+<p>First, load in the keybindings from the interface you can see in the screenshot above:</p>
+<pre class="javascript"><code>// Load key bindings
+var loadKeyBindings = function() {
+  keys = {};
+
+  console.log('Loading key bindings...');
+
+  $('#controls table').each(function(i, eli) {
+    var player = parseInt($(eli).attr('data-player'));
+
+    console.log('loading controls for player ' + player);
+
+    $(eli).find('input').each(function(j, elj) {
+      var command = $(elj).attr('name');
+      var key = $(elj).val();
+
+      keys[key] = [player, command, false];
+    });
+  });
+};</code></pre>
+<p>This will put everything into the <code>key</code> array, indexed by key name and storing the player it refers to, the direction you are going (one of <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>), and if that key is currently active (pressed down). If I can, I may add additional key bindings (such as rotation or powerups), otherwise, that's pretty good for the moment.</p>
+<p>Next, we'll add a function to tell when keys are active:</p>
+<pre class="javascript"><code>var onkey = function(event) {
+  switch (event.keyCode) {
+    case  37: key = 'LEFT'; break;
+    case  38: key = 'UP'; break;
+    case  39: key = 'RIGHT'; break;
+    case  40: key = 'DOWN'; break;
+    case  97: key = 'NUM1'; break;
+    case  98: key = 'NUM2'; break;
+    case  99: key = 'NUM3'; break;
+    case 100: key = 'NUM4'; break;
+    case 101: key = 'NUM5'; break;
+    case 102: key = 'NUM6'; break;
+    case 103: key = 'NUM7'; break;
+    case 104: key = 'NUM8'; break;
+    case 105: key = 'NUM9'; break;
+    default: key = String.fromCharCode(event.keyCode).toUpperCase();
+  }
+
+  if (key in keys) {
+    if (event.type == 'keydown') {
+      keys[key][2] = true;
+    } else if (event.type == 'keyup') {
+      keys[key][2] = false;
+    }
+  }
+};</code></pre>
+<p>Longer than I wanted, but it correctly deals with both the numpad and arrow keys, which is kind of necessary if you want to support 4 human players all at the same time. Perhaps I'll implement AIs, but until I do, we're going to have to allow for a bunch of players...</p>
+<p>Okay, so what do we do with all of this information? Well, just like before, we have a <code>tick</code> function:</p>
+<pre class="javascript"><code>var tick = function(event) {
+  $.each(keys, function(i, el) {
+    var player = el[0];
+    var command = el[1];
+    var active = el[2];
+
+    $game = $('#tiles');
+    $tile = $('#tiles *[data-player="' + player + '"]');
+
+    // Update velocity
+    ...
+
+    // Use friction to slow each box down over time
+    ...
+
+    // Cap velocity so we don't go too fast
+    ...
+
+    // Update the current position based on velocity
+    ...
+
+    // Bounce off the edges of the screen
+    ...
+
+    // Finally, update the position
+    $tile.css({'top': top, 'left': left});
+  });
+
+  if (running) {
+    setTimeout(tick, 1000/30);
+  }
+};</code></pre>
+<p>Oof. That's a heck of a function. Luckily, the individual parts aren't <em>that</em> bad. First, we want to update the velocity. This is where the <code>active</code> parameter (the third in each key definition) comes into play:</p>
+<pre class="javascript"><code>// Update velocity
+if (active) {
+  if (command == 'up') {
+    vel[player][1] -= PER_TICK_ACCELERATION;
+  } else if (command == 'down') {
+    vel[player][1] += PER_TICK_ACCELERATION;
+  } else if (command == 'left') {
+    vel[player][0] -= PER_TICK_ACCELERATION;
+  } else if (command == 'right') {
+    vel[player][0] += PER_TICK_ACCELERATION;
+  }
+}</code></pre>
+<p>That's simple enough. As before, we have to decide that <code>up</code> and <code>down</code> are inverted (they almost always are when it comes to computers), but once you've decided that's easy enough.</p>
+<p>Now, outside of that black, the next thing we'll do is apply friction. This way the boxes will slow down over time, forcing players both to pay attention and to let them bounce around like madmen.</p>
+<pre class="javascript"><code>// Use friction to slow each box down over time
+// If we're close enough to zero that friction will accelerate us, just stop
+if (Math.abs(vel[player][0]) &lt; PER_TICK_FRICTION) {
+  vel[player][0] = 0;
+} else {
+  vel[player][0] += (vel[player][0] &gt; 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+}
+
+if (Math.abs(vel[player][1]) &lt; PER_TICK_FRICTION) {
+  vel[player][1] = 0;
+} else {
+  vel[player][1] += (vel[player][1] &gt; 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+}
+
+// Cap velcity so we don't go too fast
+vel[player][0] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][0]));
+vel[player][1] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][1]));</code></pre>
+<p>Also at the end there, we make sure we don't keep accelerating indefinitely. That both helps keep the game a little easier to play and prevents edge cases (such as moving further in one tick than we're allowed).</p>
+<p>Next, we can finally update the position:</p>
+<pre class="javascript"><code>// Update the current position based on velocity
+var left = $tile[0].offsetLeft + vel[player][0];
+var top = $tile[0].offsetTop + vel[player][1];
+
+// Bounce off the edges of the screen
+if (left &lt; 0) {
+  left = 0;
+  vel[player][0] = Math.abs(vel[player][0]);
+} else if (left &gt; $game.width() - $tile.width()) {
+  left = $game.width() - $tile.width();
+  vel[player][0] = -1 * Math.abs(vel[player][0]);
+}
+
+if (top &lt; 0) {
+  top = 0;
+  vel[player][1] = Math.abs(vel[player][1]);
+} else if (top &gt; $game.height() - $tile.height()) {
+  top =  $game.height() - $tile.height();
+  vel[player][1] = -1 * Math.abs(vel[player][1]);
+}</code></pre>
+<p>Once again, we want to clip the positions. This time though, we're actually going to use the velocities we have rather than zeroing them out. Instead: bounce! It's nice, because it makes the game feel more 'realistic' (for some definitions of the word).</p>
+<p>And that's about it. With that, we can have the boxes moving around and interacting as they did last night. We're actually starting to get a game going here. One other tweak is the control code:</p>
+<pre class="javascript"><code>var tiles = new Tiles();
+var controls = new Controls();
+
+var MS_PER_GAME = 60 * 1000;
+var startTime = new Date().getTime();
+var running = true;
+
+$(function() {
+  controls.run();
+});
+
+function tick() {
+  var soFar = new Date().getTime() - startTime;
+  var remainingSec = Math.floor((MS_PER_GAME - soFar) / 1000);
+
+  if (remainingSec &gt; 0) {
+    $('#tiles #countdown').text(remainingSec + ' sec remaining');
+  } else {
+    stop();
+  }
+
+  if (running) {
+    setTimeout(tick, 1000/30);
+  }
+}
+
+function run() {
+  tiles.run();
+  controls.run();
+
+  startTime = new Date().getTime();
+  running = true;
+  tick();
+
+  return false;
+}
+
+function stop() {
+  tiles.stop();
+  controls.stop();
+
+  startTime = new Date().getTime() - MS_PER_GAME;
+  running = false;
+  $('#tiles #countdown').text('game over');
+
+  return false;
+}</code></pre>
+<p>Technically, it's not a gameloop, since everything is done asynchronously via <code>setTimeout</code> (and make <strong>absolutely sure</strong> that you don't use <code>setInterval</code>...), but it's close enough. What this does give us though is a strict time before the game ends. Otherwise, the boxes will eventually fill up, and where's the fun in that? (Although that might be an interesting alternative end condition).</p>
+<p>After that, all I have to figure out is scoring. And I have another 6 hours until the one day mark. If I can make it by then, I'll feel pretty good--and can use all of the rest of the time for polish. I'm thinking some simple music, sound effects, a title screen (initial letters in sand?). Of course, I still have to figure out the scoring algorithm..</p>
+<p>Same as yesterday, the entire source (warning: still ugly) if available on GitHub: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
+<hr />
+<p>Demo:</p>
+<style>
+#controls table {
+  border: 1px solid black;
+  display: inline-block;
+  margin: 1em;
+  padding: 0.5em;
+  border-radius: 0.5em;
+
+}
+
+#controls table td {
+  padding: 0.1em;
+}
+
+#controls table td:first-child {
+  text-align: right;
+}
+
+#controls table input {
+  width: 50px;
+  text-align: center;
+}
+
+#tiles {
+  position: relative;
+  width: 600px;
+  height: 400px;
+  background: black;
+  border: 1px solid black;
+}
+
+#tiles canvas {
+  position: absolute;
+  border: 1px solid black;
+}
+
+#tiles canvas[data-player="0"] { border: 1px solid blue; }
+#tiles canvas[data-player="1"] { border: 1px solid red; }
+#tiles canvas[data-player="2"] { border: 1px solid green; }
+#tiles canvas[data-player="3"] { border: 1px solid hotPink; }
+
+#tiles #countdown {
+  color: white;
+}
+</style>
+<script>
+function Tiles() {
+  var running = false;
+  var allData = {};
+  var ordering = [];
+
+  // Assign an index to each canvas so we can order them
+  $('canvas').each(function(index, canvas) {
+     $(canvas).attr('data-index', index);
+  });
+
+  // Keep a list of the current z-ordering of the canvases
+  $('canvas').each(function(i) { ordering.push(i); });
+
+  // Make them draggable, on drag udate the index
+  $('canvas').draggable({
+      stack: '*',
+      drag: function(event, ui) {
+
+      },
+      stop: function(event, ui) {
+          var i = parseInt($(event.target).attr('data-index'));
+          var index = ordering.indexOf(i);
+          ordering.splice(index, 1);
+          ordering.unshift(i);
+      }
+  });
+
+  // Make a 2D array initialized all to a given valu
+  var make2DArray = function(width, height, def) {
+      var array = new Array(width);
+      for (var x = 0; x < width; x++) {
+          array[x] = new Array(height);
+          for (var y = 0; y < height; y++) {
+              array[x][y] = def;
+          }
+      }
+      return array;
+  }
+
+  // Update the given grid
+  var update = function(data, buffer, width, height) {
+      // Clear the buffer
+      for (var x = 0; x < width; x++) {
+          for (var y = 0; y < height; y++) {
+              buffer[x][y] = 0;
+          }
+      }
+
+      // Update the buffer with falling cells
+      var r = 0, xt = 0, yt = 0;
+      for (var y = height - 1; y >= 0; y--) {
+          for (var x = 0; x < width; x++) {
+              // Skip empty cells
+              if (data[x][y] == 0) continue;
+              xt = x;
+              yt = y;
+
+              // Determine which way it's going to fall
+              r = Math.random();
+              if (r < 0.5) { // Straight down
+                  if (y > 0 && buffer[x][y - 1] == 0) { xt = x; yt = y - 1; }
+              } else if (r < 0.7) { // Down left
+                  if (x > 0 && y > 0 && buffer[x - 1][y - 1] == 0) { xt = x - 1; yt = y - 1; }
+              } else if (r < 0.9) { // Down right
+                  if (x < width - 1 && y > 1 && buffer[x + 1][y - 1] == 0) { xt = x + 1; yt = y - 1; }
+              } else if (r < 0.95) { // Straight left
+                  if (x > 0 && buffer[x - 1][y] == 0) { xt = x - 1; yt = y; }
+              } else { // Straight right
+                  if (x < width - 1 && buffer[x + 1][y] == 0) { xt = x + 1; yt = y; }
+              }
+
+              if (data[xt][yt] != 0) { xt = x; yt = y; }
+
+              // Update the buffer
+              buffer[xt][yt] = data[x][y];
+          }
+      }
+  }
+
+  // Animate a given frame
+  var animate = function(frameIndex, frame) {
+      var start = new Date().getTime();
+
+      var frame_ctx = frame.getContext('2d');
+      frame_ctx.imageSmoothingEnabled = false;
+
+      var width = frame.width;
+      var height = frame.height;
+
+      var data = make2DArray(width, height, 0);
+      var buffer = make2DArray(width, height, 0);
+      var temp;
+      var i = 0, r = 0, g = 0, b = 0, a = 0;
+
+      allData[frameIndex] = data;
+      var imageData = frame_ctx.createImageData(width, height);
+
+      var tick = function() {
+          // Debug: For add a pixel
+          data[width / 2][height - 1] = frameIndex + 1;
+
+          // Update from data to buffer; swap the arrays for the next iteration
+          update(data, buffer, width, height);
+          temp = data;
+          data = buffer;
+          buffer = temp;
+
+          // Detect overlapping buffers, if so swap randomly
+          $('canvas').each(function(otherIndex, other) {
+              // If we're comparing to ourself, we'll always overlap, skip
+              if (frame == other) return;
+
+              // If the two canvases don't overlap, don't look at them
+              var frameBounds = frame.getBoundingClientRect();
+              var otherBounds = other.getBoundingClientRect();
+              if (frameBounds.right < otherBounds.left ||
+                  frameBounds.left > otherBounds.right ||
+                  frameBounds.bottom < otherBounds.top ||
+                  frameBounds.top > otherBounds.bottom) {
+                  return;
+              }
+
+              // We only want this once, so give priority to whichever frame is 'lower' on the screen
+              if (frameBounds.top < otherBounds.top) return;
+
+              // Bail out if we haven't loaded the data yet
+              if (!(frameIndex in allData && otherIndex in allData)) {
+                return;
+              }
+
+              // TODO: Find the actual offset rather than looping over an entire image
+              var otherX, otherY, temp;
+              for (var frameY = 0; frameY < height; frameY++) {
+                  for (var frameX = 0; frameX < width; frameX++) {
+                      otherX = Math.floor(frameBounds.left - otherBounds.left + frameX);
+                      otherY = Math.floor(otherBounds.top - frameBounds.top + frameY);
+
+                      if (0 <= otherX && otherX < width && 0 <= otherY && otherY < height) {
+                          if (allData[frameIndex][frameX][frameY] == 0
+                              /* && allData[otherIndex][otherX][otherY] != 0*/) {
+                              temp = allData[frameIndex][frameX][frameY];
+                              allData[frameIndex][frameX][frameY] = allData[otherIndex][otherX][otherY];
+                              allData[otherIndex][otherX][otherY] = temp;
+                          }
+                      }
+                  }
+              }
+          });
+
+          // Render to the image data
+          for (var y = 0; y < height; y++) {
+              for (var x = 0; x < width; x++) {
+                  i = x + (height - y) * width;
+
+                  r = g = b = 0;
+                  a = 255;
+
+                  if (data[x][y] == 0) {
+                    a = 0;
+                  } else if (data[x][y] == 1) {
+                    b = 255;
+                  } else if (data[x][y] == 2) {
+                    r = 255;
+                  } else if (data[x][y] == 3) {
+                    g = 255;
+                  } else if (data[x][y] == 4) {
+                    r = 246;
+                    g = 96;
+                    b = 171;
+                  }
+
+                  imageData.data[i * 4 + 0] = r;
+                  imageData.data[i * 4 + 1] = g;
+                  imageData.data[i * 4 + 2] = b;
+                  imageData.data[i * 4 + 3] = a;
+              }
+          }
+
+          // Copy back to the GUI
+          frame_ctx.putImageData(imageData, 0, 0);
+
+          if (running) {
+              setTimeout(tick, 1000/60);
+          }
+      }
+      tick();
+  };
+
+  this.run = function() {
+    running = true;
+    $('canvas').each(animate);
+  };
+
+  this.stop = function() {
+    running = false;
+  };
+};
+
+function Controls() {
+  var keys = {};
+  var running = false;
+  var PER_TICK_ACCELERATION = 0.1;
+  var PER_TICK_FRICTION = 0.01;
+  var VELOCITY_CAP = 10;
+
+  var vel = {};
+
+  // Load key bindings
+  var loadKeyBindings = function() {
+    keys = {};
+
+    console.log('Loading key bindings...');
+
+    $('#controls table').each(function(i, eli) {
+      var player = parseInt($(eli).attr('data-player'));
+
+      console.log('loading controls for player ' + player);
+
+      $(eli).find('input').each(function(j, elj) {
+        var command = $(elj).attr('name');
+        var key = $(elj).val();
+
+        keys[key] = [player, command, false];
+      });
+    });
+  };
+
+  var onkey = function(event) {
+    switch (event.keyCode) {
+      case  37: key = 'LEFT'; break;
+      case  38: key = 'UP'; break;
+      case  39: key = 'RIGHT'; break;
+      case  40: key = 'DOWN'; break;
+      case  97: key = 'NUM1'; break;
+      case  98: key = 'NUM2'; break;
+      case  99: key = 'NUM3'; break;
+      case 100: key = 'NUM4'; break;
+      case 101: key = 'NUM5'; break;
+      case 102: key = 'NUM6'; break;
+      case 103: key = 'NUM7'; break;
+      case 104: key = 'NUM8'; break;
+      case 105: key = 'NUM9'; break;
+      default: key = String.fromCharCode(event.keyCode).toUpperCase();
+    }
+
+    if (key in keys) {
+      if (event.type == 'keydown') {
+        keys[key][2] = true;
+      } else if (event.type == 'keyup') {
+        keys[key][2] = false;
+      }
+    }
+  };
+
+  var tick = function(event) {
+    $.each(keys, function(i, el) {
+      var player = el[0];
+      var command = el[1];
+      var active = el[2];
+
+      $game = $('#tiles');
+      $tile = $('#tiles *[data-player="' + player + '"]');
+
+      // Update velocity
+      if (active) {
+        if (command == 'up') {
+          vel[player][1] -= PER_TICK_ACCELERATION;
+        } else if (command == 'down') {
+          vel[player][1] += PER_TICK_ACCELERATION;
+        } else if (command == 'left') {
+          vel[player][0] -= PER_TICK_ACCELERATION;
+        } else if (command == 'right') {
+          vel[player][0] += PER_TICK_ACCELERATION;
+        }
+      }
+
+      // Use friction to slow each box down over time
+      // If we're close enough to zero that friction will accelerate us, just stop
+      if (Math.abs(vel[player][0]) < PER_TICK_FRICTION) {
+        vel[player][0] = 0;
+      } else {
+        vel[player][0] += (vel[player][0] > 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+      }
+
+      if (Math.abs(vel[player][1]) < PER_TICK_FRICTION) {
+        vel[player][1] = 0;
+      } else {
+        vel[player][1] += (vel[player][1] > 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
+      }
+
+      // Cap velocity so we don't go too fast
+      vel[player][0] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][0]));
+      vel[player][1] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][1]));
+
+      // Update the current position based on velocity
+      var left = $tile[0].offsetLeft + vel[player][0];
+      var top = $tile[0].offsetTop + vel[player][1];
+
+      // Bounce off the edges of the screen
+      if (left < 0) {
+        left = 0;
+        vel[player][0] = Math.abs(vel[player][0]);
+      } else if (left > $game.width() - $tile.width()) {
+        left = $game.width() - $tile.width();
+        vel[player][0] = -1 * Math.abs(vel[player][0]);
+      }
+
+      if (top < 0) {
+        top = 0;
+        vel[player][1] = Math.abs(vel[player][1]);
+      } else if (top > $game.height() - $tile.height()) {
+        top =  $game.height() - $tile.height();
+        vel[player][1] = -1 * Math.abs(vel[player][1]);
+      }
+
+      // Finally, update the position
+      $tile.css({'top': top, 'left': left});
+    });
+
+    if (running) {
+      setTimeout(tick, 1000/30);
+    }
+  };
+
+  this.run = function() {
+    // Reload keybindings in case they've changed
+    loadKeyBindings();
+
+    // Initialize velocities to zero
+    $game = $('#tiles');
+    $('#tiles canvas').each(function(i, eli) {
+      vel[i] = [0, 0];
+      $(eli).css({
+        top: Math.random() * ($game.height() - $(eli).height()),
+        left: Math.random() * ($game.width() - $(eli).width())
+      });
+    });
+
+    // Add keybindings, we can use the same function since it can check type
+    $(document).unbind('keydown').bind('keydown', onkey);
+    $(document).unbind('keyup').bind('keyup', onkey);
+
+    running = true;
+    tick();
+  }
+
+  this.stop = function() {
+    running = false;
+
+    $(document).unbind('keydown');
+    $(document).unbind('keyup');
+  }
+};
+
+var tiles = new Tiles();
+var controls = new Controls();
+
+var MS_PER_GAME = 60 * 1000;
+var startTime = new Date().getTime();
+var running = true;
+
+$(function() {
+  controls.run();
+});
+
+function tick() {
+  var soFar = new Date().getTime() - startTime;
+  var remainingSec = Math.floor((MS_PER_GAME - soFar) / 1000);
+
+  if (remainingSec > 0) {
+    $('#tiles #countdown').text(remainingSec + ' sec remaining');
+  } else {
+    stop();
+  }
+
+  if (running) {
+    setTimeout(tick, 1000/30);
+  }
+}
+
+function run() {
+  tiles.run();
+  controls.run();
+
+  startTime = new Date().getTime();
+  running = true;
+  tick();
+
+  return false;
+}
+
+function stop() {
+  tiles.stop();
+  controls.stop();
+
+  startTime = new Date().getTime() - MS_PER_GAME;
+  running = false;
+  $('#tiles #countdown').text('game over');
+
+  return false;
+}
+</script>
+<div class="table" id="controls">
+  <table data-player="0">
+    <tr><td colspan="2">Player 1 - Blue</tr>
+    <tr><td>Up</td><td><input name="up" value="W"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="A"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="D"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="S"></input></td></tr>
+  </table>
+
+  <table data-player="1">
+    <tr><td colspan="2">Player 2 - Red</tr>
+    <tr><td>Up</td><td><input name="up" value="I"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="J"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="L"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="K"></input></td></tr>
+  </table>
+
+  <table data-player="2">
+    <tr><td colspan="2">Player 3 - Green</tr>
+    <tr><td>Up</td><td><input name="up" value="UP"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="LEFT"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="RIGHT"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="DOWN"></input></td></tr>
+  </table>
+
+  <table data-player="3">
+    <tr><td colspan="2">Player 4 - Pink</tr>
+    <tr><td>Up</td><td><input name="up" value="NUM8"></input></td></tr>
+    <tr><td>Left</td><td><input name="left" value="NUM4"></input></td></tr>
+    <tr><td>Right</td><td><input name="right" value="NUM6"></input></td></tr>
+    <tr><td>Down</td><td><input name="down" value="NUM2"></input></td></tr>
+  </table>
+</div>
+<div>
+  [ <a href="javascript:run()">Run!</a> ]
+  [ <a href="javascript:stop()">Stop!</a> ]
+</div>
+<div width="600" height="400">
+  <div id="tiles">
+    <p id="countdown"></p>
+    <canvas data-player="0" width="100" height="100"></canvas>
+    <canvas data-player="1" width="100" height="100"></canvas>
+    <canvas data-player="2" width="100" height="100"></canvas>
+    <canvas data-player="3" width="100" height="100"></canvas>
+  </div>
+</div>
+<hr />
+<p>I'm sure there are bugs... And I'm working on it right at the moment. If you have any questions or comments though, feel free to drop me a line below.</p>]]></content></entry><entry><title>Ludum Dare 30: Sandbox Battle</title><link href="http://blog.jverkamp.com/2014/08/22/ludum-dare-30-sandbox-battle" /><id>urn:uuid:60fce17b-2d64-c87b-a259-90aa26aa5803</id><updated>2014-08-22T23:00:00Z</updated><summary type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
 <blockquote>Ludum Dare is a regular accelerated game development Event.  Participants develop games from scratch in a weekend, based on a theme suggested by community.</blockquote>
 <p>More specifically, the goal is to make a game from scratch in 48 hours. You're allowed to use publicly available frameworks and code libraries, but no art or other assets. Previously, I missed the original start time. So although I made my game in 48 hours, it didn't qualify. This time around, I'm starting on time.</p>
 ]]></summary><content type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
@@ -1084,129 +1777,4 @@ You lose. :(</code></pre>
   (5 0.08392304995059131))</code></pre>
 <p>So there you have it. If you're playing optimally, it's slightly easier to do so starting with a corner or the second. The center or center of each edge are slightly harder.</p>
 <p>And that's all we have for today. Originally, I meant to use the graph library I've used a number of times before to visualize the solution space (there's a function that will do that on GitHub), but the graphs honestly aren't that helpful. There nodes are too nested and there are just too many to helpfully visualize. So it goes. Still, I think we found a few interesting things.</p>
-<p>As always, the code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pegs.rkt">pegs.rkt</a></p>]]></content></entry><entry><title>Cracker Barrel Peg Game</title><link href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game" /><id>urn:uuid:d9fc95b6-10c0-7679-ae85-b61ec0a2f271</id><updated>2014-07-05T09:00:00Z</updated><summary type="html"><![CDATA[<p>Ever been to <a href="http://www.crackerbarrel.com/">Cracker Barrel</a>? Remember that <a href="http://shop.crackerbarrel.com/Peg-Game/dp/B0050PMMQA">peg game</a>? It seems that rather a few people are interested in how to solve it: <a href="https://www.google.com/?q=cracker+barrel+peg+game">Google</a>. Let's do that.</p>
-]]></summary><content type="html"><![CDATA[<p>Ever been to <a href="http://www.crackerbarrel.com/">Cracker Barrel</a>? Remember that <a href="http://shop.crackerbarrel.com/Peg-Game/dp/B0050PMMQA">peg game</a>? It seems that rather a few people are interested in how to solve it: <a href="https://www.google.com/?q=cracker+barrel+peg+game">Google</a>. Let's do that.</p>
-<!--more-->
-<p>Let's start with a bit of ground work:</p>
-<pre class="scheme"><code>; Puzzles are represented as a 15 element vector (#t for pegs)
-; but can be entered as a 15 bit integer (1 for pegs)
-(struct puzzle (data) #:transparent)
-(define (make-puzzle v)
-  (cond
-    [(and (integer? v) (&lt;= 0 v 32767))
-     (puzzle (list-&gt;vector
-              (map (curry eq? #\1)
-                   (reverse (string-&gt;list (~a (number-&gt;string v 2)
-                                              #:width 15
-                                              #:align 'right
-                                              #:pad-string "0"))))))]
-    [(and (vector? v) (= 15 (vector-length v)))
-     (puzzle v)]
-    [(and (list? v) (length v 15))
-     (puzzle (list-&gt;vector v))]))</code></pre>
-<p>It's a bit heavier than it needs to be (in order to support multiple datatypes), but that saved me all sorts of time in testing. It's a lot easier to enter a puzzle like this:</p>
-<pre class="scheme"><code>(make-puzzle #b111110010000000)</code></pre>
-<p>Rather than:</p>
-<pre class="scheme"><code>(make-puzzle '#(#f #f #f #f #f #f #f #t #f #f #t #t #t #t #t))</code></pre>
-<p>(Note that the ordering is opposite. The highest bit is the last peg, while the first vector is the first peg. This is so that puzzle 1 is peg 1 and so on.)</p>
-<p>Anyways.</p>
-<p>Next, we need to be able to visualize what we're working with. You can always see the sequence of pegs, but without putting them in their proper triangular shape, it's a bit hard to tell what exactly is going on. So first, let's render a puzzle as text:</p>
-<pre class="scheme"><code>; Render a puzzle to text
-(define (render-text puzzle)
-  (for ([row (in-range 1 6)])
-    (display (~a "" #:width (* 2 (- 6 row))))
-    (for ([col (in-range 1 (+ 1 row))])
-      (define i (+ (* 1/2 row (- row 1)) col))
-      (display (~a (if (vector-ref (puzzle-data puzzle) (- i 1)) i "") #:width 4)))
-    (newline)))</code></pre>
-<p><code><a href="http://docs.racket-lang.org/search/index.html?q=~a">~a</a></code> is rather handy for formatting like this, making sure that each peg (at least the ones still visible) is exactly four characters wide. The formula in the line defining <code>i</code> should look familiar: it's the sum of the first i integers. Neat.</p>
-<pre class="scheme"><code>&gt; (render-text (make-puzzle (random (expt 2 15))))
-
-        2
-          5   6
-    7   8   9   10
-      12  13      15</code></pre>
-<p>That's all well and good, but it's the 21st century. We should be able to make pretty pictures as well:</p>
-<pre class="scheme"><code>; Render a puzzle to a bitmap
-(define (render puzzle)
-  (define (bit-set? i) (vector-ref (puzzle-data puzzle) (- i 1)))
-
-  (define imgs
-    (for/list ([row (in-range 1 6)])
-      (for/list ([col (in-range 1 (+ 1 row))])
-        (define i (+ (* 1/2 row (- row 1)) col))
-        (define color (if (bit-set? i) "black" "gray"))
-        (htdp:overlay (htdp:text (~a i) 12 color)
-                      (htdp:circle 10 "outline" color)
-                      (htdp:circle 12 "solid" "white")))))
-
-  (define rows (map (λ (row) (if (= 1 (length row))
-                                 (first row)
-                                 (apply htdp:beside row)))
-                    imgs))
-
-  (apply htdp:above rows))</code></pre>
-<p>That's a bit more complicated. The basic idea is straight forward enough. First, for each peg we're going to overlay the number as <code><a href="http://docs.racket-lang.org/search/index.html?q=text">text</a></code> on an outlined <code><a href="http://docs.racket-lang.org/search/index.html?q=circle">circle</a></code>. The second, white circle is in order to get a bit of spacing. We'll render each of these into nested lists, each of increasing length. Then we shove each row together with <code><a href="http://docs.racket-lang.org/search/index.html?q=beside">beside</a></code>, then the rows together with <code><a href="http://docs.racket-lang.org/search/index.html?q=above">above</a></code>. All that to make a picture something like this:</p>
-<pre class="scheme"><code>&gt; (render (make-puzzle (random (expt 2 15))))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/sample-render.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/sample-render.png" /></a></p>
-<p>Looks good! (And it's nice being able to see the locations where there currently isn't a peg as well).</p>
-<p>Okay, so now that we have some framework set up, how are we going to attack this problem?</p>
-<p>Well, the first thing we need is the ability to make a move. In this case, given two neighboring pegs, jump one over the other:</p>
-<pre class="scheme"><code>; Given a peg to move from and the peg to move over, return the new puzzle state
-(define (jump p ifrom iover)
-  (define from-list '(1  1  2  2  3  3  4  4  4  5  5  6  6  7  8  11 12 13))
-  (define over-list '(2  3  4  5  5  6  5  7  8  8  9  9  10 8  9  12 13 14))
-  (define to-list   '(4  6  7  9  8  10 6  11 13 12 14 13 15 9  10 13 14 15))
-
-  (for/first ([from (in-list (append from-list to-list))]
-              [over (in-list (append over-list over-list))]
-              [to   (in-list (append to-list from-list))]
-              #:when (and (= from ifrom)
-                          (= over iover)
-                          (vector-ref (puzzle-data p) (- from 1))
-                          (vector-ref (puzzle-data p) (- over 1))
-                          (not (vector-ref (puzzle-data p) (- to 1)))))
-    (let ([new-data (vector-copy (puzzle-data p))])
-      (vector-set! new-data (- from 1) #f)
-      (vector-set! new-data (- over 1) #f)
-      (vector-set! new-data (- to   1) #t)
-      (puzzle new-data))))</code></pre>
-<p>That's a bit of an ugly function. Unfortunately, I'm not entirely sure how it could be made better. Still, it works. By virtue of <code><a href="http://docs.racket-lang.org/search/index.html?q=for/first">for/first</a></code>, we'll either get the new puzzle or <code>#f</code> if it's not a valid move.</p>
-<p>Next, we take this function and map it over a puzzle in order to generate all possible next states. Something like this:</p>
-<pre class="scheme"><code>; Get a list of all next states from a given puzzles
-(define (next p)
-  (filter identity
-          (for*/list ([from (in-range 1 16)]
-                      [over (in-range 1 16)])
-            (jump p from over))))</code></pre>
-<p>This one though, you should see a fairly easy way to optimize. Right now, no matter how many pegs there are in a puzzle, we're going to try every neighboring pair. <code>jump</code> can deal with the weird cases, but we shouldn't have to:</p>
-<pre class="scheme"><code>; Get a list of all next states from a given puzzles
-(define (next p)
-  (filter identity
-          (for*/list ([from (in-range 1 16)]
-                      #:when (vector-ref (puzzle-data p) (- from 1))
-                      [over (in-range 1 16)]
-                      #:when (vector-ref (puzzle-data p) (- over 1)))
-            (jump p from over))))</code></pre>
-<p>That way, the further we get down the puzzle, the fewer cases we will check while still not duplicating <em>too</em> much of the code between the two.</p>
-<p>Believe it or not... That's it. That's all we need:</p>
-<pre class="scheme"><code>; Solve a puzzle using backtracking
-(define (solve p)
-  (cond
-    [(= 1 (count p))
-     (list p)]
-    [else
-     (let ([n (ormap solve (next p))])
-       (and n (cons p n)))]))</code></pre>
-<p><code>count</code> returns the number of pegs left on the current board:</p>
-<pre class="scheme"><code>; Count how many pegs are left in a puzzle
-(define (count p)
-  (vector-length (vector-filter identity (puzzle-data p))))</code></pre>
-<p>That's it. Give it any peg puzzle and it will solve it. Quickly too. On my machine, it might as well be instantaneous. So how does it work?</p>
-<p>Two cases: Either we're done or we're not. If we're done, return the end state. Otherwise, we need to find a state we can move forward from. With <code>ormap</code>, we're going to try each in turn, returning the first thing that isn't <code>#f</code>. Since we're mapping <code>solve</code> (recurring) and almost making progress (<code>next</code> always has at least one less peg), we can rely on the recursion to do it's job. In this case, we'll either find a solution one step down (return that one) or not (check the next one).</p>
-<p>Don't believe me? Let's check it out:</p>
-<pre class="scheme"><code>&gt; (map render (solve (make-puzzle #b111111111111110)))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-01.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-01.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-02.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-02.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-03.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-03.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-04.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-04.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-05.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-05.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-06.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-06.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-07.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-07.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-08.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-08.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-09.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-09.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-10.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-10.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-11.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-11.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-12.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-12.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-13.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-13.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-14.png"><img src="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game/solve-14.png" /></a></p>
-<p>Flip the board over and it looks like we're genius. :) Sweet.</p>
-<p>That's all for today. I am working on a part two though. As a preview: If you take rotations and reflections into account, there are only four possible starting pegs (1, 2, 4, and 5). But it turns out that not all four are created equal--some are (relatively) easy to solve. Some are not.</p>
-<p>If you'd like to check out the full source code (and possibly a preview for next time), you can do so on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pegs.rkt">pegs.rkt</a></p>]]></content></entry></feed>
+<p>As always, the code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pegs.rkt">pegs.rkt</a></p>]]></content></entry></feed>
