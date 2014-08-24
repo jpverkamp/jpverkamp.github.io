@@ -1,5 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-23T12:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Ludum Dare 30: Hints of a game</title><link href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game" /><id>urn:uuid:7e16e7ce-b97f-2d28-ba95-ea26c1b8a027</id><updated>2014-08-23T12:00:00Z</updated><summary type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-23T18:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Ludum Dare 30: 24 hours</title><link href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours" /><id>urn:uuid:37f85de8-ca29-d5a8-2c0f-d57f53b84283</id><updated>2014-08-23T18:00:00Z</updated><summary type="html"><![CDATA[<p>Here we are, 24 hours into the competition.</p>
+<p>A lot of the last few hours has been spent doing a fair amount of restructing. Before, I had a single 'thread'<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> for each of the tiles, along with another thread listening for user input. Unfortunately though, that lead to all sorts of race conditions. Specifically, whenever two tiles overlapped, it was often the case that one was doing the falling step (which copies from one internal buffer to another) while the other was in the swap step (which copies from tile to another). Then after the first finished, it would copy the second buffer over... overwriting anything that had been swapped.</p>
+<p>Oops.</p>
+]]></summary><content type="html"><![CDATA[<p>Here we are, 24 hours into the competition.</p>
+<p>A lot of the last few hours has been spent doing a fair amount of restructing. Before, I had a single 'thread'<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> for each of the tiles, along with another thread listening for user input. Unfortunately though, that lead to all sorts of race conditions. Specifically, whenever two tiles overlapped, it was often the case that one was doing the falling step (which copies from one internal buffer to another) while the other was in the swap step (which copies from tile to another). Then after the first finished, it would copy the second buffer over... overwriting anything that had been swapped.</p>
+<p>Oops.</p>
+<!--more-->
+<p>Well, it turns out that the solution wasn't that bad. Rather than having a bunch of threads running around, I've just put the entire thing into lockstep. Now, we go through the entire sequence (sand falls, swaps happen, rendering happens, move tiles) once ever frame, in that order. It's a bit more expensive when it comes to performance, but really not that much, since technically JavaScript doesn't do more than one thing at a time anyways.</p>
+<p>In exchange though, the game is playing great:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/in-game-2.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/in-game-2.png" /></a></p>
+<p>Another thing that I did was to do some styling, converting the game from a big mess of an HTML page into a nice layered style that all fits within the 600x400 game area that I've set aside (I doubt I'll make that changeable, although it shouldn't be hard). Specifically:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/start-screen.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/start-screen.png" /></a></p>
+<p>If you click options, these fade in (jQuery transitions are awesome for this):</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/options.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/options.png" /></a></p>
+<p>If you click play, all of the button and options fading out, taking you into the game:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/in-game-1.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/in-game-1.png" /></a></p>
+<p>At the end of the game (the timer is in the bottom right, set to a static 1 minute at the moment), you get the new scoring screen. I think I worked about 2 hours on this, which sounds crazy, but I think the effect is pretty awesome:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/scoring-in-progress.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/scoring-in-progress.png" /></a></p>
+<p>You can't see it in the screenshot there, but it will go through each player one by one, scoring the region from bottom to top, counting up each kind of sand individually. That should make scoring modes much easier if/when I add more options. I can just do things like discount (or even count negative) your own sand, or only count it.</p>
+<p>And finally, once it's done counting:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/game-over.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/game-over.png" /></a></p>
+<p>I'd like to have some sort of background motion going on both here and during the opening menu. Something like having the tiles bounce around using some sort of AI. Speaking of which, here is a tentative feature list that I'd like to see in the next 24 hours (in no particular order):</p>
+<ul>
+  <li>AI players; at the very least one that moves randomly, but optimally several different kinds</li>
+  <li>Pending the previous, a selector on the options screen that can turn each player either off, on, or to any of the current AIs</li>
+  <li>Pending the first, AI players playing in the background, periodically resetting before the game has started and between games</li>
+  <li>Music and/or sound effects; of course with options to turn those on and off</li>
+  <li>Some sort of high score menu, probably not live (although I certainly could)</li>
+  <li>Stylings around the page; probably some sort of thick border that bleeds a little in and out, looking different per player</li>
+</ul>
+<p>I think that's about it. If you have any ideas, I'd love to hear them. There's not much (well, any) code this time, since nothing major has changed (other than refactoring). It's pretty much all tweaks. If you'd like to see the entire source (warning: ugly, bit getting a little better), it's still right here: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
+<p>Demo time!</p>
+<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/demo.embed.htm"></iframe></p>]]></content></entry><entry><title>Ludum Dare 30: Hints of a game</title><link href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game" /><id>urn:uuid:7e16e7ce-b97f-2d28-ba95-ea26c1b8a027</id><updated>2014-08-23T12:00:00Z</updated><summary type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
 ]]></summary><content type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
 <!--more-->
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png" /></a></p>
@@ -1631,150 +1663,4 @@ Enter the peg to use and the peg to jump
 15 10
 You lose. :(</code></pre>
 <p>Oops.</p>
-<p>Can you do any better? (Without using <a href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game">part 1</a>?)</p>]]></content></entry><entry><title>Cracker Barrel Peg Game, Part 2</title><link href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2" /><id>urn:uuid:35e19305-69d3-fb61-a39e-a5cb4a314d43</id><updated>2014-07-09T09:00:00Z</updated><summary type="html"><![CDATA[<p>Hey, remember that post a few days ago about the <a href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game">Cracker Barrel peg game</a>? Right at the end, I mentioned that there would be a part two, all about how to bend the puzzle at least a bit to your advantage. Basically, rather than finding the first solution to the peg game, we're going to find <em>all</em> of them. From there, we can determine which moves are easier to win from, which are harder, and which are downright impossible. Let's do it!</p>
-]]></summary><content type="html"><![CDATA[<p>Hey, remember that post a few days ago about the <a href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game">Cracker Barrel peg game</a>? Right at the end, I mentioned that there would be a part two, all about how to bend the puzzle at least a bit to your advantage. Basically, rather than finding the first solution to the peg game, we're going to find <em>all</em> of them. From there, we can determine which moves are easier to win from, which are harder, and which are downright impossible. Let's do it!</p>
-<!--more-->
-<p>Okay, first things first. Remember how we represented the puzzles as either a 15 element vector or 15 bit integer? Well that gives us a pretty solid upper bound on how many possible ways that the puzzle can end up being arrange. Specifically, <span>\(2^{15} = 32768\)</span> total states. For a computer... that's actually not that big of a number. First, let's see how many of those we can actually reach.</p>
-<pre class="scheme"><code>; Count how many total states are reachable from any initial state
-; By default, start with one copy of each peg missing
-(define (reachable [queue (for/list ([i (in-range 15)])
-                            (invert (make-puzzle (expt 2 i))))])
-  (let loop ([reached (hash)] [queue queue])
-    (cond
-      ; Queue is empty, done
-      [(null? queue)
-       reached]
-      ; Already checked this state, check the rest
-      [(hash-ref reached (index (first queue)) #f)
-       (loop reached (rest queue))]
-      ; New state, add it to the hash and all next states to the queue
-      [else
-       (loop (hash-set reached (index (first queue)) #t)
-             (append (rest queue) (next (first queue))))])))</code></pre>
-<p>Hopefully straight forward algorithm, basically we start with an (empty) index of which nodes we've visited--a hash in our case. Start with each of the fifteen opening moves in a queue. Then, keep taking one nodes off the queue. For new nodes, add that to the list of visited nodes and all its neighbors to the queue. A <a href="https://en.wikipedia.org/wiki/Breadth-first_search">breadth-first search</a>. Give it a run:</p>
-<pre class="scheme"><code>&gt; (hash-count (reachable))
-13935</code></pre>
-<p>So only 42.5%. Huh. A few examples of states that can't be reached:</p>
-<pre class="scheme"><code>&gt; (define r (reachable))
-&gt; (for/list ([i (in-range 5)])
-    (let loop ()
-      (define p (make-puzzle (random (expt 2 15))))
-      (if (hash-ref r (index p) #f)
-          (render p)
-          (loop))))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-1.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-2.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-3.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-4.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-4.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-5.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/unreachable-5.png" /></a></p>
-<p>But that doesn't necessary tell us which starting positions are easier. For that, we need something more like this:</p>
-<pre class="scheme"><code>&gt; (require plot)
-&gt; (plot (discrete-histogram
-         (for/list ([i (in-range 15)])
-           (vector (+ i 1)
-                   (hash-count (reachable (list (invert (make-puzzle (expt 2 i))))))))))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/reachable-by-initial.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/reachable-by-initial.png" /></a></p>
-<p>Interesting. So there are three states that reach the most (4, 6, and 13), three on the next tier (1, 11, and 15), 6 on the next, and 3 that reach the least (5, 8, and 9). If you think about it, that makes a lot of sense. For each position, there are two other identical positions--rotations:</p>
-<pre class="scheme"><code>; Rotate a puzzle clockwise
-(define (rotate p)
-  (puzzle (for/vector ([i (in-list '(11 12 7 13 8 4 14 9 5 2 15 10 6 3 1))])
-            (vector-ref (puzzle-data p) (- i 1)))))
-
-&gt; (define random-puzzle (make-puzzle (random (expt 2 15))))
-&gt; (map render (list random-puzzle
-                    (rotate random-puzzle)
-                    (rotate (rotate random-puzzle))))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/rotation-example-1.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/rotation-example-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/rotation-example-2.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/rotation-example-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/rotation-example-3.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/rotation-example-3.png" /></a></p>
-<p>Further than that, there are also reflections:</p>
-<pre class="scheme"><code>; Reflect a puzzle left to right
-(define (reflect p)
-  (puzzle (for/vector ([i (in-list '(1 3 2 6 5 4 10 9 8 7 15 14 13 12 11))])
-            (vector-ref (puzzle-data p) (- i 1)))))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/reflection-example-2.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/reflection-example-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/reflection-example-1.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/reflection-example-1.png" /></a></p>
-<p>This is what I meant last time, when I said that there were only four initial states (1, 2, 4, and 5). All of the rest are reflections and/or rotations of one of those 4.</p>
-<p>Finally, if you combine these two functions, it should be possible to get a real idea of how many truly unique states there are. Since each puzzle has a numeric form and each puzzle has up to six unique states (three rotations, each with two reflections), we can consistently find the one of those six with the lowest value. Something like this:</p>
-<pre class="scheme"><code>; Minimize a puzzle by finding the reflection/rotation with the minimal vector
-(define (minify p)
-  (define r1 (rotate p))
-  (define r2 (rotate r1))
-  (first (sort (list p r1 r2 (reflect p) (reflect r1) (reflect r2))
-               (λ (p1 p2)
-                 (&lt; (index p1) (index p2))))))
-
-&gt; (map index (list random-puzzle
-                   (reflect random-puzzle)
-                   (rotate random-puzzle)
-                   (reflect (rotate random-puzzle))
-                   (rotate (rotate random-puzzle))
-                   (reflect (rotate (rotate random-puzzle)))))
-'(26794 21322 10025 7474 12412 12679)
-&gt; (index (minify random-puzzle))
-7474
-&gt; (render (minify random-puzzle))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/minimum-random-puzzle.png"><img src="http://blog.jverkamp.com/2014/07/09/cracker-barrel-peg-game-part-2/minimum-random-puzzle.png" /></a></p>
-<p>So how many states do we get if we take only the minimum form? Both overall and reachable?</p>
-<pre class="scheme"><code>&gt; (set-count
-   (for/set ([i (in-range (expt 2 15))])
-     (index (minify (make-puzzle i)))))
-5728
-
-; Modification of reachable states, only minified
-; By default, start with one copy of each peg missing
-(define (reachable-min [queue (for/list ([i (in-range 15)])
-                                (invert (make-puzzle (expt 2 i))))])
-  (let loop ([reached (hash)] [queue queue])
-    (cond
-      ; Queue is empty, done
-      [(null? queue)
-       reached]
-      ; Already checked this state, check the rest
-      [else
-       (define p (minify (first queue)))
-       (define i (index p))
-       (cond
-         [(hash-ref reached i #f)
-          (loop reached (rest queue))]
-         [else
-          (loop (hash-set reached i #t)
-                (append (rest queue) (next p)))])])))
-
-&gt; (hash-count (reachable-min))
-2383</code></pre>
-<p>Still about the same (technically slightly lower, it's only 41.6%). That's a good sign. We're all of the way down to 2,383 states from the original potential 32,768. A lot more manageable.</p>
-<p>Next, let's shift to moves rather than states. Given two states, they are connected with a move if you could make a single jump to get from one to the other. So now rather than a set, we have a graph. Something like this:</p>
-<pre class="scheme"><code>; Find a map of all possible moves from a given puzzle
-(define (all-moves p)
-  (define moves (make-hash))
-  (let loop ([p p])
-    (let ([p (minify p)])
-      (define i (index (minify p)))
-      (when (not (hash-has-key? moves i))
-        (define next-ps (next p))
-        (hash-set! moves i (list-&gt;set (map index (map minify next-ps))))
-        (map loop next-ps))))
-  moves)</code></pre>
-<p>From there, we can recursively build up a count for each state how many times we win (end up with only a single peg) and how many times we lose.</p>
-<pre class="scheme"><code>; Count the number of winning and losing states from a given puzzle
-(define (score p)
-  (define moves (all-moves p))
-  (define-values (wins losses)
-    (let loop ([i (index (minify p))])
-      (define nxt (hash-ref moves i (set)))
-      (cond
-        [(set-empty? nxt)
-         (if (= 1 (count (make-puzzle i)))
-             (values 1 0)
-             (values 0 1))]
-        [else
-         (for/fold ([wins 0] [losses 0]) ([n (in-set nxt)])
-           (define-values (r-wins r-losses) (loop n))
-           (values (+ wins   r-wins)
-                   (+ losses r-losses)))])))
-  (* 1.0 (/ wins (+ wins losses))))</code></pre>
-<p>That way we can tell how 'hard' each puzzle is, assuming that you always rotate/reflect to avoid potential duplicate state:</p>
-<pre class="scheme"><code>&gt; (for/list ([i (in-list '(1 2 3 5))])
-    (list i (score (invert (make-puzzle i)))))
-
-'((1 0.05239514926876435)
-  (2 0.05138285262741999)
-  (3 0.08392304995059131)
-  (5 0.08392304995059131))</code></pre>
-<p>So there you have it. If you're playing optimally, it's slightly easier to do so starting with a corner or the second. The center or center of each edge are slightly harder.</p>
-<p>And that's all we have for today. Originally, I meant to use the graph library I've used a number of times before to visualize the solution space (there's a function that will do that on GitHub), but the graphs honestly aren't that helpful. There nodes are too nested and there are just too many to helpfully visualize. So it goes. Still, I think we found a few interesting things.</p>
-<p>As always, the code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pegs.rkt">pegs.rkt</a></p>]]></content></entry></feed>
+<p>Can you do any better? (Without using <a href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game">part 1</a>?)</p>]]></content></entry></feed>
