@@ -1224,7 +1224,188 @@ $('canvas').each(function(otherIndex, other) {
 });</code></pre>
 <p>Theoretically the comments should be enough, but if not, the basic idea is to first find if we have two overlapping regions (the <code>frameIndex</code> and <code>otherIndex</code> will make more sense if you look at the full code). If you have one, then loop over the shared region and copy pixels to the lower of the two boxes. I'm going to have to figure out a better rule for that. I tried using z-index, but that didn't work much better... Essentially, we need to be able to move particles from one box to another, but we need to be careful to neither lose nor duplicate particles. There are a number of weird edges cases (as I'm sure you've found if you played with the simulation).</p>
 <p>And, that's it. I have until 5pm Pacific on Sunday. I'm actually feeling pretty good about this. The best plan is to have a playable game after 24 hours and to spend the second day on polish. I'm not sure if I'll quite hit that... but maybe!</p>
-<p>If you'd like to see the entire source (warning: ugly) and potentially spoilers, check it out here: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>]]></content></entry><entry><title>Minimal palindromic base</title><link href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base" /><id>urn:uuid:dccae1c2-8231-ed96-21a1-54145cd10b47</id><updated>2014-08-13T17:00:00Z</updated><summary type="html"><![CDATA[<p>What's this? Two posts in one day? Well, <a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">writing a static blog generator</a> can do that. :)</p>
+<p>If you'd like to see the entire source (warning: ugly) and potentially spoilers, check it out here: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>]]></content></entry><entry><title>Chess Puzzles 1: Get moving!</title><link href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving" /><id>urn:uuid:c9a01028-c833-db3c-8a7b-1118c75bc69f</id><updated>2014-08-21T20:00:00Z</updated><summary type="html"><![CDATA[<p>Here's something I haven't done much<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>: chess puzzles! I'm still not sure entirely what I think about the game in general. There is certainly quite a lot of strategy, which I like, but to really get good at chess, there's also some amount of memorizing openings and closings. That's something I'm a little less thrilled with.</p>
+<p>Still, it's the perfect sort of came to work out programming exercises with. It's a game of <a href="https://en.wikipedia.org/wiki/perfect_information">perfect information</a>, so you don't have to deal with what a player knows and doesn't. The pieces have well defined, regular moves<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> There's a fairly intense branching factor, but not insurmountable--<a href="https://en.wikipedia.org/wiki/Deep_Blue (chess computer)">Deep Blue</a> proved that.</p>
+<p>Anyways, enough chatter. Let's play some chess!</p>
+]]></summary><content type="html"><![CDATA[<p>Here's something I haven't done much<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>: chess puzzles! I'm still not sure entirely what I think about the game in general. There is certainly quite a lot of strategy, which I like, but to really get good at chess, there's also some amount of memorizing openings and closings. That's something I'm a little less thrilled with.</p>
+<p>Still, it's the perfect sort of came to work out programming exercises with. It's a game of <a href="https://en.wikipedia.org/wiki/perfect_information">perfect information</a>, so you don't have to deal with what a player knows and doesn't. The pieces have well defined, regular moves<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> There's a fairly intense branching factor, but not insurmountable--<a href="https://en.wikipedia.org/wiki/Deep_Blue (chess computer)">Deep Blue</a> proved that.</p>
+<p>Anyways, enough chatter. Let's play some chess!</p>
+<!--more-->
+<p>Okay, first things first, we're going to have to lay some ground work. Despite how straight forward chess pieces are, it will still take a bit of effort to turn that into something that a computer can deal with. So first, let's work out a way of defining chess piece movement.</p>
+<p>Here, I'm going a little ambitious. I want to be able to support arbitrary <a href="https://en.wikipedia.org/wiki/fairy_chess pieces">fairy chess pieces</a>. In addition to the more standard pieces, we have  strictly more powerful pieces like the Princess (Knight + Bishop) or the Empress (Knight + Rook). Or we have alternatives, like the Camel (like the Knight, only 3:1 instead of 2:1). Or the Nightrider, which moves like the Knight, but keeps on going. I want to be able to support all of these...</p>
+<p>Okay, first things first. A basic struct for points and another to use for a <code>move-sequence</code>:</p>
+<pre class="scheme"><code>; Points, with associated methods; can also be used as offsets
+(struct pt (x y) #:transparent)
+
+; Move sequences for a piece; used for special flags (eg initial, capturing)
+(struct move-sequence (tag moves) #:transparent)</code></pre>
+<p>The tags are mostly used for Pawns or the like, since they move one way when capturing and another when not. The rest is going to be a list of moves. So for something like the Rook, we'll have something like this:</p>
+<pre class="scheme"><code>(list
+ (move-sequence (set) (list (pt 0 1) (pt 0 2) (pt 0 3) (pt 0 4) (pt 0 5) (pt 0 6) (pt 0 7) (pt 0 8)))
+ (move-sequence (set) (list (pt -1 0) (pt -2 0) (pt -3 0) (pt -4 0) (pt -5 0) (pt -6 0) (pt -7 0) (pt -8 0)))
+ (move-sequence (set) (list (pt 1 0) (pt 2 0) (pt 3 0) (pt 4 0) (pt 5 0) (pt 6 0) (pt 7 0) (pt 8 0)))
+ (move-sequence (set) (list (pt 0 -1) (pt 0 -2) (pt 0 -3) (pt 0 -4) (pt 0 -5) (pt 0 -6) (pt 0 -7) (pt 0 -8))))</code></pre>
+<p>When we get around to it, the idea is we can run down any of these lists until we run into something. If we run into an enemy piece, we'll allow the move; if not, we won't. Similarly, the Pawn:</p>
+<pre class="scheme"><code>(list
+ (move-sequence (set 'initial-only 'non-capture) (list (pt 0 2)))
+ (move-sequence (set 'non-capture) (list (pt 0 1)))
+ (move-sequence (set 'capture-only) (list (pt -1 1)))
+ (move-sequence (set 'capture-only) (list (pt 1 1))))</code></pre>
+<p>On the other hand though, these are kind of a pain to type in by hand. Let's make some helper functions. First, basic movement:</p>
+<pre class="scheme"><code>; A sequence of moves along a specific direction
+; Distance is either not specified (exactly 1)
+;   a number (exactly that number), n (unlimited)
+;   or a range (min/max inclusive)
+; Direction is either from the list '(* + &gt; &lt; &lt;&gt; = &gt;= &lt;= X X&gt; X&lt;)
+;   or a list of possible single offsets
+(define move
+  (case-lambda
+    [(direction)
+     (move 1 1 direction)]
+    [(distance direction)
+     (if (eq? distance 'n)
+         (move 1        +inf.0   direction)
+         (move distance distance direction))]
+    [(minimum-distance maximum-distance direction)
+     (for/list ([offset (in-list (offsets-by-direction direction))])
+       (move-sequence
+        (set)
+        (for*/list ([distance (in-range minimum-distance (+ maximum-distance 1))]
+                    [p (in-value (pt* distance offset))])
+                    #:break (or (&gt; (abs (pt-x p)) (current-board-size))
+                                (&gt; (abs (pt-y p)) (current-board-size)))
+          p)))]))</code></pre>
+<p>Basically, we have three different ways of specifying moves:</p>
+<ul>
+    <li><code>(move direction)</code> - moves one square in a given direction (like a pawn)</li>
+    <li><code>(move distance direction)</code> - moves either exactly a specific number of tiles or an unlimited number (if <code>distance</code> is <code>n</code>)</li>
+    <li><code>(move minimum-distance maximum-distance direction)</code> - a range of movement, so you can move between the minimum and maximum inclusive but no more or less</li>
+</ul>
+<p>But what does direction mean? If it's specified as a point, that's straight forward enough, but still, we want to be able to specify these things more simply. Let's take a page out of <a href="https://en.wikipedia.org/wiki/Fairy_chess_piece#Parlett.27s_movement_notation">Parlett's movement notation</a>. Specifically the direction specifications:</p>
+<ul>
+        <li><code>*</code> – orthogonally or diagonally (all eight possible directions)</li>
+    <li><code>+</code> – orthogonally (four possible directions)</li>
+    <li><code>&gt;</code> – orthogonally forwards</li>
+    <li><code>&lt;</code> – orthogonally backwards</li>
+    <li><code>&lt;&gt;</code> – orthogonally forwards and backwards</li>
+    <li><code>=</code> – orthogonally sideways (used here instead of Parlett's divide symbol.)</li>
+    <li><code>&gt;=</code> – orthogonally forwards or sideways</li>
+    <li><code>&lt;=</code> – orthogonally backwards or sideways</li>
+    <li><code>X</code> – diagonally (four possible directions)</li>
+    <li><code>X&gt;</code> – diagonally forwards</li>
+    <li><code>X&lt;</code> – diagonally backwards</li>
+</ul>
+<p>Turn it into code:</p>
+<pre class="scheme"><code>; Return a sequence of all possible offsets for a given direction
+; Order specified front to back, left to right
+(define (offsets-by-direction direction)
+  `(,@(if (member direction '(*                  X X&gt;   )) (list (pt -1  1)) '())
+    ,@(if (member direction '(* + &gt;   &lt;&gt;   &gt;=           )) (list (pt  0  1)) '())
+    ,@(if (member direction '(*                  X X&gt;   )) (list (pt  1  1)) '())
+    ,@(if (member direction '(* +        = &gt;= &lt;=        )) (list (pt -1  0)) '())
+    ,@(if (member direction '(* +        = &gt;= &lt;=        )) (list (pt  1  0)) '())
+    ,@(if (member direction '(*                  X    X&lt;)) (list (pt -1 -1)) '())
+    ,@(if (member direction '(* +   &lt; &lt;&gt;      &lt;=        )) (list (pt  0 -1)) '())
+    ,@(if (member direction '(*                  X    X&lt;)) (list (pt  1 -1)) '())
+    ,@(if (pt? direction)   (list direction) '())
+    ,@(if (list? direction) direction        '())))</code></pre>
+<p>We're going to set it out now: <code>pt</code> is specified as <code>x, y</code>, not <code>row, column</code>. That's something that will bite you if you don't pay attention, so make sure to be consistent.</p>
+<p>That's enough to define most of the pieces we want.</p>
+<pre class="scheme"><code>(define King   (move  1 '*))
+(define Queen  (move 'n '*))
+(define Rook   (move 'n '+))
+(define Bishop (move 'n 'X))</code></pre>
+<p>Two are still left: the Knight and the Pawn. For the Knight, we need to specify something that will let us jump in arbitrary directions:</p>
+<pre class="scheme"><code>; Make a leaper from a given offset
+(define (leaper xΔ yΔ)
+  (set-&gt;list
+   (list-&gt;set
+    `(,(pt    xΔ     yΔ )
+      ,(pt (- xΔ)    yΔ )
+      ,(pt    xΔ  (- yΔ))
+      ,(pt (- xΔ) (- yΔ))
+      ,(pt    yΔ     xΔ )
+      ,(pt (- yΔ)    xΔ )
+      ,(pt    yΔ  (- xΔ))
+      ,(pt (- yΔ) (- xΔ))))))</code></pre>
+<p>The <code>list-&gt;set</code> and set-&gt;list` calls are to avoid duplicates. Otherwise, it's every combination of leaps in a given ratio. So if you want to define a Knight:</p>
+<pre class="scheme"><code>(define Knight (move 1 (leaper 1 2)))</code></pre>
+<p>If you want to define the Nightrider though, it's just as simple:</p>
+<pre class="scheme"><code>(define Nightrider (move 'n (leaper 1 2)))</code></pre>
+<p>And... that leaves us the Pawn. It's funny how perhaps the simplest of the pieces is the most complicated to define. But if you think about it, the behavior is also the longest to describe. You can move two spaces on the first move, one space any other move, but only capture diagonally. Something like this:</p>
+<pre class="scheme"><code>(define Pawn
+  (alternatives
+   (on-non-capture (on-initial (move 2 '&gt;)))
+   (on-non-capture             (move 1 '&gt;))
+   (on-capture                 (move 1 'X&gt;))))</code></pre>
+<p>What's that? We don't have <code>on-non-capture</code> / <code>on-capture</code> functions defined? Well, all we have to do is set the <code>tag</code> field we defined earlier. Something like this:</p>
+<pre class="scheme"><code>; Set special flags for move lists
+(define (set-flag flag movelist*)
+  (for/list ([movelist (in-list movelist*)])
+    (match-define (move-sequence flags moves) movelist)
+    (move-sequence (set-add flags flag) moves)))
+
+(define (on-initial     movelist*) (set-flag 'initial-only movelist*))
+(define (on-capture     movelist*) (set-flag 'capture-only movelist*))
+(define (on-non-capture movelist*) (set-flag 'non-capture  movelist*))
+(define (as-locust      movelist*) (set-flag 'locust       movelist*))</code></pre>
+<p>Locusts are something we'll get to eventually. Those are pieces that move like checkers: they capture by jumping. Other than that, we just need the <code>alternatives</code>:</p>
+<pre class="scheme"><code>; Merge multiple move lists by allowing any of them
+(define (alternatives . list*)
+  (apply append list*))</code></pre>
+<p>Feels like cheating. And there we have the pawn:</p>
+<pre class="scheme"><code>&gt; Pawn
+(list
+ (move-sequence (set 'initial-only 'non-capture) (list (pt 0 2)))
+ (move-sequence (set 'non-capture) (list (pt 0 1)))
+ (move-sequence (set 'capture-only) (list (pt -1 1)))
+ (move-sequence (set 'capture-only) (list (pt 1 1))))</code></pre>
+<p>Sweet.</p>
+<p>Okay, what about other kinds of pieces. Say... the Aanca. That's a piece that moves one square orthogonally than diagonally outwards. It's a bit complicated by the fact that we don't want to double back with the diagonals and we need one more function. A sequencer:</p>
+<pre class="scheme"><code>; Merge multiple move lists by doing one and then the next, each relative to the previous endpoint
+(define (and-then first* rest*)
+  (for*/list ([first (in-list first*)]
+              [rest  (in-list rest*)])
+    (match-define (move-sequence first-flags first-moves) first)
+    (match-define (move-sequence rest-flags  rest-moves)  rest)
+    (define offset (last first-moves))
+    (move-sequence
+     (set-union first-flags rest-flags)
+     (append first-moves (map (λ (each) (pt+ offset each)) rest-moves)))))</code></pre>
+<p>Now we can have the Aanca:</p>
+<pre class="scheme"><code>; Move one square like a rook, followed by any number of spaces diagonally outwards
+(define Aanca
+  (alternatives
+   (and-then (move 1 '&gt;) (move 'n 'X&gt;))
+   (and-then (move 1 (pt 1 0))  (alternatives (move 'n (pt  1 -1))
+                                              (move 'n (pt  1  1))))
+   (and-then (move 1 '&lt;) (move 'n 'X&lt;))
+   (and-then (move 1 (pt -1 0)) (alternatives (move 'n (pt -1 -1))
+                                              (move 'n (pt -1  1))))))</code></pre>
+<p>And that's it. We can define a whole pile of the other <a href="https://en.wikipedia.org/wiki/Fairy_chess pieces">Fairy chess pieces</a>:</p>
+<pre class="scheme"><code>(define Adjutant     (move  1 '&lt;&gt;))
+(define Advisor      (move  1 'X))
+(define Alfil        (move  1 (leaper 2 2)))
+(define Afilrider    (move 'n (leaper 2 2)))
+(define Alibaba      (alternatives (move 'n (leaper 2 2)) (move 'n (leaper 0 2))))
+(define Amazon       (alternatives (move 1 (leaper 1 2)) (move 'n '*)))
+(define Antelope     (move  1 (leaper 3 4)))
+(define Archbishop   (alternatives (move 'n 'X) (move 1 (leaper 1 2))))
+(define ArrowPawn    (alternatives (on-non-capture (move 1 '+))
+                                   (on-capture (move 1 'X))))
+(define Backslider   (move  1 '&lt;))
+(define Banshee      (alternatives (move 'n 'X) (move 'n (leaper 1 2))))
+(define Bede         (alternatives (move 'n 'X) (move 'n (leaper 0 2))))
+(define BerolinaPawn (alternatives (on-non-capture (on-initial (move 2 'X&gt;)))
+                                   (on-non-capture (move 1 'X&gt;))
+                                   (on-capture (move 1 '&gt;))))
+...</code></pre>
+<p>(Feel free to submit a <a href="https://github.com/jpverkamp/chess-puzzles/pulls">pull request</a> if you want to add more. :))</p>
+<p>Oof. That's a lot of code. I think that's about enough for today.</p>
+<p>You can see the full code on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles">jpverkamp/chess-puzzles</a>. Warning though: I'm a bit further ahead code-wise than blog-wise. That way lies spoilers...</p>
+<p>Speaking of which:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving/chessboard.png"><img src="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving/chessboard.png" /></a></p>
+<p>:)</p>]]></content></entry><entry><title>Minimal palindromic base</title><link href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base" /><id>urn:uuid:dccae1c2-8231-ed96-21a1-54145cd10b47</id><updated>2014-08-13T17:00:00Z</updated><summary type="html"><![CDATA[<p>What's this? Two posts in one day? Well, <a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">writing a static blog generator</a> can do that. :)</p>
 <p>Another easily phrased challenge:</p>
 <blockquote>
     <p>We have a simple little problem today: Given an integer n > 2, find the minimum b > 1 for which n base b is a palindrome.</p>
@@ -1635,121 +1816,4 @@ Given a positive integer, return all the ways that the integer can be represente
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/07/langtons-ant/LRLR-1000.png"><img src="http://blog.jverkamp.com/2014/08/07/langtons-ant/LRLR-1000.png" /></a></p>
 <pre class="scheme"><code>&gt; (render/2htdp (fast-tick (make-ant "LRLRLR") 1000))</code></pre>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/07/langtons-ant/LRLRLR-1000-link.png"><img src="http://blog.jverkamp.com/2014/08/07/langtons-ant/LRLRLR-1000-link.png" /></a></p>
-<p>And that's it for today. Take a look; if you find any other awesome patterns, leave a comment! If you want to see the entire source, you can do so (as always) on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/langtons-ant.rkt">langtons-ant.rkt</a></p>]]></content></entry><entry><title>Cracker Barrel Peg Game, Part 3</title><link href="http://blog.jverkamp.com/2014/07/10/cracker-barrel-peg-game-part-3" /><id>urn:uuid:9bd5dcc8-74cb-9d93-1a71-996438d2daa2</id><updated>2014-07-10T09:00:00Z</updated><summary type="html"><![CDATA[<p>If you were paying attention when I posted part 2 to GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pegs.rkt">pegs.rkt</a>), you might have noticed a function I hadn't talked about: <code>play</code></p>
-]]></summary><content type="html"><![CDATA[<p>If you were paying attention when I posted part 2 to GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pegs.rkt">pegs.rkt</a>), you might have noticed a function I hadn't talked about: <code>play</code></p>
-<!--more-->
-<p>With everything we've done over the past two posts, we have everything we need to actually play the peg game:</p>
-<pre class="scheme"><code>(define (play p)
-  (cond
-    [(= 1 (count p))         (displayln "YOU WIN!")]
-    [(= 0 (length (next p))) (display "You lose. :(")]
-    [else
-     (render-text p)
-     (displayln "Enter the peg to use and the peg to jump")
-     (define from (read))
-     (define over (read))
-     (cond
-       [(jump p from over) =&gt; play]
-       [else
-        (displayln "Invalid move.")
-        (play p)])]))</code></pre>
-<p>Let's play!</p>
-<pre class="racket"><code>&gt; (play (invert (make-puzzle 1)))
-
-        2   3
-      4   5   6
-    7   8   9   10
-  11  12  13  14  15
-
-Enter the peg to use and the peg to jump
-4 2
-          1
-            3
-          5   6
-    7   8   9   10
-  11  12  13  14  15
-
-Enter the peg to use and the peg to jump
-9 5
-          1
-        2   3
-              6
-    7   8       10
-  11  12  13  14  15
-
-Enter the peg to use and the peg to jump
-12 8
-          1
-        2   3
-          5   6
-    7           10
-  11      13  14  15
-
-Enter the peg to use and the peg to jump
-11 7
-          1
-        2   3
-      4   5   6
-                10
-          13  14  15
-
-Enter the peg to use and the peg to jump
-14 13
-          1
-        2   3
-      4   5   6
-                10
-      12          15
-
-Enter the peg to use and the peg to jump
-3 5
-          1
-        2
-      4       6
-        8       10
-      12          15
-
-Enter the peg to use and the peg to jump
-12 8
-          1
-        2
-      4   5   6
-                10
-                  15
-
-Enter the peg to use and the peg to jump
-2 4
-          1
-
-          5   6
-    7           10
-                  15
-
-Enter the peg to use and the peg to jump
-6 5
-          1
-
-      4
-    7           10
-                  15
-
-Enter the peg to use and the peg to jump
-7 4
-          1
-        2
-
-                10
-                  15
-
-Enter the peg to use and the peg to jump
-1 2
-
-      4
-                10
-                  15
-
-Enter the peg to use and the peg to jump
-15 10
-You lose. :(</code></pre>
-<p>Oops.</p>
-<p>Can you do any better? (Without using <a href="http://blog.jverkamp.com/2014/07/05/cracker-barrel-peg-game">part 1</a>?)</p>]]></content></entry></feed>
+<p>And that's it for today. Take a look; if you find any other awesome patterns, leave a comment! If you want to see the entire source, you can do so (as always) on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/langtons-ant.rkt">langtons-ant.rkt</a></p>]]></content></entry></feed>
