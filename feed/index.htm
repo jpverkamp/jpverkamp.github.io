@@ -1,5 +1,183 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-03T20:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Chess Puzzles: N Queens</title><link href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens" /><id>urn:uuid:ca36a36d-8baa-c760-8b5a-2162fcfa5a9c</id><updated>2014-09-03T20:00:00Z</updated><summary type="html"><![CDATA[<p>After two weeks, it seems only right that we actually get around to a real chess puzzle. First on the list: <a href="https://en.wikipedia.org/wiki/Eight_queens puzzle">the eight queens puzzle</a>.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-04T20:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Chess Puzzles: Knight's Tour</title><link href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour" /><id>urn:uuid:7b068d00-2bb7-61fb-e0d8-045306814067</id><updated>2014-09-04T20:00:00Z</updated><summary type="html"><![CDATA[<p>Onwards and upwards! For today's chess puzzle, let's take a first crack at the <a href="https://en.wikipedia.org/wiki/Knight's_Tour">Knight's Tour</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>Onwards and upwards! For today's chess puzzle, let's take a first crack at the <a href="https://en.wikipedia.org/wiki/Knight's_Tour">Knight's Tour</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
+<!--more-->
+<p>As with <a href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens">N Queens</a>, the problem is simply stated:</p>
+<blockquote>A knight's tour is a sequence of moves of a knight on a chessboard such that the knight visits every square only once.</blockquote>
+<p>And once again, we can get a solution working relatively well using <a href="https://en.wikipedia.org/wiki/backtracking">backtracking</a>:</p>
+<pre class="scheme"><code>(define-piece Knight (move 1 (leaper 1 2)))
+(define-piece Visited '())
+
+; Solve a knights tour on a given board
+(define (knights-tour width [height width])
+  ; Create a new empty board
+  (define b (make-board width height #:pieces (list Knight Visited)))
+
+  ; A board is completed if there are no empty squares
+  ; All squares are either the Knight or Visited
+  (define (completed? b)
+    (not (for*/first ([x (in-range width)]
+                      [y (in-range height)]
+                      #:when (not (board-ref b (pt x y))))
+           #t)))
+
+  ; Move the knight from the given point to each possible next point in turn
+  ; Return a list of valid moves to finish the tour if such a list exists, #f otherwise
+  (define (move-knight b p)
+    (cond
+      ; Done, we have a tour and there are no more valid moves necessary
+      [(completed? b) '()]
+      ; Otherwise, try all possible moves from this point
+      ; Since all pieces are the same color, moves from is only empty tiles
+      [else
+       (for*/first ([next (in-list (moves-from b p))]
+                    [recur (in-value (let* ([b (board-move b p next)]
+                                            [b (board-set b p '(Black Visited))])
+                                       (move-knight b next)))]
+                    #:when recur)
+         (cons p recur))]))
+
+  ; Try each possible initial location until we find one that works
+  (for*/first ([x (in-range width)]
+               [y (in-range height)]
+               [solution (in-value
+                           (move-knight
+                             (board-set b (pt x y) '(Black Knight))
+                             (pt x y)))]
+               #:when solution)
+    solution))</code></pre>
+<p>Basically, there are three interesting pieces here: <code>completed?</code>, <code>move-knight</code>, and the <code>for*/first</code> initial loop.</p>
+<p>First, how can a tour be <code>completed?</code> If all of the locations on the board are filled. We get around this with the psuedo-piece: <code>Visited</code>. It fills up the board as we continue to move our knight around. Technically, I could have just filled the board with knights, but I like how visited lets us visualize things.</p>
+<p>Next, <code>move-knight</code>. This is the core of the algorithm. As it states, we are building up a list of moves recursively. So the base case (when the board is completed) return the empty list <code>'()</code>. Otherwise, we're going to use <code><a href="http://docs.racket-lang.org/search/index.html?q=for*/first">for*/first</a></code> to find the first move which recursively solves the problem (or <code>#f</code> if none does). The use of <code><a href="http://docs.racket-lang.org/search/index.html?q=in-value">in-value</a></code> is a trick I picked up <a href="https://groups.google.com/forum/#!topic/racket-users/p2S6F3FAiU0">from the mailing list</a> for using an 'expensive' value in a <code>#:when</code> clause and body without having to recalculate it.</p>
+<p>Finally, we loop across all of the starting states. It doesn't matter in the case of closed tours (where the start and end points match and thus any point can be a start point), but on some boards not every starting location is valid.</p>
+<p>So now we can solve a tour:</p>
+<pre class="scheme"><code>&gt; (knights-tour 5)
+(list
+ (pt 0 0) (pt 1 2) (pt 0 4) (pt 2 3) (pt 3 1)
+ (pt 1 0) (pt 0 2) (pt 1 4) (pt 2 2) (pt 4 3)
+ (pt 2 4) (pt 0 3) (pt 1 1) (pt 3 0) (pt 4 2)
+ (pt 3 4) (pt 1 3) (pt 0 1) (pt 2 0) (pt 4 1)
+ (pt 3 3) (pt 2 1) (pt 4 0) (pt 3 2))</code></pre>
+<p>Whee! Okay, what does that actually look like? Let's animate it!</p>
+<pre class="scheme"><code>(current-glyphs (hash 'Knight "♞"
+                      'Visited "♘"))
+
+; Render a knights tour into an animation
+(define (knights-tour/animate-solution width [height width])
+  (define tour (knights-tour width height)
+
+  ; Create an initial board
+  (define board (make-board width height #:pieces (list Knight Visited)))
+
+  ; Prerender the board once so we know how large of a scene to create
+  (define r (render board #:player-colors (const "black")))
+  (define render-width (send r get-width))
+  (define render-height (send r get-height))
+
+  ; Animate the tour, rendering each frame once
+  (big-bang tour
+    [on-tick cdr]
+    [to-draw (λ (tour)
+               (place-image
+                (render (if (null? tour)
+                            board
+                            (board-set board (car tour) '(Black Knight))))
+                (/ render-width 2)
+                (/ render-height 2)
+                (empty-scene render-width render-height)))]
+    [stop-when null?]
+    [record? #t]))</code></pre>
+<pre class="scheme"><code> &gt; (knights-tour/animate-solution 5) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
+<p>Shiny.</p>
+<p>Okay, so that's all well and good for normal boards. What if instead you want a board with holes in it / a non-regular board?</p>
+<p>Simple! We'll just add a third type of piece <code>Invalid</code> and pre-populate the board with those:</p>
+<pre class="scheme"><code>(current-glyphs (hash 'Knight "♞"
+                      'Invalid "✗"
+                      'Visited "♘"))
+
+(define-piece Knight (move 1 (leaper 1 2)))
+(define-piece Invalid '())
+(define-piece Visited '())
+
+; Solve a knights tour on a given board (optionally with some pieces removed)
+(define (knights-tour width [height width] #:removed [removed '()])
+  ; Create a new board (potentially removing some pieces)
+  (define b
+    (for/fold ([b (make-board width height
+                    #:pieces (list Knight Invalid Visited))])
+              ([p (in-list removed)])
+      (board-set b p '(Black Invalid))))
+
+  ...)</code></pre>
+<p>All the rest of the code stays the same. Pretty nice eh? Let's try an example:</p>
+<pre class="scheme"><code>&gt; (knights-tour/animate-solution 4
+    #:removed (list (pt 1 0) (pt 0 2) (pt 0 3) (pt 2 3) (pt 3 3)))</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-solution.gif" /></a></p>
+<p>Hmm, that's all well and code showing off the final tour. But what if we want to see the search in progress? Let's put in a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code> again so we can animate this. This time around though, I'm actually going to fold the generator code into the main method rather than duplicating a bunch of code.</p>
+<pre class="scheme"><code>(define (knights-tour width [height width] #:generator? [generator? #f])
+  (define g
+    (generator ()
+      ...
+
+      (define (move-knight b p)
+        (when generator?
+          (yield b p))
+
+        ...)))
+
+  (if generator? g (g)))</code></pre>
+<p>In this case, we create the <code>generator</code> no matter what. But we only call <code>yield</code> if we actually specify it to the function. This way we can see each step of our simultion as we go. If we don't want the generator, we immediately call it as we're returning, forcing it to return a value: the implicit <code>yield</code> at the end of the function.</p>
+<p>So with this, we have enough that we can animate the search space:</p>
+<pre class="scheme"><code>; Render the search for a knights tour into an animation
+(define (knights-tour/animate-search width [height width] #:removed [removed '()])
+  ; Create an initial board including the missing tiles
+  (define board
+    (for/fold ([b (make-board width height #:pieces (list Knight Invalid Visited))])
+              ([p (in-list removed)])
+      (board-set b p '(Black Invalid))))
+
+  ; Prerender the board once so we know how large of a scene to create
+  (define r (render board #:player-colors (const "black")))
+  (define render-width (send r get-width))
+  (define render-height (send r get-height))
+
+  ; Set the last board, which will be updated on each yield
+  (define last-board board)
+  (define last-point (pt 0 0))
+  (define g (knights-tour width height #:removed removed #:generator? #t))
+
+  ; Animate the tour, rendering each frame once
+  ; Stop when the generator returns 1 value
+  (big-bang #t
+    [on-tick
+     (λ (running?)
+       (and running?
+            (with-handlers ([exn? (const #f)])
+              (define-values (board point) (g))
+              (set! last-board board)
+              (set! last-point point)
+              #t)))]
+    [to-draw
+     (λ (_)
+       (place-image
+        (render last-board)
+        (/ render-width 2)
+        (/ render-height 2)
+        (empty-scene render-width render-height)))]
+    [stop-when (negate identity)]
+    [record? #t]))</code></pre>
+<p>And in action:</p>
+<pre class="scheme"><code>&gt; (knights-tour/animate-search 4
+     #:removed (list (pt 1 0) (pt 0 2) (pt 0 3) (pt 2 3) (pt 3 3)))</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-search.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-search.gif" /></a></p>
+<p>Sweet!</p>
+<p>That's about all for today. If you were following along though, you might have noticed one very important omission...</p>
+<p>It doesn't work on 8x8 boards.</p>
+<p>Well, that's not strictly speaking true. It will work. If you wait long enough, you will eventually get a solution, but it's going to be a <em>very</em> long wait. So looks like we'll need a follow looking for a better solution<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span></p>
+<p>That's for another time though. If you'd like to see the entire code, you can do so in the <a href="https://github.com/jpverkamp/chess-puzzles">chess-puzzles</a> repo on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles/blob/master/puzzles/knights-tour.rkt">knights-tour.rkt</a>. Check it out!</p>]]></content></entry><entry><title>Chess Puzzles: N Queens</title><link href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens" /><id>urn:uuid:ca36a36d-8baa-c760-8b5a-2162fcfa5a9c</id><updated>2014-09-03T20:00:00Z</updated><summary type="html"><![CDATA[<p>After two weeks, it seems only right that we actually get around to a real chess puzzle. First on the list: <a href="https://en.wikipedia.org/wiki/Eight_queens puzzle">the eight queens puzzle</a>.</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png" /></a></p>
 <p>Specifically, how do you place n queens on an n by n chess board such that no pair of queens can attack one another?</p>
 ]]></summary><content type="html"><![CDATA[<p>After two weeks, it seems only right that we actually get around to a real chess puzzle. First on the list: <a href="https://en.wikipedia.org/wiki/Eight_queens puzzle">the eight queens puzzle</a>.</p>
@@ -1842,92 +2020,4 @@ $('canvas').each(function(otherIndex, other) {
 <p>You can see the full code on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles">jpverkamp/chess-puzzles</a>. Warning though: I'm a bit further ahead code-wise than blog-wise. That way lies spoilers...</p>
 <p>Speaking of which:</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving/chessboard.png"><img src="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving/chessboard.png" /></a></p>
-<p>:)</p>]]></content></entry><entry><title>Minimal palindromic base</title><link href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base" /><id>urn:uuid:dccae1c2-8231-ed96-21a1-54145cd10b47</id><updated>2014-08-13T17:00:00Z</updated><summary type="html"><![CDATA[<p>What's this? Two posts in one day? Well, <a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">writing a static blog generator</a> can do that. :)</p>
-<p>Another easily phrased challenge:</p>
-<blockquote>
-    <p>We have a simple little problem today: Given an integer n > 2, find the minimum b > 1 for which n base b is a palindrome.</p>
-    <p>-- <a href="http://programmingpraxis.com/2014/08/05/minimal-palindromic-base/">Minimal Palindromic Base</a> via Programming Praxis</p>
-</blockquote>
-]]></summary><content type="html"><![CDATA[<p>What's this? Two posts in one day? Well, <a href="http://blog.jverkamp.com/2014/08/08/onwards-and-upwards">writing a static blog generator</a> can do that. :)</p>
-<p>Another easily phrased challenge:</p>
-<blockquote>
-    <p>We have a simple little problem today: Given an integer n > 2, find the minimum b > 1 for which n base b is a palindrome.</p>
-    <p>-- <a href="http://programmingpraxis.com/2014/08/05/minimal-palindromic-base/">Minimal Palindromic Base</a> via Programming Praxis</p>
-</blockquote>
-<!--more-->
-<p>More specifically, consider the number 15:</p>
-<div>$$15_{10} = 1111_2 = 120_3 = 33_4 = 30_5 = 23_6 = 21_7 = 17_8 = 16_9$$</div>
-<div>$$15_{10} = 14_{11} = 13_{12} = 12_{13} = 11_{14} = 10_{15}$$</div>
-<p>In this case, <code>2</code> is our golden number, since <code>1111</code> is a palindrome. But if it wasn't, 14 is the next case, with <code>11</code>.</p>
-<p>So, what do we need? Well, first we want a generic way to convert bases. We could use different characters up to base 64, but we'll eventually get beyond that. So instead, we'll use lists of digits, each of which can be any integer:</p>
-<pre class="scheme"><code>; Convert a decimal number n to base b
-(define (rebase n b)
-  (let loop ([n n] [ls '()])
-     (if (= n 0)
-        ls
-        (loop (quotient n b)
-              (cons (remainder n b) ls)))))</code></pre>
-<pre class="scheme"><code>&gt; (rebase 15 2)
-'(1 1 1 1)
-
-&gt; (rebase 15 5)
-'(3 0)
-
-&gt; (rebase 15 10)
-'(1 5)
-
-&gt; (rebase 15 14)
-'(1 1)</code></pre>
-<p>Looks good. Next, we'll use a macro we've often used before: <code><a href="http://docs.racket-lang.org/search/index.html?q=for/first">for/first</a></code>. It's perfect for our uses, since it will return the first value that is non-<code>#f</code>. In this case, our base:</p>
-<pre class="scheme"><code>; Find the minimal base b such that n in base b is a palindrome
-(define (minimal-palindromic-base n)
-  (for/first ([b (in-naturals 2)]
-              #:when (let ([nb (rebase n b)])
-                       (equal? nb (reverse nb))))
-    b))</code></pre>
-<p>Bam. Let's try a few:</p>
-<pre class="scheme"><code>&gt; (minimal-palindromic-base 15)
-2
-
-&gt; (minimal-palindromic-base 1234)
-22
-
-&gt; (rebase 1234 22)
-'(2 12 2)
-
-&gt; (minimal-palindromic-base 8675309)
-8675308</code></pre>
-<p>Huh. I think <a href="https://en.wikipedia.org/wiki/867-5309/Jenny">Jenny</a> has a secret. :)</p>
-<p>That's pretty much it for the puzzle as stated, but there are still a few things that we can do. For example, we've only seen small examples. What if we want to find the number with the largest minimal palindromic base:</p>
-<pre class="scheme"><code>; Find the number n which has the largest palindromic base
-(define (maximal-minimal-palindromic-base n-min n-max)
-  (for/fold ([b -1] [n #f]) ([i (in-range n-min (+ n-max 1))])
-    (define mpb (minimal-palindromic-base i))
-    (if (&gt; i b)
-        (values mpb i)
-        (values b   n))))</code></pre>
-<p>I may or may not have just wanted an excuse to use a crazy long function name. :)</p>
-<p>Give it a try:</p>
-<pre class="scheme"><code>&gt; (maximal-minimal-palindromic-base 100 200)
-7
-200
-
-&gt; (rebase 200 7)
-'(4 0 4)</code></pre>
-<p>Error, <code>maximal-minimal-palindromic-base</code> not found!</p>
-<p>Okay, more seriously, what does that even look like? Let's <code><a href="http://docs.racket-lang.org/search/index.html?q=plot">plot</a></code>!</p>
-<pre class="scheme"><code>(require plot)
-
-; Plot a whole range of minimal palindromic bases
-(define (plot-minimal-palindromic-bases n-min n-max)
-  (plot (lines (for/list ([i (in-range n-min (+ n-max 1))])
-                 (vector i (minimal-palindromic-base i)))
-               #:color 6
-               #:label "minimal palindromic base")))</code></pre>
-<p>Basically, we're going to draw a chart relating each number to it's minimal palindromic base.</p>
-<pre class="scheme"><code>(plot-minimal-palindromic-bases 1 100)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-100.png"><img src="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-100.png" /></a></p>
-<pre class="scheme"><code>(plot-minimal-palindromic-bases 1 1000)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png"><img src="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png" /></a></p>
-<p>Looks like like there's basically two behaviors. A background noise of really low bases (binary or trinary is often palindromic just because there aren't many digits) and a few spikes growing ever larger. Neat.</p>
-<p>And that's it. Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/minimal-palindromic-base.rkt">minimal-palindromic-base.rkt</a></p>]]></content></entry></feed>
+<p>:)</p>]]></content></entry></feed>
