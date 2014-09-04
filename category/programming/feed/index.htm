@@ -1,5 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-08-28T20:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Chess Puzzles 2: Board?</title><link href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board" /><id>urn:uuid:6d64e14c-c731-a12d-4a38-7070fa6e6e9e</id><updated>2014-08-28T20:00:00Z</updated><summary type="html"><![CDATA[<p>Now that we've got <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a> out of the way, back to chess! <a href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving">Last time</a>, we defined all of the pieces, which is all well and good, but what we really need is a board. More specifically, we want something that can:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-03T20:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Chess Puzzles: N Queens</title><link href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens" /><id>urn:uuid:ca36a36d-8baa-c760-8b5a-2162fcfa5a9c</id><updated>2014-09-03T20:00:00Z</updated><summary type="html"><![CDATA[<p>After two weeks, it seems only right that we actually get around to a real chess puzzle. First on the list: <a href="https://en.wikipedia.org/wiki/Eight_queens puzzle">the eight queens puzzle</a>.</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png" /></a></p>
+<p>Specifically, how do you place n queens on an n by n chess board such that no pair of queens can attack one another?</p>
+]]></summary><content type="html"><![CDATA[<p>After two weeks, it seems only right that we actually get around to a real chess puzzle. First on the list: <a href="https://en.wikipedia.org/wiki/Eight_queens puzzle">the eight queens puzzle</a>.</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png" /></a></p>
+<p>Specifically, how do you place n queens on an n by n chess board such that no pair of queens can attack one another?</p>
+<!--more-->
+<p>Those of you paying attention may think this problem looks <a href="http://blog.jverkamp.com/2012/09/24/n-queens-in-18-lines-of-code">awfully familiar</a>. Turns out I've already done this one. But not with my new <a href="http://blog.jverkamp.com/category/programming/by-topic/chess">chess library</a>! So let's do it again:</p>
+<p>Basically, the idea is simple. Start in the first row and column, placing a queen:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-1.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-1.png" /></a></p>
+<p>Next, move down to the second row, first column:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-2.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-3.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-4.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-4.png" /></a></p>
+<p>We cannot place a queen there since it can attack the first. Try the second column ... Still doesn't work, since it can attack diagonally. Try the third... Bam. Placed. Head down to the third row and start over in the first column.</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-5.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-5.png" /></a></p>
+<p>Keep on keeping on. Eventually though, you'll run into a row when you can't place a queen. What do you do then?</p>
+<p><a href="https://en.wikipedia.org/wiki/Backtracking">Backtrack!</a></p>
+<p>Specifically, go back one row and remove that queen. Start over from one column to the right of where it was. If there's no where else to place that queen, back up another column, over and over until you finally find where you can place one.</p>
+<p>Sounds crazy, keeping track of all that state (how many queens we've removed and which), but this is where the magic of recursion comes in. We can actually use the call stack to handle all of this backtracking for us!</p>
+<pre class="scheme"><code>; Try to place n queens on an nxn chessboard such that none are threatened
+(define (queens n)
+  ; Create a new nxn board
+  (current-board-size n)
+  (define-piece Queen (move 'n '*))
+  (define b (make-board n #:pieces (hash 'Queen Queen)))
+
+  ; Try to place a queen in each row
+  (let place-queen ([board b] [x 0] [y 0])
+    (cond
+      ; Done with all of the rows, we have a valid configuration
+      [(&gt;= y n) board]
+      ; Done with the current row, if we haven't placed a queen yet, bail out
+      [(&gt;= x n) #f]
+      ; Otherwise, try to place the queen at this location
+      ; Use the row as the player ID so they can all attack one another
+      [else
+       (define new-board (board-set board (pt x y) `(,y Queen)))
+       (cond
+         ; We attack a current queen, try the next square on the old board
+         [(for/first ([target-pt (moves-from new-board (pt x y))]
+                      #:when (board-ref new-board target-pt))
+            #t)
+          (place-queen board (+ x 1) y)]
+         ; We do not attack anything (yet), try this solution
+         ; If that fails, fall through (or short circuits)
+         [else
+          (or (place-queen new-board 0 (+ y 1))
+              (place-queen board     (+ x 1) y))])])))</code></pre>
+<p>The interesting parts of the solution are at the beginning (when we set up the intial board using our new library) and the <code><a href="http://docs.racket-lang.org/search/index.html?q=for/first">for/first</a></code> section. That's what's checking out attacks. In this case, <code>for/first</code> will return <code>#t</code> if any <code>#:when</code> is true, <code>#f</code> if none of them are. This works with our framework (as the code mentions) because we're setting each queen to a different player so they can all attack one another.</p>
+<pre class="scheme"><code> &gt; (render (queens 8)) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png" /></a></p>
+<p>Nice!</p>
+<p>Even bigger?</p>
+<pre class="scheme"><code> &gt; (render (queens 13)) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/13-queens.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/13-queens.png" /></a></p>
+<pre class="scheme"><code> &gt; (render (queens 25) #:tile-size 12) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/25-queens.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/25-queens.png" /></a></p>
+<p>(That one took a little while.)</p>
+<p>Okay, so that's all well and good. But what if we don't want just one solution. What if we want all of them? Well, it turns out, that's actually not that much harder. We just need to slightly tweak how we recur. Instead of a board or <code>#f</code>, we need to return a list of possible solutions. That way we can <code>append</code> instead of <code>or</code>:</p>
+<pre class="scheme"><code>; Try to place n queens on an nxn chessboard such that none are threatened
+(define (queens n #:all? [generate-all? #f])
+  ...
+
+      ; Done with all of the rows, we have a valid configuration
+      [(&gt;= y n) (if generate-all? (list board) board)]
+      ; Done with the current row, if we haven't placed a queen yet, bail out
+      [(&gt;= x n) (if generate-all? (list)       #f)]
+
+      ...
+
+         ; We do not attack anything (yet), try this solution
+         ; If that fails, fall through (or short circuits)
+         ; If we're generating all solutions, do both
+         ; (we cannot do ((if generate-all? append or) ...) because or is a macro
+         [generate-all?
+          (append (place-queen new-board 0 (+ y 1))
+                  (place-queen board     (+ x 1) y))]
+
+         ...)</code></pre>
+<p>That way, we could get all of the 6x6 solutions in one go:</p>
+<pre class="scheme"><code>&gt; (map (λ (b) (render b #:player-colors (const "black")))
+       (queens 6 #:all? #t))</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-1.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-2.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-3.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-4.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-4.png" /></a></p>
+<p>Or determine how many queens that there are for each puzzle size:</p>
+<pre class="scheme"><code>&gt; (for/list ([n (in-range 1 11)])
+    (list n (length (queens n #:all? #t))))
+'((1 1) (2 0) (3 0) (4 2) (5 10) (6 4) (7 40) (8 92) (9 352) (10 724))</code></pre>
+<p>That matches up perfectly with sequence <a href="https://oeis.org/A000170">A000170</a> on <a href="https://en.wikipedia.org/wiki/OEIS">OEIS</a>, which must mean we're doing something right. Shiny!</p>
+<p>One final trick, what if we want to animate these things? Well, for that we're going to use the <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/generator">racket/generator</a></code> module. I've used it before, and although the performance isn't <em>great</em>, it's certainly the easiest way to get what we want. Really, we only need two changes:</p>
+<pre class="scheme"><code>; Try to place n queens on an nxn chessboard such that none are threatened
+(require racket/generator)
+(define (queens-generator n #:all? [generate-all? #f])
+  (generator ()
+    ...
+
+    ; Try to place a queen in each row
+    (let place-queen ([board b] [x 0] [y 0])
+      (yield board x y)
+      (cond
+        ...</code></pre>
+<p>That way, if we create a generator and keep calling it, it will return each board state including the backtracking. It's a little more complicated to turn it into a nice animation, once again using the excellent <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> function:</p>
+<pre class="scheme"><code>; Use the queens generator to render an n-queens problem
+(require 2htdp/image 2htdp/universe)
+(define (queens-animate n #:all? [generate-all? #f])
+  (define g (queens-generator n #:all? generate-all?))
+
+  (define-values (last-board last-x last-y) (g))
+  (define done? #f)
+
+  (define r (render last-board #:player-colors (const "black")))
+  (define w (send r get-width))
+  (define h (send r get-height))
+
+  (big-bang (void)
+    [stop-when (λ (_) done?)]
+    [on-tick
+     (λ (_)
+       (with-handlers ([exn? (thunk* (set! done? #t))])
+         (define-values (board x y) (g))
+         (set! last-board board)
+         (set! last-x x)
+         (set! last-y y)))]
+    [to-draw
+     (λ (_)
+       (place-image
+        (render last-board
+                #:player-colors (const "black")
+                #:highlights (hash (pt last-x last-y) "green"))
+        (/ w 2)
+        (/ h 2)
+        (empty-scene w h)))]
+    [record? #t]))</code></pre>
+<p>The <code><a href="http://docs.racket-lang.org/search/index.html?q=with-handlers">with-handlers</a></code> is a little ugly, but it's designed to deal with the fact that we don't return multiple values on the last call, since generators by default return the last (return) value of a function at the end. But if we wanted to make that return x and y as well, things might just get ugly, seeing as how we'd have to change all of the recursive calls. No thank you.</p>
+<p>It's certainly pretty to watch though:</p>
+<pre class="scheme"><code> &gt; (queens-animate 4) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens.gif"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens.gif" /></a></p>
+<p>You can see the backtracking anytime the green box jumps back and suddenly one or more of the previously place queens vanishes. It would be even neater if it could show the branching solutions, but that's a challenge for another day.</p>
+<p>And that's it. A bit more in detail than <a href="http://blog.jverkamp.com/2012/09/24/n-queens-in-18-lines-of-code">last time</a>, but I think it was a lot of fun. The code is available in my <a href="https://github.com/jpverkamp/chess-puzzles">chess-puzzles</a> repo on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles/blob/master/puzzles/queens.rkt">queens.rkt</a>. Check it out!</p>]]></content></entry><entry><title>Chess Puzzles 2: Board?</title><link href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board" /><id>urn:uuid:6d64e14c-c731-a12d-4a38-7070fa6e6e9e</id><updated>2014-08-28T20:00:00Z</updated><summary type="html"><![CDATA[<p>Now that we've got <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a> out of the way, back to chess! <a href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving">Last time</a>, we defined all of the pieces, which is all well and good, but what we really need is a board. More specifically, we want something that can:</p>
 <ul>
     <li>Represent an 8x8 chess board, storing the location of pieces (including the owner of each)</li>
     <li>Add logic for collisions, so that when moving a piece, you cannot move through others or capture allies<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
@@ -1794,92 +1930,4 @@ $('canvas').each(function(otherIndex, other) {
 <pre class="scheme"><code>(plot-minimal-palindromic-bases 1 1000)</code></pre>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png"><img src="http://blog.jverkamp.com/2014/08/13/minimal-palindromic-base/plot-minimal-palindromic-bases-1000.png" /></a></p>
 <p>Looks like like there's basically two behaviors. A background noise of really low bases (binary or trinary is often palindromic just because there aren't many digits) and a few spikes growing ever larger. Neat.</p>
-<p>And that's it. Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/minimal-palindromic-base.rkt">minimal-palindromic-base.rkt</a></p>]]></content></entry><entry><title>Number words</title><link href="http://blog.jverkamp.com/2014/08/13/number-words" /><id>urn:uuid:67236730-531b-effa-30b3-b69308ea8187</id><updated>2014-08-13T14:00:00Z</updated><summary type="html"><![CDATA[<p>Today's five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
-<blockquote>
-Given a positive integer, return all the ways that the integer can be represented by letters using the mapping 1 -> A, 2 -> B, …, 26 -> Z. For instance, the number 1234 can be represented by the words ABCD, AWD and LCD.
-</blockquote>
-]]></summary><content type="html"><![CDATA[<p>Today's five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
-<blockquote>
-Given a positive integer, return all the ways that the integer can be represented by letters using the mapping 1 -> A, 2 -> B, …, 26 -> Z. For instance, the number 1234 can be represented by the words ABCD, AWD and LCD.
-</blockquote>
-<!--more-->
-<p>That may look fairly straight forward. Basically, it's a <a href="https://en.wikipedia.org/wiki/parsing">parsing</a>/<a href="https://en.wikipedia.org/wiki/lexing">lexing</a> problem. You take a string as input and break it into a series of tokens (in this case, numbers 1-26); then each token is converted into a letter.</p>
-<p>Unfortunately, it's a bit more complicated than that, since the grammar is ambiguous. Taking the example <code>1234</code> from above, should you parse that as <code>1 2 3 4 = ABCD</code>? Or what about <code>1 23 4 = AWD</code>? Or even <code>12 3 4 = LCD</code>? In a nutshell, we have to do all of them. So we want some sort of branching lexer that will try all possible routes.</p>
-<p>So let's start with a function that meta-function that can make such a parser:</p>
-<pre class="scheme"><code>; Make an optional parser
-; If the regex matches, add it to each possible next parse
-; If it does not, return an empty list (to be appendable)
-(define (make-parser re)
-  (λ (str)
-    (match str
-      [(regexp re (list _ n rest))
-       (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
-      [any
-       '()])))</code></pre>
-<p>Looks a bit funny, (especially since we haven't defined <code>number-&gt;words</code> yet), but basically we try to match the regular expression. If that works, make the recursive call (to <code>number-&gt;words</code>) and then append that string (as a character via <code>n->char</code>) to each recursive result. If there are no recursive results, this <code>map</code> will return an empty list. Likewise, if the regular expression doesn't match.</p>
-<p>Next step, write the two parsers. We want to parse either a single digit number or a two digit number:</p>
-<pre class="scheme"><code>; Create parsers for valid 1 digit and 2 digit letter numbers
-(define parse-1 (make-parser #px"([1-9])(.*)"))
-(define parse-2 (make-parser #px"(1[0-9]|2[0-6])(.*)"))</code></pre>
-<p>That's what makes the ambiguity the most interesting. If only <code>0</code> were a valid digit... As it is, there are four possible cases (and these two functions handle them all!):</p>
-<ul>
-    <li><code>str</code> starts with 1 and a digit 0-9, parse both</li>
-    <li><code>str</code> starts with 2 and a digit 0-6, parse both</li>
-    <li><code>str</code> starts with 2 and a digit 7-9, parse 2 digits only</li>
-    <li><code>str</code> starts with 3-9, parse 1 digit only</li>
-</ul>
-<p>And finally, try both:</p>
-<pre class="scheme"><code>; Base case, so we can stop eventually
-(if (equal? str "")
-    '("")
-    (append (parse-1 str) (parse-2 str)))</code></pre>
-<p>The base case looks a bit funny, since you might assume that if neither case matches we'll get there. That's the difference between the empty list <code>'()</code> and the list containing just an empty string <code>'("")</code>. In the latter, there's nothing to map against, ergo necessary.</p>
-<p>And then all we need is the <code>n->char</code> function:</p>
-<pre class="scheme"><code>; Convert a number 1-26 to a letter A-Z
-(define (n-&gt;char n) (integer-&gt;char (+ 64 (string-&gt;number n))))</code></pre>
-<p>And that's it. Put it all together:</p>
-<pre class="scheme"><code>; Given 1-26 mapping to A-Z, determine all possible words represented by a number
-; Correctly resolve ambiguities where 1234 -&gt; 1 2 3 4 = ABCD / 1 23 4 -&gt; AWD / 12 3 4 -&gt; LCD
-(define (number-&gt;words str)
-  ; Convert a number 1-26 to a letter A-Z
-  (define (n-&gt;char n) (integer-&gt;char (+ 64 (string-&gt;number n))))
-
-  ; Make an optional parser
-  ; If the regex matches, add it to each possible next parse
-  ; If it does not, return an empty list (to be appendable)
-  (define (make-parser re)
-    (λ (str)
-      (match str
-        [(regexp re (list _ n rest))
-         (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
-        [any
-         '()])))
-
-  ; Create parsers for valid 1 digit and 2 digit letter numbers
-  (define parse-1 (make-parser #px"([1-9])(.*)"))
-  (define parse-2 (make-parser #px"(1[0-9]|2[0-6])(.*)"))
-
-  ; Base case, so we can stop eventually
-  (if (equal? str "")
-      '("")
-      (append (parse-1 str) (parse-2 str))))</code></pre>
-<p>Let's give it a try:</p>
-<pre class="scheme"><code>&gt; (number-&gt;words "1234")
-'("ABCD" "AWD" "LCD")
-
-&gt; (number-&gt;words "8675309")
-'("HFGECI")
-
-&gt; (length (number-&gt;words "85121215231518124"))
-
-1181
-
-&gt; (number-&gt;words "85121215231518124")
-'(... "HELLOWORLD" ...)</code></pre>
-<p>I could claim that I just happen to know the number code for <code>HELLOWORLD</code>, but really I wrote a quick inverse function:</p>
-<pre class="scheme"><code>; Convert words back to numbers
-(define (words-&gt;number str)
-  (define (char-&gt;n c) (number-&gt;string (- (char-&gt;integer c) 64)))
-  (apply ~a (for/list ([c (in-string str)]) (char-&gt;n c))))</code></pre>
-<p>Shiny!</p>
-<p>Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/number-words.rkt">number-words.rkt</a></p>]]></content></entry></feed>
+<p>And that's it. Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/minimal-palindromic-base.rkt">minimal-palindromic-base.rkt</a></p>]]></content></entry></feed>
