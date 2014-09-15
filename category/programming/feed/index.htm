@@ -1,5 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-14T09:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Procedural Invaders</title><link href="http://blog.jverkamp.com/2014/09/14/procedural-invaders" /><id>urn:uuid:41ac4ba4-e097-9023-3504-488ff41b9a68</id><updated>2014-09-14T09:00:00Z</updated><summary type="html"><![CDATA[<p>Today's post comes from a long line of 'inspired by posts' all pretty much leading back (so far as I can tell) to this post by j.tarbell: <a href="http://www.complexification.net/gallery/machines/invaderfractal/">invader.procedural</a> from 2003.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-15T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Look and Say</title><link href="http://blog.jverkamp.com/2014/09/15/look-and-say" /><id>urn:uuid:eac2659f-3660-3f5e-9ba1-540308c23093</id><updated>2014-09-15T00:00:00Z</updated><summary type="html"><![CDATA[<p>Random quick post today<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Basically, we want to write code to generate what's known as <a href="https://en.wikipedia.org/wiki/Look_and Say sequence">Look and Say sequence</a>:</p>
+<blockquote>
+    <p>To generate a member of the sequence from the previous member, read off the digits of the previous member, counting the number of digits in groups of the same digit. For example:</p>
+
+<ul>
+    <li>1 is read off as "one 1" or 11.</li>
+    <li>11 is read off as "two 1s" or 21.</li>
+    <li>21 is read off as "one 2, then one 1" or 1211.</li>
+    <li>1211 is read off as "one 1, then one 2, then two 1s" or 111221.</li>
+    <li>111221 is read off as "three 1s, then two 2s, then one 1" or 312211.</li>
+</ul>
+</blockquote>
+]]></summary><content type="html"><![CDATA[<p>Random quick post today<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Basically, we want to write code to generate what's known as <a href="https://en.wikipedia.org/wiki/Look_and Say sequence">Look and Say sequence</a>:</p>
+<blockquote>
+    <p>To generate a member of the sequence from the previous member, read off the digits of the previous member, counting the number of digits in groups of the same digit. For example:</p>
+
+<ul>
+    <li>1 is read off as "one 1" or 11.</li>
+    <li>11 is read off as "two 1s" or 21.</li>
+    <li>21 is read off as "one 2, then one 1" or 1211.</li>
+    <li>1211 is read off as "one 1, then one 2, then two 1s" or 111221.</li>
+    <li>111221 is read off as "three 1s, then two 2s, then one 1" or 312211.</li>
+</ul>
+</blockquote>
+<!--more-->
+<p>Originally, my interest in this came from a video on the excellent YouTube video series <a href="https://www.youtube.com/user/numberphile">Numberphile</a>:</p>
+<p><iframe width="560" height="315" src="//www.youtube.com/embed/ea7lJkEhytA" frameborder="0" allowfullscreen="allowfullscreen"></iframe></p>
+<p>Yes, that is <a href="https://en.wikipedia.org/wiki/John_Conway">John Conway</a> of <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. It's well worth the watch.</p>
+<p>Then this morning, /r/dailyprogrammer has a post: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ggy30/9152014_challenge180_easy_looknsay/">Challenge #180 [Easy] Look'n'Say</a>. Seems like it's about time. :)</p>
+<p>So how do we do it? Well, essentially we're going to want a function that can recur down a list of, collecting groups of like numbers. So in the sequence <code>111221</code>, we want to collect that into <code>111 22 1</code>. Then we know how long each sequence is, <code>31 22 11</code>, which is the next number in the sequence. How's that look in code?</p>
+<pre class="scheme"><code>; Create a look and see list by combining repeated values into count+number
+; For example: 111221 becomes 3 1s, 2 2s, 1 1 =&gt; 312211
+(define (look-and-say ls)
+  (apply
+   append
+   (let count ([ls (rest ls)] [i 1] [v (first ls)])
+     (cond
+       [(null? ls)
+        (list (list i v))]
+       [(equal? (first ls) v)
+        (count (rest ls) (+ i 1) v)]
+       [else
+        (list* (list i v) (count (rest ls) 1 (first ls)))]))))</code></pre>
+<p>The counting function will recur down the list, collecting the current count (<code>i</code>) and value (<code>v</code>) as we go. Within that recursion, there are three cases. In the first case (<code>(null? ls)</code>), we've reached the end. This makes sure that we output the last sequence. In the second (<code>(equal? (first ls) v)</code>), we have a matching number, so increment the current sequence. In the last (<code>else</code>), the number do not match. Output the current count and start a new sequence.</p>
+<p>Let's try it out:</p>
+<pre class="scheme"><code>&gt; (look-and-say '(1))
+'(1 1)
+&gt; (look-and-say '(1 1))
+'(2 1)
+&gt; (look-and-say '(2 1))
+'(1 2 1 1)
+&gt; (look-and-say '(1 2 1 1))
+'(1 1 1 2 2 1)</code></pre>
+<p>Looks good. It's annoying to have to keep calling it like that though. What I'd really like to see is a Racket <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence">sequence</a></code>. Luckily, this is exactly the sort of thing we can make with <code><a href="http://docs.racket-lang.org/search/index.html?q=make-do-sequence">make-do-sequence</a></code>:</p>
+<pre class="scheme"><code>; Make an infinite sequence that generates look-and-see lists
+; Use the current look-and-say list itself as both the key and value
+(define (in-look-and-say [ls '(1)])
+  (make-do-sequence
+   (thunk
+    (values
+     identity       ; Current
+     look-and-say   ; Next
+     ls             ; Initial
+     (const #t)     ; Continue from this key/value/pair
+     (const #t)
+     (const #t)))))</code></pre>
+<p>We're going to use the sequence itself as the 'count', which makes the first few arguments easy enough. Basically, we use <code>identity</code> to return the current value, and <code>look-and-say</code> (the function we just defined above) as the <code>next</code> function. The last three are easy as well. Since we want an infinite sequence: just always return <code>#t</code>. Done.</p>
+<p>Given this, we can generate as long a seqence as we want:</p>
+<pre class="scheme"><code>; Take the first chunk off of a sequence
+(define (look-and-say* ls i)
+  (for/list ([ls (in-look-and-say ls)]
+             [_  (in-range i)])
+    ls))</code></pre>
+<p>Nice. :)</p>
+<p>Or we can plot some interesting information about them, say the length:</p>
+<pre class="scheme"><code> &gt; (plot-look-and-say length '(1) 20) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-length.png"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-length.png" /></a></p>
+<p>Or the maximum value:</p>
+<pre class="scheme"><code> &gt; (plot-look-and-say (curry apply max) '(1) 20) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-max.png"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-max.png" /></a></p>
+<p>It's interesting how it never gets beyond 3 up to 50 steps along the sequence. Unfortunately</p>
+<p>Last thing last, pretty pictures!</p>
+<pre class="scheme"><code>; Render a look and say sequence to a bitmap, stretching rows to the entire width
+; Note: Values are clamped to between 0.0 and 1.0 before conversion. *rolls eyes*
+(define (render-look-and-say ls bound)
+  ; Precalculate the image data; figuring out what dimenions will we need from that
+  (define ls* (look-and-say* ls bound))
+  (define height (length ls*))
+  (define width (length (last ls*)))
+
+  ; Precalculated list of colors that are defined to be more visually distinct
+  (define colors
+    '#(#(1.00 0.70 0.00) #(0.50 0.24 0.46) #(1.00 0.41 0.00) #(0.65 0.74 0.84) #(0.75 0.00 0.12)
+       #(0.80 0.63 0.38) #(0.50 0.44 0.40) #(0.00 0.49 0.20) #(0.96 0.46 0.55) #(0.00 0.32 0.54)
+       #(1.00 0.48 0.36) #(0.32 0.21 0.48) #(1.00 0.55 0.00) #(0.70 0.16 0.32) #(0.95 0.78 0.00)
+       #(0.50 0.09 0.05) #(0.57 0.66 0.00) #(0.35 0.20 0.08) #(0.94 0.23 0.07) #(0.14 0.17 0.09)))
+
+  ; Generate the image, three channels are RGB
+  ; Note: 4 channels is ARGB, not RGBA *rolls eyes again*
+  (flomap-&gt;bitmap
+   (build-flomap*
+    3 width height
+    (λ (x y)
+      ; Pull out the correct row for the data, normalize entries to 'stretch' over the entire row
+      (define row (list-ref ls* y))
+      (define row-width (length row))
+      (define index (quotient (* x row-width) width))
+      (displayln `(,x ,y ,index ,(list-ref row index) ,row))
+
+      (vector-ref colors (list-ref row index))))))</code></pre>
+<p>That will encode each iteration into a line of the resulting image and each different value into its own color. Something like this:</p>
+<pre class="scheme"><code> &gt; (scale-to 200 200 (render-look-and-say '(1) 20)) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-20.png"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-20.png" /></a></p>
+<p>Neat how there's a nice line right down the center. Although that makes sense, given that there are always an even number of values. On thing that I want to check out is those divisions that the video was talking about where two parts of a sequence can diverge and never interact again. Those would be fairly straight forward to find even, just 'tag' each part of the sequence with where it came from. Perhaps another day.</p>
+<p>As always, code on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/look-and-say.rkt">look-and-say.rkt</a></p>]]></content></entry><entry><title>Procedural Invaders</title><link href="http://blog.jverkamp.com/2014/09/14/procedural-invaders" /><id>urn:uuid:41ac4ba4-e097-9023-3504-488ff41b9a68</id><updated>2014-09-14T09:00:00Z</updated><summary type="html"><![CDATA[<p>Today's post comes from a long line of 'inspired by posts' all pretty much leading back (so far as I can tell) to this post by j.tarbell: <a href="http://www.complexification.net/gallery/machines/invaderfractal/">invader.procedural</a> from 2003.</p>
 <p>The basic idea is that we want to generate 'invaders' in the style of <a href="https://en.wikipedia.org/wiki/space_invaders">space invaders</a>. Except we don't want 10 or 20, we want tens of thousands. So how do we do it? Well, take a look at this:</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>Today's post comes from a long line of 'inspired by posts' all pretty much leading back (so far as I can tell) to this post by j.tarbell: <a href="http://www.complexification.net/gallery/machines/invaderfractal/">invader.procedural</a> from 2003.</p>
@@ -1595,369 +1709,4 @@ function stop() {
   </div>
 </div>
 <hr />
-<p>I'm sure there are bugs... And I'm working on it right at the moment. If you have any questions or comments though, feel free to drop me a line below.</p>]]></content></entry><entry><title>Ludum Dare 30: Sandbox Battle</title><link href="http://blog.jverkamp.com/2014/08/22/ludum-dare-30-sandbox-battle" /><id>urn:uuid:60fce17b-2d64-c87b-a259-90aa26aa5803</id><updated>2014-08-22T23:00:00Z</updated><summary type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
-<blockquote>Ludum Dare is a regular accelerated game development Event.  Participants develop games from scratch in a weekend, based on a theme suggested by community.</blockquote>
-<p>More specifically, the goal is to make a game from scratch in 48 hours. You're allowed to use publicly available frameworks and code libraries, but no art or other assets. Previously, I missed the original start time. So although I made my game in 48 hours, it didn't qualify. This time around, I'm starting on time.</p>
-]]></summary><content type="html"><![CDATA[<p>And here we are again. <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>. Taken directly from their about page...</p>
-<blockquote>Ludum Dare is a regular accelerated game development Event.  Participants develop games from scratch in a weekend, based on a theme suggested by community.</blockquote>
-<p>More specifically, the goal is to make a game from scratch in 48 hours. You're allowed to use publicly available frameworks and code libraries, but no art or other assets. Previously, I missed the original start time. So although I made my game in 48 hours, it didn't qualify. This time around, I'm starting on time.</p>
-<!--more-->
-<p>The theme this time is <a href="http://www.ludumdare.com/compo/2014/08/16/ludum-dare-30-theme-voting-begins/">Connected Worlds</a>. I like that a lot more than many of the previous themes, so let's see what ideas we can come up with.</p>
-<p>Taking about an hour at the start of the compo to both work out and think, I ended up basically going in two directions:</p>
-<ul>
-  <li>A <a href="https://en.wikipedia.org/wiki/falling_sand">falling sand</a> style game, only with discrete 'bubbles' with different particles / physics</li>
-  <li>A <a href="https://en.wikipedia.org/wiki/Platform_game#Puzzle_platformers">puzzle platformer</a> based around portals that split you into two realities you play at the same time</li>
-</ul>
-<p>Of the two, the second has the advantages of 1) actually sounding like a game (that's always been my problem with falling sand style simulations) and 2) being much easier to code. I've worked on falling sand style games before (<a href="http://blog.jverkamp.com/category/programming/by-project/games/sandbox">Sandbox</a>) and they take a lot of tuning to get reasonable performance. Certainly worth doing... but not the best idea for a 48 hour time window.</p>
-<p>So of course I'm going with option A. :)</p>
-<p>About 6 hours in, and so far this is what I have:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/22/ludum-dare-30-sandbox-battle/screenshot.png"><img src="http://blog.jverkamp.com/2014/08/22/ludum-dare-30-sandbox-battle/screenshot.png" /></a></p>
-<hr />
-<p>Real-life demo! (Click run, then try dragging the boxes around)</p>
-<canvas id="frame1" width="100" height="100"></canvas>
-<canvas id="frame2" width="100" height="100"></canvas>
-<canvas id="frame3" width="100" height="100"></canvas>
-<p><button id="runGame" type="button">Run!</button></p>
-<style>
-canvas { border: 1px solid black; }
-</style>
-<script>
-$(function() {
-  var maxFrames = 10000;
-
-  // Assign an index to each canvas so we can order them
-  $('canvas').each(function(index, canvas) {
-     $(canvas).attr('data-index', index);
-  });
-
-  // Keep a list of the current z-ordering of the canvases
-  var ordering = [];
-  $('canvas').each(function(i) { ordering.push(i); });
-
-  // Make them draggable, on drag udate the index
-  $('canvas').draggable({
-      stack: '*',
-      drag: function(event, ui) {
-
-      },
-      stop: function(event, ui) {
-          var i = parseInt($(event.target).attr('data-index'));
-          var index = ordering.indexOf(i);
-          ordering.splice(index, 1);
-          ordering.unshift(i);
-      }
-  });
-
-  var make2DArray = function(width, height, def) {
-      var array = new Array(width);
-      for (var x = 0; x < width; x++) {
-          array[x] = new Array(height);
-          for (var y = 0; y < height; y++) {
-              array[x][y] = def;
-          }
-      }
-      return array;
-  }
-
-  var update = function(data, buffer, width, height) {
-      // Clear the buffer
-      for (var x = 0; x < width; x++) {
-          for (var y = 0; y < height; y++) {
-              buffer[x][y] = 0;
-          }
-      }
-
-      // Update the buffer with falling cells
-      var r = 0, xt = 0, yt = 0;
-      for (var y = height - 1; y >= 0; y--) {
-          for (var x = 0; x < width; x++) {
-              // Skip empty cells
-              if (data[x][y] == 0) continue;
-              xt = x;
-              yt = y;
-
-              // Determine which way it's going to fall
-              r = Math.random();
-              if (r < 0.5) { // Straight down
-                  if (y > 0 && buffer[x][y - 1] == 0) { xt = x; yt = y - 1; }
-              } else if (r < 0.7) { // Down left
-                  if (x > 0 && y > 0 && buffer[x - 1][y - 1] == 0) { xt = x - 1; yt = y - 1; }
-              } else if (r < 0.9) { // Down right
-                  if (x < width - 1 && y > 1 && buffer[x + 1][y - 1] == 0) { xt = x + 1; yt = y - 1; }
-              } else if (r < 0.95) { // Straight left
-                  if (x > 0 && buffer[x - 1][y] == 0) { xt = x - 1; yt = y; }
-              } else { // Straight right
-                  if (x < width - 1 && buffer[x + 1][y] == 0) { xt = x + 1; yt = y; }
-              }
-
-              if (data[xt][yt] != 0) { xt = x; yt = y; }
-
-              // Update the buffer
-              buffer[xt][yt] = data[x][y];
-          }
-      }
-  }
-
-  var allData = {};
-
-  var animate = function(frameIndex, frame) {
-      var start = new Date().getTime();
-
-      var frame_ctx = frame.getContext('2d');
-      frame_ctx.imageSmoothingEnabled = false;
-
-      var width = frame.width;
-      var height = frame.height;
-
-      var data = make2DArray(width, height, 0);
-      var buffer = make2DArray(width, height, 0);
-      var temp;
-      var i = 0, r = 0, g = 0, b = 0, a = 0;
-
-      allData[frameIndex] = data;
-
-      var imageData = frame_ctx.createImageData(width, height);
-
-      var count = 0;
-      var tick = function() {
-          // Debug: For add a pixel
-          data[width / 2][height - 1] = frameIndex + 1;
-
-          // Update from data to buffer; swap the arrays for the next iteration
-          update(data, buffer, width, height);
-          temp = data;
-          data = buffer;
-          buffer = temp;
-
-          // Detect overlapping buffers, if so swap randomly
-          $('canvas').each(function(otherIndex, other) {
-              // If we're comparing to ourself, we'll always overlap, skip
-              if (frame == other) return;
-
-              /*
-              // We only want to run this once, so only for the frame on top
-              // If we see the frame first, we're golden (break out of the loop)
-              // If we see the other first, we're in the wrong order (stop processing)
-              for (var i = 0; i < ordering.length; i++) {
-                  if (ordering[i] == frameIndex) break;
-                  if (ordering[i] == otherIndex) return;
-              }
-              */
-
-              // If the two canvases don't overlap, don't look at them
-              var frameBounds = frame.getBoundingClientRect();
-              var otherBounds = other.getBoundingClientRect();
-              if (frameBounds.right < otherBounds.left ||
-                  frameBounds.left > otherBounds.right ||
-                  frameBounds.bottom < otherBounds.top ||
-                  frameBounds.top > otherBounds.bottom) {
-                  return;
-              }
-
-              // We only want this once, so give priority to whichever frame is 'lower' on the screen
-              if (frameBounds.top < otherBounds.top) return;
-
-              // TODO: Find the actual offset rather than looping over an entire image
-              var otherX, otherY, temp;
-              for (var frameY = 0; frameY < height; frameY++) {
-                  for (var frameX = 0; frameX < width; frameX++) {
-                      otherX = Math.floor(frameBounds.left - otherBounds.left + frameX);
-                      otherY = Math.floor(otherBounds.top - frameBounds.top + frameY);
-
-                      if (0 <= otherX && otherX < width && 0 <= otherY && otherY < height) {
-                          if (allData[frameIndex][frameX][frameY] == 0
-                              /* && allData[otherIndex][otherX][otherY] != 0*/) {
-                              temp = allData[frameIndex][frameX][frameY];
-                              allData[frameIndex][frameX][frameY] = allData[otherIndex][otherX][otherY];
-                              allData[otherIndex][otherX][otherY] = temp;
-                          }
-                      }
-                  }
-              }
-          });
-
-          // Render to the image data
-          for (var y = 0; y < height; y++) {
-              for (var x = 0; x < width; x++) {
-                  i = x + (height - y) * width;
-
-                  r = g = b = 0;
-                  a = 255;
-
-                  if (data[x][y] == 0) {
-                      a = 0;
-                  } else if (data[x][y] == 1) {
-                      b = 255;
-                  } else if (data[x][y] == 2) {
-                      r = 255;
-                  } else if (data[x][y] == 3) {
-                      g = 255;
-                  }
-
-                  imageData.data[i * 4 + 0] = r;
-                  imageData.data[i * 4 + 1] = g;
-                  imageData.data[i * 4 + 2] = b;
-                  imageData.data[i * 4 + 3] = a;
-              }
-          }
-
-          // Copy back to the GUI
-          frame_ctx.putImageData(imageData, 0, 0);
-
-          if (count < maxFrames) {
-              count += 1;
-              setTimeout(tick, 0);
-          } else {
-              end = new Date().getTime();
-              console.log(
-                  maxFrames + ' frames in ' +
-                  (end - start) + ' ms = ' +
-                  (maxFrames / ((end - start) / 1000)) + ' fps'
-              );
-          }
-      }
-      tick();
-  }
-
-  $('#runGame').click(function() {
-    console.log('starting...');
-    $('canvas').each(animate);
-  });
-});
-</script>
-<p>You can click and drag the blocks around and the sand will from from box to box. At first, I was trying to figure out goals where you could--for example--use water in one box to put out fire in another. But right at the end, I had an even better idea (hopefully not just the long day talking): SANDBOX BATTLE! Basically, some sort of multiplayer / AI madness, where you are trying to steal the other box's sand before they can steal yours... I'm going to have to think about that...</p>
-<p>Anyways, here are some of the interesting bits (in JavaScript for once!):</p>
-<p>First, the core of the whole thing, the update function:</p>
-<pre class="javascript"><code>var update = function(data, buffer, width, height) {
-    // Clear the buffer
-    for (var x = 0; x &lt; width; x++) {
-        for (var y = 0; y &lt; height; y++) {
-            buffer[x][y] = 0;
-        }
-    }
-
-    // Update the buffer with falling cells
-    var r = 0, xt = 0, yt = 0;
-    for (var y = height - 1; y &gt;= 0; y--) {
-        for (var x = 0; x &lt; width; x++) {
-            // Skip empty cells
-            if (data[x][y] == 0) continue;
-            xt = x;
-            yt = y;
-
-            // Determine which way it's going to fall
-            r = Math.random();
-            if (r &lt; 0.5) { // Straight down
-                if (y &gt; 0 && buffer[x][y - 1] == 0) { xt = x; yt = y - 1; }
-            } else if (r &lt; 0.7) { // Down left
-                if (x &gt; 0 && y &gt; 0 && buffer[x - 1][y - 1] == 0) { xt = x - 1; yt = y - 1; }
-            } else if (r &lt; 0.9) { // Down right
-                if (x &lt; width - 1 && y &gt; 1 && buffer[x + 1][y - 1] == 0) { xt = x + 1; yt = y - 1; }
-            } else if (r &lt; 0.95) { // Straight left
-                if (x &gt; 0 && buffer[x - 1][y] == 0) { xt = x - 1; yt = y; }
-            } else { // Straight right
-                if (x &lt; width - 1 && buffer[x + 1][y] == 0) { xt = x + 1; yt = y; }
-            }
-
-            if (data[xt][yt] != 0) { xt = x; yt = y; }
-
-            // Update the buffer
-            buffer[xt][yt] = data[x][y];
-        }
-    }
-}</code></pre>
-<p>The basic idea is two have two data arrays: <code>data</code> and <code>buffer</code>. We will trust the rest of the code to swap them the other way and spend all of the effort in this function creating buffer as the next frame. Specifically, we're going to loop through all of the tiles from bottom to top (because sand falls) then left to right. For each particle (non-<code>0</code> space), there are five possibilities:</p>
-<ul>
-  <li>50% chance of trying to move directly down</li>
-  <li>20% chance of trying to move down and left, 20% down and right</li>
-  <li>5% chance each of moving directly left or right</li>
-</ul>
-<p>Sounds pretty good. It's the same sort of code I've written rather a lot of times... This time around, we're not going to do any optimizations. We'll deal with that later if we have time.</p>
-<p>Next, we have to deal with the <code>tick</code> function:</p>
-<pre class="javascript"><code>var tick = function() {
-    // Debug: Add a pixel
-    data[width / 2][height - 1] = frameIndex + 1;
-
-    // Update from data to buffer; swap the arrays for the next iteration
-    update(data, buffer, width, height);
-    temp = data;
-    data = buffer;
-    buffer = temp;
-
-    // Detect overlapping buffers, if so swap randomly
-    ...
-
-    // Render to the image data
-    ...
-}</code></pre>
-<p>So we start with pixels dumping in from the ceiling and we update the world. We have space for two more functions: copying between worlds (pretty much the core idea of the game :)) and rendering. Let's look at the latter first.</p>
-<p>In order to render quickly, I'm going to use the <code>canvas</code> element's context's <code>createImageData</code> and <code>putImageData</code> to write data directly into the image. That will be a lot faster than setting pixels individually, especially since we're going to be changing rather a lot of pixels at the indiviual level. So... rendering:</p>
-<pre class="javascript"><code>// Render to the image data
-for (var y = 0; y &lt; height; y++) {
-    for (var x = 0; x &lt; width; x++) {
-        i = x + (height - y) * width;
-
-        r = g = b = 0;
-        a = 255;
-
-        if (data[x][y] == 0) {
-            a = 0;
-        } else if (data[x][y] == 1) {
-            b = 255;
-        } else if (data[x][y] == 2) {
-            r = 255;
-        } else if (data[x][y] == 3) {
-            g = 255;
-        }
-
-        imageData.data[i * 4 + 0] = r;
-        imageData.data[i * 4 + 1] = g;
-        imageData.data[i * 4 + 2] = b;
-        imageData.data[i * 4 + 3] = a;
-
-    }
-}
-
-// Copy back to the GUI
-frame_ctx.putImageData(imageData, 0, 0);</code></pre>
-<p>We've previously set up <code>imageData</code> using <code>createImageData</code> (we only have to do this once and then can reuse that same memory) and the <code>frame_ctx</code> as the context object of the canvas.</p>
-<p>One interesting part that I changed right before this writeup was the transparency of empty cells. That way the page will shine through. I'm not entirely sure that's what I want, but it's an interesting effect, so I'll leave it for the time being.</p>
-<p>And then last but not least, the combination function. This one is honestly kind of weird:</p>
-<pre class="javascript"><code>// Detect overlapping buffers, if so swap randomly
-$('canvas').each(function(otherIndex, other) {
-    // If we're comparing to ourself, we'll always overlap, skip
-    if (frame == other) return;
-
-    // If the two canvases don't overlap, don't look at them
-    var frameBounds = frame.getBoundingClientRect();
-    var otherBounds = other.getBoundingClientRect();
-    if (frameBounds.right &lt; otherBounds.left ||
-        frameBounds.left &gt; otherBounds.right ||
-        frameBounds.bottom &lt; otherBounds.top ||
-        frameBounds.top &gt; otherBounds.bottom) {
-        return;
-    }
-
-    // We only want this once, so give priority to whichever frame is 'lower' on the screen
-    if (frameBounds.top &lt; otherBounds.top) return;
-
-    // TODO: Find the actual offset rather than looping over an entire image
-    var otherX, otherY, temp;
-    for (var frameY = 0; frameY &lt; height; frameY++) {
-        for (var frameX = 0; frameX &lt; width; frameX++) {
-            otherX = frameBounds.left - otherBounds.left + frameX;
-            otherY = otherBounds.top - frameBounds.top + frameY;
-
-            if (0 &lt;= otherX && otherX &lt; width && 0 &lt;= otherY && otherY &lt; height) {
-                if (allData[frameIndex][frameX][frameY] == 0 ) {
-                    temp = allData[frameIndex][frameX][frameY];
-                    allData[frameIndex][frameX][frameY] = allData[otherIndex][otherX][otherY];
-                    allData[otherIndex][otherX][otherY] = temp;
-                }
-            }
-        }
-    }
-});</code></pre>
-<p>Theoretically the comments should be enough, but if not, the basic idea is to first find if we have two overlapping regions (the <code>frameIndex</code> and <code>otherIndex</code> will make more sense if you look at the full code). If you have one, then loop over the shared region and copy pixels to the lower of the two boxes. I'm going to have to figure out a better rule for that. I tried using z-index, but that didn't work much better... Essentially, we need to be able to move particles from one box to another, but we need to be careful to neither lose nor duplicate particles. There are a number of weird edges cases (as I'm sure you've found if you played with the simulation).</p>
-<p>And, that's it. I have until 5pm Pacific on Sunday. I'm actually feeling pretty good about this. The best plan is to have a playable game after 24 hours and to spend the second day on polish. I'm not sure if I'll quite hit that... but maybe!</p>
-<p>If you'd like to see the entire source (warning: ugly) and potentially spoilers, check it out here: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>]]></content></entry></feed>
+<p>I'm sure there are bugs... And I'm working on it right at the moment. If you have any questions or comments though, feel free to drop me a line below.</p>]]></content></entry></feed>
