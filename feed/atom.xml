@@ -1,5 +1,209 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-15T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Look and Say</title><link href="http://blog.jverkamp.com/2014/09/15/look-and-say" /><id>urn:uuid:eac2659f-3660-3f5e-9ba1-540308c23093</id><updated>2014-09-15T00:00:00Z</updated><summary type="html"><![CDATA[<p>Random quick post today<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Basically, we want to write code to generate what's known as <a href="https://en.wikipedia.org/wiki/Look_and Say sequence">Look and Say sequence</a>:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-16T09:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Fractal Invaders</title><link href="http://blog.jverkamp.com/2014/09/16/fractal-invaders" /><id>urn:uuid:3af088a6-d121-00ae-e2c8-a557bb1c42b3</id><updated>2014-09-16T09:00:00Z</updated><summary type="html"><![CDATA[<p>Today's post is a follow up to Sunday's post <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. This time around, we're going to work through two different space filling algorithms in order to eventually generate something like this:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>Today's post is a follow up to Sunday's post <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. This time around, we're going to work through two different space filling algorithms in order to eventually generate something like this:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
+<!--more-->
+<p>But before we get to that image, let's start with where I was Sunday. We had something that looked like this:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/random-invaders.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/random-invaders.png" /></a></p>
+<p>That was my first take at a fractal invader algorithm, and in that case there really wasn't anything to do with fractals at all. The basic algorithm for that was simple:</p>
+<ol>
+  <li>Choose a random location and size for an invader</li>
+  <li>If the new invader does not collide with any previous invader, place it</li>
+  <li>Go to step 1</li>
+</ol>
+<p>If we failed 100 times in a row to place an invader, we made the assumption that the space was empty and bailed out. It actually worked well enough. You got to see a bunch of invaders of different sizes, all together on the map. Unfortunately though, it didn't work particularly well for filling the entire space, which is really what I was after. (If you'd like you can see the code for that on GitHub in Sunday's code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a>).</p>
+<p>After that though, I took a step back. How can we actually fill the space? More specifically, how can we use recursion / fractals to efficiently fill the space? Well, what we really need is actually really similar to another previous post of mine: <a href="http://blog.jverkamp.com/2014/05/28/quadtree-image-compression">Quadtree image compression</a>.</p>
+<p>Basically, here's the new algorithm:</p>
+<ol>
+  <li>Given a rectangular region, choose a random location and size for an invader</li>
+  <li>Recursively divide the remaining space into four sections: one above, one to the right, one below, and one to the left of the new invader</li>
+  <li>If any region is small enough for only a single invader, place it and stop (base case)</li>
+  <li>For each other region, start again at step 1</li>
+</ol>
+<p>The main odd step there is step 2 above. How can we split a region into five subregions (the center being square) like that? Well, we could do something like this:</p>
+<pre class="text"><code>      | R
+      | i
+ Top  | g
+______| h
+   |  | t
+ L |__|____
+ e |
+ f | Bottom
+ t |</code></pre>
+<p>Making sure that you have all of the regions set up exactly right gets a little bit complicated, but if you draw a nice diagram, it should be fairly straight forward to make sure that you always generate this structure. And that's exactly what we have here:</p>
+<pre class="scheme"><code>(struct rect (t l w h) #:transparent)
+(struct node (bounds value-bounds value children) #:transparent)
+
+; Create the recursive fractal structure
+(define (made-fractal width height random-node)
+  (let loop ([t 0] [l 0] [w width] [h height])
+    (cond
+      ; The next node is too small, do not place it
+      [(or (&lt;= w 0) (&lt;= h 0) (&gt;= t height) (&gt;= l width))
+       #f]
+      ; Create a child node; recur four times as so:
+      ;  T  |
+      ; __  |
+      ;   XX R
+      ; L XX__
+      ;   |
+      ;   | B
+      [else
+       (define s (if (= (min w h) 1) 1 (+ 1 (random (min w h)))))
+       (define x (if (= w s)         0 (random (- w s))))
+       (define y (if (= h s)         0 (random (- h s))))
+       (node (rect t       l       w h) ; Bounds of this node
+             (rect (+ t y) (+ l x) s s) ; Bounds of the value within this node
+             (random-node)              ; The value of this node
+             (list (loop t         l         (+ x s)   y        )
+                   (loop t         (+ l x s) (- w x s) (+ y s)  )
+                   (loop (+ t y s) (+ l x)   (- w x)   (- h y s))
+                   (loop (+ t y)   l         x         (- h y)  )))])))</code></pre>
+<p>Essentially, we want to create a nested structure made out of <code>node</code> structs. For each node, we have two bounding boxes, one for the entire recursive structure and one just for the central image (which in turn defines the four children). Then we have a value which I've already parameterized here as the <code>random-node</code> parameter and finally four children (ordered top, right, bottom, left, although it really doesn't matter).</p>
+<p>What's neat about this is that the exact same code could theoretically be used for other structures. Say if we wanted 8 children for each of the orthagonal or diagonal directions. Just add more to the <code>node-children</code> list.</p>
+<p>There are a few edge cases to watch out for that I did spend rather a while working out. For example, the base case deals with cases where either <code>w</code> or <code>h</code> is less than zero, but it also deals when we go off the right or bottom edge of the region. Likewise, we have to check if we only have exactly 1 square left in either width or height (which would mean we cannot generate an interesting random size) or if we only have exactly enough room for one shape.</p>
+<p>After that, it's just a matter of getting the parameters right for the recursive calls. Let's try one out:</p>
+<pre class="scheme"><code>&gt; (make-fractal 4 3 (const #t))
+(node
+ (rect 0 0 4 3)
+ (rect 0 0 3 3)
+ #t
+ (list
+  #f
+  (node
+   (rect 0 3 1 3)
+   (rect 1 3 1 1)
+   #t
+   (list
+    (node (rect 0 3 1 1) (rect 0 3 1 1) #t '(#f #f #f #f))
+    #f
+    (node (rect 2 3 1 1) (rect 2 3 1 1) #t '(#f #f #f #f))
+    #f))
+  #f
+  #f))</code></pre>
+<p>If you take each of those in order, you have the regions:</p>
+<pre class="text"><code>AAAB
+AAAC
+AAAD</code></pre>
+<p>So we generated a 3x3 region first and then filled in the rest with 1x1s. Of course that's not very nice to visualize. Let's make something a little prettier:</p>
+<pre class="scheme"><code>(define (in? bounds x y)
+  (match-define (rect t l w h) bounds)
+  (and (&lt;= l x (+ l w -1))
+       (&lt;= t y (+ t h -1))))
+
+; Render a fractal image
+(define (fractal-image
+         width height
+         #:random-color [random-color (thunk (vector (random) (random) (random)))])
+
+  (define root (make-fractal width height random-color))
+
+  (flomap-&gt;bitmap
+   (build-flomap*
+    3 width height
+    (λ (x y)
+      (let loop ([node root])
+        (cond
+          [(in? (node-value-bounds node) x y) (node-value node)]
+          [else
+           (for*/first ([child (in-list (node-children node))]
+                        #:when (and child (in? (node-bounds child) x y)))
+             (loop child))]))))))</code></pre>
+<p>That's surprisingly simple, but then again most of the work was already done in setting up the structure. The most complicated bit here is that we have two different usages of the <code>in?</code> function:</p>
+<ul>
+  <li><code>(in? (node-value-bounds node) x y)</code> - checks if the current point is in the current node's value box (the inner box); if that's the case, this is our base case</li>
+  <li><code>(in? (node-bounds child) x y)</code> - if this is true for any of the child node's outer box; if that's true we know that our value is somewhere in that subtree</li>
+</ul>
+<p>That's all we need to make some pretty neat images, just changing how we generate colors:</p>
+<pre class="scheme"><code>&gt; (fractal-image 200 200)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-random.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-random.png" /></a></p>
+<pre class="scheme"><code>&gt; (fractal-image 200 200 #:random-color (thunk (let ([g (random)]) (vector g g g))))</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-gray.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-gray.png" /></a></p>
+<pre class="scheme"><code>&gt; (fractal-image 200 200
+                 #:random-color (thunk
+                                  (case (random 3)
+                                    [(0) (vector (random) 0 0)]
+                                    [(1) (vector 0 (random) 0)]
+                                    [(2) (vector 0 0 (random))])))</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-rgb.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-rgb.png" /></a></p>
+<p>Which, honestly, would be a pretty neat post all by itself. But wasn't the entire point of this to made a fractal out of the <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">procedural invaders</a>?</p>
+<pre class="scheme"><code>; Render a fractal image made of invaders!
+(define (fractal-invaders width height #:highlights? [highlights? #f])
+  (define (random-invader)
+    (flomap-add-margin
+     (if highlights?
+         (procedural-invader/highlight (random 524288))
+         (procedural-invader (random 32768)))
+     1))
+
+  (define root (make-fractal (quotient width 7)
+                             (quotient height 7)
+                             random-invader))
+
+  (flomap-&gt;bitmap
+   (build-flomap*
+    (if highlights? 3 1) width height
+    (λ (x y)
+      ; Correct for coordinates within the node
+      (define nx (quotient x 7))
+      (define ny (quotient y 7))
+
+      (let loop ([n root])
+        (cond
+          [(in? (node-value-bounds n) nx ny)
+           ; Calculate coordinates within the image
+           (match-define (node _ (rect t l s _) img _) n)
+           (define ix (quotient (- x (* 7 l)) s))
+           (define iy (quotient (- y (* 7 t)) s))
+           (flomap-ref* img ix iy)]
+          [else
+           (or
+            (for*/first ([child (in-list (node-children n))]
+                         #:when (and child (in? (node-bounds child) nx ny)))
+              (loop child))
+            (if highlights? '#(1 1 1) '#(1)))]))))))</code></pre>
+<p>Okay, this code isn't quite as nice. Mostly, that's because of a simplifying requirement that I started with: we're going to be working with a grid where each 'pixel' is a single minimal size invader. With a 1 pixel margin, that means that our minimum image size is 7x7 (thus the 7s scattered throughout the code).</p>
+<p>Unfortunately, that does make our base case a little more complicated, since we're working with two different coordinate systems: image coordinates <code>x</code> and <code>y</code> and fractal coordinates <code>nx</code> and <code>ny</code>. Still, add in some offsets by 7 and a bit of padding down at the end (for images not divisible by 7) and off we go:</p>
+<pre class="scheme"><code> &gt; (fractal-invaders 100 100) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
+<p>It also works great for larger images:</p>
+<pre class="scheme"><code> &gt; (fractal-invaders 400 200) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200.png" /></a></p>
+<p>It even supports highlights:</p>
+<pre class="scheme"><code> &gt; (fractal-invaders 400 200 #:highlights? #t) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-highlights.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-highlights.png" /></a></p>
+<p>Now that's what I'm talking about. Unfortunately, the process is still somewhat random:</p>
+<pre class="scheme"><code> &gt; (fractal-invaders 100 100) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100-big.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100-big.png" /></a></p>
+<p>Sometimes the first random image is a little on the annoyingly large size. Off the top of my head, there are two ways to deal with it: either add an option parameter that controls the maximum size of a block or just keep generating images until you get what you are looking for.</p>
+<p>Guess which solution I prefer? :)</p>
+<pre class="scheme"><code>(define (fractal-invaders ... #:maximum-invader-size [max-size #f])
+  ...
+  (define root
+    (make-fractal
+     (quotient width 7)
+     (quotient height 7)
+     random-invader
+     #:maximum-block-size (and max-size (/ max-size 7))))
+  ...)
+
+(define (make-fractal width height random-node #:maximum-block-size [max-size #f])
+  ...
+      [else
+       (define s
+         (let loop ()
+           (define s (if (= (min w h) 1) 1 (+ 1 (random (min w h)))))
+           (cond
+             [(or (not max-size) (&lt; s max-size)) s]
+             [else (loop)])))
+       ...])</code></pre>
+<p>Simple!</p>
+<pre class="scheme"><code>&gt; (fractal-invaders 400 200 #:highlights? #t #:maximum-invader-size 25)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-max-25.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-max-25.png" /></a></p>
+<p>Beautiful!</p>
+<p>I wonder what other sort of images I could make with a fractal space filling algorithm like this? O:)</p>
+<p>As always, today's code is available on GitHub. Check it out: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/fractal-invaders.rkt">fractal-invaders.rkt</a> (Requires <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a> to run.)</p>]]></content></entry><entry><title>Look and Say</title><link href="http://blog.jverkamp.com/2014/09/15/look-and-say" /><id>urn:uuid:eac2659f-3660-3f5e-9ba1-540308c23093</id><updated>2014-09-15T00:00:00Z</updated><summary type="html"><![CDATA[<p>Random quick post today<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Basically, we want to write code to generate what's known as <a href="https://en.wikipedia.org/wiki/Look_and Say sequence">Look and Say sequence</a>:</p>
 <blockquote>
     <p>To generate a member of the sequence from the previous member, read off the digits of the previous member, counting the number of digits in groups of the same digit. For example:</p>
 
@@ -1024,697 +1228,4 @@ case 'shark':   // Run towards the nearest other tile
 </ul>
 <p>I think that's about it. If you have any ideas, I'd love to hear them. There's not much (well, any) code this time, since nothing major has changed (other than refactoring). It's pretty much all tweaks. If you'd like to see the entire source (warning: ugly, bit getting a little better), it's still right here: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
 <p>Demo time!</p>
-<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/demo.embed.htm"></iframe></p>]]></content></entry><entry><title>Ludum Dare 30: Hints of a game</title><link href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game" /><id>urn:uuid:7e16e7ce-b97f-2d28-ba95-ea26c1b8a027</id><updated>2014-08-23T12:00:00Z</updated><summary type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
-]]></summary><content type="html"><![CDATA[<p>We're getting there. 18 hours in and I have the first hints of what might actually be a game...</p>
-<!--more-->
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-hints-of-a-game/screenshot.png" /></a></p>
-<p>(I'll include a demo at the bottom of the post)</p>
-<p>Basically, I went with allowing each box to be controlled individually by the keyboard. There will be some problems with having that many people on the keyboard at once, but we'll deal with that later (if we can).</p>
-<p>One additional thing I wanted (and mostly figured out) is somewhat 'loose' controls. Basically, rather than explicitly dealing with moving only when a key is down, we'll accelerate when the key is down, preserving velocity even after  keys are raised. There will be some small amount of friction as well, to make sure that eventually pieces will slow down.</p>
-<p>It's actually not too hard to implement a system like this:</p>
-<p>First, load in the keybindings from the interface you can see in the screenshot above:</p>
-<pre class="javascript"><code>// Load key bindings
-var loadKeyBindings = function() {
-  keys = {};
-
-  console.log('Loading key bindings...');
-
-  $('#controls table').each(function(i, eli) {
-    var player = parseInt($(eli).attr('data-player'));
-
-    console.log('loading controls for player ' + player);
-
-    $(eli).find('input').each(function(j, elj) {
-      var command = $(elj).attr('name');
-      var key = $(elj).val();
-
-      keys[key] = [player, command, false];
-    });
-  });
-};</code></pre>
-<p>This will put everything into the <code>key</code> array, indexed by key name and storing the player it refers to, the direction you are going (one of <code>left</code>, <code>right</code>, <code>up</code>, or <code>down</code>), and if that key is currently active (pressed down). If I can, I may add additional key bindings (such as rotation or powerups), otherwise, that's pretty good for the moment.</p>
-<p>Next, we'll add a function to tell when keys are active:</p>
-<pre class="javascript"><code>var onkey = function(event) {
-  switch (event.keyCode) {
-    case  37: key = 'LEFT'; break;
-    case  38: key = 'UP'; break;
-    case  39: key = 'RIGHT'; break;
-    case  40: key = 'DOWN'; break;
-    case  97: key = 'NUM1'; break;
-    case  98: key = 'NUM2'; break;
-    case  99: key = 'NUM3'; break;
-    case 100: key = 'NUM4'; break;
-    case 101: key = 'NUM5'; break;
-    case 102: key = 'NUM6'; break;
-    case 103: key = 'NUM7'; break;
-    case 104: key = 'NUM8'; break;
-    case 105: key = 'NUM9'; break;
-    default: key = String.fromCharCode(event.keyCode).toUpperCase();
-  }
-
-  if (key in keys) {
-    if (event.type == 'keydown') {
-      keys[key][2] = true;
-    } else if (event.type == 'keyup') {
-      keys[key][2] = false;
-    }
-  }
-};</code></pre>
-<p>Longer than I wanted, but it correctly deals with both the numpad and arrow keys, which is kind of necessary if you want to support 4 human players all at the same time. Perhaps I'll implement AIs, but until I do, we're going to have to allow for a bunch of players...</p>
-<p>Okay, so what do we do with all of this information? Well, just like before, we have a <code>tick</code> function:</p>
-<pre class="javascript"><code>var tick = function(event) {
-  $.each(keys, function(i, el) {
-    var player = el[0];
-    var command = el[1];
-    var active = el[2];
-
-    $game = $('#tiles');
-    $tile = $('#tiles *[data-player="' + player + '"]');
-
-    // Update velocity
-    ...
-
-    // Use friction to slow each box down over time
-    ...
-
-    // Cap velocity so we don't go too fast
-    ...
-
-    // Update the current position based on velocity
-    ...
-
-    // Bounce off the edges of the screen
-    ...
-
-    // Finally, update the position
-    $tile.css({'top': top, 'left': left});
-  });
-
-  if (running) {
-    setTimeout(tick, 1000/30);
-  }
-};</code></pre>
-<p>Oof. That's a heck of a function. Luckily, the individual parts aren't <em>that</em> bad. First, we want to update the velocity. This is where the <code>active</code> parameter (the third in each key definition) comes into play:</p>
-<pre class="javascript"><code>// Update velocity
-if (active) {
-  if (command == 'up') {
-    vel[player][1] -= PER_TICK_ACCELERATION;
-  } else if (command == 'down') {
-    vel[player][1] += PER_TICK_ACCELERATION;
-  } else if (command == 'left') {
-    vel[player][0] -= PER_TICK_ACCELERATION;
-  } else if (command == 'right') {
-    vel[player][0] += PER_TICK_ACCELERATION;
-  }
-}</code></pre>
-<p>That's simple enough. As before, we have to decide that <code>up</code> and <code>down</code> are inverted (they almost always are when it comes to computers), but once you've decided that's easy enough.</p>
-<p>Now, outside of that black, the next thing we'll do is apply friction. This way the boxes will slow down over time, forcing players both to pay attention and to let them bounce around like madmen.</p>
-<pre class="javascript"><code>// Use friction to slow each box down over time
-// If we're close enough to zero that friction will accelerate us, just stop
-if (Math.abs(vel[player][0]) &lt; PER_TICK_FRICTION) {
-  vel[player][0] = 0;
-} else {
-  vel[player][0] += (vel[player][0] &gt; 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
-}
-
-if (Math.abs(vel[player][1]) &lt; PER_TICK_FRICTION) {
-  vel[player][1] = 0;
-} else {
-  vel[player][1] += (vel[player][1] &gt; 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
-}
-
-// Cap velcity so we don't go too fast
-vel[player][0] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][0]));
-vel[player][1] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][1]));</code></pre>
-<p>Also at the end there, we make sure we don't keep accelerating indefinitely. That both helps keep the game a little easier to play and prevents edge cases (such as moving further in one tick than we're allowed).</p>
-<p>Next, we can finally update the position:</p>
-<pre class="javascript"><code>// Update the current position based on velocity
-var left = $tile[0].offsetLeft + vel[player][0];
-var top = $tile[0].offsetTop + vel[player][1];
-
-// Bounce off the edges of the screen
-if (left &lt; 0) {
-  left = 0;
-  vel[player][0] = Math.abs(vel[player][0]);
-} else if (left &gt; $game.width() - $tile.width()) {
-  left = $game.width() - $tile.width();
-  vel[player][0] = -1 * Math.abs(vel[player][0]);
-}
-
-if (top &lt; 0) {
-  top = 0;
-  vel[player][1] = Math.abs(vel[player][1]);
-} else if (top &gt; $game.height() - $tile.height()) {
-  top =  $game.height() - $tile.height();
-  vel[player][1] = -1 * Math.abs(vel[player][1]);
-}</code></pre>
-<p>Once again, we want to clip the positions. This time though, we're actually going to use the velocities we have rather than zeroing them out. Instead: bounce! It's nice, because it makes the game feel more 'realistic' (for some definitions of the word).</p>
-<p>And that's about it. With that, we can have the boxes moving around and interacting as they did last night. We're actually starting to get a game going here. One other tweak is the control code:</p>
-<pre class="javascript"><code>var tiles = new Tiles();
-var controls = new Controls();
-
-var MS_PER_GAME = 60 * 1000;
-var startTime = new Date().getTime();
-var running = true;
-
-$(function() {
-  controls.run();
-});
-
-function tick() {
-  var soFar = new Date().getTime() - startTime;
-  var remainingSec = Math.floor((MS_PER_GAME - soFar) / 1000);
-
-  if (remainingSec &gt; 0) {
-    $('#tiles #countdown').text(remainingSec + ' sec remaining');
-  } else {
-    stop();
-  }
-
-  if (running) {
-    setTimeout(tick, 1000/30);
-  }
-}
-
-function run() {
-  tiles.run();
-  controls.run();
-
-  startTime = new Date().getTime();
-  running = true;
-  tick();
-
-  return false;
-}
-
-function stop() {
-  tiles.stop();
-  controls.stop();
-
-  startTime = new Date().getTime() - MS_PER_GAME;
-  running = false;
-  $('#tiles #countdown').text('game over');
-
-  return false;
-}</code></pre>
-<p>Technically, it's not a gameloop, since everything is done asynchronously via <code>setTimeout</code> (and make <strong>absolutely sure</strong> that you don't use <code>setInterval</code>...), but it's close enough. What this does give us though is a strict time before the game ends. Otherwise, the boxes will eventually fill up, and where's the fun in that? (Although that might be an interesting alternative end condition).</p>
-<p>After that, all I have to figure out is scoring. And I have another 6 hours until the one day mark. If I can make it by then, I'll feel pretty good--and can use all of the rest of the time for polish. I'm thinking some simple music, sound effects, a title screen (initial letters in sand?). Of course, I still have to figure out the scoring algorithm..</p>
-<p>Same as yesterday, the entire source (warning: still ugly) if available on GitHub: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
-<hr />
-<p>Demo:</p>
-<style>
-#controls table {
-  border: 1px solid black;
-  display: inline-block;
-  margin: 1em;
-  padding: 0.5em;
-  border-radius: 0.5em;
-
-}
-
-#controls table td {
-  padding: 0.1em;
-}
-
-#controls table td:first-child {
-  text-align: right;
-}
-
-#controls table input {
-  width: 50px;
-  text-align: center;
-}
-
-#tiles {
-  position: relative;
-  width: 600px;
-  height: 400px;
-  background: black;
-  border: 1px solid black;
-}
-
-#tiles canvas {
-  position: absolute;
-  border: 1px solid black;
-}
-
-#tiles canvas[data-player="0"] { border: 1px solid blue; }
-#tiles canvas[data-player="1"] { border: 1px solid red; }
-#tiles canvas[data-player="2"] { border: 1px solid green; }
-#tiles canvas[data-player="3"] { border: 1px solid hotPink; }
-
-#tiles #countdown {
-  color: white;
-}
-</style>
-<script>
-function Tiles() {
-  var running = false;
-  var allData = {};
-  var ordering = [];
-
-  // Assign an index to each canvas so we can order them
-  $('canvas').each(function(index, canvas) {
-     $(canvas).attr('data-index', index);
-  });
-
-  // Keep a list of the current z-ordering of the canvases
-  $('canvas').each(function(i) { ordering.push(i); });
-
-  // Make them draggable, on drag udate the index
-  $('canvas').draggable({
-      stack: '*',
-      drag: function(event, ui) {
-
-      },
-      stop: function(event, ui) {
-          var i = parseInt($(event.target).attr('data-index'));
-          var index = ordering.indexOf(i);
-          ordering.splice(index, 1);
-          ordering.unshift(i);
-      }
-  });
-
-  // Make a 2D array initialized all to a given valu
-  var make2DArray = function(width, height, def) {
-      var array = new Array(width);
-      for (var x = 0; x < width; x++) {
-          array[x] = new Array(height);
-          for (var y = 0; y < height; y++) {
-              array[x][y] = def;
-          }
-      }
-      return array;
-  }
-
-  // Update the given grid
-  var update = function(data, buffer, width, height) {
-      // Clear the buffer
-      for (var x = 0; x < width; x++) {
-          for (var y = 0; y < height; y++) {
-              buffer[x][y] = 0;
-          }
-      }
-
-      // Update the buffer with falling cells
-      var r = 0, xt = 0, yt = 0;
-      for (var y = height - 1; y >= 0; y--) {
-          for (var x = 0; x < width; x++) {
-              // Skip empty cells
-              if (data[x][y] == 0) continue;
-              xt = x;
-              yt = y;
-
-              // Determine which way it's going to fall
-              r = Math.random();
-              if (r < 0.5) { // Straight down
-                  if (y > 0 && buffer[x][y - 1] == 0) { xt = x; yt = y - 1; }
-              } else if (r < 0.7) { // Down left
-                  if (x > 0 && y > 0 && buffer[x - 1][y - 1] == 0) { xt = x - 1; yt = y - 1; }
-              } else if (r < 0.9) { // Down right
-                  if (x < width - 1 && y > 1 && buffer[x + 1][y - 1] == 0) { xt = x + 1; yt = y - 1; }
-              } else if (r < 0.95) { // Straight left
-                  if (x > 0 && buffer[x - 1][y] == 0) { xt = x - 1; yt = y; }
-              } else { // Straight right
-                  if (x < width - 1 && buffer[x + 1][y] == 0) { xt = x + 1; yt = y; }
-              }
-
-              if (data[xt][yt] != 0) { xt = x; yt = y; }
-
-              // Update the buffer
-              buffer[xt][yt] = data[x][y];
-          }
-      }
-  }
-
-  // Animate a given frame
-  var animate = function(frameIndex, frame) {
-      var start = new Date().getTime();
-
-      var frame_ctx = frame.getContext('2d');
-      frame_ctx.imageSmoothingEnabled = false;
-
-      var width = frame.width;
-      var height = frame.height;
-
-      var data = make2DArray(width, height, 0);
-      var buffer = make2DArray(width, height, 0);
-      var temp;
-      var i = 0, r = 0, g = 0, b = 0, a = 0;
-
-      allData[frameIndex] = data;
-      var imageData = frame_ctx.createImageData(width, height);
-
-      var tick = function() {
-          // Debug: For add a pixel
-          data[width / 2][height - 1] = frameIndex + 1;
-
-          // Update from data to buffer; swap the arrays for the next iteration
-          update(data, buffer, width, height);
-          temp = data;
-          data = buffer;
-          buffer = temp;
-
-          // Detect overlapping buffers, if so swap randomly
-          $('canvas').each(function(otherIndex, other) {
-              // If we're comparing to ourself, we'll always overlap, skip
-              if (frame == other) return;
-
-              // If the two canvases don't overlap, don't look at them
-              var frameBounds = frame.getBoundingClientRect();
-              var otherBounds = other.getBoundingClientRect();
-              if (frameBounds.right < otherBounds.left ||
-                  frameBounds.left > otherBounds.right ||
-                  frameBounds.bottom < otherBounds.top ||
-                  frameBounds.top > otherBounds.bottom) {
-                  return;
-              }
-
-              // We only want this once, so give priority to whichever frame is 'lower' on the screen
-              if (frameBounds.top < otherBounds.top) return;
-
-              // Bail out if we haven't loaded the data yet
-              if (!(frameIndex in allData && otherIndex in allData)) {
-                return;
-              }
-
-              // TODO: Find the actual offset rather than looping over an entire image
-              var otherX, otherY, temp;
-              for (var frameY = 0; frameY < height; frameY++) {
-                  for (var frameX = 0; frameX < width; frameX++) {
-                      otherX = Math.floor(frameBounds.left - otherBounds.left + frameX);
-                      otherY = Math.floor(otherBounds.top - frameBounds.top + frameY);
-
-                      if (0 <= otherX && otherX < width && 0 <= otherY && otherY < height) {
-                          if (allData[frameIndex][frameX][frameY] == 0
-                              /* && allData[otherIndex][otherX][otherY] != 0*/) {
-                              temp = allData[frameIndex][frameX][frameY];
-                              allData[frameIndex][frameX][frameY] = allData[otherIndex][otherX][otherY];
-                              allData[otherIndex][otherX][otherY] = temp;
-                          }
-                      }
-                  }
-              }
-          });
-
-          // Render to the image data
-          for (var y = 0; y < height; y++) {
-              for (var x = 0; x < width; x++) {
-                  i = x + (height - y) * width;
-
-                  r = g = b = 0;
-                  a = 255;
-
-                  if (data[x][y] == 0) {
-                    a = 0;
-                  } else if (data[x][y] == 1) {
-                    b = 255;
-                  } else if (data[x][y] == 2) {
-                    r = 255;
-                  } else if (data[x][y] == 3) {
-                    g = 255;
-                  } else if (data[x][y] == 4) {
-                    r = 246;
-                    g = 96;
-                    b = 171;
-                  }
-
-                  imageData.data[i * 4 + 0] = r;
-                  imageData.data[i * 4 + 1] = g;
-                  imageData.data[i * 4 + 2] = b;
-                  imageData.data[i * 4 + 3] = a;
-              }
-          }
-
-          // Copy back to the GUI
-          frame_ctx.putImageData(imageData, 0, 0);
-
-          if (running) {
-              setTimeout(tick, 1000/60);
-          }
-      }
-      tick();
-  };
-
-  this.run = function() {
-    running = true;
-    $('canvas').each(animate);
-  };
-
-  this.stop = function() {
-    running = false;
-  };
-};
-
-function Controls() {
-  var keys = {};
-  var running = false;
-  var PER_TICK_ACCELERATION = 0.1;
-  var PER_TICK_FRICTION = 0.01;
-  var VELOCITY_CAP = 10;
-
-  var vel = {};
-
-  // Load key bindings
-  var loadKeyBindings = function() {
-    keys = {};
-
-    console.log('Loading key bindings...');
-
-    $('#controls table').each(function(i, eli) {
-      var player = parseInt($(eli).attr('data-player'));
-
-      console.log('loading controls for player ' + player);
-
-      $(eli).find('input').each(function(j, elj) {
-        var command = $(elj).attr('name');
-        var key = $(elj).val();
-
-        keys[key] = [player, command, false];
-      });
-    });
-  };
-
-  var onkey = function(event) {
-    switch (event.keyCode) {
-      case  37: key = 'LEFT'; break;
-      case  38: key = 'UP'; break;
-      case  39: key = 'RIGHT'; break;
-      case  40: key = 'DOWN'; break;
-      case  97: key = 'NUM1'; break;
-      case  98: key = 'NUM2'; break;
-      case  99: key = 'NUM3'; break;
-      case 100: key = 'NUM4'; break;
-      case 101: key = 'NUM5'; break;
-      case 102: key = 'NUM6'; break;
-      case 103: key = 'NUM7'; break;
-      case 104: key = 'NUM8'; break;
-      case 105: key = 'NUM9'; break;
-      default: key = String.fromCharCode(event.keyCode).toUpperCase();
-    }
-
-    if (key in keys) {
-      if (event.type == 'keydown') {
-        keys[key][2] = true;
-      } else if (event.type == 'keyup') {
-        keys[key][2] = false;
-      }
-    }
-  };
-
-  var tick = function(event) {
-    $.each(keys, function(i, el) {
-      var player = el[0];
-      var command = el[1];
-      var active = el[2];
-
-      $game = $('#tiles');
-      $tile = $('#tiles *[data-player="' + player + '"]');
-
-      // Update velocity
-      if (active) {
-        if (command == 'up') {
-          vel[player][1] -= PER_TICK_ACCELERATION;
-        } else if (command == 'down') {
-          vel[player][1] += PER_TICK_ACCELERATION;
-        } else if (command == 'left') {
-          vel[player][0] -= PER_TICK_ACCELERATION;
-        } else if (command == 'right') {
-          vel[player][0] += PER_TICK_ACCELERATION;
-        }
-      }
-
-      // Use friction to slow each box down over time
-      // If we're close enough to zero that friction will accelerate us, just stop
-      if (Math.abs(vel[player][0]) < PER_TICK_FRICTION) {
-        vel[player][0] = 0;
-      } else {
-        vel[player][0] += (vel[player][0] > 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
-      }
-
-      if (Math.abs(vel[player][1]) < PER_TICK_FRICTION) {
-        vel[player][1] = 0;
-      } else {
-        vel[player][1] += (vel[player][1] > 0 ? -PER_TICK_FRICTION : PER_TICK_FRICTION);
-      }
-
-      // Cap velocity so we don't go too fast
-      vel[player][0] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][0]));
-      vel[player][1] = Math.min(VELOCITY_CAP, Math.max(-VELOCITY_CAP, vel[player][1]));
-
-      // Update the current position based on velocity
-      var left = $tile[0].offsetLeft + vel[player][0];
-      var top = $tile[0].offsetTop + vel[player][1];
-
-      // Bounce off the edges of the screen
-      if (left < 0) {
-        left = 0;
-        vel[player][0] = Math.abs(vel[player][0]);
-      } else if (left > $game.width() - $tile.width()) {
-        left = $game.width() - $tile.width();
-        vel[player][0] = -1 * Math.abs(vel[player][0]);
-      }
-
-      if (top < 0) {
-        top = 0;
-        vel[player][1] = Math.abs(vel[player][1]);
-      } else if (top > $game.height() - $tile.height()) {
-        top =  $game.height() - $tile.height();
-        vel[player][1] = -1 * Math.abs(vel[player][1]);
-      }
-
-      // Finally, update the position
-      $tile.css({'top': top, 'left': left});
-    });
-
-    if (running) {
-      setTimeout(tick, 1000/30);
-    }
-  };
-
-  this.run = function() {
-    // Reload keybindings in case they've changed
-    loadKeyBindings();
-
-    // Initialize velocities to zero
-    $game = $('#tiles');
-    $('#tiles canvas').each(function(i, eli) {
-      vel[i] = [0, 0];
-      $(eli).css({
-        top: Math.random() * ($game.height() - $(eli).height()),
-        left: Math.random() * ($game.width() - $(eli).width())
-      });
-    });
-
-    // Add keybindings, we can use the same function since it can check type
-    $(document).unbind('keydown').bind('keydown', onkey);
-    $(document).unbind('keyup').bind('keyup', onkey);
-
-    running = true;
-    tick();
-  }
-
-  this.stop = function() {
-    running = false;
-
-    $(document).unbind('keydown');
-    $(document).unbind('keyup');
-  }
-};
-
-var tiles = new Tiles();
-var controls = new Controls();
-
-var MS_PER_GAME = 60 * 1000;
-var startTime = new Date().getTime();
-var running = true;
-
-$(function() {
-  controls.run();
-});
-
-function tick() {
-  var soFar = new Date().getTime() - startTime;
-  var remainingSec = Math.floor((MS_PER_GAME - soFar) / 1000);
-
-  if (remainingSec > 0) {
-    $('#tiles #countdown').text(remainingSec + ' sec remaining');
-  } else {
-    stop();
-  }
-
-  if (running) {
-    setTimeout(tick, 1000/30);
-  }
-}
-
-function run() {
-  tiles.run();
-  controls.run();
-
-  startTime = new Date().getTime();
-  running = true;
-  tick();
-
-  return false;
-}
-
-function stop() {
-  tiles.stop();
-  controls.stop();
-
-  startTime = new Date().getTime() - MS_PER_GAME;
-  running = false;
-  $('#tiles #countdown').text('game over');
-
-  return false;
-}
-</script>
-<div class="table" id="controls">
-  <table data-player="0">
-    <tr><td colspan="2">Player 1 - Blue</tr>
-    <tr><td>Up</td><td><input name="up" value="W"></input></td></tr>
-    <tr><td>Left</td><td><input name="left" value="A"></input></td></tr>
-    <tr><td>Right</td><td><input name="right" value="D"></input></td></tr>
-    <tr><td>Down</td><td><input name="down" value="S"></input></td></tr>
-  </table>
-
-  <table data-player="1">
-    <tr><td colspan="2">Player 2 - Red</tr>
-    <tr><td>Up</td><td><input name="up" value="I"></input></td></tr>
-    <tr><td>Left</td><td><input name="left" value="J"></input></td></tr>
-    <tr><td>Right</td><td><input name="right" value="L"></input></td></tr>
-    <tr><td>Down</td><td><input name="down" value="K"></input></td></tr>
-  </table>
-
-  <table data-player="2">
-    <tr><td colspan="2">Player 3 - Green</tr>
-    <tr><td>Up</td><td><input name="up" value="UP"></input></td></tr>
-    <tr><td>Left</td><td><input name="left" value="LEFT"></input></td></tr>
-    <tr><td>Right</td><td><input name="right" value="RIGHT"></input></td></tr>
-    <tr><td>Down</td><td><input name="down" value="DOWN"></input></td></tr>
-  </table>
-
-  <table data-player="3">
-    <tr><td colspan="2">Player 4 - Pink</tr>
-    <tr><td>Up</td><td><input name="up" value="NUM8"></input></td></tr>
-    <tr><td>Left</td><td><input name="left" value="NUM4"></input></td></tr>
-    <tr><td>Right</td><td><input name="right" value="NUM6"></input></td></tr>
-    <tr><td>Down</td><td><input name="down" value="NUM2"></input></td></tr>
-  </table>
-</div>
-<div>
-  [ <a href="javascript:run()">Run!</a> ]
-  [ <a href="javascript:stop()">Stop!</a> ]
-</div>
-<div width="600" height="400">
-  <div id="tiles">
-    <p id="countdown"></p>
-    <canvas data-player="0" width="100" height="100"></canvas>
-    <canvas data-player="1" width="100" height="100"></canvas>
-    <canvas data-player="2" width="100" height="100"></canvas>
-    <canvas data-player="3" width="100" height="100"></canvas>
-  </div>
-</div>
-<hr />
-<p>I'm sure there are bugs... And I'm working on it right at the moment. If you have any questions or comments though, feel free to drop me a line below.</p>]]></content></entry></feed>
+<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-24-hours/demo.embed.htm"></iframe></p>]]></content></entry></feed>
