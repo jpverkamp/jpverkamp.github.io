@@ -1,5 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-09-17T09:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Invader Fractals</title><link href="http://blog.jverkamp.com/2014/09/17/invader-fractals" /><id>urn:uuid:15d5a345-5571-4706-dc96-ad512081f006</id><updated>2014-09-17T09:00:00Z</updated><summary type="html"><![CDATA[<p>First we had <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. Then we used them fill up space with <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>. But we're not <em>quite</em> done yet! This time, let's mix things up a bit and make Invader Fractals.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-10-05T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Regular Expression Fractals</title><link href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals" /><id>urn:uuid:32f94d69-d55a-a14d-ef3c-5252a500522e</id><updated>2014-10-05T00:00:00Z</updated><summary type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
+<p>Today's post was inspired by this post on /r/dailyprogrammer a month ago today: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/9052014_challenge_178_hard_regular_expression/">Challenge #178 [Hard] Regular Expression Fractals</a>. The basic idea is that you are going to take a rectangular region and divide it into four quadrants, again and again, recording the path as you go (images from that post):</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
+<p>Today's post was inspired by this post on /r/dailyprogrammer a month ago today: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/9052014_challenge_178_hard_regular_expression/">Challenge #178 [Hard] Regular Expression Fractals</a>. The basic idea is that you are going to take a rectangular region and divide it into four quadrants, again and again, recording the path as you go (images from that post):</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
+<!--more-->
+<p>At the end, each point in the image will have a 'path' of decisions that got you there, making a string of the numbers 1, 2, 3, and 4.</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-4.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-4.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-5.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-5.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-6.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-6.png" /></a></p>
+<p>How does that translate into code?</p>
+<pre class="scheme"><code>; Generate a fractal by matching a recursive path into an image
+(define (regex-fractal regex size)
+  (flomap-&gt;bitmap
+   (build-flomap*
+    3 size size
+    (λ (x y)
+      (let loop ([t 0] [l 0] [s size] [path ""])
+        (cond
+          ; If we're at the last level, white, otherwise black
+          [(&lt;= s 1)
+           (cond
+             [(regexp-match regex path) '#(1 1 1)]
+             [else                      '#(0 0 0)])]
+          ; Otherwise, divide the region into four subregions
+          ; Recur into whichever our current pixel is in
+          [else
+           (define s/2 (quotient s 2))
+           (define x-mid (+ l s/2))
+           (define y-mid (+ t s/2))
+           (loop
+            (if (&lt; y y-mid) t y-mid)
+            (if (&lt; x x-mid) l x-mid)
+            s/2
+            (~a path
+                (match (list (&lt; y y-mid) (&lt; x x-mid))
+                  ['(#t #t) 2]
+                  ['(#t #f) 1]
+                  ['(#f #t) 3]
+                  ['(#f #f) 4])))]))))))</code></pre>
+<p>That's actually pretty close to a lot of the fractal code we've been writing recently. And it generates some pretty cool images already:</p>
+<pre class="scheme"><code> &gt; (regex-fractal #px"(13|31|24|42)" 256) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/example-256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/example-256.png" /></a></p>
+<p>But we can do a little better than that. Let's parameterize a few things:</p>
+<pre class="scheme"><code>(define current-size     (make-parameter 64))
+(define current-coloring (make-parameter (thunk* '#(1 1 1))))
+(define current-mode     (make-parameter 'short))</code></pre>
+<p>Specifically, we'll pull the size out, but also add two more parameters. A mode to short circuit (so that as soon as the pattern matches, return, rather than calculating the entire depth of the image) and another to color the pixel based on a specific match. As an example coloring, consider this:</p>
+<pre class="scheme"><code>; Get the maximum path length; useful for making gradients
+(define (size-&gt;path-length size)
+  (inexact-&gt;exact (floor (/ (log size) (log 2)))))
+
+; Color a pixel based on how long of a match group we have
+(define (color-by-length m)
+  (define l (string-length (car m)))
+  (define p (size-&gt;path-length (current-size)))
+  (if (= l p)
+      '#(1 1 1)
+      (vector
+       (if (&gt;= (length m) 3) (/ (string-length (list-ref m 2)) p) 0)
+       (if (&gt;= (length m) 2) (/ (string-length (list-ref m 1)) p) 0)
+       (if (&gt;= (length m) 4) (/ (string-length (list-ref m 3)) p) 0))))</code></pre>
+<p>Now, let's take another example, one where the matching group must contain a 1. But now, color based on how much of the path is before the one:</p>
+<pre class="scheme"><code>(parameterize ([current-size 256]
+               [current-coloring color-by-length]
+               [current-mode 'short])
+  (regex-fractal #px"(.*)1"))</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/color-example-256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/color-example-256.png" /></a></p>
+<p>Very cool.</p>
+<p>After that, I just collected and made up a bunch of colorings and regular expressions and generate all of the images. Check the <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/regex-fractal.rkt">full source</a> on GitHub for details, but basically I have three colorings: a default white only, the length based coloring above, and another which matches the most common color in a match. Then I have about two dozen regular expression.</p>
+<p>Then I wrote a quick loop that will generate all images in both modes (short circuiting and long), with all three colorings. It's a lot of images... Here are some of my favorites:</p>
+<pre class="scheme"><code> (demo "test256" 256) </code></pre>
+<p>First, a basic <a href="https://en.wikipedia.org/wiki/Sierpinski_triangle">Sierpinski triangle</a> <code>1</code>:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_by-length_256.png" /></a></p>
+<p>But if you turn on most common color, you see that each color sticks to it's own color (a pattern we'll see oft repeated):</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_common-voting_256.png" /></a></p>
+<p>What's even more interesting is when you switch to 'short mode'. Since we'll stop recurring as soon as we see a 1, you get blocks rather than each individual pixel colored:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_short_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_short_common-voting_256.png" /></a></p>
+<p>Next, four corners. Basically, look for repeated patterns of a single digit: <code>((.)(\\2*))</code>. That should mean that we go out to the four corners, each with its own color:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/four-corners_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/four-corners_full_common-voting_256.png" /></a></p>
+<p>Next, split the region into left and right halves, by checking if a 1 or 2 appears first: <code>^[34]*2(.*)</code>. If it's a 2, mark it, if it's a 1, do not.</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/left-right_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/left-right_full_by-length_256.png" /></a></p>
+<p>Next, a nice jagged change on the original Sierpinski, match anything with either a 1 or a 2 (or both): <code>(12)</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/jagged_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/jagged_full_default_256.png" /></a></p>
+<p>Or, similarly, make two Sierpinskis by matching patterns where there's both a 1 and a 2: <code>(1.*2|2.*1)</code>:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_default_256.png" /></a></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_by-length_256.png" /></a></p>
+<p>Next, match patterns where all 1s (if any) occur before all 2s: <code>^[34]*[134]*[34]*[234]*[34]*$</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/ones-then-twos_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/ones-then-twos_full_default_256.png" /></a></p>
+<p>Or you can invert the Sierpinski triangle by making sure there are <em>no</em> ones at all: <code>^[^1]*$</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/no-one_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/no-one_full_common-voting_256.png" /></a></p>
+<p>Or go really crazy and do some math. For example, finding all sequences with an even sum: <code>^(2|4|[13][24]*[13])*$</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/even-sum_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/even-sum_full_by-length_256.png" /></a></p>
+<p>Next, we have a few from the comments on the <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/">original post</a>.</p>
+<p>Some nice curls: <code>[13][24][^1][^2][^3][^4]</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/curls_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/curls_full_common-voting_256.png" /></a></p>
+<p>Patterns where you have the same pattern repeated at least three times, but with other random bits in between: <code>(.)\\1..\\1</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_default_256.png" /></a>\ <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_common-voting_256.png" /></a></p>
+<p>Or you can draw some nice boxes: <code>(?:13|31)(.*)</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_short_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_short_default_256.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_full_by-length_256.png" /></a></p>
+<p>A nice recursive outline (reminds me of the <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>): <code>^(1[124]|2[14]|4[12]|31)*$</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/outlined_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/outlined_full_by-length_256.png" /></a></p>
+<p>Figure eights: <code>^(?:..)*(?:[13][13]|[24][24])((?:..)*)$</code></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/figure-eights_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/figure-eights_full_by-length_256.png" /></a></p>
+<p>And finally, some nice diagonal lines, by making sure the top left/bottom right are before the top right/bottom left: <code>^[13]*[24]*$</code>:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/scanlines_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/scanlines_full_common-voting_256.png" /></a></p>
+<p>And there you have it. Any other awesome patterns you come up with? Share them below. I'd love to see them.</p>
+<p>As always, the full source is available on GitHub if you'd like to play with it: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/regex-fractal.rkt">regex-fractal.rkt</a></p>]]></content></entry><entry><title>Invader Fractals</title><link href="http://blog.jverkamp.com/2014/09/17/invader-fractals" /><id>urn:uuid:15d5a345-5571-4706-dc96-ad512081f006</id><updated>2014-09-17T09:00:00Z</updated><summary type="html"><![CDATA[<p>First we had <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. Then we used them fill up space with <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>. But we're not <em>quite</em> done yet! This time, let's mix things up a bit and make Invader Fractals.</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>First we had <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. Then we used them fill up space with <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>. But we're not <em>quite</em> done yet! This time, let's mix things up a bit and make Invader Fractals.</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
@@ -1253,94 +1359,4 @@ AAAD</code></pre>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/instructions.png"><img src="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/instructions.png" /></a></p>
 <p>Up to date code (as always): <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
 <p>Current demo:</p>
-<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/demo.embed.htm"></iframe></p>]]></content></entry><entry><title>Ludum Dare 30: Programmer art and simple AI</title><link href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-programmer-art-and-simple-ai" /><id>urn:uuid:f2360aa3-c003-b836-c4a8-ea379a7ef8de</id><updated>2014-08-23T23:00:00Z</updated><summary type="html"><![CDATA[<p>A few hours later and we've already finished (or at least made good progress on) two of the goals that I was hoping for:</p>
-<ul>
-  <li>AI players; at the very least one that moves randomly, but optimally several different kinds</li>
-  <li>Pending the previous, a selector on the options screen that can turn each player either off, on, or to any of the current AIs</li>
-  <li>Stylings around the page; probably some sort of thick border that bleeds a little in and out, looking different per player</li>
-</ul>
-]]></summary><content type="html"><![CDATA[<p>A few hours later and we've already finished (or at least made good progress on) two of the goals that I was hoping for:</p>
-<ul>
-  <li>AI players; at the very least one that moves randomly, but optimally several different kinds</li>
-  <li>Pending the previous, a selector on the options screen that can turn each player either off, on, or to any of the current AIs</li>
-  <li>Stylings around the page; probably some sort of thick border that bleeds a little in and out, looking different per player</li>
-</ul>
-<!--more-->
-<p>More specifically, here's how you can change the AIs:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-programmer-art-and-simple-ai/choose-ai.png"><img src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-programmer-art-and-simple-ai/choose-ai.png" /></a></p>
-<p>Those are the three AIs currently implemented. I've tied them into the same framework as the player movement. It's a bit hacky and could be in its own file, but for a 48 hour game, it works well enough.</p>
-<p>The first, the <code>Wiggle</code>, is straight forward:</p>
-<pre class="javascript"><code>// Randomly wiggle about, changing directions no slower than every second
-case 'wiggle':
-  ai['nextWiggle'] = ai['nextWiggle'] || new Date().getTime() + 1000 * Math.random();
-  ai['xAccel'] = ai['xAccel'] || 0;
-  ai['yAccel'] = ai['yAccel'] || 0;
-
-  if (new Date().getTime() &gt; ai['nextWiggle']) {
-    ai['xAccel'] = (Math.floor(Math.random() * 3) - 1) * PER_TICK_ACCELERATION;
-    ai['yAccel'] = (Math.floor(Math.random() * 3) - 1) * PER_TICK_ACCELERATION;
-
-    ai['nextWiggle'] = new Date().getTime() + 1000 * Math.random();
-  }
-
-  vel[player][0] += ai['xAccel'];
-  vel[player][1] += ai['yAccel'];
-
-  break;</code></pre>
-<p>The other two (<code>Chicken</code> and <code>Shark</code>) are actually really similar. Enough so that they share almost all of their code. The only difference is that the former runs from the closest neighbor while the latter chases it. It's a bit of math, but it runs great:</p>
-<pre class="javascript"><code>case 'chicken': // Run away from the nearest other tile
-case 'shark':   // Run towards the nearest other tile
-  $me = $('#tiles *[data-player="' + player + '"]');
-  var myCenterX = $me.offset().left + $me.width() / 2;
-  var myCenterY = $me.offset().top + $me.height() / 2;
-
-  // Find the closest target
-  var otherCenterX, otherCenterY, distance;
-  var minimumDistance = +Infinity, $target;
-  $('#tiles *[data-player]').each(function(otherPlayer, other) {
-    $other = $(other);
-
-    var otherCenterX = $other.offset().left + $other.width() / 2;
-    var otherCenterY = $other.offset().top + $other.height() / 2;
-
-    distance = (
-      (myCenterX - otherCenterX) * (myCenterX - otherCenterX) +
-      (myCenterY - otherCenterY) * (myCenterY - otherCenterY)
-    );
-
-    if (distance &gt; 0 && distance &lt; minimumDistance) {
-      minimumDistance = distance;
-      $target = $other;
-    }
-  });
-
-  // Calculate the direction to that target
-  var targetCenterX = $target.offset().left + $target.width() / 2;
-  var targetCenterY = $target.offset().top + $target.height() / 2;
-
-  // Get the length and normalized direciton
-  var length = Math.sqrt(
-    (targetCenterX - myCenterX) * (targetCenterX - myCenterX) +
-    (targetCenterY - myCenterY) * (targetCenterY - myCenterY)
-  );
-
-  var directionX = (targetCenterX - myCenterX) / length;
-  var directionY = (targetCenterY - myCenterY) / length;
-
-  // If we're the chicken, invert that and run away rather than towards
-  // Sharks also move away, once they've come in for the kill
-  if (ai['type'] == 'chicken' || distance &lt; 25) {
-    directionX *= -1;
-    directionY *= -1;
-  }
-
-  // Apply a force in that direction
-  // Sharks and chickens accelerate more slowly or they'll stay right on the player
-  vel[player][0] += directionX * PER_TICK_ACCELERATION * (Math.random() / 2 + 0.5);
-  vel[player][1] += directionY * PER_TICK_ACCELERATION * (Math.random() / 2 + 0.5);
-
-  break;</code></pre>
-<p>Shiny.</p>
-<p>Up to date code: <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
-<p>Current demo:</p>
-<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/23/ludum-dare-30-programmer-art-and-simple-ai/demo.embed.htm"></iframe></p>]]></content></entry></feed>
+<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/demo.embed.htm"></iframe></p>]]></content></entry></feed>
