@@ -1,5 +1,195 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-10-05T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Regular Expression Fractals</title><link href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals" /><id>urn:uuid:32f94d69-d55a-a14d-ef3c-5252a500522e</id><updated>2014-10-05T00:00:00Z</updated><summary type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-10-28T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Tile Puzzle</title><link href="http://blog.jverkamp.com/2014/10/28/tile-puzzle" /><id>urn:uuid:073afc5c-1121-544c-5879-486d124edb3c</id><updated>2014-10-28T00:00:00Z</updated><summary type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
+<p>If you look carefully, the tiles are the same between the two, although they might be rotated.</p>
+]]></summary><content type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
+<p>If you look carefully, the tiles are the same between the two, although they might be rotated.</p>
+<!--more-->
+<p>Okay, let's start at the beginning. How are we going to represent a puzzle? Well, let's go with the same basic idea that was described in the original post: sets of four letters (in the order north, east, south, west), one for each tile. Furthermore, the letters represent color. Originally CMYK for cyan, magenta, yellow, and black, but we'll also add RGB for red, green, and blue (it's easy enough to add colors). Next, we'll use upper case and lower case letters in order to represent the two halves of a matching image.</p>
+<p>So take the unsolved image above:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a></p>
+<p>The first tile would be described as <code>cymK</code> for three circles and one rectangle. Continuing on, the entire puzzle would be:</p>
+<pre class="scheme"><code>'("cymK" "KyCy" "ymkc" "mkYc" "MycK" "mCkY" "cmKY" "KYmC" "McMk")</code></pre>
+<p>Now we'll want two helper functions:</p>
+<pre class="scheme"><code>; Insert an item into the given location in a list
+(define (insert-at ls item x)
+  (for/list ([i (in-naturals)]
+             [el (in-list ls)])
+    (if (= x i) item el)))
+
+; Return a list of all rotated versions of a string
+(define (rotations str)
+  (for/list ([i (in-range (string-length str))])
+    (string-append (substring str i) (substring str 0 i))))</code></pre>
+<p>Specifically, the first function allows us to insert a tile into a specified location in a list, while the second returns all possible rotations of our four character string. All around, things are going to be a little inefficient because we're working with lists rather than directly accessing something like a vector, but since the size of the puzzle is so small, the cost for these functions will be relatively cheap (especially compared to the crazy number of possible orderings of the tiles).</p>
+<p>Okay, with that, we actually have enough of a framework to work out our solution. The basic plan of attack will be very much the same as when we worked on the <a href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens">N Queens Puzzle</a>. Place each piece in order, backtracking as soon as we see a valid solution. This way we can cut out huge swaths of the potential solution space.</p>
+<pre class="scheme"><code>; Solve a puzzle by ordering pieces so that they match
+(define (solve puzzle)
+  ; Start with an empty solution space (all null) and a list of pieces to place
+  (let loop ([solution (make-list (length puzzle) "\0\0\0\0")]
+             [to-place puzzle]
+             [index    0])
+    (cond
+      ; If we've filled in all of the pieces, we have a solution
+      [(= index (length puzzle))
+       solution]
+      ; Otherwise, try each piece, only recurring for those that fit
+      ; Return the first that solves the puzzle from here,
+      ; by recursion this will be a full solution
+      [else
+       (for*/first ([next-item (in-list to-place)]
+                    [next-item-rotated (in-list (rotations next-item))]
+                    [next-puzzle (in-value (insert-at solution
+                                                      next-item-rotated
+                                                      index))]
+                    #:when (valid? next-puzzle)
+                    [recur (in-value (loop next-puzzle
+                                           (remove next-item to-place)
+                                           (+ index 1)))]
+                    #:when recur)
+         recur)])))</code></pre>
+<p>Basically there are two interesting parts: the <code>let loop</code> and the <code>for*/first</code> block. The main <code>loop</code> is the primary bit of the recursion. At any particular step, we have the solution that we've built thus far. We'll start with all <code>\0</code> strings (which we'll special case in <code>valid?</code>) and then fill in puzzle pieces one at a time. <code>to-place</code> will hold the pieces we've yet to place. The <code>index</code> is used primarily to insert new pieces at the proper location.</p>
+<p>Next, we have the <code>for*/first</code> loop. This is designed to clean up the search, basically by returning the first recursion that makes it through all of the lists and conditionals. Specifically, we're going to do all of the following:</p>
+<ul>
+  <li>Loop through all remaining pieces to place as <code>next-item</code></li>
+  <li>For each piece, try each rotation in turn</li>
+  <li>Generate the <code>next-puzzle</code> by inserting that piece</li>
+  <li>Check that the new insertion is <code>valid?</code></li>
+  <li>Recur with the newly placed piece removed</li>
+  <li>If there's a valid solution, continue to the body of the loop (and thus return, since we're looking for the <code>first</code>)</li>
+</ul>
+<p>All that combines (with the power of recursion!) to solve the puzzle:</p>
+<pre class="scheme"><code>&gt; (solve '("cymK" "KyCy" "ymkc"
+           "mkYc" "MycK" "mCkY"
+           "cmKY" "KYmC" "McMk"))
+'("cymK" "mCkY" "ymkc"
+  "McMk" "KYmC" "KyCy"
+  "mkYc" "MycK" "cmKY")</code></pre>
+<p>Of course that's a little hard to see what in the world is going on. Let's write a few functions using Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=pict">pict</a></code> library. First, a <code><a href="http://docs.racket-lang.org/search/index.html?q=parameter">parameter</a></code> to control how large each tile will be and a pair of functions to decode the letters into colors / shapes:</p>
+<pre class="scheme"><code>(define current-tile-size (make-parameter 50))
+
+(define (char-&gt;color c)
+  (case c
+    [(#\R #\r) "red"]
+    [(#\G #\g) "green"]
+    [(#\B #\b) "blue"]
+    [(#\C #\c) "cyan"]
+    [(#\M #\m) "magenta"]
+    [(#\Y #\y) "yellow"]
+    [(#\K #\k) "black"]
+    [else      "white"]))
+
+(define (char-&gt;shape c)
+  (case c
+    [(#\R #\G #\B #\C #\M #\Y #\K) filled-rectangle]
+    [(#\r #\g #\b #\c #\m #\y #\k) filled-ellipse]
+    [(#\null)                      (λ _ (filled-rectangle 0 0))]))</code></pre>
+<p>With those, we can render an individual tile:</p>
+<pre class="scheme"><code>; Render a single tile given a four character specifier
+; Order is top, right, bottom, left
+; Colors are cyan, magenta, yellow, red, green, blue, black (k for black)
+; Uppercase are square, lowercase are circular
+(define (render-tile tile)
+  (match-define (list top right bottom left) (string-&gt;list tile))
+
+  ; Size of the individual images
+  (define quad-size (quotient (current-tile-size) 3))
+
+  ; Offsets for pinning, zero/half/full size adjusted for quad size
+  (define zs (- (quotient quad-size 2)))
+  (define hs (- (quotient (current-tile-size) 2) (quotient quad-size 2)))
+  (define fs (- (current-tile-size) (quotient quad-size 2)))
+
+  ; Helper function to render a specific shape of the specific color
+  (define (shape c)
+    (colorize ((char-&gt;shape c) quad-size quad-size)
+              (char-&gt;color c)))
+
+  ; Construct the image by layering each of the four sides on the base
+  (let* ([pict (rectangle (current-tile-size) (current-tile-size))]
+         [pict (pin-under pict hs zs (shape top))]
+         [pict (pin-under pict fs hs (shape right))]
+         [pict (pin-under pict hs fs (shape bottom))]
+         [pict [pin-under pict zs hs (shape left)]])
+    (clip pict)))</code></pre>
+<p>One part that took a bit here was getting the <code>zs</code>, <code>hs</code>, and <code>fs</code> functions correct. Since coordinates are based on the top left corner of each subimage, we need to correctly offset by half of the image sizes for each of the halfway points. Also, make sure you use the <code><a href="http://docs.racket-lang.org/search/index.html?q=clip">clip</a></code> function. It will look fine with just a single tile if you do not use it, but once you start merging them... Strange things happen.</p>
+<p>Demo time:</p>
+<pre class="scheme"><code> &gt; (render-tile "cymK") </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png" /></a></p>
+<p>Nice!</p>
+<p>Next, we can combine the <code>picts</code> into a single larger <code>pict</code>:</p>
+<pre class="scheme"><code>; Render a puzzle of multiple tiles
+; Puzzles are assumed to be square
+(define (render puzzle)
+  (define width (integer-sqrt (length puzzle)))
+
+  (define tiles
+    (for/list ([y (in-range width)])
+      (for/list ([x (in-range width)])
+        (render-tile (list-ref puzzle (+ x (* y width)))))))
+
+  (define rows
+    (map (λ (row) (apply (curry hc-append -1) row)) tiles))
+
+  (apply (curry vc-append -1) rows))</code></pre>
+<p>Bam:</p>
+<pre class="scheme"><code>&gt; (render (solve '("cymK" "KyCy" "ymkc"
+                   "mkYc" "MycK" "mCkY"
+                   "cmKY" "KYmC" "McMk")))</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
+<p>Neat! We can try it on larger puzzles as well:</p>
+<p>...</p>
+<p>Okay, that takes a really long time. Perhaps a 4x4 with more colors (more colors is actually easier to solve since there are less valid placements for each tile):</p>
+<pre class="scheme"><code>&gt; (define p4x4 (random-puzzle 4 #:colors 7))
+&gt; p4x4
+'("yyMY" "mCKM" "Cgrr" "BMMy"
+  "MrYB" "mGYK" "BRyG" "gRmc"
+  "KCCm" "cyby" "mYbY" "BMcB"
+  "Bmbm" "kbrr" "MkYc" "ybGY")
+&gt; (render p4x4)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png" /></a></p>
+<pre class="scheme"><code>&gt; (define p4x4-solution (solve p4x4))
+&gt; p4x4-solution
+'("rCgr" "BBMc" "YmYb" "yBMM"
+  "GBRy" "mBmb" "ycyb" "mKCC"
+  "rkbr" "MmCK" "YyyM" "cMkY"
+  "BMrY" "cgRm" "YybG" "KmGY")
+&gt; (render p4x4-solution)</code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png" /></a></p>
+<p>Shiny. :)</p>
+<p>For those interested, here's how I generated random puzzles:</p>
+<pre class="scheme"><code>; Generate random puzzles
+(define (random-puzzle size #:colors [colors 4])
+  ; Generate n+1 intersections (including those off the edges)
+  ; Each value is the top left corner of a tile with the right then down edge
+  (define intersections
+    (for/list ([y (in-range (+ size 1))])
+      (for/list ([x (in-range (+ size 1))])
+        (for/list ([which (in-list '(right down))])
+          (list (string-ref "CMYKRGB" (random (min colors 7)))
+                (if (= 0 (random 2)) 'normal 'inverse))))))
+
+  (define (@ x y w invert?)
+    (match-define (list char mode)
+      (list-ref (list-ref (list-ref intersections y) x)
+                (if (eq? w 'right) 0 1)))
+
+    ((if (xor invert? (eq? mode 'inverse))
+         char-downcase
+         identity)
+     char))
+
+  ; Fill out the tiles
+  (shuffle
+   (for*/list ([y (in-range size)]
+               [x (in-range size)])
+     (string (@ x       y       'right #f)
+             (@ (+ x 1) y       'down  #f)
+             (@ x       (+ y 1) 'right #t)
+             (@ x       y       'down  #t)))))</code></pre>
+<p>And that's it. Surprisingly simple<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> to solve, a little more to render. I love problems like this. :)</p>
+<p>If you really want to go off the deep end though and, go download the full source from GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tile-puzzles.rkt">tile-puzzles.rkt</a>). Therein lies solutions for using <a href="https://en.wikipedia.org/wiki/simulated_annealing">simulated annealing</a> or <a href="https://en.wikipedia.org/wiki/genetic_algorithms">genetic algorithms</a> in an effort to solve the problem more <a href="https://en.wikipedia.org/wiki/heurisitically">heurisitically</a>, but neither is working particularly well as of yet. If you want to take one of those and finish it up, I'd love to see it.</p>]]></content></entry><entry><title>Regular Expression Fractals</title><link href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals" /><id>urn:uuid:32f94d69-d55a-a14d-ef3c-5252a500522e</id><updated>2014-10-05T00:00:00Z</updated><summary type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
 <p>Today's post was inspired by this post on /r/dailyprogrammer a month ago today: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/9052014_challenge_178_hard_regular_expression/">Challenge #178 [Hard] Regular Expression Fractals</a>. The basic idea is that you are going to take a rectangular region and divide it into four quadrants, again and again, recording the path as you go (images from that post):</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
@@ -1348,15 +1538,4 @@ AAAD</code></pre>
 <ul>
   <li>Libraries used: <a href="https://jquery.com/">jQuery</a>, <a href="http://getbootstrap.com/">Boostrap</a></li>
   <li>Graphics generated in Photoshop CS6</li>
-</li>]]></content></entry><entry><title>Ludum Dare 30: Demo mode</title><link href="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode" /><id>urn:uuid:eaf9e838-2040-375f-db84-612ac3daf122</id><updated>2014-08-24T12:00:00Z</updated><summary type="html"><![CDATA[<p>Quick update this morning: I managed to get a 'demo mode' working. Now when you first start the game, the boxes will be whizzing around in the background giving you an idea of what you're about to get yourself into!</p>
-]]></summary><content type="html"><![CDATA[<p>Quick update this morning: I managed to get a 'demo mode' working. Now when you first start the game, the boxes will be whizzing around in the background giving you an idea of what you're about to get yourself into!</p>
-<!--more-->
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/screenshot.png"><img src="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/screenshot.png" /></a></p>
-<p>As soon as you start, you'll go right back to the normal mode. Between rounds, there's no demo, since it's still showing the last round's game.</p>
-<p>Unfortunately, it doesn't stop, so if you just let it sit for a while, strange things may happen:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/oops.png"><img src="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/oops.png" /></a></p>
-<p>Also, instructions (technically, these were in last night, but I don't think I mentioned them):</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/instructions.png"><img src="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/instructions.png" /></a></p>
-<p>Up to date code (as always): <a href="https://github.com/jpverkamp/sandbox-battle">jpverkamp/sandbox-battle</a></p>
-<p>Current demo:</p>
-<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/24/ludum-dare-30-demo-mode/demo.embed.htm"></iframe></p>]]></content></entry></feed>
+</li>]]></content></entry></feed>
