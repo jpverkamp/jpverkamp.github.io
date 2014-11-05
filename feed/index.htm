@@ -1,5 +1,282 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-10-28T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Tile Puzzle</title><link href="http://blog.jverkamp.com/2014/10/28/tile-puzzle" /><id>urn:uuid:073afc5c-1121-544c-5879-486d124edb3c</id><updated>2014-10-28T00:00:00Z</updated><summary type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-11-04T09:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Clockception</title><link href="http://blog.jverkamp.com/2014/11/04/clockception" /><id>urn:uuid:9a2e2d18-6c68-f33b-e456-aa1c1b531f62</id><updated>2014-11-04T09:00:00Z</updated><summary type="html"><![CDATA[<p>Let's talk about clocks.</p>
+<p>We can draw traditional analog clocks<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p>We can draw nice digital clocks:</p>
+<pre>┌─┐  │ │ ─┐ ┌─┐
+│ │└─┤    │ │ │
+└─┘  │ │ ─┴─└─┘</pre>
+<p>Or we can go downright mad and make clocks out of clocks:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
+<p>Even animated!</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>Let's talk about clocks.</p>
+<p>We can draw traditional analog clocks<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p>We can draw nice digital clocks:</p>
+<pre>┌─┐  │ │ ─┐ ┌─┐
+│ │└─┤    │ │ │
+└─┘  │ │ ─┴─└─┘</pre>
+<p>Or we can go downright mad and make clocks out of clocks:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
+<p>Even animated!</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
+<!--more-->
+<p>I got the basic idea for this post from <a href="http://io9.com/these-stylish-minimalistic-clocks-let-you-tell-time-wit-1652202065">this post</a> on io9. That first clock ought to look awfully familiar (although theirs looks a bit better). Let's see how we can make one of our own.</p>
+<p>First, some basic structure:</p>
+<pre class="scheme"><code>(struct time-data (hour minute second) #:transparent)
+
+(define (time hour minute [second #f])
+  (time-data hour minute second))
+
+(define current-size (make-parameter 30))</code></pre>
+<p>This will represent the times that we are dealing with. I specifically broke the <code>time-data</code> structure and <code>time</code> function apart, since I wanted to have optional parameters. There is an <code>#:auto</code> option for struct fields, but it doesn't quite do what I want. Finally, <code>current-size</code> will be the width of each individual analog clock.</p>
+<p>Speaking of which, let's draw some basic analog clocks. I went through several different Racket drawing libraries (<code><a href="http://docs.racket-lang.org/search/index.html?q=pict">pict</a></code>, (<code><a href="http://docs.racket-lang.org/search/index.html?q=2htdp/image">2htdp/image</a></code>, (<code><a href="http://docs.racket-lang.org/search/index.html?q=racket/draw">racket/draw</a></code>) before finally settling on <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/draw">racket/draw</a></code>. I'm sure any of them could be used, but I just kept running into odd issues with coordinates.</p>
+<pre class="scheme"><code>; Render a clock at the current-size
+(define (analog-clock when)
+  (match-define (time-data hour minute second) when)
+
+  (define size (current-size))
+  (define target (make-bitmap size size))
+  (define dc (new bitmap-dc% [bitmap target]))
+
+  (send dc set-pen "lightgray" 1 'solid)
+  (send dc draw-ellipse 0 0 size size)
+  (send dc set-pen "black" 1 'solid)
+
+  ; Helper to draw a hand given a radius [0, 1.0] and angle
+  ; Angle of 0 is upright, positive angles are clockwise
+  (define (draw-hand! r θ)
+    (define c (/ size 2))
+    (define x (+ c (* 0.5 r size (cos θ))))
+    (define y (+ c (* 0.5 r size (sin θ))))
+    (send dc draw-line c c x y))
+
+  (draw-hand! 0.8 (+ (* pi 1.5) (* 2 pi (/ minute 60))))
+  (draw-hand! 0.7 (+ (* pi 1.5) (* 2 pi (/ hour 12))))
+
+  (and second
+       (begin
+         (draw-hand! 0.9 (+ (* pi 1.5) (* 2 pi (/ second 60))))))
+
+  target)</code></pre>
+<p>The basic idea of <code>racket/draw</code> is that you have a sort of canvas (<code>target</code>) on which you can draw. You then issue a series of commands that either change your state (<code><a href="http://docs.racket-lang.org/search/index.html?q=set-pen">set-pen</a></code>) or draw (<code><a href="http://docs.racket-lang.org/search/index.html?q=draw-ellipse">draw-ellipse</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=draw-line">draw-line</a></code>). I did abstract a little bit the function to create the clock hands: <code>draw-hand!</code>, mostly so I wouldn't have to redo the centering offset (<code>c</code>, since <code>0,0</code> is in the top left, not the center as I'd hoped) and the <a href="https://en.wikipedia.org/wiki/trigonometry">trigonometry</a> to convert a radius and angle to x and y.</p>
+<p>And that's actually all you need to make a basic clock:</p>
+<pre class="scheme"><code> &gt; (analog-clock (time 4 10)) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p>Straight forward enough. What's especially neat is that because radians cycle every two 2π rotations, you can put in some crazy times:</p>
+<pre class="scheme"><code> &gt; (analog-clock (time 208 -350)) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p>Cool. Okay, next step. Let's figure out how to animate these, so we can transition from one time to another. In this, I had two options. Either I could move as a clock moves (where the minute hand has to move an entire rotation for the hour hand to move 1/12) or independently (such that both hands move at the same speed). Because it's both less code and honestly works better in the final result, I went with the second option:</p>
+<pre class="scheme"><code>; Render a sequence of frames animating a clock spinnging from one time to another
+; Hands will always move clockwise but will both move at once (not as a normal clock)
+(define (analog-frames α β frames)
+  (match-define (time-data α-hour α-minute α-second) α)
+  (match-define (time-data β-hour β-minute β-second) β)
+
+  (let ([β-hour   (if (&gt;= β-hour α-hour)     β-hour    (+ β-hour 12))]
+        [β-minute (if (&gt;= β-minute α-minute) β-minute (+ β-minute 60))]
+        [β-second (and α-second β-second
+                       (if (&gt;= β-second α-second) β-second (+ β-second 60)))])
+
+    (for/list ([i (in-range frames)])
+      (define frame-multiplier (/ i frames))
+
+      (define hour (+ α-hour (* frame-multiplier (- β-hour α-hour))))
+      (define minute (+ α-minute (* frame-multiplier (- β-minute α-minute))))
+
+      (define second
+        (and α-second β-second
+             (+ α-second (* frame-multiplier (- β-second α-second)))))
+
+      (analog-clock (time hour minute second)))))</code></pre>
+<p>Basically, we will loop through the frames and interpolate for each frame. The <code>frame-multiplier</code> will range evenly from 0 to 1 over the course of the frames. Also, the <code>let</code> block setting <code>β-hour</code> etc is to make sure that the clocks rotate clockwise. Since the second (<code>β</code>) value will always be higher, we always rotate right.</p>
+<p>Okay, next let's switch gears and make some digital clocks. Since the eventual end goal was to make clocks out of clocks, I wanted a nice blocky font, built out of only a few different pieces. That way we could animate it more easily. Luckily the Unicode <a href="https://en.wikipedia.org/wiki/box-drawing_characters">box-drawing characters</a> will do exactly what we need:</p>
+<p>I went with a 3x3 character map for each letter:</p>
+<pre class="scheme"><code>(define digits
+  (vector "┌─┐│ │└─┘" ; 0
+          "─┐  │ ─┴─" ; 1
+          " ─┐┌─┘└──" ; 2
+          "──┐ ─┤──┘" ; 3
+          "  │└─┤  │" ; 4
+          "┌─ └─┐──┘" ; 5
+          "│  ├─┐└─┘" ; 6
+          "──┐  │  │" ; 7
+          "┌─┐├─┤└─┘" ; 8
+          "┌─┐└─┤  │" ; 9
+          " │     │ " ; delimiter
+          " ○     ○ "))</code></pre>
+<p>If you straighten them out, you have things like this for 5 for example:</p>
+<pre>┌─
+└─┐
+──┘</pre>
+<p>They're not perfect, but I think they have a certain sort of charm.</p>
+<p>Putting that all together, we can loop across all of the digits in the final clock and then each character that makes them up:</p>
+<pre class="scheme"><code>; Render a digital clock using ascii bar graphics
+(define (digital-clock when)
+  (match-define (time-data hour minute second) when)
+
+  (string-join
+   (for/list ([line-index (in-range 3)])
+     (list-&gt;string
+      (for*/list ([digit
+                   (in-list
+                    (append (list (if (&lt; hour 10) 0 (quotient hour 10))
+                                  (remainder hour 10)
+                                  10
+                                  (if (&lt; minute 10) 0 (quotient minute 10))
+                                  (remainder minute 10))
+                            (if second
+                                (list 10
+                                      (if (&lt; second 10) 0 (quotient second 10))
+                                      (remainder second 10))
+                                (list))))]
+                  [char-index (in-range 3)])
+
+        (define str (vector-ref digits digit))
+        (define char (string-ref str (+ char-index (* line-index 3))))
+
+        char)))
+   "\n"))</code></pre>
+<p>It's a bit ugly, but the bulk of the code is to make sure that we have enough digits for numbers less than 10. I bet I could do something nice with string formatting, but it works well enough. An example:</p>
+<pre class="scheme"><code>&gt; (digital-clock (time 4 10))
+"┌─┐  │ │ ─┐ ┌─┐\n│ │└─┤    │ │ │\n└─┘  │ │ ─┴─└─┘"</code></pre>
+<p>Oops.</p>
+<pre class="scheme"><code>&gt; (display (digital-clock (time 4 10)))
+┌─┐  │ │ ─┐ ┌─┐
+│ │└─┤    │ │ │
+└─┘  │ │ ─┴─└─┘</code></pre>
+<p>Much better.</p>
+<p>Okay, now we're at the point of no return. How do we turn a digital clock with that 3x3 font into smaller clocks?</p>
+<p>First, we need a map of the bar characters to times:</p>
+<pre class="scheme"><code>; Convert the bar images used back into clocks
+(define bar-&gt;clock
+  (hash #\└ (time 3 0 0)
+        #\┘ (time 9 0 0)
+        #\┼ (time 6 0 30)
+        #\─ (time 3 45 45)
+        #\┴ (time 6 45 15)
+        #\├ (time 3 0 30)
+        #\┤ (time 9 30 0)
+        #\┬ (time 6 15 45)
+        #\┌ (time 3 30 30)
+        #\┐ (time 9 30 30)
+        #\│ (time 12 30 30)
+        #\○ #f
+        #\space #f))</code></pre>
+<p>These could probably use a little more tuning. But what this does allow us to make is a very simple function to make a clock out of clocks:</p>
+<pre class="scheme"><code>(define timeless (make-parameter (time 12 0 0)))
+
+; Make a clock out of clocks!
+(define (clock-clock when)
+  (define chars (digital-clock when))
+  (define empty-frame (analog-clock (timeless)))
+
+  (define rows
+    (for/list ([line (in-list (string-split chars "\n"))])
+      (for/list ([char (in-string line)])
+        (cond
+          [(hash-ref bar-&gt;clock char) =&gt; analog-clock]
+          [else empty-frame]))))
+
+  (apply above (map (curry apply beside) rows)))</code></pre>
+<p>In use:</p>
+<pre class="scheme"><code> &gt; (clock-clock (time 4 10)) </code></pre>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
+<p>That right there is actually one of the parts of programming I love the most. Where you write a small pile of functions, each of which does one specific piece and then when you finally get to the big overall algorithm... bam. Simple.</p>
+<p>But... back to being a little more complicated. How do we do the transition from one <code>clock-clock</code> to another? It would be nice if we could use the previous function, but we really can't. A similar idea will work though:</p>
+<pre class="scheme"><code>; Animate a clock of clocks turning from one time to another
+(define (tick-tock α β frames)
+  (define α-chars (digital-clock α))
+  (define β-chars (digital-clock β))
+
+  (define rows*
+    (for/list ([α-line (in-list (string-split α-chars "\n"))]
+               [β-line (in-list (string-split β-chars "\n"))])
+      (for/list ([α-char (in-string α-line)]
+                 [β-char (in-string β-line)])
+        (analog-frames (or (hash-ref bar-&gt;clock α-char) (timeless))
+                       (or (hash-ref bar-&gt;clock β-char) (timeless))
+                       frames))))
+
+  (for/list ([i (in-range frames)])
+
+    (define rows
+      (for/list ([row (string-split α-chars "\n")]
+                 [row-index (in-naturals)])
+        (for/list ([char-index (in-range (string-length row))])
+          (list-ref (list-ref (list-ref rows* row-index) char-index) i))))
+
+    (apply above (map (curry apply beside) rows))))</code></pre>
+<p>Basically, we have two steps. First we define <code>rows*</code> by generating each of the subclocks for each of the intermediate times. Then, that last is in the wrong order (indexed by row, column, then frame, rather than frame, row, then column) so we unpack it and put it back together. This is pretty terribly inefficient, but there will only ever be 3 rows and up to 20 columns, so it's not that bad.</p>
+<p>With that, we can make simple animations:</p>
+<pre class="scheme"><code>&gt; ; Fix bitmaps so that big-bang / run-movie / etc can render them
+&gt; (define (fix img) (rotate 0 img))
+&gt; (run-movie 0.1 (tick-tock (time 7 59) (time 8 0) 56))</code></pre>
+<p>I really wish that <code>fix</code> wasn't necessary, but for whatever reason, <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> / <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> / et al don't like <code><a href="http://docs.racket-lang.org/search/index.html?q=bitmap%">bitmap%</a></code>s. So it goes.</p>
+<p>On the other hand though, <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> is really cool. I've been doing things like this with <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> and the <code>stop-when</code> parameter, but this just needs a list of images and stops automatically. Another tool for my toolchest!</p>
+<p>Okay, one more step. I know I just said <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> is the new shiny, but let's step back to <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> for a second. Given that we have a clock made of clocks, what would it take to actually render it in real time?</p>
+<pre class="scheme"><code>; Make a tick-tock real time clock
+(define (tick-tock-real-time-clock #:12-hour? [12-hour? #f])
+  ; Get the current time in hours/minutes/seconds
+  (define (now)
+    (define date (current-date))
+    (time (date-hour date) (date-minute date) #f))
+
+  ; Generate a list of frames for the next transition
+  ; Note: The big bang clock is supposed to tick 28 times per second
+  (define (transition-frames)
+    (match-define (time-data hour minute _) (now))
+
+    (define next-minute (remainder (+ minute 1) 60))
+    (define next-hour (remainder (if (= next-minute 60) (+ hour 1) hour) (if 12-hour? 12 24)))
+
+    (tick-tock (time hour minute)
+               (time next-hour next-minute)
+               56)) ; Note: The big bang clock is supposed to
+                    ; tick 28 times per second
+
+  (big-bang (list (now) (transition-frames))
+    [on-tick
+     (λ (state)
+       (match-define (list old-time frames) state)
+       (define new-time (now))
+       (cond
+         ; We've advanced to the new time, jump ahead!
+         [(not (equal? old-time new-time))
+          (list new-time (transition-frames))]
+         ; Freeze if we only have one frame left
+         [(null? (rest frames))
+          state]
+         ; Otherwise, advance one frame
+         [else
+          (list old-time (rest frames))]))]
+    [to-draw
+     (λ (state)
+       (match-define (list old-time frames) state)
+       (fix (first frames)))]))</code></pre>
+<p>Now that is a cool function. Basically, each minute we will generate the frames that will be used by the transition. Since <code>big-bang</code> runs at 28 frames per second, the 56 frames will takes 2 seconds to animate. Each minute, the next transition will be generated and then ticked down one frame at a time until only one is left, at which point we will just wait. Neat!</p>
+<p>Originally I had it rendering seconds as well, but it was just a little bit too jittery. So minutes it is! I can't really do this thing justice in a gif (it actually looks just like <code>tick-tock</code> above, just with the current time), but it's still pretty cool.</p>
+<p>And... that's it. Clocks made of clocks. Who would have thought? As always, the full code is available on GitHub. Check it out: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/clockception.rkt">clockception.rkt</a></p>]]></content></entry><entry><title>NaNoWriMo 2014</title><link href="http://blog.jverkamp.com/2014/11/04/nanowrimo-2014" /><id>urn:uuid:15725cb2-faf4-5f17-7929-11afd884acc7</id><updated>2014-11-04T00:00:00Z</updated><summary type="html"><![CDATA[<p>Yup. Even with a new baby around, I'm mad enough to do it.</p>
+<p><a data-toggle="lightbox" href="http://nanowrimo.org/widget/MyMonth/jpverkamp.png"><img src="http://nanowrimo.org/widget/MyMonth/jpverkamp.png" /></a></p>
+<p>So far I've been keeping up 2000 words per day, but I'm already starting to feel a drag. It just feels like the same sort of story I've written before... We'll see in the next day or two if I try to reboot or just go with it.</p>
+<p>I haven't yet decided if I'm going to publish them online this year. It's good motivation and I know at least a few of you out there read it. We'll see. If I do, it won't be daily, but rather after finishing each chapter. So every 2-4 days?</p>
+<p>Wish me luck!</p>]]></summary><content type="html"><![CDATA[<p>Yup. Even with a new baby around, I'm mad enough to do it.</p>
+<p><a data-toggle="lightbox" href="http://nanowrimo.org/widget/MyMonth/jpverkamp.png"><img src="http://nanowrimo.org/widget/MyMonth/jpverkamp.png" /></a></p>
+<p>So far I've been keeping up 2000 words per day, but I'm already starting to feel a drag. It just feels like the same sort of story I've written before... We'll see in the next day or two if I try to reboot or just go with it.</p>
+<p>I haven't yet decided if I'm going to publish them online this year. It's good motivation and I know at least a few of you out there read it. We'll see. If I do, it won't be daily, but rather after finishing each chapter. So every 2-4 days?</p>
+<p>Wish me luck!</p>]]></content></entry><entry><title>I, Frankenstein (DVD)</title><link href="http://blog.jverkamp.com/2014/11/01/i-frankenstein-dvd" /><id>urn:uuid:bede8e25-5906-da31-f610-01d2fcbb7529</id><updated>2014-11-01T00:00:00Z</updated><summary type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/01/i-frankenstein-dvd/i-frankenstein.jpg" class="pull-left"><img src="http://blog.jverkamp.com/2014/11/01/i-frankenstein-dvd/i-frankenstein.jpg" /></a></p>
+<p>Wait, is it <a href="http://www.imdb.com/title/tt0320691/?ref_=fn_al_tt_1">2003 again</a>?</p>
+]]></summary><content type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/01/i-frankenstein-dvd/i-frankenstein.jpg" class="pull-left"><img src="http://blog.jverkamp.com/2014/11/01/i-frankenstein-dvd/i-frankenstein.jpg" /></a></p>
+<p>Wait, is it <a href="http://www.imdb.com/title/tt0320691/?ref_=fn_al_tt_1">2003 again</a>?</p>
+<!--more-->
+<p>We have a fairly straight forward urban fantasy action flick with <del>vampires</del> demons and <del>werewolves</del> gargoyles squaring off in a war that's been raging for years<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> Then there's the odd man out, one of a kind and more powerful than either of the main groups so of course everyone is looking for him. Seems awfully formulaic all around.</p>
+<p>Don't get me wrong of course, it's still a solid action movie. The fights are beautiful to behold, even on the small screen. The fireworks when a gargoyle or demon is <del>killed</del> ascended/descended<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> are a sight to behold, really lighting up the otherwise thematically dark world.</p>
+<p>On top of that, I really like seeing <a href="http://www.imdb.com/name/nm0631490/?ref_=tt_cl_t4">Bill Nighy</a> as <del>Viktor</del> Naberius and <a href="http://www.imdb.com/name/nm0340485/?ref_=tt_cl_t14">Kevin Grevioux</a> switches sides this time around as <del>Raze</del> Dekar. <a href="http://www.imdb.com/name/nm0001584/?ref_=tt_cl_t3">Miranda Otto</a> does a much better job (at least in my opinion) than her outing in the Lord of the Rings.</p>
+<p>On the downside, the dialog is pretty bad. The world building is just weird at times (why gargoyles?). For a planet of 7 billion people, I could just about count the number of times a real flesh and blood human appears on one hand<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>. And if the demons can collect that many bodies... Why are they still in hiding?</p>
+<p>I will give them one bit of credit at least. It's a personal nit of mine when people use the name Frankenstein to apply to the monster. While there's something to be said for a family name being passed on, Frankenstein is the creator. At least in I, Frankenstein, they have Naberius <a href="http://tvtropes.org/pmwiki/pmwiki.php/Main/LampshadeHanging">hang a lamp on it</a>.</p>
+<p>Still. It's an okay action movie and it is really pretty. I'm glad that they took a chance at least on something a little outside of the normal tropes. If you've got a spare weekend and want to just veg for an hour and a half, this isn't a bad film for it.</p>
+<div><h3 class="ranking-title">2014 Movie Rankings</h3><ol><li><a href="http://blog.jverkamp.com/2014/02/15/the-lego-movie">The Lego Movie</a></li><li><a href="http://blog.jverkamp.com/2014/04/05/captain-america-the-winter-soldier">Captain America: The Winter Soldier</a></li><li><a href="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd">Edge of Tomorrow (DVD)</a></li><li><a href="http://blog.jverkamp.com/2014/08/05/guardians-of-the-galaxy">Guardians of the Galaxy</a></li><li><a href="http://blog.jverkamp.com/2014/06/08/x-men-days-of-future-past">X-Men: Days of Future Past</a></li><li><a href="http://blog.jverkamp.com/2014/06/14/maleficent">Maleficent</a></li><li><a href="http://blog.jverkamp.com/2014/11/01/i-frankenstein-dvd">I, Frankenstein (DVD)</a></li><li><a href="http://blog.jverkamp.com/2014/07/26/lucy">Lucy</a></li><li><a href="http://blog.jverkamp.com/2014/05/10/the-amazing-spider-man-2">The Amazing Spider-Man 2</a></li><li><a href="http://blog.jverkamp.com/2014/03/29/divergent">Divergent</a></li></ol></div>]]></content></entry><entry><title>Tile Puzzle</title><link href="http://blog.jverkamp.com/2014/10/28/tile-puzzle" /><id>urn:uuid:073afc5c-1121-544c-5879-486d124edb3c</id><updated>2014-10-28T00:00:00Z</updated><summary type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
 <p>If you look carefully, the tiles are the same between the two, although they might be rotated.</p>
 ]]></summary><content type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
@@ -189,7 +466,21 @@
              (@ x       (+ y 1) 'right #t)
              (@ x       y       'down  #t)))))</code></pre>
 <p>And that's it. Surprisingly simple<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> to solve, a little more to render. I love problems like this. :)</p>
-<p>If you really want to go off the deep end though and, go download the full source from GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tile-puzzles.rkt">tile-puzzles.rkt</a>). Therein lies solutions for using <a href="https://en.wikipedia.org/wiki/simulated_annealing">simulated annealing</a> or <a href="https://en.wikipedia.org/wiki/genetic_algorithms">genetic algorithms</a> in an effort to solve the problem more <a href="https://en.wikipedia.org/wiki/heurisitically">heurisitically</a>, but neither is working particularly well as of yet. If you want to take one of those and finish it up, I'd love to see it.</p>]]></content></entry><entry><title>Regular Expression Fractals</title><link href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals" /><id>urn:uuid:32f94d69-d55a-a14d-ef3c-5252a500522e</id><updated>2014-10-05T00:00:00Z</updated><summary type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
+<p>If you really want to go off the deep end though and, go download the full source from GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tile-puzzles.rkt">tile-puzzles.rkt</a>). Therein lies solutions for using <a href="https://en.wikipedia.org/wiki/simulated_annealing">simulated annealing</a> or <a href="https://en.wikipedia.org/wiki/genetic_algorithms">genetic algorithms</a> in an effort to solve the problem more <a href="https://en.wikipedia.org/wiki/heurisitically">heurisitically</a>, but neither is working particularly well as of yet. If you want to take one of those and finish it up, I'd love to see it.</p>]]></content></entry><entry><title>Edge of Tomorrow (DVD)</title><link href="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd" /><id>urn:uuid:0be2bd6f-53c6-4a18-9ecb-4d77175a7354</id><updated>2014-10-28T00:00:00Z</updated><summary type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd/edge-of-tomorrow.jpg" class="pull-left"><img src="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd/edge-of-tomorrow.jpg" /></a></p>
+<p>Disclaimer time: I have a full time job now. And a baby at home. Some combination of these things means that I have nowhere near as much time to go see movies as I once did. So it goes.</p>
+<p>But rather than let this particular part of my blog go to waste, I think that I'll go ahead and keep writing up movies. Just instead of movies in theaters, I'll aim for new releases on DVD / VOD.</p>
+<p>Why?</p>
+<p>Edge of Tomorrow.</p>
+]]></summary><content type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd/edge-of-tomorrow.jpg" class="pull-left"><img src="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd/edge-of-tomorrow.jpg" /></a></p>
+<p>Disclaimer time: I have a full time job now. And a baby at home. Some combination of these things means that I have nowhere near as much time to go see movies as I once did. So it goes.</p>
+<p>But rather than let this particular part of my blog go to waste, I think that I'll go ahead and keep writing up movies. Just instead of movies in theaters, I'll aim for new releases on DVD / VOD.</p>
+<p>Why?</p>
+<p>Edge of Tomorrow.</p>
+<!--more-->
+<p>Edge of Tomorrow (aka Live Die Repeat<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>) is a surprisingly solid movie. Looking back, I would say that it's probably Tom Cruise's best film in more than a decade--heck, I might even put it above Minority Report, in which case I'd actually call it his best film ever.</p>
+<p>The aliens are downright alien--and pretty cool looking--the effects are well done, and the Groundhog Day applied to war<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> concent works out really well. But what really carried the movie were <a href="http://www.imdb.com/name/nm0000129/?ref_=tt_cl_t1">Tom Cruise</a> and <a href="http://www.imdb.com/name/nm1289434/?ref_=tt_cl_t2">Emily Blunt</a>. Lovely performances.</p>
+<p>If you're looking for a solid sci-fi action flick with a touch of what-if inducing thought behind the scenes, you could do far worse than Edge of Tomorrow. I really wish that I'd gotten a chance to see it in theaters. It seems like exactly the sort of movie that would benefit from the big screen treatment.</p>
+<div><h3 class="ranking-title">2014 Movie Rankings</h3><ol><li><a href="http://blog.jverkamp.com/2014/02/15/the-lego-movie">The Lego Movie</a></li><li><a href="http://blog.jverkamp.com/2014/04/05/captain-america-the-winter-soldier">Captain America: The Winter Soldier</a></li><li><a href="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd">Edge of Tomorrow (DVD)</a></li><li><a href="http://blog.jverkamp.com/2014/08/05/guardians-of-the-galaxy">Guardians of the Galaxy</a></li><li><a href="http://blog.jverkamp.com/2014/06/08/x-men-days-of-future-past">X-Men: Days of Future Past</a></li><li><a href="http://blog.jverkamp.com/2014/06/14/maleficent">Maleficent</a></li><li><a href="http://blog.jverkamp.com/2014/07/26/lucy">Lucy</a></li><li><a href="http://blog.jverkamp.com/2014/05/10/the-amazing-spider-man-2">The Amazing Spider-Man 2</a></li><li><a href="http://blog.jverkamp.com/2014/03/29/divergent">Divergent</a></li></ol></div>]]></content></entry><entry><title>Regular Expression Fractals</title><link href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals" /><id>urn:uuid:32f94d69-d55a-a14d-ef3c-5252a500522e</id><updated>2014-10-05T00:00:00Z</updated><summary type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
 <p>Today's post was inspired by this post on /r/dailyprogrammer a month ago today: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/9052014_challenge_178_hard_regular_expression/">Challenge #178 [Hard] Regular Expression Fractals</a>. The basic idea is that you are going to take a rectangular region and divide it into four quadrants, again and again, recording the path as you go (images from that post):</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
@@ -889,653 +1180,4 @@ AAAD</code></pre>
 <p>What else can we do with these? Well, take the <a href="http://www.complexification.net/gallery/machines/invaderfractal/">post I was inspired by</a>. In that case, they fill up a space with procedural invaders of different sizes. That would be neat to check out. I've started implementing something...</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png" /></a></p>
 <p>But it's not quite right yet. Perhaps next time...</p>
-<p>If you'd like to check out the entire code for today's post, as always, it's available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a></p>]]></content></entry><entry><title>Chess Puzzles: Knight's Tour</title><link href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour" /><id>urn:uuid:7b068d00-2bb7-61fb-e0d8-045306814067</id><updated>2014-09-04T20:00:00Z</updated><summary type="html"><![CDATA[<p>Onwards and upwards! For today's chess puzzle, let's take a first crack at the <a href="https://en.wikipedia.org/wiki/Knight's_Tour">Knight's Tour</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
-]]></summary><content type="html"><![CDATA[<p>Onwards and upwards! For today's chess puzzle, let's take a first crack at the <a href="https://en.wikipedia.org/wiki/Knight's_Tour">Knight's Tour</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
-<!--more-->
-<p>As with <a href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens">N Queens</a>, the problem is simply stated:</p>
-<blockquote>A knight's tour is a sequence of moves of a knight on a chessboard such that the knight visits every square only once.</blockquote>
-<p>And once again, we can get a solution working relatively well using <a href="https://en.wikipedia.org/wiki/backtracking">backtracking</a>:</p>
-<pre class="scheme"><code>(define-piece Knight (move 1 (leaper 1 2)))
-(define-piece Visited '())
-
-; Solve a knights tour on a given board
-(define (knights-tour width [height width])
-  ; Create a new empty board
-  (define b (make-board width height #:pieces (list Knight Visited)))
-
-  ; A board is completed if there are no empty squares
-  ; All squares are either the Knight or Visited
-  (define (completed? b)
-    (not (for*/first ([x (in-range width)]
-                      [y (in-range height)]
-                      #:when (not (board-ref b (pt x y))))
-           #t)))
-
-  ; Move the knight from the given point to each possible next point in turn
-  ; Return a list of valid moves to finish the tour if such a list exists, #f otherwise
-  (define (move-knight b p)
-    (cond
-      ; Done, we have a tour and there are no more valid moves necessary
-      [(completed? b) '()]
-      ; Otherwise, try all possible moves from this point
-      ; Since all pieces are the same color, moves from is only empty tiles
-      [else
-       (for*/first ([next (in-list (moves-from b p))]
-                    [recur (in-value (let* ([b (board-move b p next)]
-                                            [b (board-set b p '(Black Visited))])
-                                       (move-knight b next)))]
-                    #:when recur)
-         (cons p recur))]))
-
-  ; Try each possible initial location until we find one that works
-  (for*/first ([x (in-range width)]
-               [y (in-range height)]
-               [solution (in-value
-                           (move-knight
-                             (board-set b (pt x y) '(Black Knight))
-                             (pt x y)))]
-               #:when solution)
-    solution))</code></pre>
-<p>Basically, there are three interesting pieces here: <code>completed?</code>, <code>move-knight</code>, and the <code>for*/first</code> initial loop.</p>
-<p>First, how can a tour be <code>completed?</code> If all of the locations on the board are filled. We get around this with the psuedo-piece: <code>Visited</code>. It fills up the board as we continue to move our knight around. Technically, I could have just filled the board with knights, but I like how visited lets us visualize things.</p>
-<p>Next, <code>move-knight</code>. This is the core of the algorithm. As it states, we are building up a list of moves recursively. So the base case (when the board is completed) return the empty list <code>'()</code>. Otherwise, we're going to use <code><a href="http://docs.racket-lang.org/search/index.html?q=for*/first">for*/first</a></code> to find the first move which recursively solves the problem (or <code>#f</code> if none does). The use of <code><a href="http://docs.racket-lang.org/search/index.html?q=in-value">in-value</a></code> is a trick I picked up <a href="https://groups.google.com/forum/#!topic/racket-users/p2S6F3FAiU0">from the mailing list</a> for using an 'expensive' value in a <code>#:when</code> clause and body without having to recalculate it.</p>
-<p>Finally, we loop across all of the starting states. It doesn't matter in the case of closed tours (where the start and end points match and thus any point can be a start point), but on some boards not every starting location is valid.</p>
-<p>So now we can solve a tour:</p>
-<pre class="scheme"><code>&gt; (knights-tour 5)
-(list
- (pt 0 0) (pt 1 2) (pt 0 4) (pt 2 3) (pt 3 1)
- (pt 1 0) (pt 0 2) (pt 1 4) (pt 2 2) (pt 4 3)
- (pt 2 4) (pt 0 3) (pt 1 1) (pt 3 0) (pt 4 2)
- (pt 3 4) (pt 1 3) (pt 0 1) (pt 2 0) (pt 4 1)
- (pt 3 3) (pt 2 1) (pt 4 0) (pt 3 2))</code></pre>
-<p>Whee! Okay, what does that actually look like? Let's animate it!</p>
-<pre class="scheme"><code>(current-glyphs (hash 'Knight "♞"
-                      'Visited "♘"))
-
-; Render a knights tour into an animation
-(define (knights-tour/animate-solution width [height width])
-  (define tour (knights-tour width height)
-
-  ; Create an initial board
-  (define board (make-board width height #:pieces (list Knight Visited)))
-
-  ; Prerender the board once so we know how large of a scene to create
-  (define r (render board #:player-colors (const "black")))
-  (define render-width (send r get-width))
-  (define render-height (send r get-height))
-
-  ; Animate the tour, rendering each frame once
-  (big-bang tour
-    [on-tick cdr]
-    [to-draw (λ (tour)
-               (place-image
-                (render (if (null? tour)
-                            board
-                            (board-set board (car tour) '(Black Knight))))
-                (/ render-width 2)
-                (/ render-height 2)
-                (empty-scene render-width render-height)))]
-    [stop-when null?]
-    [record? #t]))</code></pre>
-<pre class="scheme"><code> &gt; (knights-tour/animate-solution 5) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
-<p>Shiny.</p>
-<p>Okay, so that's all well and good for normal boards. What if instead you want a board with holes in it / a non-regular board?</p>
-<p>Simple! We'll just add a third type of piece <code>Invalid</code> and pre-populate the board with those:</p>
-<pre class="scheme"><code>(current-glyphs (hash 'Knight "♞"
-                      'Invalid "✗"
-                      'Visited "♘"))
-
-(define-piece Knight (move 1 (leaper 1 2)))
-(define-piece Invalid '())
-(define-piece Visited '())
-
-; Solve a knights tour on a given board (optionally with some pieces removed)
-(define (knights-tour width [height width] #:removed [removed '()])
-  ; Create a new board (potentially removing some pieces)
-  (define b
-    (for/fold ([b (make-board width height
-                    #:pieces (list Knight Invalid Visited))])
-              ([p (in-list removed)])
-      (board-set b p '(Black Invalid))))
-
-  ...)</code></pre>
-<p>All the rest of the code stays the same. Pretty nice eh? Let's try an example:</p>
-<pre class="scheme"><code>&gt; (knights-tour/animate-solution 4
-    #:removed (list (pt 1 0) (pt 0 2) (pt 0 3) (pt 2 3) (pt 3 3)))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-solution.gif" /></a></p>
-<p>Hmm, that's all well and code showing off the final tour. But what if we want to see the search in progress? Let's put in a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code> again so we can animate this. This time around though, I'm actually going to fold the generator code into the main method rather than duplicating a bunch of code.</p>
-<pre class="scheme"><code>(define (knights-tour width [height width] #:generator? [generator? #f])
-  (define g
-    (generator ()
-      ...
-
-      (define (move-knight b p)
-        (when generator?
-          (yield b p))
-
-        ...)))
-
-  (if generator? g (g)))</code></pre>
-<p>In this case, we create the <code>generator</code> no matter what. But we only call <code>yield</code> if we actually specify it to the function. This way we can see each step of our simultion as we go. If we don't want the generator, we immediately call it as we're returning, forcing it to return a value: the implicit <code>yield</code> at the end of the function.</p>
-<p>So with this, we have enough that we can animate the search space:</p>
-<pre class="scheme"><code>; Render the search for a knights tour into an animation
-(define (knights-tour/animate-search width [height width] #:removed [removed '()])
-  ; Create an initial board including the missing tiles
-  (define board
-    (for/fold ([b (make-board width height #:pieces (list Knight Invalid Visited))])
-              ([p (in-list removed)])
-      (board-set b p '(Black Invalid))))
-
-  ; Prerender the board once so we know how large of a scene to create
-  (define r (render board #:player-colors (const "black")))
-  (define render-width (send r get-width))
-  (define render-height (send r get-height))
-
-  ; Set the last board, which will be updated on each yield
-  (define last-board board)
-  (define last-point (pt 0 0))
-  (define g (knights-tour width height #:removed removed #:generator? #t))
-
-  ; Animate the tour, rendering each frame once
-  ; Stop when the generator returns 1 value
-  (big-bang #t
-    [on-tick
-     (λ (running?)
-       (and running?
-            (with-handlers ([exn? (const #f)])
-              (define-values (board point) (g))
-              (set! last-board board)
-              (set! last-point point)
-              #t)))]
-    [to-draw
-     (λ (_)
-       (place-image
-        (render last-board)
-        (/ render-width 2)
-        (/ render-height 2)
-        (empty-scene render-width render-height)))]
-    [stop-when (negate identity)]
-    [record? #t]))</code></pre>
-<p>And in action:</p>
-<pre class="scheme"><code>&gt; (knights-tour/animate-search 4
-     #:removed (list (pt 1 0) (pt 0 2) (pt 0 3) (pt 2 3) (pt 3 3)))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-search.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-search.gif" /></a></p>
-<p>Sweet!</p>
-<p>That's about all for today. If you were following along though, you might have noticed one very important omission...</p>
-<p>It doesn't work on 8x8 boards.</p>
-<p>Well, that's not strictly speaking true. It will work. If you wait long enough, you will eventually get a solution, but it's going to be a <em>very</em> long wait. So looks like we'll need a follow looking for a better solution<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span></p>
-<p>That's for another time though. If you'd like to see the entire code, you can do so in the <a href="https://github.com/jpverkamp/chess-puzzles">chess-puzzles</a> repo on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles/blob/master/puzzles/knights-tour.rkt">knights-tour.rkt</a>. Check it out!</p>]]></content></entry><entry><title>Chess Puzzles: N Queens</title><link href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens" /><id>urn:uuid:ca36a36d-8baa-c760-8b5a-2162fcfa5a9c</id><updated>2014-09-03T20:00:00Z</updated><summary type="html"><![CDATA[<p>After two weeks, it seems only right that we actually get around to a real chess puzzle. First on the list: <a href="https://en.wikipedia.org/wiki/Eight_queens puzzle">the eight queens puzzle</a>.</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png" /></a></p>
-<p>Specifically, how do you place n queens on an n by n chess board such that no pair of queens can attack one another?</p>
-]]></summary><content type="html"><![CDATA[<p>After two weeks, it seems only right that we actually get around to a real chess puzzle. First on the list: <a href="https://en.wikipedia.org/wiki/Eight_queens puzzle">the eight queens puzzle</a>.</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png" /></a></p>
-<p>Specifically, how do you place n queens on an n by n chess board such that no pair of queens can attack one another?</p>
-<!--more-->
-<p>Those of you paying attention may think this problem looks <a href="http://blog.jverkamp.com/2012/09/24/n-queens-in-18-lines-of-code">awfully familiar</a>. Turns out I've already done this one. But not with my new <a href="http://blog.jverkamp.com/category/programming/by-topic/chess">chess library</a>! So let's do it again:</p>
-<p>Basically, the idea is simple. Start in the first row and column, placing a queen:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-1.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-1.png" /></a></p>
-<p>Next, move down to the second row, first column:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-2.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-3.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-4.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-4.png" /></a></p>
-<p>We cannot place a queen there since it can attack the first. Try the second column ... Still doesn't work, since it can attack diagonally. Try the third... Bam. Placed. Head down to the third row and start over in the first column.</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-5.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-step-5.png" /></a></p>
-<p>Keep on keeping on. Eventually though, you'll run into a row when you can't place a queen. What do you do then?</p>
-<p><a href="https://en.wikipedia.org/wiki/Backtracking">Backtrack!</a></p>
-<p>Specifically, go back one row and remove that queen. Start over from one column to the right of where it was. If there's no where else to place that queen, back up another column, over and over until you finally find where you can place one.</p>
-<p>Sounds crazy, keeping track of all that state (how many queens we've removed and which), but this is where the magic of recursion comes in. We can actually use the call stack to handle all of this backtracking for us!</p>
-<pre class="scheme"><code>; Try to place n queens on an nxn chessboard such that none are threatened
-(define (queens n)
-  ; Create a new nxn board
-  (current-board-size n)
-  (define-piece Queen (move 'n '*))
-  (define b (make-board n #:pieces (hash 'Queen Queen)))
-
-  ; Try to place a queen in each row
-  (let place-queen ([board b] [x 0] [y 0])
-    (cond
-      ; Done with all of the rows, we have a valid configuration
-      [(&gt;= y n) board]
-      ; Done with the current row, if we haven't placed a queen yet, bail out
-      [(&gt;= x n) #f]
-      ; Otherwise, try to place the queen at this location
-      ; Use the row as the player ID so they can all attack one another
-      [else
-       (define new-board (board-set board (pt x y) `(,y Queen)))
-       (cond
-         ; We attack a current queen, try the next square on the old board
-         [(for/first ([target-pt (moves-from new-board (pt x y))]
-                      #:when (board-ref new-board target-pt))
-            #t)
-          (place-queen board (+ x 1) y)]
-         ; We do not attack anything (yet), try this solution
-         ; If that fails, fall through (or short circuits)
-         [else
-          (or (place-queen new-board 0 (+ y 1))
-              (place-queen board     (+ x 1) y))])])))</code></pre>
-<p>The interesting parts of the solution are at the beginning (when we set up the intial board using our new library) and the <code><a href="http://docs.racket-lang.org/search/index.html?q=for/first">for/first</a></code> section. That's what's checking out attacks. In this case, <code>for/first</code> will return <code>#t</code> if any <code>#:when</code> is true, <code>#f</code> if none of them are. This works with our framework (as the code mentions) because we're setting each queen to a different player so they can all attack one another.</p>
-<pre class="scheme"><code> &gt; (render (queens 8)) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens-solution.png" /></a></p>
-<p>Nice!</p>
-<p>Even bigger?</p>
-<pre class="scheme"><code> &gt; (render (queens 13)) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/13-queens.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/13-queens.png" /></a></p>
-<pre class="scheme"><code> &gt; (render (queens 25) #:tile-size 12) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/25-queens.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/25-queens.png" /></a></p>
-<p>(That one took a little while.)</p>
-<p>Okay, so that's all well and good. But what if we don't want just one solution. What if we want all of them? Well, it turns out, that's actually not that much harder. We just need to slightly tweak how we recur. Instead of a board or <code>#f</code>, we need to return a list of possible solutions. That way we can <code>append</code> instead of <code>or</code>:</p>
-<pre class="scheme"><code>; Try to place n queens on an nxn chessboard such that none are threatened
-(define (queens n #:all? [generate-all? #f])
-  ...
-
-      ; Done with all of the rows, we have a valid configuration
-      [(&gt;= y n) (if generate-all? (list board) board)]
-      ; Done with the current row, if we haven't placed a queen yet, bail out
-      [(&gt;= x n) (if generate-all? (list)       #f)]
-
-      ...
-
-         ; We do not attack anything (yet), try this solution
-         ; If that fails, fall through (or short circuits)
-         ; If we're generating all solutions, do both
-         ; (we cannot do ((if generate-all? append or) ...) because or is a macro
-         [generate-all?
-          (append (place-queen new-board 0 (+ y 1))
-                  (place-queen board     (+ x 1) y))]
-
-         ...)</code></pre>
-<p>That way, we could get all of the 6x6 solutions in one go:</p>
-<pre class="scheme"><code>&gt; (map (λ (b) (render b #:player-colors (const "black")))
-       (queens 6 #:all? #t))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-1.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-2.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-3.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-4.png"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/6-queens-4.png" /></a></p>
-<p>Or determine how many queens that there are for each puzzle size:</p>
-<pre class="scheme"><code>&gt; (for/list ([n (in-range 1 11)])
-    (list n (length (queens n #:all? #t))))
-'((1 1) (2 0) (3 0) (4 2) (5 10) (6 4) (7 40) (8 92) (9 352) (10 724))</code></pre>
-<p>That matches up perfectly with sequence <a href="https://oeis.org/A000170">A000170</a> on <a href="https://en.wikipedia.org/wiki/OEIS">OEIS</a>, which must mean we're doing something right. Shiny!</p>
-<p>One final trick, what if we want to animate these things? Well, for that we're going to use the <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/generator">racket/generator</a></code> module. I've used it before, and although the performance isn't <em>great</em>, it's certainly the easiest way to get what we want. Really, we only need two changes:</p>
-<pre class="scheme"><code>; Try to place n queens on an nxn chessboard such that none are threatened
-(require racket/generator)
-(define (queens-generator n #:all? [generate-all? #f])
-  (generator ()
-    ...
-
-    ; Try to place a queen in each row
-    (let place-queen ([board b] [x 0] [y 0])
-      (yield board x y)
-      (cond
-        ...</code></pre>
-<p>That way, if we create a generator and keep calling it, it will return each board state including the backtracking. It's a little more complicated to turn it into a nice animation, once again using the excellent <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> function:</p>
-<pre class="scheme"><code>; Use the queens generator to render an n-queens problem
-(require 2htdp/image 2htdp/universe)
-(define (queens-animate n #:all? [generate-all? #f])
-  (define g (queens-generator n #:all? generate-all?))
-
-  (define-values (last-board last-x last-y) (g))
-  (define done? #f)
-
-  (define r (render last-board #:player-colors (const "black")))
-  (define w (send r get-width))
-  (define h (send r get-height))
-
-  (big-bang (void)
-    [stop-when (λ (_) done?)]
-    [on-tick
-     (λ (_)
-       (with-handlers ([exn? (thunk* (set! done? #t))])
-         (define-values (board x y) (g))
-         (set! last-board board)
-         (set! last-x x)
-         (set! last-y y)))]
-    [to-draw
-     (λ (_)
-       (place-image
-        (render last-board
-                #:player-colors (const "black")
-                #:highlights (hash (pt last-x last-y) "green"))
-        (/ w 2)
-        (/ h 2)
-        (empty-scene w h)))]
-    [record? #t]))</code></pre>
-<p>The <code><a href="http://docs.racket-lang.org/search/index.html?q=with-handlers">with-handlers</a></code> is a little ugly, but it's designed to deal with the fact that we don't return multiple values on the last call, since generators by default return the last (return) value of a function at the end. But if we wanted to make that return x and y as well, things might just get ugly, seeing as how we'd have to change all of the recursive calls. No thank you.</p>
-<p>It's certainly pretty to watch though:</p>
-<pre class="scheme"><code> &gt; (queens-animate 4) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens.gif"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens.gif" /></a></p>
-<p>You can see the backtracking anytime the green box jumps back and suddenly one or more of the previously place queens vanishes. It would be even neater if it could show the branching solutions, but that's a challenge for another day.</p>
-<p>And that's it. A bit more in detail than <a href="http://blog.jverkamp.com/2012/09/24/n-queens-in-18-lines-of-code">last time</a>, but I think it was a lot of fun. The code is available in my <a href="https://github.com/jpverkamp/chess-puzzles">chess-puzzles</a> repo on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles/blob/master/puzzles/queens.rkt">queens.rkt</a>. Check it out!</p>]]></content></entry><entry><title>Chess Puzzles 2: Board?</title><link href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board" /><id>urn:uuid:6d64e14c-c731-a12d-4a38-7070fa6e6e9e</id><updated>2014-08-28T20:00:00Z</updated><summary type="html"><![CDATA[<p>Now that we've got <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a> out of the way, back to chess! <a href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving">Last time</a>, we defined all of the pieces, which is all well and good, but what we really need is a board. More specifically, we want something that can:</p>
-<ul>
-    <li>Represent an 8x8 chess board, storing the location of pieces (including the owner of each)</li>
-    <li>Add logic for collisions, so that when moving a piece, you cannot move through others or capture allies<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
-    <li>Add rendering code to display the current chess board (must be flexible enough to handle arbitrary glyphs for <a href="https://en.wikipedia.org/wiki/fairy_chess">fairy chess</a> pieces)</li>
-</ul>
-<p>I think that's about enough for the moment. Let's do it!</p>
-]]></summary><content type="html"><![CDATA[<p>Now that we've got <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a> out of the way, back to chess! <a href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving">Last time</a>, we defined all of the pieces, which is all well and good, but what we really need is a board. More specifically, we want something that can:</p>
-<ul>
-    <li>Represent an 8x8 chess board, storing the location of pieces (including the owner of each)</li>
-    <li>Add logic for collisions, so that when moving a piece, you cannot move through others or capture allies<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
-    <li>Add rendering code to display the current chess board (must be flexible enough to handle arbitrary glyphs for <a href="https://en.wikipedia.org/wiki/fairy_chess">fairy chess</a> pieces)</li>
-</ul>
-<p>I think that's about enough for the moment. Let's do it!</p>
-<!--more-->
-<p>First things first, let's create a representation of the board. We'll start with only regular grids, although theoretically it should be possible to define arbitrary connections. That would mess somewhat with the move definitions we have, so let's not.</p>
-<p>First, the board:</p>
-<pre class="scheme"><code>; Stored as a vector of vectors where every element is either:
-; (player, piece) if there is a piece there
-; #f if empty
-(struct board (pieces data) #:transparent)</code></pre>
-<p>So what we should have is something like this:</p>
-<pre class="scheme"><code>(define (make-standard-board)
-  (board (hash 'Rook   Rook
-               'Knight Knight
-               'Bishop Bishop
-               'Queen  Queen
-               'King   King
-               'Pawn   Pawn)
-         '#(#((Black Rook) (Black Knight) (Black Bishop) (Black Queen)
-              (Black King) (Black Bishop) (Black Knight) (Black Rook))
-            #((Black Pawn) (Black Pawn) (Black Pawn) (Black Pawn)
-              (Black Pawn) (Black Pawn) (Black Pawn) (Black Pawn))
-            #(#f #f #f #f #f #f #f #f)
-            #(#f #f #f #f #f #f #f #f)
-            #(#f #f #f #f #f #f #f #f)
-            #(#f #f #f #f #f #f #f #f)
-            #((White Pawn) (White Pawn) (White Pawn) (White Pawn)
-              (White Pawn) (White Pawn) (White Pawn) (White Pawn))
-            #((White Rook) (White Knight) (White Bishop) (White Queen)
-              (White King) (White Bishop) (White Knight) (White Rook)))))</code></pre>
-<p>Vectors will allow both <code>O(1)</code> reading of elements, but also a nice way of doing mutation. I'm just going to go right out now and say that I'll allow mutating the board, although I might make a non-mutable version that copies if I have a chance<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>.</p>
-<p>Next, a getter and a sanity check (which should make it cleaner to generate moves):</p>
-<pre class="scheme"><code>; Test if a point is on the given board
-(define (on-board? b p)
-  (match-define (board pieces data) b)
-  (match-define (pt x y) p)
-  (and (&lt;= 0 x (- (vector-length (vector-ref data 0)) 1))
-       (&lt;= 0 y (- (vector-length data) 1))))
-
-; Get the current player/piece at a square
-(define (board-ref b p)
-  (match-define (board pieces data) b)
-  (match-define (pt x y) p)
-  (cond
-    [(on-board? b p)
-     (vector-ref (vector-ref data y) x)]
-    [else
-     #f]))</code></pre>
-<p>And finally, a setter. In this case, it doesn't make sense to just set a single piece (except in set up I guess?)<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>. So instead, we will allow movement, overwriting whatever is at the target square:</p>
-<pre class="scheme"><code>; Move a piece from one square to another, overwriting whatever is in the destination square
-(define (board-move! b src dst)
-  (match-define (board pieces data) b)
-  (match-define (pt src-x src-y) src)
-  (match-define (pt dst-x dst-y) dst)
-  (define piece (board-ref data src))
-  (vector-set! (vector-ref data dst-y) dst-x piece)
-  (vector-set! (vector-ref data src-y) src-x #f))</code></pre>
-<p>And that's about all we need for the board representation. Let's check out rendering next, since it should (theoretically) make debugging the move list generation much better.</p>
-<p>First, let's generalize the tile for a piece to a <code>glyph</code>:</p>
-<pre class="scheme"><code>; The hash associating piece names with glyphs
-(define current-glyphs (make-parameter #f))
-
-; A single glyph containing a string and the rotation (default to upright)
-(struct glyph (character rotation) #:transparent)
-(define (make-glyph character [rotation 0])
-  (glyph (~a character) rotation))
-
-; Render a single character with some sanity checking for different types
-(define (render-glyph/pict g tile-size)
-  (cond
-    [(glyph? g)
-     (match-define (glyph character rotation) g)
-     (rotate (text character 'default (* 3/4 tile-size)) rotation)]
-    [else
-     (render-glyph/pict (make-glyph g) tile-size)]))</code></pre>
-<p>This way, we can specify characters in several different ways. We can pass just about anything directly and use the <code><a href="http://docs.racket-lang.org/search/index.html?q=~a">~a</a></code> function to 'string' it. Or we can pass both the former and a rotation. That will let us do things like an inverted knight being the representation for the nightrider, etc.</p>
-<p>One thing that amuses me entirely too much about this?</p>
-<pre class="scheme"><code>(define (set-standard-glyphs)
-  (current-glyphs (hash 'Rook   "♜"
-                        'Knight "♞"
-                        'Bishop "♝"
-                        'Queen  "♛"
-                        'King   "♚"
-                        'Pawn   "♟")))</code></pre>
-<p>Those are unicode characters for the chess symbols. Nice. :)</p>
-<p>Okay, so we have a way to represent a single tile, what do we have to do to render all of them? Well, as often before, we can use the <code><a href="http://docs.racket-lang.org/search/index.html?q=pict">pict</a></code> library:</p>
-<pre class="scheme"><code>; Render a board to a pict with the given tile size
-(define (render/pict b #:tile-size [tile-size 20])
-  ; Sanity check and unpack, we don't care about the actual pieces at this point
-  (when (not (current-glyphs))
-    (error 'render/pict "must specify (current-glyphs) as a hash of name -&gt; glyph"))
-  (match-define (board _ board-data) b)
-
-  ; Render each tile into a list of lists
-  (define tiles
-    (for/list ([row-index (in-naturals)]
-               [row       (in-vector board-data)])
-      (for/list ([col-index (in-naturals)]
-                 [col       (in-vector row)])
-        ; Get the background tile
-        ; TODO: Parameterize the tile colors
-        ; TODO: Figure out how to do borders
-        (define tile-color
-          (cond
-            [(even? (+ row-index col-index))
-             "LightGray"]
-            [else
-             "DarkGray"]))
-        (define tile (colorize (filled-rectangle 20 20) tile-color))
-
-        (cond
-          ; If there is a piece here, render the piece, colorize based on the player,
-          ; and overlay on the tile
-          [col
-           (match-define (list player piece) col)
-           (define glyph
-             (render-glyph/pict (hash-ref (current-glyphs) piece) tile-size))
-           (cc-superimpose tile (colorize glyph (~a player)))]
-          ; If not, just return the empty tile
-          [else
-           tile]))))
-
-  ; Smash together all the lists of lists
-  (apply vc-append
-         (for/list ([row (in-list tiles)])
-           (apply hc-append row))))</code></pre>
-<p>Okay, that looks like a lot, but most of it is comments. Basically, we loop over the board (the pair of <code><a href="http://docs.racket-lang.org/search/index.html?q=for/list">for/list</a></code>), building nested lists. Then, for each tile, we determine if we're on a white or black square (light and dark gray so that the white and black actually stand out). After that, we get the string from the <code>glyph</code> and render it as <code><a href="http://docs.racket-lang.org/search/index.html?q=text">text</a></code>. There's one thing I haven't done yet: support strings of multiple characters. Essentially, I would scale horizontally to make it be the correct width. Good enough for now though.</p>
-<p>So how does it work? Well combine <code>make-standard-board</code> and <code>render/pict</code>:</p>
-<pre class="scheme"><code>&gt; (render/pict (make-standard-board))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/initial-board.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/initial-board.png" /></a></p>
-<p>Fair enough. But to visualize, what we really want is an ability to show off certain squares. So let's add a <code>#:highlight</code> keyword parameter of a hash of points to colors to color them specially. Something like this:</p>
-<pre class="scheme"><code>; Render a board to a pict with the given tile size
-(define (render/pict b #:tile-size [tile-size 20] #:highlights [special-tiles (hash)])
-  ...
-
-  ; Get the background tile
-  ; TODO: Parameterize the tile colors
-  ; TODO: Figure out how to do borders
-  (define tile-color
-    (cond
-      [(hash-ref special-tiles (pt col-index row-index) #f)
-       =&gt; identity]
-      [(even? (+ row-index col-index))
-       "LightGray"]
-      [else
-       "DarkGray"]))
-
-  ...)</code></pre>
-<p>This way, we can highlight any square we want:</p>
-<pre class="scheme"><code>&gt; (render/pict (make-standard-board)
-               #:highlights (hash (pt 2 2) "green"
-                                  (pt 5 2) "green"
-                                  (pt 2 4) "red"
-                                  (pt 3 5) "red"
-                                  (pt 4 5) "red"
-                                  (pt 5 4) "red"))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/highlights.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/highlights.png" /></a></p>
-<p>(Remember that indices are 0-based)</p>
-<p>Shiny!</p>
-<p>Okay, that's enough to test. Let's work on a function to determine moves. We want something like this:</p>
-<pre class="scheme"><code>; Return a list of moves that a piece can make on the given board given it's origin point
-(define (moves-from b origin #:initial [initial #f])
-  ...)</code></pre>
-<p>We'll have a flag if the piece is on the initial turn, otherwise we pull everything out (like which player we're dealing with) from the piece on the board:</p>
-<pre class="scheme"><code>...
-(cond
-  [(board-ref b origin)
-   =&gt; (λ (ls)
-        (match-define (list player name) ls)
-        (match-define (piece _ moves) (hash-ref pieces name))
-
-        ; White has inverse moves since they're moving 'up'
-        ; TODO: Generalize to more players
-        ; TODO: This moves the wrong way if you have 'left only' pieces
-        (define player-multiplier
-          (case player
-            [(BLACK Black black)  1]
-            [(WHITE White white) -1]
-            [else     1]))
-
-...</code></pre>
-<p>This is the case when we have a piece (if not, the location is <code>#f</code>). If we have that, we unpack the piece and then determine which player we have. For the black player, we're moving down on the board / up in the y-coordinate, so the numbers are correct. Otherwise, we'll multiply moves my negative one. This has the effect of reflecting the moves. Unfortunately, it's on both axes, but at least with any piece I've seen, that doesn't actually matter.</p>
-<p>Next, we're going to take the move sequences we generated last time and filter each one so that we only include the moves from that sequence that are viable. For that, we first need to find the <code>first-target</code>--the first piece that we would hit if moving along this path.</p>
-<pre class="scheme"><code>...
-(define move-sublists
- (for*/list ([move-seq (in-list moves)])
-   (match-define (move-sequence tags original-offset*) move-seq)
-   (define offset* (map (λ (offset) (pt* player-multiplier offset)) original-offset*))
-
-   ; Find the first target
-   (define first-target
-     (for/first ([i (in-naturals)]
-                 [offset (in-list offset*)]
-                 #:when (board-ref b (pt+ origin offset)))
-       (list i (board-ref b (pt+ origin offset)))))
-
-   ; If the first target belongs to the owner, remove it (no self captures)
-   ; TODO: Add an option for self-captures
-   (define self-capture
-     (and first-target
-          (eq? (first (second first-target)) player)))
-   ...</code></pre>
-<p>Another amusing option that I'm sure there are fairy chess pieces that use: self-captures.</p>
-<p>Next, we want to unfold those lists based on how we found the <code>first-target</code>:</p>
-<pre class="scheme"><code>...
-             (map (λ (offset) (pt+ origin offset))
-                  (cond
-                    ; Bail out if we're initial only but not on the initial move
-                    [(and (set-member? tags 'initial-only) (not initial))
-                     (list)]
-                    ; If we're capturing only, can only move if we have a target
-                    ; and to that square
-                    [(set-member? tags 'capture-only)
-                     (if (and first-target (not self-capture))
-                         (list (list-ref offset* (first first-target)))
-                         (list))]
-                    ; If we're not capturing, get everything up until the target
-                    ; (or everything if no target)
-                    [(set-member? tags 'non-capture)
-                     (if (and first-target (&gt; (first first-target) 0))
-                         (take offset* (- (first first-target) 1))
-                         offset*)]
-                    ; If we're a locust, we have to check the space after the self
-                    ; target is empty
-                    [(set-member? tags 'as-locust)
-                     (cond
-                       [(and first-target
-                             (not self-capture)
-                             (&gt; (length offset*) (+ (first first-target) 1)))
-                        (define next-target
-                          (board-ref b (list-ref offset* (+ (first first-target) 1))))
-                        (if (not next-target)
-                            (list (list-ref offset* (+ 1 (first first-target))))
-                            (list))]
-                       [else
-                        (list)])]
-                    ; If the target is an enemy, capture it and stop
-                    ; Otherwise, if the target is a piece but we own, don't land there
-                    [first-target
-                     (if self-capture
-                         (if (&gt; (first first-target) 0)
-                             (take offset* (first first-target))
-                             (list))
-                         (take offset* (+ (first first-target) 1)))]
-                    ; Otherwise, include the entire range
-                    [else
-                     offset*]))))
-
-          ...</code></pre>
-<p>Oof. That's a lot of code. But luckily, each case is fairly straight forward. We remove non-initial moves (like for pawns), set the capturing / non-capturing conditions, or move like a locust (that have to jump to capture). And then finally, if the first thing is our own, just cut that off (this is where a self-capture tag would come in).</p>
-<p>And then to finish it off:</p>
-<pre class="scheme"><code>      ...
-      ; Stick all the lists together since we no longer care how they got there
-      ; And remove all moves that jump off of the board somehow
-      (filter (λ (p) (on-board? b p)) (apply append move-sublists)))]
-[else
- '()]))</code></pre>
-<p>Bam. We have moves. Let's try it out:</p>
-<pre class="scheme"><code>; Black pawn
-&gt; (moves-from (make-standard-board) (pt 3 1) #:initial #t)
-(list (pt 3 3) (pt 3 2))
-
-; White knight
-&gt; (moves-from (make-standard-board) (pt 6 7))
-(list (pt 7 5) (pt 5 5))</code></pre>
-<p>And using our highlighting code:</p>
-<pre class="scheme"><code>&gt; (let* ([board (make-standard-board)]
-         [highlights (for/hash ([pt (moves-from board (pt 3 1) #:initial #t)])
-                        (values pt "green"))])
-    (render/pict board #:highlights highlight))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-pawn.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-pawn.png" /></a></p>
-<pre class="scheme"><code>&gt; (let* ([board (make-standard-board)]
-         [highlights (for/hash ([pt (moves-from board (pt 6 7))])
-                        (values pt "green"))])
-    (render/pict board #:highlights highlight))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-knight.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-knight.png" /></a></p>
-<p>Shiny!</p>
-<p>Looks like it's working great. Let's generate images for all of the pieces:</p>
-<pre class="scheme"><code>&gt; (for/list ([piece (in-list '(Pawn Rook Knight Bishop Queen King))])
-    (define test-board
-      (board (hash 'Rook   Rook
-                   'Knight Knight
-                   'Bishop Bishop
-                   'Queen  Queen
-                   'King   King
-                   'Pawn   Pawn)
-             `#(#(#f #f #f #f #f #f #f #f)
-                #(#f #f #f #f #f #f (White Pawn) #f)
-                #(#f #f #f #f (White Pawn) #f #f #f)
-                #(#f #f #f (White Pawn) #f (Black Pawn) #f #f)
-                #(#f #f #f #f (White ,piece) #f #f (Black Pawn))
-                #(#f #f #f #f (Black Pawn) #f #f #f)
-                #(#f #f #f #f #f #f (Black Pawn) #f)
-                #(#f #f #f #f #f #f #f #f))))
-
-    (define highlights
-      (for/hash ([pt (in-list (moves-from test-board (pt 4 4)))])
-        (values pt "green")))
-
-    (render/pict test-board #:highlights highlights))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-pawn.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-pawn.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-rook.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-rook.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-knight.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-knight.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-bishop.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-bishop.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-queen.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-queen.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-king.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-king.png" /></a></p>
-<p>That is cool. I love it when something works like that!</p>
-<p>(Note: Yes, the king can currently move into check. That's on the list of things to fix yet, along with castling and en passant.)</p>
-<p>Here's actually a lesson too, until I generated those images for this post, I actually had a bug where I wasn't stopping after hitting an enemy piece. Good thing I checked otherwise who knows what would have happened?</p>
-<p>And that's about it for today. We now have move lists, a board, and some rendering. Should be enough so that next time we can <em>actually</em> write up a chess puzzle. Third time's a charm, eh?</p>
-<p>If you'd like to see the entire code, it's on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles">jpverkamp/chess-puzzles</a></p>]]></content></entry><entry><title>Sandbox Battle!</title><link href="http://blog.jverkamp.com/2014/08/24/sandbox-battle" /><id>urn:uuid:645b48c8-e1d6-e804-d919-58df438ef692</id><updated>2014-08-24T18:00:00Z</updated><summary type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/24/sandbox-battle/title.png"><img src="http://blog.jverkamp.com/2014/08/24/sandbox-battle/title.png" /></a></p>
-]]></summary><content type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/24/sandbox-battle/title.png"><img src="http://blog.jverkamp.com/2014/08/24/sandbox-battle/title.png" /></a></p>
-<!--more-->
-<p><iframe width="660" height="440" frameBorder="0" scrolling="no" style="overflow: hidden" src="http://blog.jverkamp.com/2014/08/24/sandbox-battle/sandbox-battle.embed.htm"></iframe></p>
-<h2>Created for <a href="http://www.ludumdare.com/compo/ludum-dare-30/">Ludum Dare 30</a></h2>
-<h3><a href="http://www.ludumdare.com/compo/ludum-dare-30/?action=preview&uid=19702">Entry</a></h3>
-<h3><a href="https://github.com/jpverkamp/sandbox-battle">Source code</a></h3>
-<h4>Note: Runs best in <a href="https://www.google.com/chrome/browser/">Chrome</a>.</h4>
-<h3>Instructions</h3>
-<ul>
-  <li>You have 60 seconds to collect as much sand as you can</li>
-  <li>Each player's sand falls to the bottom of their tile</li>
-  <li>Colliding with other players will steal their sand</li>
-  <li>Choose options for keyboard controls and to enable multiplayer</li>
-</ul>
-<h3>Comments</h3>
-<ul>
-  <li>Libraries used: <a href="https://jquery.com/">jQuery</a>, <a href="http://getbootstrap.com/">Boostrap</a></li>
-  <li>Graphics generated in Photoshop CS6</li>
-</li>]]></content></entry></feed>
+<p>If you'd like to check out the entire code for today's post, as always, it's available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a></p>]]></content></entry></feed>
