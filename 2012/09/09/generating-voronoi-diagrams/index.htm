@@ -74,7 +74,7 @@
 
                         <div class="entry-meta">
                                 <span class="posted-on"><time class="entry-date" datetime="2012-09-09"><span class="year">2012</span> <span class="month">Sept</span> <span class="day">9</span></time></span>
-                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-language/java">Java</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-project/wombat-ide">Wombat IDE</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/scheme">Scheme</a></li></ul></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-language/scheme">Scheme</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/java">Java</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-project/wombat-ide">Wombat IDE</a></li></ul></span>
                         </div>
 
                         <hr />
@@ -148,6 +148,57 @@
     <li>Using normalized coordinates:<br />
         <a data-toggle="lightbox" href="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-normalized.png"><img src="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-normalized.png" /></a></li>
 </ul>
+<p><strong>Update:</strong> For the second comment (working in degrees), I actually rewrote the code to work in Racket, since I'm far more familiar with that:</p>
+<pre class="scheme"><code>(require images/flomap)
+
+(struct pt (x y))
+(struct cpt pt (c))
+
+(define (voronoi width height distance seeds)
+  (flomap-&gt;bitmap
+   (build-flomap*
+    3 width height
+    (λ (x y)
+      (call-with-values
+       (thunk
+        (for/fold ([min-distance +inf.0] [min-color #f])
+                  ([seed (in-list seeds)])
+          (define new-distance (distance (pt x y) seed))
+          (if (&lt; new-distance min-distance)
+              (values new-distance (cpt-c seed))
+              (values min-distance min-color))))
+       (λ (distance color) color))))))
+
+(define (random-seeds width height count)
+  (for/list ([i (in-range count)])
+    (cpt (random width) (random height)
+         (vector (random) (random) (random)))))</code></pre>
+<p>That lets us translate your new function fairly easily (although the offsets are a little interesting):</p>
+<pre class="scheme"><code>(voronoi
+ 160 40
+ (λ (pt1 pt2)
+   ; Unpack points
+   (match-define (pt x1^ y1^) pt1)
+   (match-define (pt x2^ y2^) pt2)
+
+   ; Rescale to the range [20, 80] and [40, 80]
+   (define x1 (+ x1^ 20))
+   (define y1 (+ y1^ 40))
+   (define x2 (+ x2^ 20))
+   (define y2 (+ y2^ 40))
+
+   (sqrt (+ (sqr (- (* x1 (cos (degrees-&gt;radians y1)))
+                    (* x2 (cos (degrees-&gt;radians y2)))))
+            (sqr (- y1 y2)))))
+
+ (random-seeds 160 40 10))</code></pre>
+<p>Here are a few examples:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-degree-1.png"><img src="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-degree-1.png" /></a></p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-degree-2.png"><img src="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-degree-2.png" /></a></p>
+<p>That's really cool. They sort of look like scales!</p>
+<p>If you relax the range and let it go a full circle (x and y both ranging from 0 to 360), you get this:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-degree-full.png"><img src="http://blog.jverkamp.com/2012/09/09/generating-voronoi-diagrams/voronoi-comment-degree-full.png" /></a></p>
+<p>Not quite scales any more, but there is a lot of neat structure in there.</p>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>

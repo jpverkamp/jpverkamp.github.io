@@ -1,5 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-11-04T09:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Clockception</title><link href="http://blog.jverkamp.com/2014/11/04/clockception" /><id>urn:uuid:9a2e2d18-6c68-f33b-e456-aa1c1b531f62</id><updated>2014-11-04T09:00:00Z</updated><summary type="html"><![CDATA[<p>Let's talk about clocks.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-11-13T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>A "one" line echo server using let in Racket</title><link href="http://blog.jverkamp.com/2014/11/13/a-one-line-echo-server-using-let-in-racket" /><id>urn:uuid:6f76d2a6-0b14-4d60-7cba-7ede454fd445</id><updated>2014-11-13T00:00:00Z</updated><summary type="html"><![CDATA[<p>A recent post on Reddit caught my attention: <a href="https://www.reddit.com/r/Python/comments/2m6d4z/a_one_line_echo_server_using_let_in_python/">A “One” Line Echo Server Using “let” in Python</a> (<a href="http://sigusr2.net/one-line-echo-server-using-let-python.html">original article</a>). The basic idea is that you can use Python's <code>lambda</code> with default arguments as a <code>let</code>, which in turn allows you to write a simple <a href="https://en.wikipedia.org/wiki/echo_server">echo server</a> in <del>one line</del> a nicely functional style.</p>
+]]></summary><content type="html"><![CDATA[<p>A recent post on Reddit caught my attention: <a href="https://www.reddit.com/r/Python/comments/2m6d4z/a_one_line_echo_server_using_let_in_python/">A “One” Line Echo Server Using “let” in Python</a> (<a href="http://sigusr2.net/one-line-echo-server-using-let-python.html">original article</a>). The basic idea is that you can use Python's <code>lambda</code> with default arguments as a <code>let</code>, which in turn allows you to write a simple <a href="https://en.wikipedia.org/wiki/echo_server">echo server</a> in <del>one line</del> a nicely functional style.</p>
+<!--more-->
+<p>To start with, here is their original code:</p>
+<pre class="scheme"><code>import socket
+import itertools
+
+(lambda port=9000, s=socket.socket(socket.AF_INET, socket.SOCK_STREAM):
+      s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) == None and
+      s.bind(('', port)) == None and
+      s.listen(5) == None and
+      list(map(lambda c:
+                  c[0].sendall(c[0].recv(1024)) and
+                  c[0].close(),
+               (s.accept() for _ in itertools.count(1)))))()</code></pre>
+<p>It's certainly not very Pythonic, but there are a few neat tricks in there:</p>
+<ul>
+    <li>Using <code>lambda</code> with default arguments to define things</li>
+    <li>Using <code>and</code> to sequence function calls</li>
+    <li>Using list comprehension to handle the response threads</li>
+</ul>
+<p>It got me thinking though, what would the same sort of code look like in Racket?</p>
+<p>Well, one of the draws Racket advertises (rightfully so) on its <a href="http://racket-lang.org">home page</a> is that it comes <a href="http://docs.racket-lang.org/">batteries included</a>. That means that if you're using <code><a href="http://docs.racket-lang.org/search/index.html?q=#lang racket">#lang racket</a></code>, you get a bunch of useful functions for TCP built in. Let's start with a fairly direct translation:</p>
+<pre class="scheme"><code>(let ([s (tcp-listen 9000)])
+  (sequence-&gt;list
+   (sequence-map
+    (λ (in+out) (thread (thunk (apply copy-port in+out))))
+    (in-producer (thunk (call-with-values (thunk (tcp-accept s)) list))))))</code></pre>
+<p>Okay, so that looks really weird. But it's a fairly straight forward translation. A few of the lines got folded into the <code><a href="http://docs.racket-lang.org/search/index.html?q=tcp-connect">tcp-connect</a></code> call and the list comprehension became a <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code> <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence">sequence</a></code>. It's kicked off via <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence-map">sequence-map</a></code> and forced to run to termination (which will never happend) with <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence->list">sequence->list</a></code>. Unfortunately, it has the same problem that the original Python code does. Since we're constructing a list, we'll eventually run out of memory.</p>
+<p>One interesting addition it does that the Python version didn't is that it both allows for multiple lines (the Python version would read one packet and hang up) and any amount of data. I've never actually used the <code><a href="http://docs.racket-lang.org/search/index.html?q=copy-port">copy-port</a></code> function before. It's really cool!</p>
+<p>If we broaden our definition of "one" line a little more to allow <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code> sequences (which aren't really that different under the hood), we can clean it up a bit to this:</p>
+<pre class="scheme"><code>(let ([s (tcp-listen 9000)])
+  (for ([(in out) (in-producer (thunk (tcp-accept s)))])
+    (thread (thunk (copy-port in out)))))</code></pre>
+<p>This is especially nice, since <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code> work together to deal with the multiple values from <code><a href="http://docs.racket-lang.org/search/index.html?q=tcp-accept">tcp-accept</a></code>. Very clean.</p>
+<p>Actually, I may have to put this in my quick-scripts toolbox. There are a fair few times when writing networking clients that having a dead simple echo server could come in handy.</p>]]></content></entry><entry><title>Clockception</title><link href="http://blog.jverkamp.com/2014/11/04/clockception" /><id>urn:uuid:9a2e2d18-6c68-f33b-e456-aa1c1b531f62</id><updated>2014-11-04T09:00:00Z</updated><summary type="html"><![CDATA[<p>Let's talk about clocks.</p>
 <p>We can draw traditional analog clocks<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
 <p>We can draw nice digital clocks:</p>
@@ -1462,320 +1497,4 @@ AAAD</code></pre>
 <pre class="scheme"><code> &gt; (queens-animate 4) </code></pre>
 <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens.gif"><img src="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens/8-queens.gif" /></a></p>
 <p>You can see the backtracking anytime the green box jumps back and suddenly one or more of the previously place queens vanishes. It would be even neater if it could show the branching solutions, but that's a challenge for another day.</p>
-<p>And that's it. A bit more in detail than <a href="http://blog.jverkamp.com/2012/09/24/n-queens-in-18-lines-of-code">last time</a>, but I think it was a lot of fun. The code is available in my <a href="https://github.com/jpverkamp/chess-puzzles">chess-puzzles</a> repo on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles/blob/master/puzzles/queens.rkt">queens.rkt</a>. Check it out!</p>]]></content></entry><entry><title>Chess Puzzles 2: Board?</title><link href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board" /><id>urn:uuid:6d64e14c-c731-a12d-4a38-7070fa6e6e9e</id><updated>2014-08-28T20:00:00Z</updated><summary type="html"><![CDATA[<p>Now that we've got <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a> out of the way, back to chess! <a href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving">Last time</a>, we defined all of the pieces, which is all well and good, but what we really need is a board. More specifically, we want something that can:</p>
-<ul>
-    <li>Represent an 8x8 chess board, storing the location of pieces (including the owner of each)</li>
-    <li>Add logic for collisions, so that when moving a piece, you cannot move through others or capture allies<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
-    <li>Add rendering code to display the current chess board (must be flexible enough to handle arbitrary glyphs for <a href="https://en.wikipedia.org/wiki/fairy_chess">fairy chess</a> pieces)</li>
-</ul>
-<p>I think that's about enough for the moment. Let's do it!</p>
-]]></summary><content type="html"><![CDATA[<p>Now that we've got <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a> out of the way, back to chess! <a href="http://blog.jverkamp.com/2014/08/21/chess-puzzles-1-get-moving">Last time</a>, we defined all of the pieces, which is all well and good, but what we really need is a board. More specifically, we want something that can:</p>
-<ul>
-    <li>Represent an 8x8 chess board, storing the location of pieces (including the owner of each)</li>
-    <li>Add logic for collisions, so that when moving a piece, you cannot move through others or capture allies<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
-    <li>Add rendering code to display the current chess board (must be flexible enough to handle arbitrary glyphs for <a href="https://en.wikipedia.org/wiki/fairy_chess">fairy chess</a> pieces)</li>
-</ul>
-<p>I think that's about enough for the moment. Let's do it!</p>
-<!--more-->
-<p>First things first, let's create a representation of the board. We'll start with only regular grids, although theoretically it should be possible to define arbitrary connections. That would mess somewhat with the move definitions we have, so let's not.</p>
-<p>First, the board:</p>
-<pre class="scheme"><code>; Stored as a vector of vectors where every element is either:
-; (player, piece) if there is a piece there
-; #f if empty
-(struct board (pieces data) #:transparent)</code></pre>
-<p>So what we should have is something like this:</p>
-<pre class="scheme"><code>(define (make-standard-board)
-  (board (hash 'Rook   Rook
-               'Knight Knight
-               'Bishop Bishop
-               'Queen  Queen
-               'King   King
-               'Pawn   Pawn)
-         '#(#((Black Rook) (Black Knight) (Black Bishop) (Black Queen)
-              (Black King) (Black Bishop) (Black Knight) (Black Rook))
-            #((Black Pawn) (Black Pawn) (Black Pawn) (Black Pawn)
-              (Black Pawn) (Black Pawn) (Black Pawn) (Black Pawn))
-            #(#f #f #f #f #f #f #f #f)
-            #(#f #f #f #f #f #f #f #f)
-            #(#f #f #f #f #f #f #f #f)
-            #(#f #f #f #f #f #f #f #f)
-            #((White Pawn) (White Pawn) (White Pawn) (White Pawn)
-              (White Pawn) (White Pawn) (White Pawn) (White Pawn))
-            #((White Rook) (White Knight) (White Bishop) (White Queen)
-              (White King) (White Bishop) (White Knight) (White Rook)))))</code></pre>
-<p>Vectors will allow both <code>O(1)</code> reading of elements, but also a nice way of doing mutation. I'm just going to go right out now and say that I'll allow mutating the board, although I might make a non-mutable version that copies if I have a chance<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>.</p>
-<p>Next, a getter and a sanity check (which should make it cleaner to generate moves):</p>
-<pre class="scheme"><code>; Test if a point is on the given board
-(define (on-board? b p)
-  (match-define (board pieces data) b)
-  (match-define (pt x y) p)
-  (and (&lt;= 0 x (- (vector-length (vector-ref data 0)) 1))
-       (&lt;= 0 y (- (vector-length data) 1))))
-
-; Get the current player/piece at a square
-(define (board-ref b p)
-  (match-define (board pieces data) b)
-  (match-define (pt x y) p)
-  (cond
-    [(on-board? b p)
-     (vector-ref (vector-ref data y) x)]
-    [else
-     #f]))</code></pre>
-<p>And finally, a setter. In this case, it doesn't make sense to just set a single piece (except in set up I guess?)<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>. So instead, we will allow movement, overwriting whatever is at the target square:</p>
-<pre class="scheme"><code>; Move a piece from one square to another, overwriting whatever is in the destination square
-(define (board-move! b src dst)
-  (match-define (board pieces data) b)
-  (match-define (pt src-x src-y) src)
-  (match-define (pt dst-x dst-y) dst)
-  (define piece (board-ref data src))
-  (vector-set! (vector-ref data dst-y) dst-x piece)
-  (vector-set! (vector-ref data src-y) src-x #f))</code></pre>
-<p>And that's about all we need for the board representation. Let's check out rendering next, since it should (theoretically) make debugging the move list generation much better.</p>
-<p>First, let's generalize the tile for a piece to a <code>glyph</code>:</p>
-<pre class="scheme"><code>; The hash associating piece names with glyphs
-(define current-glyphs (make-parameter #f))
-
-; A single glyph containing a string and the rotation (default to upright)
-(struct glyph (character rotation) #:transparent)
-(define (make-glyph character [rotation 0])
-  (glyph (~a character) rotation))
-
-; Render a single character with some sanity checking for different types
-(define (render-glyph/pict g tile-size)
-  (cond
-    [(glyph? g)
-     (match-define (glyph character rotation) g)
-     (rotate (text character 'default (* 3/4 tile-size)) rotation)]
-    [else
-     (render-glyph/pict (make-glyph g) tile-size)]))</code></pre>
-<p>This way, we can specify characters in several different ways. We can pass just about anything directly and use the <code><a href="http://docs.racket-lang.org/search/index.html?q=~a">~a</a></code> function to 'string' it. Or we can pass both the former and a rotation. That will let us do things like an inverted knight being the representation for the nightrider, etc.</p>
-<p>One thing that amuses me entirely too much about this?</p>
-<pre class="scheme"><code>(define (set-standard-glyphs)
-  (current-glyphs (hash 'Rook   "♜"
-                        'Knight "♞"
-                        'Bishop "♝"
-                        'Queen  "♛"
-                        'King   "♚"
-                        'Pawn   "♟")))</code></pre>
-<p>Those are unicode characters for the chess symbols. Nice. :)</p>
-<p>Okay, so we have a way to represent a single tile, what do we have to do to render all of them? Well, as often before, we can use the <code><a href="http://docs.racket-lang.org/search/index.html?q=pict">pict</a></code> library:</p>
-<pre class="scheme"><code>; Render a board to a pict with the given tile size
-(define (render/pict b #:tile-size [tile-size 20])
-  ; Sanity check and unpack, we don't care about the actual pieces at this point
-  (when (not (current-glyphs))
-    (error 'render/pict "must specify (current-glyphs) as a hash of name -&gt; glyph"))
-  (match-define (board _ board-data) b)
-
-  ; Render each tile into a list of lists
-  (define tiles
-    (for/list ([row-index (in-naturals)]
-               [row       (in-vector board-data)])
-      (for/list ([col-index (in-naturals)]
-                 [col       (in-vector row)])
-        ; Get the background tile
-        ; TODO: Parameterize the tile colors
-        ; TODO: Figure out how to do borders
-        (define tile-color
-          (cond
-            [(even? (+ row-index col-index))
-             "LightGray"]
-            [else
-             "DarkGray"]))
-        (define tile (colorize (filled-rectangle 20 20) tile-color))
-
-        (cond
-          ; If there is a piece here, render the piece, colorize based on the player,
-          ; and overlay on the tile
-          [col
-           (match-define (list player piece) col)
-           (define glyph
-             (render-glyph/pict (hash-ref (current-glyphs) piece) tile-size))
-           (cc-superimpose tile (colorize glyph (~a player)))]
-          ; If not, just return the empty tile
-          [else
-           tile]))))
-
-  ; Smash together all the lists of lists
-  (apply vc-append
-         (for/list ([row (in-list tiles)])
-           (apply hc-append row))))</code></pre>
-<p>Okay, that looks like a lot, but most of it is comments. Basically, we loop over the board (the pair of <code><a href="http://docs.racket-lang.org/search/index.html?q=for/list">for/list</a></code>), building nested lists. Then, for each tile, we determine if we're on a white or black square (light and dark gray so that the white and black actually stand out). After that, we get the string from the <code>glyph</code> and render it as <code><a href="http://docs.racket-lang.org/search/index.html?q=text">text</a></code>. There's one thing I haven't done yet: support strings of multiple characters. Essentially, I would scale horizontally to make it be the correct width. Good enough for now though.</p>
-<p>So how does it work? Well combine <code>make-standard-board</code> and <code>render/pict</code>:</p>
-<pre class="scheme"><code>&gt; (render/pict (make-standard-board))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/initial-board.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/initial-board.png" /></a></p>
-<p>Fair enough. But to visualize, what we really want is an ability to show off certain squares. So let's add a <code>#:highlight</code> keyword parameter of a hash of points to colors to color them specially. Something like this:</p>
-<pre class="scheme"><code>; Render a board to a pict with the given tile size
-(define (render/pict b #:tile-size [tile-size 20] #:highlights [special-tiles (hash)])
-  ...
-
-  ; Get the background tile
-  ; TODO: Parameterize the tile colors
-  ; TODO: Figure out how to do borders
-  (define tile-color
-    (cond
-      [(hash-ref special-tiles (pt col-index row-index) #f)
-       =&gt; identity]
-      [(even? (+ row-index col-index))
-       "LightGray"]
-      [else
-       "DarkGray"]))
-
-  ...)</code></pre>
-<p>This way, we can highlight any square we want:</p>
-<pre class="scheme"><code>&gt; (render/pict (make-standard-board)
-               #:highlights (hash (pt 2 2) "green"
-                                  (pt 5 2) "green"
-                                  (pt 2 4) "red"
-                                  (pt 3 5) "red"
-                                  (pt 4 5) "red"
-                                  (pt 5 4) "red"))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/highlights.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/highlights.png" /></a></p>
-<p>(Remember that indices are 0-based)</p>
-<p>Shiny!</p>
-<p>Okay, that's enough to test. Let's work on a function to determine moves. We want something like this:</p>
-<pre class="scheme"><code>; Return a list of moves that a piece can make on the given board given it's origin point
-(define (moves-from b origin #:initial [initial #f])
-  ...)</code></pre>
-<p>We'll have a flag if the piece is on the initial turn, otherwise we pull everything out (like which player we're dealing with) from the piece on the board:</p>
-<pre class="scheme"><code>...
-(cond
-  [(board-ref b origin)
-   =&gt; (λ (ls)
-        (match-define (list player name) ls)
-        (match-define (piece _ moves) (hash-ref pieces name))
-
-        ; White has inverse moves since they're moving 'up'
-        ; TODO: Generalize to more players
-        ; TODO: This moves the wrong way if you have 'left only' pieces
-        (define player-multiplier
-          (case player
-            [(BLACK Black black)  1]
-            [(WHITE White white) -1]
-            [else     1]))
-
-...</code></pre>
-<p>This is the case when we have a piece (if not, the location is <code>#f</code>). If we have that, we unpack the piece and then determine which player we have. For the black player, we're moving down on the board / up in the y-coordinate, so the numbers are correct. Otherwise, we'll multiply moves my negative one. This has the effect of reflecting the moves. Unfortunately, it's on both axes, but at least with any piece I've seen, that doesn't actually matter.</p>
-<p>Next, we're going to take the move sequences we generated last time and filter each one so that we only include the moves from that sequence that are viable. For that, we first need to find the <code>first-target</code>--the first piece that we would hit if moving along this path.</p>
-<pre class="scheme"><code>...
-(define move-sublists
- (for*/list ([move-seq (in-list moves)])
-   (match-define (move-sequence tags original-offset*) move-seq)
-   (define offset* (map (λ (offset) (pt* player-multiplier offset)) original-offset*))
-
-   ; Find the first target
-   (define first-target
-     (for/first ([i (in-naturals)]
-                 [offset (in-list offset*)]
-                 #:when (board-ref b (pt+ origin offset)))
-       (list i (board-ref b (pt+ origin offset)))))
-
-   ; If the first target belongs to the owner, remove it (no self captures)
-   ; TODO: Add an option for self-captures
-   (define self-capture
-     (and first-target
-          (eq? (first (second first-target)) player)))
-   ...</code></pre>
-<p>Another amusing option that I'm sure there are fairy chess pieces that use: self-captures.</p>
-<p>Next, we want to unfold those lists based on how we found the <code>first-target</code>:</p>
-<pre class="scheme"><code>...
-             (map (λ (offset) (pt+ origin offset))
-                  (cond
-                    ; Bail out if we're initial only but not on the initial move
-                    [(and (set-member? tags 'initial-only) (not initial))
-                     (list)]
-                    ; If we're capturing only, can only move if we have a target
-                    ; and to that square
-                    [(set-member? tags 'capture-only)
-                     (if (and first-target (not self-capture))
-                         (list (list-ref offset* (first first-target)))
-                         (list))]
-                    ; If we're not capturing, get everything up until the target
-                    ; (or everything if no target)
-                    [(set-member? tags 'non-capture)
-                     (if (and first-target (&gt; (first first-target) 0))
-                         (take offset* (- (first first-target) 1))
-                         offset*)]
-                    ; If we're a locust, we have to check the space after the self
-                    ; target is empty
-                    [(set-member? tags 'as-locust)
-                     (cond
-                       [(and first-target
-                             (not self-capture)
-                             (&gt; (length offset*) (+ (first first-target) 1)))
-                        (define next-target
-                          (board-ref b (list-ref offset* (+ (first first-target) 1))))
-                        (if (not next-target)
-                            (list (list-ref offset* (+ 1 (first first-target))))
-                            (list))]
-                       [else
-                        (list)])]
-                    ; If the target is an enemy, capture it and stop
-                    ; Otherwise, if the target is a piece but we own, don't land there
-                    [first-target
-                     (if self-capture
-                         (if (&gt; (first first-target) 0)
-                             (take offset* (first first-target))
-                             (list))
-                         (take offset* (+ (first first-target) 1)))]
-                    ; Otherwise, include the entire range
-                    [else
-                     offset*]))))
-
-          ...</code></pre>
-<p>Oof. That's a lot of code. But luckily, each case is fairly straight forward. We remove non-initial moves (like for pawns), set the capturing / non-capturing conditions, or move like a locust (that have to jump to capture). And then finally, if the first thing is our own, just cut that off (this is where a self-capture tag would come in).</p>
-<p>And then to finish it off:</p>
-<pre class="scheme"><code>      ...
-      ; Stick all the lists together since we no longer care how they got there
-      ; And remove all moves that jump off of the board somehow
-      (filter (λ (p) (on-board? b p)) (apply append move-sublists)))]
-[else
- '()]))</code></pre>
-<p>Bam. We have moves. Let's try it out:</p>
-<pre class="scheme"><code>; Black pawn
-&gt; (moves-from (make-standard-board) (pt 3 1) #:initial #t)
-(list (pt 3 3) (pt 3 2))
-
-; White knight
-&gt; (moves-from (make-standard-board) (pt 6 7))
-(list (pt 7 5) (pt 5 5))</code></pre>
-<p>And using our highlighting code:</p>
-<pre class="scheme"><code>&gt; (let* ([board (make-standard-board)]
-         [highlights (for/hash ([pt (moves-from board (pt 3 1) #:initial #t)])
-                        (values pt "green"))])
-    (render/pict board #:highlights highlight))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-pawn.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-pawn.png" /></a></p>
-<pre class="scheme"><code>&gt; (let* ([board (make-standard-board)]
-         [highlights (for/hash ([pt (moves-from board (pt 6 7))])
-                        (values pt "green"))])
-    (render/pict board #:highlights highlight))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-knight.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/moves-knight.png" /></a></p>
-<p>Shiny!</p>
-<p>Looks like it's working great. Let's generate images for all of the pieces:</p>
-<pre class="scheme"><code>&gt; (for/list ([piece (in-list '(Pawn Rook Knight Bishop Queen King))])
-    (define test-board
-      (board (hash 'Rook   Rook
-                   'Knight Knight
-                   'Bishop Bishop
-                   'Queen  Queen
-                   'King   King
-                   'Pawn   Pawn)
-             `#(#(#f #f #f #f #f #f #f #f)
-                #(#f #f #f #f #f #f (White Pawn) #f)
-                #(#f #f #f #f (White Pawn) #f #f #f)
-                #(#f #f #f (White Pawn) #f (Black Pawn) #f #f)
-                #(#f #f #f #f (White ,piece) #f #f (Black Pawn))
-                #(#f #f #f #f (Black Pawn) #f #f #f)
-                #(#f #f #f #f #f #f (Black Pawn) #f)
-                #(#f #f #f #f #f #f #f #f))))
-
-    (define highlights
-      (for/hash ([pt (in-list (moves-from test-board (pt 4 4)))])
-        (values pt "green")))
-
-    (render/pict test-board #:highlights highlights))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-pawn.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-pawn.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-rook.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-rook.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-knight.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-knight.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-bishop.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-bishop.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-queen.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-queen.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-king.png"><img src="http://blog.jverkamp.com/2014/08/28/chess-puzzles-2-board/demo-king.png" /></a></p>
-<p>That is cool. I love it when something works like that!</p>
-<p>(Note: Yes, the king can currently move into check. That's on the list of things to fix yet, along with castling and en passant.)</p>
-<p>Here's actually a lesson too, until I generated those images for this post, I actually had a bug where I wasn't stopping after hitting an enemy piece. Good thing I checked otherwise who knows what would have happened?</p>
-<p>And that's about it for today. We now have move lists, a board, and some rendering. Should be enough so that next time we can <em>actually</em> write up a chess puzzle. Third time's a charm, eh?</p>
-<p>If you'd like to see the entire code, it's on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles">jpverkamp/chess-puzzles</a></p>]]></content></entry></feed>
+<p>And that's it. A bit more in detail than <a href="http://blog.jverkamp.com/2012/09/24/n-queens-in-18-lines-of-code">last time</a>, but I think it was a lot of fun. The code is available in my <a href="https://github.com/jpverkamp/chess-puzzles">chess-puzzles</a> repo on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles/blob/master/puzzles/queens.rkt">queens.rkt</a>. Check it out!</p>]]></content></entry></feed>
