@@ -4,7 +4,7 @@
         
         
 
-        <title>A "one" line echo server using let in Racket | jverkamp.com | John-Paul Verkamp</title>
+        <title>NaNoWriMo 2014 Winner! | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
 
@@ -70,56 +70,24 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">A "one" line echo server using let in Racket</h1>
+                        <h1 class="entry-title">NaNoWriMo 2014 Winner!</h1>
 
                         <div class="entry-meta">
-                                <span class="posted-on"><time class="entry-date" datetime="2014-11-13"><span class="year">2014</span> <span class="month">Nov</span> <span class="day">13</span></time></span>
-                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-topic/networks">Networks</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/racket">Racket</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/scheme">Scheme</a></li></ul></span>
+                                <span class="posted-on"><time class="entry-date" datetime="2014-11-30"><span class="year">2014</span> <span class="month">Nov</span> <span class="day">30</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/writing/nanowrimo">NaNoWriMo</a></li><li><a href="http://blog.jverkamp.com/category/writing/novels">Novels</a></li><li><a href="http://blog.jverkamp.com/category/writing">Writing</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p>A recent post on Reddit caught my attention: <a href="https://www.reddit.com/r/Python/comments/2m6d4z/a_one_line_echo_server_using_let_in_python/">A “One” Line Echo Server Using “let” in Python</a> (<a href="http://sigusr2.net/one-line-echo-server-using-let-python.html">original article</a>). The basic idea is that you can use Python's <code>lambda</code> with default arguments as a <code>let</code>, which in turn allows you to write a simple <a href="https://en.wikipedia.org/wiki/echo_server">echo server</a> in <del>one line</del> a nicely functional style.</p>
+                        <p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg"><img src="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg" /></a></p>
+<p>Just under the wire this year.</p>
 <!--more-->
-<p>To start with, here is their original code:</p>
-<pre class="scheme"><code>import socket
-import itertools
-
-(lambda port=9000, s=socket.socket(socket.AF_INET, socket.SOCK_STREAM):
-      s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) == None and
-      s.bind(('', port)) == None and
-      s.listen(5) == None and
-      list(map(lambda c:
-                  c[0].sendall(c[0].recv(1024)) and
-                  c[0].close(),
-               (s.accept() for _ in itertools.count(1)))))()</code></pre>
-<p>It's certainly not very Pythonic, but there are a few neat tricks in there:</p>
-<ul>
-    <li>Using <code>lambda</code> with default arguments to define things</li>
-    <li>Using <code>and</code> to sequence function calls</li>
-    <li>Using list comprehension to handle the response threads</li>
-</ul>
-<p>It got me thinking though, what would the same sort of code look like in Racket?</p>
-<p>Well, one of the draws Racket advertises (rightfully so) on its <a href="http://racket-lang.org">home page</a> is that it comes <a href="http://docs.racket-lang.org/">batteries included</a>. That means that if you're using <code><a href="http://docs.racket-lang.org/search/index.html?q=#lang racket">#lang racket</a></code>, you get a bunch of useful functions for TCP built in. Let's start with a fairly direct translation:</p>
-<pre class="scheme"><code>(let ([s (tcp-listen 9000)])
-  (sequence-&gt;list
-   (sequence-map
-    (λ (in+out) (thread (thunk (apply copy-port in+out))))
-    (in-producer (thunk (call-with-values (thunk (tcp-accept s)) list))))))</code></pre>
-<p>Okay, so that looks really weird. But it's a fairly straight forward translation. A few of the lines got folded into the <code><a href="http://docs.racket-lang.org/search/index.html?q=tcp-connect">tcp-connect</a></code> call and the list comprehension became a <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code> <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence">sequence</a></code>. It's kicked off via <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence-map">sequence-map</a></code> and forced to run to termination (which will never happend) with <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence->list">sequence->list</a></code>. Unfortunately, it has the same problem that the original Python code does. Since we're constructing a list, we'll eventually run out of memory.</p>
-<p>One interesting addition it does that the Python version didn't is that it both allows for multiple lines (the Python version would read one packet and hang up) and any amount of data. I've never actually used the <code><a href="http://docs.racket-lang.org/search/index.html?q=copy-port">copy-port</a></code> function before. It's really cool!</p>
-<p>If we broaden our definition of "one" line a little more to allow <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code> sequences (which aren't really that different under the hood), we can clean it up a bit to this:</p>
-<pre class="scheme"><code>(let ([s (tcp-listen 9000)])
-  (for ([(in out) (in-producer (thunk (tcp-accept s)))])
-    (thread (thunk (copy-port in out)))))</code></pre>
-<p>This is especially nice, since <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code> work together to deal with the multiple values from <code><a href="http://docs.racket-lang.org/search/index.html?q=tcp-accept">tcp-accept</a></code>. Very clean.</p>
-<p>Heck, if you want to get a little less clear about it, you can actually fold the <code>let</code> into the <code>for</code>:</p>
-<pre class="scheme"><code>(for* ([s (in-value (tcp-listen 9000))]
-       [(in out) (in-producer (thunk (tcp-accept s)))])
-  (thread (thunk (copy-port in out))))</code></pre>
-<p>This works because <code>for*</code> is actually a nested loop. So in the outer loop, it runs over the single value of the open socket. The inner loop then runs forever, accepting new incoming connections.</p>
-<p>Actually, I may have to put this in my quick-scripts toolbox. There are a fair few times when writing networking clients that having a dead simple echo server could come in handy.</p>
+<p>It took a bit to get going, given that I basically restarted on Day 7:</p>
+<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Progress-NaNoWriMo.png"><img src="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Progress-NaNoWriMo.png" /></a></p>
+<p>Basically, I wrote 3000 words each of the first three days and then settled in for 2000 words a day after that. I had one day where I just couldn't make it past 1000. So it goes.</p>
+<p>As far as overall progress goes, I'm most of the way through chapter 10 of a planned 19 (there's something to be said for outlining ahead of time after all...), so I should be done around Christmas.</p>
+<p>Onwards and upwards!</p>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>
@@ -128,8 +96,8 @@ import itertools
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "A "quot;one"quot; line echo server using let in Racket";
-var disqus_url = "http://blog.jverkamp.com/2014/11/13/a-one-line-echo-server-using-let-in-racket/";
+var disqus_title = "NaNoWriMo 2014 Winner!";
+var disqus_url = "http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -142,7 +110,7 @@ var disqus_url = "http://blog.jverkamp.com/2014/11/13/a-one-line-echo-server-usi
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/11/12/nanowrimo-2014-update">← NaNoWriMo 2014 Update</a></li><li><a href="http://blog.jverkamp.com/category/archives">Archives</a></li><li><a href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner">NaNoWriMo 2014 Winner! →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/11/04/clockception">← Clockception</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/11/13/a-one-line-echo-server-using-let-in-racket">← A "one" line echo server using let in Racket</a></li><li><a href="http://blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2014/11/12/nanowrimo-2014-update">← NaNoWriMo 2014 Update</a></li><li><a href="http://blog.jverkamp.com/category/writing">Writing</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="http://blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="http://blog.jverkamp.com/rss.png" /></a><br />
