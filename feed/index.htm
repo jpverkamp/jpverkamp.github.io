@@ -1,5 +1,412 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-11-30T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>NaNoWriMo 2014 Winner!</title><link href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner" /><id>urn:uuid:7f3cf84a-23c9-507d-b94e-0a28ebc04ae7</id><updated>2014-11-30T00:00:00Z</updated><summary type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg"><img src="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg" /></a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-12-23T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Palette Swapping</title><link href="http://blog.jverkamp.com/2014/12/23/palette-swapping" /><id>urn:uuid:fdbf6642-e8d9-7544-30ed-156ee3de7f6d</id><updated>2014-12-23T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today's task comes from the <a href="https://codegolf.stackexchange.com/">Code Golf StackExchange</a>. The idea behind <a href="https://en.wikipedia.org/wiki/code_golf">code golf</a> is to write a program with as few characters as possible, often rendering the code nigh on unreadable. Luckily, the same StackExchange also host popularity contests, one of which is the inspiration behind today's post:</p>
+<blockquote>
+You are given two true color images, the Source and the Palette. They do not necessarily have the same dimensions but it is guaranteed that their areas are the same, i.e. they have the same number of pixels.
+
+Your task is to create an algorithm that makes the most accurate looking copy of the Source by only using the pixels in the Palette. Each pixel in the Palette must be used exactly once in a unique position in this copy. The copy must have the same dimensions as the Source.
+
+-- <a href="https://codegolf.stackexchange.com/questions/33172/american-gothic-in-the-palette-of-mona-lisa-rearrange-the-pixels">American Gothic in the palette of Mona Lisa: Rearrange the pixels</a>
+</blockquote>
+]]></summary><content type="html"><![CDATA[<p>Today's task comes from the <a href="https://codegolf.stackexchange.com/">Code Golf StackExchange</a>. The idea behind <a href="https://en.wikipedia.org/wiki/code_golf">code golf</a> is to write a program with as few characters as possible, often rendering the code nigh on unreadable. Luckily, the same StackExchange also host popularity contests, one of which is the inspiration behind today's post:</p>
+<blockquote>
+You are given two true color images, the Source and the Palette. They do not necessarily have the same dimensions but it is guaranteed that their areas are the same, i.e. they have the same number of pixels.
+
+Your task is to create an algorithm that makes the most accurate looking copy of the Source by only using the pixels in the Palette. Each pixel in the Palette must be used exactly once in a unique position in this copy. The copy must have the same dimensions as the Source.
+
+-- <a href="https://codegolf.stackexchange.com/questions/33172/american-gothic-in-the-palette-of-mona-lisa-rearrange-the-pixels">American Gothic in the palette of Mona Lisa: Rearrange the pixels</a>
+</blockquote>
+<!--more-->
+<p>Specifically for this post, we'll be using two source images, although for testing I had a whole pile more:</p>
+<table>
+    <tr>
+        <td>
+<a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa.png" /></a> <br />
+-- <a href="https://en.wikipedia.org/wiki/Mona_Lisa">Mona Lisa</a> by <a href="https://en.wikipedia.org/wiki/Leonardo_da Vinci">Leonardo da Vinci</a>, c. 1503-1506
+        </td><td>
+<a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream.png" /></a> <br />
+-- <a href="https://en.wikipedia.org/wiki/The_Scream">The Scream</a> by <a href="https://en.wikipedia.org/wiki/Edvard_Munch">Edvard Munch</a>, 1893
+        </td>
+    </tr>
+</table>
+<p>There are a bunch of different ways to solve this, but today we'll go through three of them:</p>
+<ul>
+    <li>Sort the colors in both images</li>
+    <li>Swap pixels until the image is 'close enough'</li>
+    <li>Fill in pixels greedily</li>
+</ul>
+<h2>Sort the colors in both images</h2>
+<p>The first algorithm sounds crazy until you try it. In psuedocode:</p>
+<ol>
+    <li>Create a list of pixels from each image</li>
+    <li>Sort the two lists by a given comparator</li>
+    <li>For each pair of pixels in the two lists, take the color from the target image and the location from the source image</li>
+</ol>
+<p>And that's actually it. It turns out the code is just about as simple, with most of the length going into loading and saving the images and format juggling. First, we want a way of representing pixels which in this context are a color and a location:</p>
+<pre class="scheme"><code>; A color with a location
+(struct pixel (x y c) #:transparent)
+
+; Sorting function based on grayscale value
+(define (pixel&lt;?/grayscale p1 p2)
+    (&lt; (apply + (flvector-&gt;list (pixel-c p1)))
+       (apply + (flvector-&gt;list (pixel-c p2)))))</code></pre>
+<p>We'll use <code>pixel&lt;?/grayscale</code> as a basic sorting function. It works well enough, although it could probably be tuned to more accurately model human vision.</p>
+<p>Next, the pièce de résistance:</p>
+<pre class="scheme"><code>; Recolor an image by sorting the pixels in both images
+(define (recolor/sort original-src target-src
+                      #:pixel&lt;? [pixel&lt;? pixel&lt;?/grayscale])
+  (define original (load-flomap original-src))
+  (define target (load-flomap target-src))
+
+  ; Generate a list of pixels in each image
+  (define (pixel-list fm)
+    (for*/list ([x (in-range (flomap-width fm))]
+                [y (in-range (flomap-height fm))])
+      (pixel x y (flomap-ref* fm x y))))
+
+  (define original-pixels (pixel-list original))
+  (define target-pixels (pixel-list target))
+
+  ; Sort both lists by the given sorting function
+  (define sorted-original-pixels (sort original-pixels pixel&lt;?))
+  (define sorted-target-pixels (sort target-pixels pixel&lt;?))
+
+  ; Build a map from source xy to list index to target color
+  (define transition-hash
+    (for/fold ([h (hash)])
+              ([original-pixel (in-list sorted-original-pixels)]
+               [target-pixel (in-list sorted-target-pixels)])
+      (hash-set h
+                (list (pixel-x original-pixel)
+                      (pixel-y original-pixel))
+                (pixel-c target-pixel))))
+
+  ; Build the new image from that transition matrix
+  (flomap-&gt;bitmap
+   (build-flomap*
+    (flomap-components original)
+    (flomap-width original) (flomap-height original)
+    (λ (x y)
+      (hash-ref transition-hash (list x y))))))</code></pre>
+<p>Going through the commented blocks, we have a fairly direct match for the psuedocode. One difference is because of the structure of the <code><a href="http://docs.racket-lang.org/search/index.html?q=build-flomap*">build-flomap*</a></code> function. Since it's expects a generator rather than allowing us to generate arbitrary points, it's easier to make a map first. Still, about the same.</p>
+<p>And when you apply it to the source images above?</p>
+<table>
+    <tr>
+        <td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_sort.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_sort.png" /></a>
+        </td><td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_sort.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_sort.png" /></a>
+        </td>
+    </tr>
+</table>
+<p>That's actually really cool. It's really interesting how sorting by the grayscale values ends up recoloring the images while preserving small details in the grain of the background. Very neat. Even cooler, it's wicked fast. Since sorting is one of the more well understood problems in computer science, there are well known algorithms to use. In this case, our runtime is probably <span>\( \mathcal{O}(n\log{}n) \)</span> (with <em>n</em> as the number of pixels), since that is the runtime for the sort and both loading and writing the image are  <span>\( \mathcal{O}(n) \)</span>.</p>
+<h2>Swap pixels until the image is 'close enough'</h2>
+<p>Okay, that was straight forward. Let's see if we can do something different. This time, let's just brute force the problem. Rather than systematically dealing with the entire image at once:</p>
+<ol>
+    <li>Scramble the pixels of the target image</li>
+    <li>Set <code>counter = 0</code></li>
+    <li>While <code>counter</code> &lt; <code>threshold</code>
+        <ol>
+            <li>Choose two random pixels</li>
+            <li>Calculate the 'error' of the image with the pixels at their current location, and the error with those two pixels swapped</li>
+            <li>If the swapped error is lower, swap the pixels and set <code>counter = 0</code>; otherwise, increment <code>counter</code></li>
+        </ol>
+    </li>
+</ol>
+<p>First, let's define an error function based on the distance between two colors in RGB space (again, there are better functions we could use here):</p>
+<pre class="scheme"><code>; Find the distance between two flvectors
+(define (fl-distance fl1 fl2)
+  (sqrt (for/sum ([a (in-vector (flvector-&gt;vector fl1))]
+                  [b (in-vector (flvector-&gt;vector fl2))])
+          (sqr (- a b)))))
+
+; Simple error function based on RGB distance
+(define (error/rgb-distance original-fm target-fm color-pixel location-pixel)
+    (match-define (pixel x y _) location-pixel)
+    (match-define (pixel _ _ c) color-pixel)
+    (fl-distance (flomap-ref* original-fm x y) c))</code></pre>
+<p>Using that, we can  the algorithm fairly directly into Racket:</p>
+<pre class="scheme"><code>; Recolor an image by randomly swapping pixels based on improving error
+(define (recolor/swap original-src target-src
+                      #:threshold [threshold 100]
+                      #:error-function [err error/rgb-distance])
+
+  (define original (load-flomap original-src))
+  (define target (load-flomap target-src))
+
+  (define width (flomap-width original))
+  (define height (flomap-height original))
+
+  ; Generate a 2d vector of pixels
+  (define pixels
+    (list-&gt;vector
+     (shuffle
+      (for*/list ([y (in-range (flomap-height target))]
+                  [x (in-range (flomap-width target))])
+        (flomap-ref* target x y)))))
+
+  ; Get/set a pixel in the pixel map
+  (define (get x y)
+    (pixel x y (vector-ref pixels (+ x (* width y)))))
+
+  (define (set! x y c)
+    (vector-set! pixels (+ x (* width y)) c))
+
+  ; Get a random pixel (sized from the original image)
+  (define (rnd) (get (random width) (random height)))
+
+  ; Keep swapping pixels until we get a certain number of non-swaps in a row
+  (let loop ([swap-count 0] [non-swap-count 0])
+    (define p1 (rnd))
+    (define p2 (rnd))
+
+    (cond
+      ; Haven't swapped recently, return the result
+      [(&gt;= non-swap-count threshold)
+       (flomap-&gt;bitmap
+        (build-flomap*
+         (flomap-components original)
+         (flomap-width original) (flomap-height original)
+         (λ (x y)
+           (pixel-c (get x y)))))]
+      ; Swap is better, swap and reset count
+      [(&lt; (+ (err original target p1 p2) (err original target p2 p1))
+          (+ (err original target p1 p1) (err original target p2 p2)))
+
+       (set! (pixel-x p1) (pixel-y p1) (pixel-c p2))
+       (set! (pixel-x p2) (pixel-y p2) (pixel-c p1))
+       (loop (+ swap-count 1) 0)]
+      ; Swap is worse, just count
+      [else
+       (loop swap-count (+ non-swap-count 1))])))</code></pre>
+<p>To start with, let's go for the default threshold of 100 consecutive errors:</p>
+<table>
+    <tr>
+        <td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-100.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-100.png" /></a>
+        </td><td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-100.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-100.png" /></a>
+        </td>
+    </tr>
+</table>
+<p>It's a little grainy, mostly because you actually get a random spike of 100 error free swaps fairly easily (it turns out 'random' isn't as uniform as most people think). Let's try cranking the threshold up to a thousand instead:</p>
+<table>
+    <tr>
+        <td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k.png" /></a>
+        </td><td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k.png" /></a>
+        </td>
+    </tr>
+</table>
+<p>That's a lot better for The Scream, but now the Mona Lisa is having some issues with the red in hear hair. It turns out there's a reasonable amount of brown, but too much red so they're both fairly close in grayscale distance. Perhaps a better error metric would work better.</p>
+<p>Also, it takes a lot longer. While sorting worked in seconds and 100 took about 30 seconds, 1000 took about 5 minutes per image. Especially in The Scream recolored, the different in quality is obvious, but the cost really isn't worth it when you compare to how just sorting the pixels did.</p>
+<p>Alternatively, you can try a different error function. For example, this one takes the weighted average of a 3x3 area rather than a single pixel (threshold = 1000).</p>
+<pre class="scheme"><code>; Slightly more complicated error function takes original image average into account
+(define (error/rgb-distance/average
+         original-fm target-fm
+         color-pixel location-pixel)
+  (match-define (pixel x y _) location-pixel)
+  (match-define (pixel _ _ c) color-pixel)
+  (fl-distance (flvector-scale
+                (foldl flvector+
+                       (flomap-ref* original-fm x y)
+                       (for*/list ([xd (in-range -1 2)] [yd (in-range -1 2)])
+                         (flomap-ref* original-fm (+ x xd) (+ y yd))))
+                (/ 1.0 9.0))
+               c))</code></pre>
+<table>
+    <tr>
+        <td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k-average.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k-average.png" /></a>
+        </td><td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k-average.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k-average.png" /></a>
+        </td>
+    </tr>
+</table>
+<p>Mostly, it just made it blurry. Which makes sense, since we're comparing regions rather than a single pixel, so edges are less heavily influential than they were. So it goes.</p>
+<h2>Fill in pixels greedily</h2>
+<p>The third and final option was actually the first one that I came up with:</p>
+<ol>
+    <li>Generate a list of all colors in the target image</li>
+    <li>For each pixel in the source image:
+        <ol>
+            <li>Find the most similar color in the target list</li>
+            <li>Place that color in the result</li>
+            <li>Remove it from the target list</li>
+        </ol>
+    </li>
+</ol>
+<p>As a <a href="https://en.wikipedia.org/wiki/greedy_algorithm">greedy algorithm</a>, it's theoretically fast but likely not optimal. What you end up getting is really good results for the first part of the image but increasingly bad results as the images diverge.</p>
+<p>One neat trick I did here was that I could have just run from the top of the image down. But that would have lost out on a lot of the detail from the center of the image. So instead, I used the <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/generator">racket/generator</a></code> library to make this neat gem:</p>
+<pre class="scheme"><code>; Spiral outwards from (0,0) in squares
+(define (in-spiral [radius +inf.0])
+  (in-generator
+    (yield (list 0 0))
+    (for ([r (in-range 1 radius)])
+      (yield (list (- r) (- r)))
+      (yield (list (- r) r))
+      (yield (list r (- r)))
+      (yield (list r r))
+      (for ([d (in-range (+ (- r) 1) r)])
+        (yield (list (- r) d))
+        (yield (list r     d))
+        (yield (list d (- r)))
+        (yield (list d r))))))</code></pre>
+<p>That's much more Pythonic than Rackety, but it does work. Essentially, you get a square spiral moving out from the origin, first every pixel with x or y 1 different from the origin, then 2, then 3, etc. Neat.</p>
+<p>Using that, we can  the psuedocode into Racket:</p>
+<pre class="scheme"><code>; Recolor an image finding the best pixels from the center out
+(define (recolor/fill/slow original-src target-src)
+  (define original (load-flomap original-src))
+  (define target (load-flomap target-src))
+
+  (define width (flomap-width original))
+  (define height (flomap-height original))
+
+  ; Generate a list of target colors
+  (define colors
+    (for*/list ([y (in-range (flomap-height target))]
+                [x (in-range (flomap-width target))])
+      (flomap-ref* target x y)))
+
+  ; Generate a 2d vector of pixels
+  (define result
+    (for*/vector ([y (in-range (flomap-height original))]
+                  [x (in-range (flomap-width original))])
+      #f))
+
+  ; Get/set a pixel in the pixel map
+  (define (result-get x y)
+    (vector-ref result (+ x (* width y))))
+
+  (define (result-set! x y c)
+    (vector-set! result (+ x (* width y)) c))
+
+  ; Spiral outwards from the center of the image
+  (for ([pt (in-spiral (+ 2 (quotient (max width height) 2)))])
+    ; Convert to image coordinates and verify that we're in the image
+    (define x (+ (first pt) (quotient width 2)))
+    (define y (+ (second pt) (quotient height 2)))
+    (when (and (&gt;= x 0) (&lt; x width) (&gt;= y 0) (&lt; y height))
+      ; Get the source color at that point
+      (define target-color (flomap-ref* original x y))
+
+      ; Choose the closest remaining color
+      (define-values (_ color)
+        (for/fold ([minimum-distance +inf.0] [best-color #f])
+                  ([color (in-list colors)])
+          (define new-distance (fl-distance target-color color))
+          (if (&lt; new-distance minimum-distance)
+              (values new-distance color)
+              (values minimum-distance best-color))))
+
+      ; Remove that color from the list to place, add it to the result
+      (set! colors (remove color colors))
+      (result-set! x y color)))
+
+  ; Turn that into a bitmap
+  (flomap-&gt;bitmap
+   (build-flomap*
+    (flomap-components original)
+    (flomap-width original) (flomap-height original)
+    result-get)))</code></pre>
+<p>That's pretty straight forward. The most interesting bit is probably the <code><a href="http://docs.racket-lang.org/search/index.html?q=for/fold">for/fold</a></code> in the middle. It's a quick way of finding the minimum value in a list where the value itself isn't what you're interested in. Another option would have been to <code>sort</code> with a custom sorting function, but that would in this case be slower (<span>\( \mathcal{O}(n) \)</span> versus <span>\( \mathcal{O}(n\log{}n) \)</span>).</p>
+<table>
+    <tr>
+        <td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_fill.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_fill.png" /></a>
+        </td><td>
+            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_fill.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_fill.png" /></a>
+        </td>
+    </tr>
+</table>
+<p>Okay, that's just weird. :) Basically, there are enough shared pixels in the two images that you can more or less reconstruct the center sections. After that though... All bets are off. You didn't get this in either of the previous solutions because in the sorting case, they ended up spread throughout similarly color regions while in swapping they just didn't move from where they started.</p>
+<p>Also, there's another problem. It's slow. Since this was actually the first thing that I worked on, I did wanit to take a little bit of time to make it faster:</p>
+<h2>Filling pixels: Data structures strike back</h2>
+<p>The main problem with the fill solution is that for each pixel <span>\( \mathcal{O}(n) \)</span>, you're going to run through every pixel in the target image (another <span>\( \mathcal{O}(n) \)</span>), resulting in an <span>\( \mathcal{O}(n^2) \)</span> runtime. Not particularly great. Especially because we shouldn't have to scan through the entire list (or even the average of half of it) to find the closest matching pixel.</p>
+<p>Instead, we should be able to do something like a <a href="https://en.wikipedia.org/wiki/binary_search">binary search</a>:</p>
+<ol>
+    <li>Start with a lower and upper bound of the entire list</li>
+    <li>Until we find the closest color:
+        <ol>
+            <li>Find the midpoint of the current bounds</li>
+            <li>If the target color is 'less than' that, set the upper bound to the midpoint, otherwise set the lower bound to the midpoint</li>
+            <li>Repeat</li>
+        </ol>
+    </li>
+</ol>
+<p>If we could get something like that working, we would only need <span>\( \mathcal{O}(\log{}n) \)</span> per lookup, reducing the runtime to the same as the <code>recolor/sort</code> method. And... it turns out that Racket has just the sort of data strucure we need: a <a href="https://en.wikipedia.org/wiki/splay_tree">splay tree</a>. Specifically, a splay tree is a binary tree (enabling binary search), that self-adjusts (to avoid worst case badly unbalanced trees), which has the additional property of making recently accessed elements quick to access. That's helpful in this case, since we'll have blocks of similar colors, which are close in the tree. Neat!</p>
+<p>In Racket, to build a splay tree, we need to set up a couple of things in the <code><a href="http://docs.racket-lang.org/search/index.html?q=data/order">data/order</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=data/splay-tree">data/splay-tree</a></code> modules:</p>
+<pre class="scheme"><code>; Find the distance between two flvectors
+(define (fl-distance fl1 fl2)
+  (sqrt (for/sum ([a (in-vector (flvector-&gt;vector fl1))]
+                  [b (in-vector (flvector-&gt;vector fl2))])
+          (sqr (- a b)))))
+
+; Test if two flvectors are equal
+(define (flvector=? flv1 flv2)
+  (not (for/first ([v1 (in-flvector flv1)]
+                   [v2 (in-flvector flv2)]
+                   #:when (not (= v1 v2)))
+         #t)))
+
+; Test if one flvector is less than another by comparing each channel in order
+(define (flvector&lt;? flv1 flv2)
+  (for/first ([v1 (in-flvector flv1)]
+              [v2 (in-flvector flv2)]
+              #:when (not (= v1 v2)))
+    (&lt; v1 v2)))</code></pre>
+<p>Then, when loading the colors instead of building a list, we can make the splay tree:</p>
+<pre class="scheme"><code>; Generate a list of target colors
+(define colors
+  (make-splay-tree
+   (order 'pixel-grayscale-order
+          flvector?
+          flvector=?
+          flvector&lt;?)))
+
+(for* ([y (in-range (flomap-height target))]
+       [x (in-range (flomap-width target))])
+
+  (define color (flomap-ref* target x y))
+  (define count (+ 1 (splay-tree-ref colors color 0)))
+  (splay-tree-set! colors color count))</code></pre>
+<p>One thing we didn't have to do earlier was to keep track of counts for each pixel. In a list, we just duplicated the elements, for the splay tree this won't work as well.</p>
+<p>Then, in the <code>recolor/fill</code> method, we tweak the color choosing function (previously the <code>for/fold</code>):</p>
+<pre class="scheme"><code>...
+
+; Get the source color at that point
+(define target-color (flomap-ref* original x y))
+
+; Choose the closest remaining color
+(define iter/&gt;= (splay-tree-iterate-least/&gt;=? colors target-color))
+(define iter/&lt;= (splay-tree-iterate-greatest/&lt;=? colors target-color))
+
+(define color
+  (cond
+    [(and iter/&gt;= iter/&lt;=)
+     (define c1 (splay-tree-iterate-key colors iter/&gt;=))
+     (define c2 (splay-tree-iterate-key colors iter/&lt;=))
+     (if (&lt; (fl-distance target-color c1)
+            (fl-distance target-color c2))
+         c1
+         c2)]
+    [iter/&gt;= (splay-tree-iterate-key colors iter/&gt;=)]
+    [iter/&lt;= (splay-tree-iterate-key colors iter/&lt;=)]))
+
+(define count (splay-tree-ref colors color))
+(if (= count 1)
+    (splay-tree-remove! colors color)
+    (splay-tree-set! colors color (- count 1)))
+
+(result-set! x y color)
+
+...</code></pre>
+<p>The method for finding the smallest element greater than / largest less than a given element that isn't actually in the tree is a little weird, but it works out in the end. That's one nice thing about how crosslinked all of the Racket documentation is, I could just keep looking until I found the functions that I needed.</p>
+<p>Give this a run... And it's a <em>lot</em> faster. Rather than an hour or more to run, it takes only seconds. It's a little bit slower than the sort (since the data structure is a little more complicated), but well within the same order of runtime.</p>
+<p>Yet more evidence that perhaps you should pay attention in data structures class. :)</p>
+<h2>Conclusion</h2>
+<p>And, that's it. That was a lot of fun to work out. I really love how the simplest algorithm is also the fastest and has arguably the best results (at least for these two images). So cool!</p>
+<p>If you would like to check out the source code for today's post, you can do so here: <a href="https://github.com/jpverkamp/small-projects/tree/master/blog/palette-swap">palette-swap</a>. If you place multiple PNG images with the same number of pixels (aspect ratios don't matter) in the <code>input</code> subdirectory and run <code>test.rkt</code> it will generate a whole pile of images like you've seen here.</p>]]></content></entry><entry><title>NaNoWriMo 2014 Winner!</title><link href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner" /><id>urn:uuid:7f3cf84a-23c9-507d-b94e-0a28ebc04ae7</id><updated>2014-11-30T00:00:00Z</updated><summary type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg"><img src="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg" /></a></p>
 <p>Just under the wire this year.</p>
 ]]></summary><content type="html"><![CDATA[<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg"><img src="http://blog.jverkamp.com/2014/11/30/nanowrimo-2014-winner/2014-Winner-NaNoWriMo.jpg" /></a></p>
 <p>Just under the wire this year.</p>
@@ -375,194 +782,4 @@ import itertools
 <p>Edge of Tomorrow (aka Live Die Repeat<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>) is a surprisingly solid movie. Looking back, I would say that it's probably Tom Cruise's best film in more than a decade--heck, I might even put it above Minority Report, in which case I'd actually call it his best film ever.</p>
 <p>The aliens are downright alien--and pretty cool looking--the effects are well done, and the Groundhog Day applied to war<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> concent works out really well. But what really carried the movie were <a href="http://www.imdb.com/name/nm0000129/?ref_=tt_cl_t1">Tom Cruise</a> and <a href="http://www.imdb.com/name/nm1289434/?ref_=tt_cl_t2">Emily Blunt</a>. Lovely performances.</p>
 <p>If you're looking for a solid sci-fi action flick with a touch of what-if inducing thought behind the scenes, you could do far worse than Edge of Tomorrow. I really wish that I'd gotten a chance to see it in theaters. It seems like exactly the sort of movie that would benefit from the big screen treatment.</p>
-<div><h3 class="ranking-title">2014 Movie Rankings</h3><ol><li><a href="http://blog.jverkamp.com/2014/02/15/the-lego-movie">The Lego Movie</a></li><li><a href="http://blog.jverkamp.com/2014/04/05/captain-america-the-winter-soldier">Captain America: The Winter Soldier</a></li><li><a href="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd">Edge of Tomorrow (DVD)</a></li><li><a href="http://blog.jverkamp.com/2014/08/05/guardians-of-the-galaxy">Guardians of the Galaxy</a></li><li><a href="http://blog.jverkamp.com/2014/06/08/x-men-days-of-future-past">X-Men: Days of Future Past</a></li><li><a href="http://blog.jverkamp.com/2014/06/14/maleficent">Maleficent</a></li><li><a href="http://blog.jverkamp.com/2014/07/26/lucy">Lucy</a></li><li><a href="http://blog.jverkamp.com/2014/05/10/the-amazing-spider-man-2">The Amazing Spider-Man 2</a></li><li><a href="http://blog.jverkamp.com/2014/03/29/divergent">Divergent</a></li></ol></div>]]></content></entry><entry><title>Tile Puzzle</title><link href="http://blog.jverkamp.com/2014/10/28/tile-puzzle" /><id>urn:uuid:073afc5c-1121-544c-5879-486d124edb3c</id><updated>2014-10-28T00:00:00Z</updated><summary type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
-<p>If you look carefully, the tiles are the same between the two, although they might be rotated.</p>
-]]></summary><content type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
-<p>If you look carefully, the tiles are the same between the two, although they might be rotated.</p>
-<!--more-->
-<p>Okay, let's start at the beginning. How are we going to represent a puzzle? Well, let's go with the same basic idea that was described in the original post: sets of four letters (in the order north, east, south, west), one for each tile. Furthermore, the letters represent color. Originally CMYK for cyan, magenta, yellow, and black, but we'll also add RGB for red, green, and blue (it's easy enough to add colors). Next, we'll use upper case and lower case letters in order to represent the two halves of a matching image.</p>
-<p>So take the unsolved image above:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a></p>
-<p>The first tile would be described as <code>cymK</code> for three circles and one rectangle. Continuing on, the entire puzzle would be:</p>
-<pre class="scheme"><code>'("cymK" "KyCy" "ymkc" "mkYc" "MycK" "mCkY" "cmKY" "KYmC" "McMk")</code></pre>
-<p>Now we'll want two helper functions:</p>
-<pre class="scheme"><code>; Insert an item into the given location in a list
-(define (insert-at ls item x)
-  (for/list ([i (in-naturals)]
-             [el (in-list ls)])
-    (if (= x i) item el)))
-
-; Return a list of all rotated versions of a string
-(define (rotations str)
-  (for/list ([i (in-range (string-length str))])
-    (string-append (substring str i) (substring str 0 i))))</code></pre>
-<p>Specifically, the first function allows us to insert a tile into a specified location in a list, while the second returns all possible rotations of our four character string. All around, things are going to be a little inefficient because we're working with lists rather than directly accessing something like a vector, but since the size of the puzzle is so small, the cost for these functions will be relatively cheap (especially compared to the crazy number of possible orderings of the tiles).</p>
-<p>Okay, with that, we actually have enough of a framework to work out our solution. The basic plan of attack will be very much the same as when we worked on the <a href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens">N Queens Puzzle</a>. Place each piece in order, backtracking as soon as we see a valid solution. This way we can cut out huge swaths of the potential solution space.</p>
-<pre class="scheme"><code>; Solve a puzzle by ordering pieces so that they match
-(define (solve puzzle)
-  ; Start with an empty solution space (all null) and a list of pieces to place
-  (let loop ([solution (make-list (length puzzle) "\0\0\0\0")]
-             [to-place puzzle]
-             [index    0])
-    (cond
-      ; If we've filled in all of the pieces, we have a solution
-      [(= index (length puzzle))
-       solution]
-      ; Otherwise, try each piece, only recurring for those that fit
-      ; Return the first that solves the puzzle from here,
-      ; by recursion this will be a full solution
-      [else
-       (for*/first ([next-item (in-list to-place)]
-                    [next-item-rotated (in-list (rotations next-item))]
-                    [next-puzzle (in-value (insert-at solution
-                                                      next-item-rotated
-                                                      index))]
-                    #:when (valid? next-puzzle)
-                    [recur (in-value (loop next-puzzle
-                                           (remove next-item to-place)
-                                           (+ index 1)))]
-                    #:when recur)
-         recur)])))</code></pre>
-<p>Basically there are two interesting parts: the <code>let loop</code> and the <code>for*/first</code> block. The main <code>loop</code> is the primary bit of the recursion. At any particular step, we have the solution that we've built thus far. We'll start with all <code>\0</code> strings (which we'll special case in <code>valid?</code>) and then fill in puzzle pieces one at a time. <code>to-place</code> will hold the pieces we've yet to place. The <code>index</code> is used primarily to insert new pieces at the proper location.</p>
-<p>Next, we have the <code>for*/first</code> loop. This is designed to clean up the search, basically by returning the first recursion that makes it through all of the lists and conditionals. Specifically, we're going to do all of the following:</p>
-<ul>
-  <li>Loop through all remaining pieces to place as <code>next-item</code></li>
-  <li>For each piece, try each rotation in turn</li>
-  <li>Generate the <code>next-puzzle</code> by inserting that piece</li>
-  <li>Check that the new insertion is <code>valid?</code></li>
-  <li>Recur with the newly placed piece removed</li>
-  <li>If there's a valid solution, continue to the body of the loop (and thus return, since we're looking for the <code>first</code>)</li>
-</ul>
-<p>All that combines (with the power of recursion!) to solve the puzzle:</p>
-<pre class="scheme"><code>&gt; (solve '("cymK" "KyCy" "ymkc"
-           "mkYc" "MycK" "mCkY"
-           "cmKY" "KYmC" "McMk"))
-'("cymK" "mCkY" "ymkc"
-  "McMk" "KYmC" "KyCy"
-  "mkYc" "MycK" "cmKY")</code></pre>
-<p>Of course that's a little hard to see what in the world is going on. Let's write a few functions using Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=pict">pict</a></code> library. First, a <code><a href="http://docs.racket-lang.org/search/index.html?q=parameter">parameter</a></code> to control how large each tile will be and a pair of functions to decode the letters into colors / shapes:</p>
-<pre class="scheme"><code>(define current-tile-size (make-parameter 50))
-
-(define (char-&gt;color c)
-  (case c
-    [(#\R #\r) "red"]
-    [(#\G #\g) "green"]
-    [(#\B #\b) "blue"]
-    [(#\C #\c) "cyan"]
-    [(#\M #\m) "magenta"]
-    [(#\Y #\y) "yellow"]
-    [(#\K #\k) "black"]
-    [else      "white"]))
-
-(define (char-&gt;shape c)
-  (case c
-    [(#\R #\G #\B #\C #\M #\Y #\K) filled-rectangle]
-    [(#\r #\g #\b #\c #\m #\y #\k) filled-ellipse]
-    [(#\null)                      (λ _ (filled-rectangle 0 0))]))</code></pre>
-<p>With those, we can render an individual tile:</p>
-<pre class="scheme"><code>; Render a single tile given a four character specifier
-; Order is top, right, bottom, left
-; Colors are cyan, magenta, yellow, red, green, blue, black (k for black)
-; Uppercase are square, lowercase are circular
-(define (render-tile tile)
-  (match-define (list top right bottom left) (string-&gt;list tile))
-
-  ; Size of the individual images
-  (define quad-size (quotient (current-tile-size) 3))
-
-  ; Offsets for pinning, zero/half/full size adjusted for quad size
-  (define zs (- (quotient quad-size 2)))
-  (define hs (- (quotient (current-tile-size) 2) (quotient quad-size 2)))
-  (define fs (- (current-tile-size) (quotient quad-size 2)))
-
-  ; Helper function to render a specific shape of the specific color
-  (define (shape c)
-    (colorize ((char-&gt;shape c) quad-size quad-size)
-              (char-&gt;color c)))
-
-  ; Construct the image by layering each of the four sides on the base
-  (let* ([pict (rectangle (current-tile-size) (current-tile-size))]
-         [pict (pin-under pict hs zs (shape top))]
-         [pict (pin-under pict fs hs (shape right))]
-         [pict (pin-under pict hs fs (shape bottom))]
-         [pict [pin-under pict zs hs (shape left)]])
-    (clip pict)))</code></pre>
-<p>One part that took a bit here was getting the <code>zs</code>, <code>hs</code>, and <code>fs</code> functions correct. Since coordinates are based on the top left corner of each subimage, we need to correctly offset by half of the image sizes for each of the halfway points. Also, make sure you use the <code><a href="http://docs.racket-lang.org/search/index.html?q=clip">clip</a></code> function. It will look fine with just a single tile if you do not use it, but once you start merging them... Strange things happen.</p>
-<p>Demo time:</p>
-<pre class="scheme"><code> &gt; (render-tile "cymK") </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png" /></a></p>
-<p>Nice!</p>
-<p>Next, we can combine the <code>picts</code> into a single larger <code>pict</code>:</p>
-<pre class="scheme"><code>; Render a puzzle of multiple tiles
-; Puzzles are assumed to be square
-(define (render puzzle)
-  (define width (integer-sqrt (length puzzle)))
-
-  (define tiles
-    (for/list ([y (in-range width)])
-      (for/list ([x (in-range width)])
-        (render-tile (list-ref puzzle (+ x (* y width)))))))
-
-  (define rows
-    (map (λ (row) (apply (curry hc-append -1) row)) tiles))
-
-  (apply (curry vc-append -1) rows))</code></pre>
-<p>Bam:</p>
-<pre class="scheme"><code>&gt; (render (solve '("cymK" "KyCy" "ymkc"
-                   "mkYc" "MycK" "mCkY"
-                   "cmKY" "KYmC" "McMk")))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
-<p>Neat! We can try it on larger puzzles as well:</p>
-<p>...</p>
-<p>Okay, that takes a really long time. Perhaps a 4x4 with more colors (more colors is actually easier to solve since there are less valid placements for each tile):</p>
-<pre class="scheme"><code>&gt; (define p4x4 (random-puzzle 4 #:colors 7))
-&gt; p4x4
-'("yyMY" "mCKM" "Cgrr" "BMMy"
-  "MrYB" "mGYK" "BRyG" "gRmc"
-  "KCCm" "cyby" "mYbY" "BMcB"
-  "Bmbm" "kbrr" "MkYc" "ybGY")
-&gt; (render p4x4)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png" /></a></p>
-<pre class="scheme"><code>&gt; (define p4x4-solution (solve p4x4))
-&gt; p4x4-solution
-'("rCgr" "BBMc" "YmYb" "yBMM"
-  "GBRy" "mBmb" "ycyb" "mKCC"
-  "rkbr" "MmCK" "YyyM" "cMkY"
-  "BMrY" "cgRm" "YybG" "KmGY")
-&gt; (render p4x4-solution)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png" /></a></p>
-<p>Shiny. :)</p>
-<p>For those interested, here's how I generated random puzzles:</p>
-<pre class="scheme"><code>; Generate random puzzles
-(define (random-puzzle size #:colors [colors 4])
-  ; Generate n+1 intersections (including those off the edges)
-  ; Each value is the top left corner of a tile with the right then down edge
-  (define intersections
-    (for/list ([y (in-range (+ size 1))])
-      (for/list ([x (in-range (+ size 1))])
-        (for/list ([which (in-list '(right down))])
-          (list (string-ref "CMYKRGB" (random (min colors 7)))
-                (if (= 0 (random 2)) 'normal 'inverse))))))
-
-  (define (@ x y w invert?)
-    (match-define (list char mode)
-      (list-ref (list-ref (list-ref intersections y) x)
-                (if (eq? w 'right) 0 1)))
-
-    ((if (xor invert? (eq? mode 'inverse))
-         char-downcase
-         identity)
-     char))
-
-  ; Fill out the tiles
-  (shuffle
-   (for*/list ([y (in-range size)]
-               [x (in-range size)])
-     (string (@ x       y       'right #f)
-             (@ (+ x 1) y       'down  #f)
-             (@ x       (+ y 1) 'right #t)
-             (@ x       y       'down  #t)))))</code></pre>
-<p>And that's it. Surprisingly simple<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> to solve, a little more to render. I love problems like this. :)</p>
-<p>If you really want to go off the deep end though and, go download the full source from GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tile-puzzles.rkt">tile-puzzles.rkt</a>). Therein lies solutions for using <a href="https://en.wikipedia.org/wiki/simulated_annealing">simulated annealing</a> or <a href="https://en.wikipedia.org/wiki/genetic_algorithms">genetic algorithms</a> in an effort to solve the problem more <a href="https://en.wikipedia.org/wiki/heurisitically">heurisitically</a>, but neither is working particularly well as of yet. If you want to take one of those and finish it up, I'd love to see it.</p>]]></content></entry></feed>
+<div><h3 class="ranking-title">2014 Movie Rankings</h3><ol><li><a href="http://blog.jverkamp.com/2014/02/15/the-lego-movie">The Lego Movie</a></li><li><a href="http://blog.jverkamp.com/2014/04/05/captain-america-the-winter-soldier">Captain America: The Winter Soldier</a></li><li><a href="http://blog.jverkamp.com/2014/10/28/edge-of-tomorrow-dvd">Edge of Tomorrow (DVD)</a></li><li><a href="http://blog.jverkamp.com/2014/08/05/guardians-of-the-galaxy">Guardians of the Galaxy</a></li><li><a href="http://blog.jverkamp.com/2014/06/08/x-men-days-of-future-past">X-Men: Days of Future Past</a></li><li><a href="http://blog.jverkamp.com/2014/06/14/maleficent">Maleficent</a></li><li><a href="http://blog.jverkamp.com/2014/07/26/lucy">Lucy</a></li><li><a href="http://blog.jverkamp.com/2014/05/10/the-amazing-spider-man-2">The Amazing Spider-Man 2</a></li><li><a href="http://blog.jverkamp.com/2014/03/29/divergent">Divergent</a></li></ol></div>]]></content></entry></feed>
