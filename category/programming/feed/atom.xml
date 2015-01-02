@@ -1,5 +1,389 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2014-12-23T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Palette Swapping</title><link href="http://blog.jverkamp.com/2014/12/23/palette-swapping" /><id>urn:uuid:fdbf6642-e8d9-7544-30ed-156ee3de7f6d</id><updated>2014-12-23T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today's task comes from the <a href="https://codegolf.stackexchange.com/">Code Golf StackExchange</a>. The idea behind <a href="https://en.wikipedia.org/wiki/code_golf">code golf</a> is to write code with as few characters as possible, often rendering it nigh on unreadable. Luckily, the same StackExchange also host popularity contests, one of which is the inspiration behind today's post:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-01-01T00:10:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Generating omnichromatic images</title><link href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images" /><id>urn:uuid:f0391a98-c064-56fb-c8aa-b1b2cfcb9966</id><updated>2015-01-01T00:10:00Z</updated><summary type="html"><![CDATA[<p>Inspired half by a <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">post on the Code Golf StackExchange</a> and half by the corresponding website <a href="http://allrgb.com/">allrgb.com</a>, today's post tasks us with making images like this:</p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" /></a></p>
+<p>So what's so interesting about that picture?</p>
+]]></summary><content type="html"><![CDATA[<p>Inspired half by a <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">post on the Code Golf StackExchange</a> and half by the corresponding website <a href="http://allrgb.com/">allrgb.com</a>, today's post tasks us with making images like this:</p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" /></a></p>
+<p>So what's so interesting about that picture?</p>
+<!--more-->
+<p>Well, at 256x128, there are 32,768 pixels in that image. And all 32,768 are different.</p>
+<p>What's really interesting about this is that there are all sorts of possible ways to do this. That's sort of the entire point behind <a href="http://allrgb.com/">allrgb.com</a>, although in that case, you are generating 4096x4096 images containing <em>all</em> RGB images (with one byte each for red, green, and blue). Perhaps by the end of the post, we can generate one of those giant images.</p>
+<p>When I first started out, I had a few ideas for the images that I wanted to generate. Then a few more. Then even more. Each time I added more, I wanted to see how it would combine with each of the previous. As I added more and more, that got increasingly complicated. So instead, I decided to split all of the algorithms that I was writing into two halves:</p>
+<ul>
+  <li>Color producers - generate a list of unique colors in some specified order</li>
+  <li>Location producers - generate a list of locations within the target image to place each color produced by a color producer</li>
+</ul>
+<p>Specifically, a producer is something that I can use with <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code>. A thunk (a function of no arguments) that I can call over and over again that will return a new item with each call. In the case of color producers, I will be returning a vector of ARGB colors in the range <code>[0.0, 1.0]</code> (for use with the <code><a href="http://docs.racket-lang.org/search/index.html?q=images/flomap">images/flomap</a></code> module). In the case of location producers, the returned value will be a <code>(struct pt (x y))</code>.</p>
+<p>This way, I can make a new color producer and almost immediately see how it looked with all of the location producers (and vice versa). Neat, no?</p>
+<p>To do that, I made a module each for colors and locations. For each then, I defined code something like this:</p>
+<pre class="scheme"><code>(provide list-rgb-producers
+         get-rgb-producer
+         in-rgb-producers)
+
+; Interface to export all known rgb producers
+(define rgb-producers (make-hash))
+
+(define (list-rgb-producers) (hash-keys rgb-producers))
+(define (get-rgb-producer name) (hash-ref rgb-producers name))
+(define (in-rgb-producers) (in-hash rgb-producers))
+
+(define-syntax-rule (define-rgb-producer (name count) body ...)
+  (let ()
+    (define (name count) body ...)
+    (hash-set! rgb-producers 'name name)))</code></pre>
+<p>The basic idea is that internally, I will store a list of producers which I can easily define with my custom macro (<code>define-rgb-producer</code> in this case). Then when I want to use the module, I can use one of the three exported functions:</p>
+<ul>
+  <li><code>list-rgb-producers</code> - get a list of names of defined producers</li>
+  <li><code>get-rgb-producer</code> - get a specific producer by name (especially helpful if I want to base one off of another internally)</li>
+  <li><code>in-rgb-producers</code> - a thin wrapper around <code>in-hash</code> to return both the name and function for each defined producer in turn</li>
+</ul>
+<p>Everything else, including all of the functions themselves I can define privately. That way, we can write our testing code using <code>in-rgb-producers</code> and have it automatically generate all new variants no matter what we add. Neat!</p>
+<h2>Color producers</h2>
+<p>Okay, let's get to the meat of the situation now. First, let's define a whole series of color producers. Since we need a location producer to actually render these, let's assume we have an <code>order-producer</code> that runs left to right, top to bottom. <code>reading</code> order, as it were (we'll define it in the next section).</p>
+<p>First thought, let's just run directly through the RGB color space:</p>
+<pre class="scheme"><code>; Move evenly through the RGB color space
+(define-rgb-producer (sequential-noskip count)
+  (generator ()
+    (for ([i (in-range 256^3)])
+      (yield (-&gt;rgb i)))))
+
+; Convert an integer [0, 256^3) into an ARGB flvector
+(define (-&gt;rgb n)
+  (define (-&gt;1.0 n) (/ n 256.0))
+  (vector 1.0
+          (-&gt;1.0 (bitwise-and (arithmetic-shift n -16) 255))
+          (-&gt;1.0 (bitwise-and (arithmetic-shift n -8) 255))
+          (-&gt;1.0 (bitwise-and (arithmetic-shift n -0) 255))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential-noskip_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential-noskip_400x200.png" /></a></p>
+<p>Nice and simple. We're using a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code> despite the performance problems mostly because they make the code so nice and clean. Also, especially once we get to the more complicated location generation code, the algorithmic complexity is going to dwarf the cost of a generator anyways...</p>
+<p>Simple enough, but it has one major disadvantage. Because we're working in RGB, but only using 0.1% of the color space (20 thousand of the available 16 million colors), everything is blue. That's because since we're only changing the low bits, we change the blue value first (0-255). Green changes as well, but much slower, only getting up to around 80. Oops. So instead, let's skip enough colors each time so we go through the entire color space:</p>
+<pre class="scheme"><code>; Move evenly through the RGB color space
+(define-rgb-producer (sequential count)
+  (define increment (quotient 256^3 count))
+  (generator ()
+    (for ([i (in-range 0 256^3 increment)])
+      (yield (-&gt;rgb i)))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential_400x200.png" /></a>.</p>
+<p>Much better. This time we have a reasonable sampling of colors. Well... sort of. This time we have the opposite problem. Now instead of too much blue, we have less blue, more red and green. This time, the problem is that since we're changing the most in the low bits, we're skipping over a lot of the possible values for blue in each pixel, using all of the red values and still only some of the green. What we really want to do is iterate through each of the three channels, skipping the same amount for each:</p>
+<pre class="scheme"><code>; Cascade through red, then green, then blue
+(define-rgb-producer (cascade count)
+  (define increment (inexact-&gt;exact (floor (/ 256 (expt count 1/3)))))
+  (generator ()
+    (for* ([r (in-range 0 256 increment)]
+           [g (in-range 0 256 increment)]
+           [b (in-range 0 256 increment)])
+      (yield (-&gt;rgb (+ r (* 256 g) (* 256 256 b)))))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_cascade_400x200.png" /></a></p>
+<p>One problem is that unless you have a specific power, this isn't quite going to give you an even split, but it's certainly better than the previous examples.</p>
+<p>Another idea would be to make use of <a href="https://en.wikipedia.org/wiki/gray_codes">gray codes</a>, rather than directly use the indicies. Also known as a reflected binary code, the idea of a gray code is that between any two values, you change only one bit. This has two advantages. First, gray codes avoid the sudden change we have in previous images where we go from the end of one iteration to the beginning of the next. Second, gray codes essentially form a <a href="https://en.wikipedia.org/wiki/space_filling curve">space filling curve</a>. If you have a power of 2, <em>n</em> gray codes will cover the same space as <em>n</em> sequential values, just in a different order. Let's see what that means for our color generation:</p>
+<pre class="scheme"><code>(define (-&gt;gray-code i)
+  (bitwise-xor (arithmetic-shift i 1) i))
+
+; Generate codes using gray codes
+(define-rgb-producer (gray-code-noskip count)
+  (generator ()
+    (for ([i (in-range 256^3)])
+      (yield (-&gt;rgb (-&gt;gray-code i))))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code-noskip_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code-noskip_400x200.png" /></a></p>
+<pre class="scheme"><code>(define-rgb-producer (gray-code count)
+  (define increment (quotient 256^3 count))
+  (generator ()
+    (for ([i (in-range 0 256^3 increment)])
+      (yield (-&gt;rgb (-&gt;gray-code i))))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" /></a></p>
+<p>As before, if you don't skip you get change mostly in the lowest/blue channel with a slower change in the green. None at all in the red. If you skip around though, you get exactly the pattern we're looking for, smooth changes uniformly through the entire color space. Nice!</p>
+<p>Last but not least, let's through all this nice theoretically color space stuff out the window. Random colors for the win!</p>
+<pre class="scheme"><code>; Randomly generate colors (regenerating on duplicates)
+(define-rgb-producer (randomly count)
+  (define used (make-hasheq))
+  (λ ()
+    (for*/first ([_ (in-naturals)]
+                 [new-color (in-value (random 256^3))]
+                 #:when (not (hash-has-key? used new-color)))
+      (hash-set! used new-color #t)
+      (-&gt;rgb new-color))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_randomly_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_randomly_400x200.png" /></a></p>
+<p>Optimally, I'd like to call that one <code>random</code>, but that would shadow the call to <code>random</code> made to actually choose a color. Can't very well do that, now can we?</p>
+<p>Also, this one has a major performance problem, especially with larger images. Can you guess what it is?</p>
+<h2>Location producers</h2>
+<p>Okay, enough with the color generation. That should be enough for the moment. Let's instead move on to location producers. First, we'll start with the simple one we've been actually using all along:</p>
+<pre class="scheme"><code>; Left to right, top to bottom
+(define-order-producer (reading width height get-new-color get-color-at)
+  (generator ()
+    (for* ([y (in-range height)] [x (in-range width)])
+      (yield (pt x y)))))</code></pre>
+<p>Simple enough. That generates the images we've seen above:</p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" /></a></p>
+<p>This time, you may have noticed a few more parameters. Specifically, this time we care about not just how many colors to generate, but also the size of the iamge we're going to put them in. Likewise, in some of the later functions, we're going to want to determine which color we're about to place (generated from the color producers) and what neighbors we're about to place it nearby. In the next section, we'll have to show how we came to those last two functions / parameters.</p>
+<p>How about next, we spiral from a central point outwards. This is similar to the <code>in-spiral</code> function I defined in the post on <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping">palette swapping</a>, only this time we'll use a <a href="https://en.wikipedia.org/wiki/Queue_(abstract_data_type)">queue</a> rather than a generator:</p>
+<pre class="scheme"><code>; Spiral from the center point outwards
+(require data/queue)
+
+(define-order-producer (spiral width height get-new-color get-color-at)
+  (define q (make-queue))
+  (enqueue! q (pt (quotient width 2) (quotient height 2)))
+
+  (define (in-bounds? p)
+    (match-define (pt x y) p)
+    (and (&gt;= x 0) (&lt; x width)
+         (&gt;= y 0) (&lt; y height)))
+
+  (λ ()
+    (let loop ()
+      (define next (dequeue! q))
+      (cond
+        [(or (not (in-bounds? next)) (get-color-at next #f)) (loop)]
+        [else
+         (match-define (pt x y) next)
+         (for* ([xd (in-range -1 2)] [yd (in-range -1 2)])
+           (enqueue! q (pt (+ x xd) (+ y yd))))
+         next]))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/spiral_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/spiral_gray-code_400x200.png" /></a></p>
+<p>Not very functional code, but it certainly does work. The beauty of using a queue here is that by processing each pixel in the order it was added, we will do each layer in turn. As we do each layer, the next is added to the end of the queue. It's arguable which code is cleaner between this and <code>in-spiral</code>.</p>
+<p>Neat. Okay, how about we take that code one step further. Rather than generating a single square, how about we generate a seed square randomly in the image, expanding it until we hit the edge. Once we do, generate another square, repeating over and over again with smaller and smaller seeds. Something like this:</p>
+<pre class="scheme"><code>; Generate random squares each until they hit an edge or another square
+(define-order-producer (square-fill width height get-new-color get-color-at)
+  (define q (make-queue))
+  (enqueue! q (pt (random width) (random height)))
+
+  (define this-square (make-hash))
+
+  (define (in-bounds? p)
+    (match-define (pt x y) p)
+    (and (&gt;= x 0) (&lt; x width)
+         (&gt;= y 0) (&lt; y height)))
+
+  (λ ()
+    (let loop ()
+      (define next (dequeue! q))
+      (cond
+        ; Already set, try again with this square
+        [(hash-has-key? this-square next)
+         (loop)]
+        ; Out of bounds or already set, seed a new square
+        [(or (not (in-bounds? next))
+             (get-color-at next #f))
+
+         (queue-filter! q (const #f))
+         (hash-clear! this-square)
+
+         (enqueue! q (pt (random width) (random height)))
+         (loop)]
+        ; Otherwise, return that point and queue up its neighbors
+        [else
+         (match-define (pt x y) next)
+         (for* ([xd (in-range -1 2)] [yd (in-range -1 2)])
+           (enqueue! q (pt (+ x xd) (+ y yd))))
+         (hash-set! this-square next #t)
+         next]))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/square-fill_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/square-fill_gray-code_400x200.png" /></a></p>
+<p>This is actually one algorithm where the more abrupt changes of the <code>cascade</code> algorithm really look neat:</p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/square-fill_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/square-fill_cascade_400x200.png" /></a></p>
+<p>Next, let's take a similar idea, but instead of squares, let's go back to something I posted about all of the way in 2012: <a href="http://blog.jverkamp.com/2012/09/27/html5-bugs">random walk / bugs</a>.</p>
+<p>Basically, start with a seed as before. This time though, randomly expand in one of the eight possible directions. If that doesn't work (either it's an edge or already set), try another direction until we fail at all eight. If that's the case (and we've walked ourselves into a corner), generate a new seed.</p>
+<pre class="scheme"><code>; Walk randomly, starting a new seed if there are no more options
+(define-order-producer (random-walk width height get-new-color get-color-at)
+  (define current-point (pt (random width) (random height)))
+
+  (define (in-bounds? p)
+    (match-define (pt x y) p)
+    (and (&gt;= x 0) (&lt; x width)
+         (&gt;= y 0) (&lt; y height)))
+
+  (λ ()
+    (begin0
+      current-point
+
+      (let ()
+        (match-define (pt x y) current-point)
+        (define next-point
+          (or
+           ; Find a neighboring point that hasn't been set
+           (for*/first ([xd (in-list (shuffle (range -1 2)))]
+                        [yd (in-list (shuffle (range -1 2)))]
+                        [neighbor (in-value (pt (+ x xd) (+ y yd)))]
+                        #:when (and (in-bounds? neighbor)
+                                    (not (= xd yd 0))
+                                    (not (get-color-at neighbor #f))))
+             neighbor)
+           ; If that doesn't work, generate a new seed
+           (let loop ()
+             (define new-seed (pt (random width) (random height)))
+             (if (get-color-at new-seed #f)
+                 (loop)
+                 new-seed))))
+
+        (set! current-point next-point)))))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/random-walk_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/random-walk_gray-code_400x200.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/random-walk_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/random-walk_cascade_400x200.png" /></a></p>
+<p>It's really neat how you can see the structure in each of the images, where fairly large initial walks fill in large regions and then as the space gets more and more full, you get more noise as walks generate only a pixel or two.</p>
+<p>Okay, and now the big one. This is honestly the response to the <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">StackExchange post</a> that got me the most interested in the first place, generating some really stunning images. Here's the basic algorithm:</p>
+<ol>
+  <li>Generate a set of border points <code>B</code>, set to some initial small set of points</li>
+  <li>While <code>B</code> is not empty:
+    <ol>
+      <li>Generate a new color <code>c</code></li>
+      <li>For each point <code>b</code> ∋ <code>B</code> calculate an error value if we were to place <code>c</code> at <code>b</code></li>
+      <li>Place <code>c</code> at the <code>b</code> with the minimal error</li>
+      <li>Update <code>B</code> by removing <code>b</code> and adding points adjacent to <code>b</code> that have not already been set</li>
+    </ol>
+  </li>
+</ol>
+<p>That's a bit of a mouthful, but it's relatively straight forward to turn into code:</p>
+<pre class="scheme"><code>; Organically grow outwards, finding the best match among border pixels
+
+; combine is how distances of border pixels are combined
+; missing is the initial value and the value used if a point is missing
+; after is called once with the final value (defaults to identity)
+(define (make-grower #:combine combine
+                     #:missing missing
+                     #:after [after identity]
+                     #:seeds [seeds #f])
+  (λ (width height get-new-color get-color-at)
+    (define border (make-hash))
+    (if seeds
+        (for-each (λ (seed) (hash-set! border seed #t)) seeds)
+        (hash-set! border (pt (quotient width 2) (quotient height 2)) #t))
+
+    (λ ()
+      (define new-color (get-new-color))
+
+      ; Loop through all border pixels to find the best match
+      (define-values (_ best-point)
+        (for/fold ([best-distance +inf.0] [best-point #f])
+                  ([(point _) (in-hash border)])
+
+          ; Find the minimum distance to pixels adjacent to that border
+          (define new-distance
+            (after
+             (for*/fold ([new-distance missing])
+                        ([xd (in-range -1 2)] [yd (in-range -1 2)])
+               (define c (get-color-at (pt+ point (pt xd yd)) #f))
+               (combine new-distance (if c (rgb-distance new-color c) missing)))))
+
+          (if (&lt;= new-distance best-distance)
+              (values new-distance point)
+              (values best-distance best-point))))
+
+      ; Update the borders without that point but with it's neighbors
+      (hash-remove! border best-point)
+      (match-define (pt x y) best-point)
+
+      (for* ([xd (in-range -1 2)]
+             [yd (in-range -1 2)]
+             [new-border-point (in-value (pt (+ x xd) (+ y yd)))]
+             #:when (and (not (= xd yd 0))
+                         (&gt;= (+ x xd) 0) (&lt; (+ x xd) width)
+                         (&gt;= (+ y yd) 0) (&lt; (+ y yd) height)
+                         (not (get-color-at new-border-point #f))))
+        (hash-set! border new-border-point #t))
+
+      best-point)))</code></pre>
+<p>I did say relatively. :) One thing to note is that we're doing something a little different here. Rather than directly defining a new ordering function, we're going to define several. That's the beauty of higher order functions is that we can make one function (like this one) and parameterize it over how exactly that error function is calculated. Specifically (as noted in the comments), we have 3 variables that determine how error is defined:</p>
+<ul>
+  <li><code>combine</code> - how do you combine the error of multiple already set pixels adjacent to a border pixel <code>b</code></li>
+  <li><code>zero</code> - the initial value for the error, also used for neighboring pixels that are not currently set</li>
+  <li><code>after</code> - a special function I needed when I wanted to average the error over the surrounding pixels</li>
+</ul>
+<p>Specifically, with these three functions, we can define (at the very least), the following error functions:</p>
+<ul>
+  <li><code>grow-minimum</code> - take the color distance to the neighboring pixel closest to the new color</li>
+  <li><code>grow-minimum</code> - like <code>grow-minimum</code>, only take the worst neighbor</li>
+  <li><code>grow-average</code> - take the average color of any set neighbors and use the distance to that as the error</li>
+</ul>
+<p>We can use the <code>make-grower</code> function to define these as such:</p>
+<pre class="scheme"><code>; Choose the border pixel closest to any one of its neighbors
+(define-order-producer (grow-minimum width height get-new-color get-color-at)
+  ((make-grower #:combine min #:missing +inf.0)
+   width height get-new-color get-color-at))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_cascade_400x200.png" /></a></p>
+<pre class="scheme"><code>; Choose the border pixel closest to the furthest away neighbor
+(define-order-producer (grow-maximum width height get-new-color get-color-at)
+  ((make-grower #:combine max #:missing -inf.0)
+   width height get-new-color get-color-at))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_gray-code_400x200.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_cascade_400x200.png" /></a></p>
+<pre class="scheme"><code>; Choose the border pixel where the difference from the average of already placed pixels is minimal
+(define-order-producer (grow-average width height get-new-color get-color-at)
+  ; Sneaky trick to track both sum (real) and count (imagionary)
+  ((make-grower #:combine (λ (old-v new-v) (+ old-v new-v 0+1i))
+                #:missing 0
+                #:after (λ (v) (if (= v 0) 0 (/ (real-part v) (imag-part v)))))
+   width height get-new-color get-color-at))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-average_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-average_gray-code_400x200.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-average_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-average_cascade_400x200.png" /></a></p>
+<p>The oddest one is <code>grow-average</code>. Since we need to track both the sum and the count (since we don't know how many neighbors are actually set), we'll use imagionary numbers. Then we can use that <code>#:after</code> parameter to do the final division.</p>
+<p>I really also like how different <code>grow-minimum</code> and <code>grow-maximum</code> are, despite how similar their definitions are. Specifically, since in the latter we take the worst case error, we get neat ridges between the expanding color sections which are only filled right at the very end. Likewise, <code>grow-average</code> has it's own distinct feel. Because of the averaging of the error, it tends to be much more muted.</p>
+<p>Another interesting note is runtime. Because of how the border pixels are filled in, <code>grow-maximum</code> will have a much longer list through most of its run. Furthermore, since we have to compare every current border pixel to each new color, that results in a correspondingly longer runtime. While they would have the same runtime in <a href="https://en.wikipedia.org/wiki/Big_O notation">Big O notation</a>, the constants are very different.</p>
+<p>You may be asking yourself, so what about that <code>#:seeds</code> paramater? Well, with that, you can do something like this: growing in from the edges rather than from the center:</p>
+<pre class="scheme"><code>(define-order-producer (grow-maximum-corners width height get-new-color get-color-at)
+  ((make-grower #:combine max #:missing -inf.0 #:seeds (corners width height))
+   width height get-new-color get-color-at))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum-corners_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum-corners_gray-code_400x200.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum-corners_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum-corners_cascade_400x200.png" /></a></p>
+<p>And... that's that. That's all of the different algorithms I've come up with thus far. I have a few more ideas percolating in the back of my head (in particular, the idea of combining the ideas in this post with those in <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping">palette swapping</a>), but those will have to wait for another day.</p>
+<h2>Putting it all together</h2>
+<p>Before we go though, I think it would be interesting to show how I've been putting these images all together. Given one of each producer, how do you render that into an image?</p>
+<pre class="scheme"><code>; Given a color and order producer, make an image
+(define (render width height rgb-producer order-producer)
+  ; Initialize the image to error pixels
+  (define output (make-vector (* width height) (void)))
+
+  ; Access a pixel, will be given to order producer
+  ; If default is set, return that on unset or out of bounds
+  (define (get-pixel p [default (void)])
+    (match-define (pt x y) p)
+    (cond
+      [(and (&gt;= x 0) (&lt; x width)
+            (&gt;= y 0) (&lt; y height))
+       (define v (vector-ref output (+ x (* y width))))
+       (cond
+         [(not (void? v)) v]
+         [(not (void? default)) default]
+         [else (error 'get-pixel "pixel at ~a,~a undefined, no default specified" x y)])]
+      [(not (void? default))
+       default]
+      [else
+       (error 'get-pixel "invalid coordinates ~a,~a (size = ~a,~a)" x y width height)]))
+
+  ; Set a pixel in the final image, error on out of bounds
+  (define (set-pixel! p c)
+    (match-define (pt x y) p)
+    (cond
+      [(and (&gt;= x 0) (&lt; x width)
+            (&gt;= y 0) (&lt; y height))
+       (vector-set! output (+ x (* y width)) c)]
+      [else
+       (error 'get-pixel "invalid coordinates ~a,~a (size = ~a,~a)" x y width height)]))
+
+  (define count (* width height))
+
+  ; Accessor for within the location producer to get the next color
+  (define current-color #f)
+  (define (get-current-color) current-color)
+
+  ; Create the producers, cannot directly use for since we need to set the current color
+  (define next-rgb (rgb-producer count))
+  (define next-location (order-producer width height get-current-color get-pixel))
+
+  (for ([index (in-range count)])
+    (define color (next-rgb))
+    (set! current-color color)
+    (define location (next-location))
+    (set-pixel! location color))
+
+  ; Generate the resulting image, setting errors to magenta
+  (flomap-&gt;bitmap
+   (build-flomap*
+    4 width height
+    (λ (x y) (get-pixel (pt x y) (vector 1 1 0 1))))))</code></pre>
+<p>Basically, it's very similar to how we were working with <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping">palette swapping</a>. We generate a vector to hold the colors as we're generating them, since <code>build-flomap*</code> doesn't give us a mutable image. Then we created a getter/setter for that same vector, the former of which we will be passing into the location producers above (as <code>get-color-at</code>). Finally, we loop through the colors.</p>
+<p>I would optimally have rather used <code>in-rgb-producer</code> and <code>in-order-producer</code> here, but unfortunately that doesn't quite work. Since we need to know what the color generated by the former is in the latter, we have to add another instruction. So it goes.</p>
+<p>And... that's it. Really this time. There's also a bit of test code for generating a bunch of test images along with all of the rest of my code available on GitHub: <a href="https://github.com/jpverkamp/small-projects/tree/master/blog/allrgb">allrgb</a>.</p>
+<p>If you have any great ideas for more producers, I'd love to see them. Feel free to leave a comment / make a pull request / shoot me an email. If they're particularly neat, I'll add them here / to the repo above.</p>
+<p>Oh hey, since I already generated it anyways:</p>
+<p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_randomly_512x512.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_randomly_512x512.png" /></a></p>]]></content></entry><entry><title>Palette Swapping</title><link href="http://blog.jverkamp.com/2014/12/23/palette-swapping" /><id>urn:uuid:fdbf6642-e8d9-7544-30ed-156ee3de7f6d</id><updated>2014-12-23T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today's task comes from the <a href="https://codegolf.stackexchange.com/">Code Golf StackExchange</a>. The idea behind <a href="https://en.wikipedia.org/wiki/code_golf">code golf</a> is to write a program with as few characters as possible, often rendering the code nigh on unreadable. Luckily, the same StackExchange also host popularity contests, one of which is the inspiration behind today's post:</p>
 <blockquote>
 You are given two true color images, the Source and the Palette. They do not necessarily have the same dimensions but it is guaranteed that their areas are the same, i.e. they have the same number of pixels.
 
@@ -7,7 +391,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 
 -- <a href="https://codegolf.stackexchange.com/questions/33172/american-gothic-in-the-palette-of-mona-lisa-rearrange-the-pixels">American Gothic in the palette of Mona Lisa: Rearrange the pixels</a>
 </blockquote>
-]]></summary><content type="html"><![CDATA[<p>Today's task comes from the <a href="https://codegolf.stackexchange.com/">Code Golf StackExchange</a>. The idea behind <a href="https://en.wikipedia.org/wiki/code_golf">code golf</a> is to write code with as few characters as possible, often rendering it nigh on unreadable. Luckily, the same StackExchange also host popularity contests, one of which is the inspiration behind today's post:</p>
+]]></summary><content type="html"><![CDATA[<p>Today's task comes from the <a href="https://codegolf.stackexchange.com/">Code Golf StackExchange</a>. The idea behind <a href="https://en.wikipedia.org/wiki/code_golf">code golf</a> is to write a program with as few characters as possible, often rendering the code nigh on unreadable. Luckily, the same StackExchange also host popularity contests, one of which is the inspiration behind today's post:</p>
 <blockquote>
 You are given two true color images, the Source and the Palette. They do not necessarily have the same dimensions but it is guaranteed that their areas are the same, i.e. they have the same number of pixels.
 
@@ -20,10 +404,10 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 <table>
     <tr>
         <td>
-<a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa.png" /></a> <br />
+<a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa.png" /></a> <br />
 -- <a href="https://en.wikipedia.org/wiki/Mona_Lisa">Mona Lisa</a> by <a href="https://en.wikipedia.org/wiki/Leonardo_da Vinci">Leonardo da Vinci</a>, c. 1503-1506
         </td><td>
-<a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream.png" /></a> <br />
+<a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream.png" /></a> <br />
 -- <a href="https://en.wikipedia.org/wiki/The_Scream">The Scream</a> by <a href="https://en.wikipedia.org/wiki/Edvard_Munch">Edvard Munch</a>, 1893
         </td>
     </tr>
@@ -92,9 +476,9 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 <table>
     <tr>
         <td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_sort.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_sort.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_sort.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_sort.png" /></a>
         </td><td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_sort.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_sort.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_sort.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_sort.png" /></a>
         </td>
     </tr>
 </table>
@@ -182,9 +566,9 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 <table>
     <tr>
         <td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-100.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-100.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-100.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-100.png" /></a>
         </td><td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-100.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-100.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-100.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-100.png" /></a>
         </td>
     </tr>
 </table>
@@ -192,9 +576,9 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 <table>
     <tr>
         <td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k.png" /></a>
         </td><td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k.png" /></a>
         </td>
     </tr>
 </table>
@@ -217,9 +601,9 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 <table>
     <tr>
         <td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k-average.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k-average.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k-average.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_swap-1k-average.png" /></a>
         </td><td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k-average.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k-average.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k-average.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_swap-1k-average.png" /></a>
         </td>
     </tr>
 </table>
@@ -313,9 +697,9 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 <table>
     <tr>
         <td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_fill.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_fill.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_fill.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/mona-lisa_scream_fill.png" /></a>
         </td><td>
-            <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_fill.png"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_fill.png" /></a>
+            <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_fill.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/12/23/palette-swapping/scream_mona-lisa_fill.png" /></a>
         </td>
     </tr>
 </table>
@@ -448,26 +832,26 @@ import itertools
 <p>This works because <code>for*</code> is actually a nested loop. So in the outer loop, it runs over the single value of the open socket. The inner loop then runs forever, accepting new incoming connections.</p>
 <p>Actually, I may have to put this in my quick-scripts toolbox. There are a fair few times when writing networking clients that having a dead simple echo server could come in handy.</p>]]></content></entry><entry><title>Clockception</title><link href="http://blog.jverkamp.com/2014/11/04/clockception" /><id>urn:uuid:9a2e2d18-6c68-f33b-e456-aa1c1b531f62</id><updated>2014-11-04T09:00:00Z</updated><summary type="html"><![CDATA[<p>Let's talk about clocks.</p>
 <p>We can draw traditional analog clocks<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
 <p>We can draw nice digital clocks:</p>
 <pre>┌─┐  │ │ ─┐ ┌─┐
 │ │└─┤    │ │ │
 └─┘  │ │ ─┴─└─┘</pre>
 <p>Or we can go downright mad and make clocks out of clocks:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
 <p>Even animated!</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>Let's talk about clocks.</p>
 <p>We can draw traditional analog clocks<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
 <p>We can draw nice digital clocks:</p>
 <pre>┌─┐  │ │ ─┐ ┌─┐
 │ │└─┤    │ │ │
 └─┘  │ │ ─┴─└─┘</pre>
 <p>Or we can go downright mad and make clocks out of clocks:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
 <p>Even animated!</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
 <!--more-->
 <p>I got the basic idea for this post from <a href="http://io9.com/these-stylish-minimalistic-clocks-let-you-tell-time-wit-1652202065">this post</a> on io9. That first clock ought to look awfully familiar (although theirs looks a bit better). Let's see how we can make one of our own.</p>
 <p>First, some basic structure:</p>
@@ -510,10 +894,10 @@ import itertools
 <p>The basic idea of <code>racket/draw</code> is that you have a sort of canvas (<code>target</code>) on which you can draw. You then issue a series of commands that either change your state (<code><a href="http://docs.racket-lang.org/search/index.html?q=set-pen">set-pen</a></code>) or draw (<code><a href="http://docs.racket-lang.org/search/index.html?q=draw-ellipse">draw-ellipse</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=draw-line">draw-line</a></code>). I did abstract a little bit the function to create the clock hands: <code>draw-hand!</code>, mostly so I wouldn't have to redo the centering offset (<code>c</code>, since <code>0,0</code> is in the top left, not the center as I'd hoped) and the <a href="https://en.wikipedia.org/wiki/trigonometry">trigonometry</a> to convert a radius and angle to x and y.</p>
 <p>And that's actually all you need to make a basic clock:</p>
 <pre class="scheme"><code> &gt; (analog-clock (time 4 10)) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
 <p>Straight forward enough. What's especially neat is that because radians cycle every two 2π rotations, you can put in some crazy times:</p>
 <pre class="scheme"><code> &gt; (analog-clock (time 208 -350)) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
 <p>Cool. Okay, next step. Let's figure out how to animate these, so we can transition from one time to another. In this, I had two options. Either I could move as a clock moves (where the minute hand has to move an entire rotation for the hour hand to move 1/12) or independently (such that both hands move at the same speed). Because it's both less code and honestly works better in the final result, I went with the second option:</p>
 <pre class="scheme"><code>; Render a sequence of frames animating a clock spinnging from one time to another
 ; Hands will always move clockwise but will both move at once (not as a normal clock)
@@ -629,7 +1013,7 @@ import itertools
   (apply above (map (curry apply beside) rows)))</code></pre>
 <p>In use:</p>
 <pre class="scheme"><code> &gt; (clock-clock (time 4 10)) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
 <p>That right there is actually one of the parts of programming I love the most. Where you write a small pile of functions, each of which does one specific piece and then when you finally get to the big overall algorithm... bam. Simple.</p>
 <p>But... back to being a little more complicated. How do we do the transition from one <code>clock-clock</code> to another? It would be nice if we could use the previous function, but we really can't. A similar idea will work though:</p>
 <pre class="scheme"><code>; Animate a clock of clocks turning from one time to another
@@ -660,7 +1044,7 @@ import itertools
 <pre class="scheme"><code>&gt; ; Fix bitmaps so that big-bang / run-movie / etc can render them
 &gt; (define (fix img) (rotate 0 img))
 &gt; (run-movie 0.1 (tick-tock (time 7 59) (time 8 0) 56))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
 <p>I really wish that <code>fix</code> wasn't necessary, but for whatever reason, <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> / <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> / et al don't like <code><a href="http://docs.racket-lang.org/search/index.html?q=bitmap%">bitmap%</a></code>s. So it goes.</p>
 <p>On the other hand though, <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> is really cool. I've been doing things like this with <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> and the <code>stop-when</code> parameter, but this just needs a list of images and stops automatically. Another tool for my toolchest!</p>
 <p>Okay, one more step. I know I just said <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> is the new shiny, but let's step back to <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> for a second. Given that we have a clock made of clocks, what would it take to actually render it in real time?</p>
@@ -706,15 +1090,15 @@ import itertools
 <p>Now that is a cool function. Basically, each minute we will generate the frames that will be used by the transition. Since <code>big-bang</code> runs at 28 frames per second, the 56 frames will takes 2 seconds to animate. Each minute, the next transition will be generated and then ticked down one frame at a time until only one is left, at which point we will just wait. Neat!</p>
 <p>Originally I had it rendering seconds as well, but it was just a little bit too jittery. So minutes it is! I can't really do this thing justice in a gif (it actually looks just like <code>tick-tock</code> above, just with the current time), but it's still pretty cool.</p>
 <p>And... that's it. Clocks made of clocks. Who would have thought? As always, the full code is available on GitHub. Check it out: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/clockception.rkt">clockception.rkt</a></p>]]></content></entry><entry><title>Tile Puzzle</title><link href="http://blog.jverkamp.com/2014/10/28/tile-puzzle" /><id>urn:uuid:073afc5c-1121-544c-5879-486d124edb3c</id><updated>2014-10-28T00:00:00Z</updated><summary type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
 <p>If you look carefully, the tiles are the same between the two, although they might be rotated.</p>
 ]]></summary><content type="html"><![CDATA[<p>It's been a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I'm back. Today's post is inspired by a post from /r/dailyprogrammer almost a month ago now: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ip1gj/10082014_challenge_183_intermediate_edge_matching/">Challenge #183 [Intermediate] Edge Matching Tile Puzzle</a>. Basically, we're going to solve puzzles like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a> <a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
 <p>If you look carefully, the tiles are the same between the two, although they might be rotated.</p>
 <!--more-->
 <p>Okay, let's start at the beginning. How are we going to represent a puzzle? Well, let's go with the same basic idea that was described in the original post: sets of four letters (in the order north, east, south, west), one for each tile. Furthermore, the letters represent color. Originally CMYK for cyan, magenta, yellow, and black, but we'll also add RGB for red, green, and blue (it's easy enough to add colors). Next, we'll use upper case and lower case letters in order to represent the two halves of a matching image.</p>
 <p>So take the unsolved image above:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-3x3.png" /></a></p>
 <p>The first tile would be described as <code>cymK</code> for three circles and one rectangle. Continuing on, the entire puzzle would be:</p>
 <pre class="scheme"><code>'("cymK" "KyCy" "ymkc" "mkYc" "MycK" "mCkY" "cmKY" "KYmC" "McMk")</code></pre>
 <p>Now we'll want two helper functions:</p>
@@ -822,7 +1206,7 @@ import itertools
 <p>One part that took a bit here was getting the <code>zs</code>, <code>hs</code>, and <code>fs</code> functions correct. Since coordinates are based on the top left corner of each subimage, we need to correctly offset by half of the image sizes for each of the halfway points. Also, make sure you use the <code><a href="http://docs.racket-lang.org/search/index.html?q=clip">clip</a></code> function. It will look fine with just a single tile if you do not use it, but once you start merging them... Strange things happen.</p>
 <p>Demo time:</p>
 <pre class="scheme"><code> &gt; (render-tile "cymK") </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/single-tile-cymK.png" /></a></p>
 <p>Nice!</p>
 <p>Next, we can combine the <code>picts</code> into a single larger <code>pict</code>:</p>
 <pre class="scheme"><code>; Render a puzzle of multiple tiles
@@ -843,7 +1227,7 @@ import itertools
 <pre class="scheme"><code>&gt; (render (solve '("cymK" "KyCy" "ymkc"
                    "mkYc" "MycK" "mCkY"
                    "cmKY" "KYmC" "McMk")))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-3x3.png" /></a></p>
 <p>Neat! We can try it on larger puzzles as well:</p>
 <p>...</p>
 <p>Okay, that takes a really long time. Perhaps a 4x4 with more colors (more colors is actually easier to solve since there are less valid placements for each tile):</p>
@@ -854,7 +1238,7 @@ import itertools
   "KCCm" "cyby" "mYbY" "BMcB"
   "Bmbm" "kbrr" "MkYc" "ybGY")
 &gt; (render p4x4)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/unsolved-4x4.png" /></a></p>
 <pre class="scheme"><code>&gt; (define p4x4-solution (solve p4x4))
 &gt; p4x4-solution
 '("rCgr" "BBMc" "YmYb" "yBMM"
@@ -862,7 +1246,7 @@ import itertools
   "rkbr" "MmCK" "YyyM" "cMkY"
   "BMrY" "cgRm" "YybG" "KmGY")
 &gt; (render p4x4-solution)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/28/tile-puzzle/solved-4x4.png" /></a></p>
 <p>Shiny. :)</p>
 <p>For those interested, here's how I generated random puzzles:</p>
 <pre class="scheme"><code>; Generate random puzzles
@@ -897,13 +1281,13 @@ import itertools
 <p>And that's it. Surprisingly simple<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span> to solve, a little more to render. I love problems like this. :)</p>
 <p>If you really want to go off the deep end though and, go download the full source from GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tile-puzzles.rkt">tile-puzzles.rkt</a>). Therein lies solutions for using <a href="https://en.wikipedia.org/wiki/simulated_annealing">simulated annealing</a> or <a href="https://en.wikipedia.org/wiki/genetic_algorithms">genetic algorithms</a> in an effort to solve the problem more <a href="https://en.wikipedia.org/wiki/heurisitically">heurisitically</a>, but neither is working particularly well as of yet. If you want to take one of those and finish it up, I'd love to see it.</p>]]></content></entry><entry><title>Regular Expression Fractals</title><link href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals" /><id>urn:uuid:32f94d69-d55a-a14d-ef3c-5252a500522e</id><updated>2014-10-05T00:00:00Z</updated><summary type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
 <p>Today's post was inspired by this post on /r/dailyprogrammer a month ago today: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/9052014_challenge_178_hard_regular_expression/">Challenge #178 [Hard] Regular Expression Fractals</a>. The basic idea is that you are going to take a rectangular region and divide it into four quadrants, again and again, recording the path as you go (images from that post):</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>Oops, turns out I haven't had a post in a good long while. Before it gets even longer, I figure that I should take one off my backlog and just write it up, even if it is a little on the shorter side.</p>
 <p>Today's post was inspired by this post on /r/dailyprogrammer a month ago today: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/9052014_challenge_178_hard_regular_expression/">Challenge #178 [Hard] Regular Expression Fractals</a>. The basic idea is that you are going to take a rectangular region and divide it into four quadrants, again and again, recording the path as you go (images from that post):</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-1.png" /></a> <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-2.png" /></a> <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-3.png" /></a></p>
 <!--more-->
 <p>At the end, each point in the image will have a 'path' of decisions that got you there, making a string of the numbers 1, 2, 3, and 4.</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-4.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-4.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-5.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-5.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-6.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-6.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-4.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-4.png" /></a> <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-5.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-5.png" /></a> <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-6.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/step-6.png" /></a></p>
 <p>How does that translate into code?</p>
 <pre class="scheme"><code>; Generate a fractal by matching a recursive path into an image
 (define (regex-fractal regex size)
@@ -936,7 +1320,7 @@ import itertools
                   ['(#f #f) 4])))]))))))</code></pre>
 <p>That's actually pretty close to a lot of the fractal code we've been writing recently. And it generates some pretty cool images already:</p>
 <pre class="scheme"><code> &gt; (regex-fractal #px"(13|31|24|42)" 256) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/example-256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/example-256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/example-256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/example-256.png" /></a></p>
 <p>But we can do a little better than that. Let's parameterize a few things:</p>
 <pre class="scheme"><code>(define current-size     (make-parameter 64))
 (define current-coloring (make-parameter (thunk* '#(1 1 1))))
@@ -961,50 +1345,50 @@ import itertools
                [current-coloring color-by-length]
                [current-mode 'short])
   (regex-fractal #px"(.*)1"))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/color-example-256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/color-example-256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/color-example-256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/color-example-256.png" /></a></p>
 <p>Very cool.</p>
 <p>After that, I just collected and made up a bunch of colorings and regular expressions and generate all of the images. Check the <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/regex-fractal.rkt">full source</a> on GitHub for details, but basically I have three colorings: a default white only, the length based coloring above, and another which matches the most common color in a match. Then I have about two dozen regular expression.</p>
 <p>Then I wrote a quick loop that will generate all images in both modes (short circuiting and long), with all three colorings. It's a lot of images... Here are some of my favorites:</p>
 <pre class="scheme"><code> (demo "test256" 256) </code></pre>
 <p>First, a basic <a href="https://en.wikipedia.org/wiki/Sierpinski_triangle">Sierpinski triangle</a> <code>1</code>:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_by-length_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_by-length_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_by-length_256.png" /></a></p>
 <p>But if you turn on most common color, you see that each color sticks to it's own color (a pattern we'll see oft repeated):</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_common-voting_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_common-voting_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_full_common-voting_256.png" /></a></p>
 <p>What's even more interesting is when you switch to 'short mode'. Since we'll stop recurring as soon as we see a 1, you get blocks rather than each individual pixel colored:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_short_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_short_common-voting_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_short_common-voting_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/sierpinski_short_common-voting_256.png" /></a></p>
 <p>Next, four corners. Basically, look for repeated patterns of a single digit: <code>((.)(\\2*))</code>. That should mean that we go out to the four corners, each with its own color:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/four-corners_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/four-corners_full_common-voting_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/four-corners_full_common-voting_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/four-corners_full_common-voting_256.png" /></a></p>
 <p>Next, split the region into left and right halves, by checking if a 1 or 2 appears first: <code>^[34]*2(.*)</code>. If it's a 2, mark it, if it's a 1, do not.</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/left-right_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/left-right_full_by-length_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/left-right_full_by-length_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/left-right_full_by-length_256.png" /></a></p>
 <p>Next, a nice jagged change on the original Sierpinski, match anything with either a 1 or a 2 (or both): <code>(12)</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/jagged_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/jagged_full_default_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/jagged_full_default_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/jagged_full_default_256.png" /></a></p>
 <p>Or, similarly, make two Sierpinskis by matching patterns where there's both a 1 and a 2: <code>(1.*2|2.*1)</code>:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_default_256.png" /></a></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_by-length_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_default_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_default_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_by-length_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/double-sierpinski_full_by-length_256.png" /></a></p>
 <p>Next, match patterns where all 1s (if any) occur before all 2s: <code>^[34]*[134]*[34]*[234]*[34]*$</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/ones-then-twos_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/ones-then-twos_full_default_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/ones-then-twos_full_default_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/ones-then-twos_full_default_256.png" /></a></p>
 <p>Or you can invert the Sierpinski triangle by making sure there are <em>no</em> ones at all: <code>^[^1]*$</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/no-one_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/no-one_full_common-voting_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/no-one_full_common-voting_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/no-one_full_common-voting_256.png" /></a></p>
 <p>Or go really crazy and do some math. For example, finding all sequences with an even sum: <code>^(2|4|[13][24]*[13])*$</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/even-sum_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/even-sum_full_by-length_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/even-sum_full_by-length_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/even-sum_full_by-length_256.png" /></a></p>
 <p>Next, we have a few from the comments on the <a href="https://www.reddit.com/r/dailyprogrammer/comments/2fkh8u/">original post</a>.</p>
 <p>Some nice curls: <code>[13][24][^1][^2][^3][^4]</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/curls_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/curls_full_common-voting_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/curls_full_common-voting_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/curls_full_common-voting_256.png" /></a></p>
 <p>Patterns where you have the same pattern repeated at least three times, but with other random bits in between: <code>(.)\\1..\\1</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_default_256.png" /></a>\ <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_common-voting_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_default_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_default_256.png" /></a>\ <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_common-voting_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/self-similar_full_common-voting_256.png" /></a></p>
 <p>Or you can draw some nice boxes: <code>(?:13|31)(.*)</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_short_default_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_short_default_256.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_full_by-length_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_short_default_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_short_default_256.png" /></a> <a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_full_by-length_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/boxes_full_by-length_256.png" /></a></p>
 <p>A nice recursive outline (reminds me of the <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>): <code>^(1[124]|2[14]|4[12]|31)*$</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/outlined_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/outlined_full_by-length_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/outlined_full_by-length_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/outlined_full_by-length_256.png" /></a></p>
 <p>Figure eights: <code>^(?:..)*(?:[13][13]|[24][24])((?:..)*)$</code></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/figure-eights_full_by-length_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/figure-eights_full_by-length_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/figure-eights_full_by-length_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/figure-eights_full_by-length_256.png" /></a></p>
 <p>And finally, some nice diagonal lines, by making sure the top left/bottom right are before the top right/bottom left: <code>^[13]*[24]*$</code>:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/scanlines_full_common-voting_256.png"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/scanlines_full_common-voting_256.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/scanlines_full_common-voting_256.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/10/05/regular-expression-fractals/scanlines_full_common-voting_256.png" /></a></p>
 <p>And there you have it. Any other awesome patterns you come up with? Share them below. I'd love to see them.</p>
 <p>As always, the full source is available on GitHub if you'd like to play with it: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/regex-fractal.rkt">regex-fractal.rkt</a></p>]]></content></entry><entry><title>Invader Fractals</title><link href="http://blog.jverkamp.com/2014/09/17/invader-fractals" /><id>urn:uuid:15d5a345-5571-4706-dc96-ad512081f006</id><updated>2014-09-17T09:00:00Z</updated><summary type="html"><![CDATA[<p>First we had <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. Then we used them fill up space with <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>. But we're not <em>quite</em> done yet! This time, let's mix things up a bit and make Invader Fractals.</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>First we had <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. Then we used them fill up space with <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>. But we're not <em>quite</em> done yet! This time, let's mix things up a bit and make Invader Fractals.</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
 <!--more-->
 <p>Specifically, here's the algorithm that we want to use to build an invader fractal:</p>
 <ol>
@@ -1098,7 +1482,7 @@ import itertools
 <p>Unfortunately, that first bit is a little bit hacky. Since we've split apart the functions that create and render this fractal, we don't know how large of an image to make. Still, it's quick enough to calculate. Then, we get into actually making the image. It's much the same as the code in <a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders">Fractal Invaders</a>. We recur down, keeping two different sets of coordinates: image coorcinates <code>x</code>, <code>y</code>, <code>t</code>, <code>l</code>, and <code>s</code> and then coordinates within the current level <code>xi</code> and <code>yi</code>. There is a lot of dividing and multiplying by that <a href="https://en.wikipedia.org/wiki/magic_number">magic number</a>, but os it goes.</p>
 <p>And that's really it. There's a call to <code><a href="http://docs.racket-lang.org/search/index.html?q=flomap-crop">flomap-crop</a></code>, but that's just to cut off the outermost margin (since it will (1) always be empty and (2) the second level's margin will still include some spacing). So how does it look?</p>
 <pre class="scheme"><code> &gt; (render-invader-fractal (make-invader-fractal 3)) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-3.png" /></a></p>
 <p>That's about it. One more trick that I want to do though is to make these reproducable. That we can do some neat tricks with zooming in:</p>
 <pre class="scheme"><code>(define-syntax-rule (with-seed seed body* ...)
   (parameterize ([current-pseudo-random-generator
@@ -1112,12 +1496,12 @@ import itertools
 <p>Because we reset the random seed at the beginning of the calculate and always generate the random numbers from top to bottom, we ned up with some neat effects. The top level with the same seed is always the same shape:</p>
 <pre class="scheme"><code>&gt; (for/list ([depth (in-range 1 5)])
     (invader-fractal 8675309 depth))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-1.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-2.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-3.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-4.png"><img width="245" height="245" src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-4.png" /></a> <span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
+<p><a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-1.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-1.png" /></a> <a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-2.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-2.png" /></a> <a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-3.png" /></a> <a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-4.png" data-toggle="lightbox"><img width="245" height="245" src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-seeded-4.png" /></a> <span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
 <p>:)</p>
 <p>Unfortunately, the lower levels aren't the same pattern, since we're generating the images using a <a href="https://en.wikipedia.org/wiki/depth_first search">depth first search</a> rather than the <a href="https://en.wikipedia.org/wiki/breadth_first search">breadth first search</a>. More specifically, we're generating the invaders in this order:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/depth-first.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/depth-first.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/depth-first.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/depth-first.png" /></a></p>
 <p>In that case, the ordering is: generate the image for the given level, then the first subimage, then the first subimage of that. Generating the <em>depth first</em> as it were. What we want instead is to generate generate the top level, then all of the next level, then all of the next level, more like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/breadth-first.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/breadth-first.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/breadth-first.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/breadth-first.png" /></a></p>
 <p>Unfortunately, that doesn't work out well in our specific code, since we're working recursively, working with a <a href="https://en.wikipedia.org/wiki/Stack_(computer science)">stack</a> (implicitly via function calls). To do a breadth first search, we would need instead to create a explicit <a href="https://en.wikipedia.org/wiki/Stack_(computer science)">queue</a>, which would require some fairly major refactoring.</p>
 <p>There's another option though:</p>
 <pre class="scheme"><code>; An invader fractal is nested 5x5 2d vectors, each element is either
@@ -1145,16 +1529,16 @@ import itertools
 <p>With the addition of <code>mod-random-seed!</code>, we can set the seed at each level. And we've got the amusing notion of non-random random seeds. :) But since they're generated as a function of the current <code>depth</code> and <code>x</code> and <code>y</code> coordinates of the parent image, we'll always get the same images at each level:</p>
 <pre class="scheme"><code>&gt; (for/list ([depth (in-range 1 5)])
     (invader-fractal 42 depth))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-1.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-1.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-2.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-2.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-3.png"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-3.png" /></a> <a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-4.png"><img width="245" height="245" src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-4.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-1.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-1.png" /></a> <a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-2.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-2.png" /></a> <a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-3.png" /></a> <a href="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-4.png" data-toggle="lightbox"><img width="245" height="245" src="http://blog.jverkamp.com/2014/09/17/invader-fractals/invader-fractal-better-seeded-4.png" /></a></p>
 <p>Now that's what I was looking for. :)</p>
 <p>As always, today's code is available on GitHub. Check it out: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/invader-fractals.rkt">invader-fractals.rkt</a> (Requires <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a> to run.)</p>
 <p>Challenge: Make fractal invaders from invader fractals. Maybe later... O:)</p>]]></content></entry><entry><title>Fractal Invaders</title><link href="http://blog.jverkamp.com/2014/09/16/fractal-invaders" /><id>urn:uuid:3af088a6-d121-00ae-e2c8-a557bb1c42b3</id><updated>2014-09-16T09:00:00Z</updated><summary type="html"><![CDATA[<p>Today's post is a follow up to Sunday's post <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. This time around, we're going to work through two different space filling algorithms in order to eventually generate something like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>Today's post is a follow up to Sunday's post <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">Procedural Invaders</a>. This time around, we're going to work through two different space filling algorithms in order to eventually generate something like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
 <!--more-->
 <p>But before we get to that image, let's start with where I was Sunday. We had something that looked like this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/random-invaders.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/random-invaders.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/random-invaders.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/random-invaders.png" /></a></p>
 <p>That was my first take at a fractal invader algorithm, and in that case there really wasn't anything to do with fractals at all. The basic algorithm for that was simple:</p>
 <ol>
   <li>Choose a random location and size for an invader</li>
@@ -1266,16 +1650,16 @@ AAAD</code></pre>
 </ul>
 <p>That's all we need to make some pretty neat images, just changing how we generate colors:</p>
 <pre class="scheme"><code>&gt; (fractal-image 200 200)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-random.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-random.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-random.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-random.png" /></a></p>
 <pre class="scheme"><code>&gt; (fractal-image 200 200 #:random-color (thunk (let ([g (random)]) (vector g g g))))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-gray.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-gray.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-gray.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-gray.png" /></a></p>
 <pre class="scheme"><code>&gt; (fractal-image 200 200
                  #:random-color (thunk
                                   (case (random 3)
                                     [(0) (vector (random) 0 0)]
                                     [(1) (vector 0 (random) 0)]
                                     [(2) (vector 0 0 (random))])))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-rgb.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-rgb.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-rgb.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-image-rgb.png" /></a></p>
 <p>Which, honestly, would be a pretty neat post all by itself. But wasn't the entire point of this to made a fractal out of the <a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders">procedural invaders</a>?</p>
 <pre class="scheme"><code>; Render a fractal image made of invaders!
 (define (fractal-invaders width height #:highlights? [highlights? #f])
@@ -1315,16 +1699,16 @@ AAAD</code></pre>
 <p>Okay, this code isn't quite as nice. Mostly, that's because of a simplifying requirement that I started with: we're going to be working with a grid where each 'pixel' is a single minimal size invader. With a 1 pixel margin, that means that our minimum image size is 7x7 (thus the 7s scattered throughout the code).</p>
 <p>Unfortunately, that does make our base case a little more complicated, since we're working with two different coordinate systems: image coordinates <code>x</code> and <code>y</code> and fractal coordinates <code>nx</code> and <code>ny</code>. Still, add in some offsets by 7 and a bit of padding down at the end (for images not divisible by 7) and off we go:</p>
 <pre class="scheme"><code> &gt; (fractal-invaders 100 100) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100.png" /></a></p>
 <p>It also works great for larger images:</p>
 <pre class="scheme"><code> &gt; (fractal-invaders 400 200) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200.png" /></a></p>
 <p>It even supports highlights:</p>
 <pre class="scheme"><code> &gt; (fractal-invaders 400 200 #:highlights? #t) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-highlights.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-highlights.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-highlights.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-highlights.png" /></a></p>
 <p>Now that's what I'm talking about. Unfortunately, the process is still somewhat random:</p>
 <pre class="scheme"><code> &gt; (fractal-invaders 100 100) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100-big.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100-big.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100-big.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-100x100-big.png" /></a></p>
 <p>Sometimes the first random image is a little on the annoyingly large size. Off the top of my head, there are two ways to deal with it: either add an option parameter that controls the maximum size of a block or just keep generating images until you get what you are looking for.</p>
 <p>Guess which solution I prefer? :)</p>
 <pre class="scheme"><code>(define (fractal-invaders ... #:maximum-invader-size [max-size #f])
@@ -1349,7 +1733,7 @@ AAAD</code></pre>
        ...])</code></pre>
 <p>Simple!</p>
 <pre class="scheme"><code>&gt; (fractal-invaders 400 200 #:highlights? #t #:maximum-invader-size 25)</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-max-25.png"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-max-25.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-max-25.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/16/fractal-invaders/fractal-invaders-400x200-max-25.png" /></a></p>
 <p>Beautiful!</p>
 <p>I wonder what other sort of images I could make with a fractal space filling algorithm like this? O:)</p>
 <p>As always, today's code is available on GitHub. Check it out: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/fractal-invaders.rkt">fractal-invaders.rkt</a> (Requires <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a> to run.)</p>]]></content></entry><entry><title>Look and Say</title><link href="http://blog.jverkamp.com/2014/09/15/look-and-say" /><id>urn:uuid:eac2659f-3660-3f5e-9ba1-540308c23093</id><updated>2014-09-15T00:00:00Z</updated><summary type="html"><![CDATA[<p>Random quick post today<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Basically, we want to write code to generate what's known as <a href="https://en.wikipedia.org/wiki/Look_and Say sequence">Look and Say sequence</a>:</p>
@@ -1428,10 +1812,10 @@ AAAD</code></pre>
 <p>Nice. :)</p>
 <p>Or we can plot some interesting information about them, say the length:</p>
 <pre class="scheme"><code> &gt; (plot-look-and-say length '(1) 20) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-length.png"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-length.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-length.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-length.png" /></a></p>
 <p>Or the maximum value:</p>
 <pre class="scheme"><code> &gt; (plot-look-and-say (curry apply max) '(1) 20) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-max.png"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-max.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-max.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-max.png" /></a></p>
 <p>It's interesting how it never gets beyond 3 up to 50 steps along the sequence. Unfortunately</p>
 <p>Last thing last, pretty pictures!</p>
 <pre class="scheme"><code>; Render a look and say sequence to a bitmap, stretching rows to the entire width
@@ -1464,7 +1848,7 @@ AAAD</code></pre>
       (vector-ref colors (list-ref row index))))))</code></pre>
 <p>That will encode each iteration into a line of the resulting image and each different value into its own color. Something like this:</p>
 <pre class="scheme"><code> &gt; (scale-to 200 200 (render-look-and-say '(1) 20)) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-20.png"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-20.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-20.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/15/look-and-say/look-and-say-20.png" /></a></p>
 <p>Neat how there's a nice line right down the center. Although that makes sense, given that there are always an even number of values. On thing that I want to check out is those divisions that the video was talking about where two parts of a sequence can diverge and never interact again. Those would be fairly straight forward to find even, just 'tag' each part of the sequence with where it came from. Perhaps another day.</p>
 <p>As always, code on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/look-and-say.rkt">look-and-say.rkt</a></p>
 <p>As a side note, here's a neat trick:</p>
@@ -1476,10 +1860,10 @@ AAAD</code></pre>
    (λ (match block repeat) (~a (string-length match) block))))</code></pre>
 <p>Regular expressions for the win! Of course, it's an order of magnitude slower than the list version, but it's still neat.</p>]]></content></entry><entry><title>Procedural Invaders</title><link href="http://blog.jverkamp.com/2014/09/14/procedural-invaders" /><id>urn:uuid:41ac4ba4-e097-9023-3504-488ff41b9a68</id><updated>2014-09-14T09:00:00Z</updated><summary type="html"><![CDATA[<p>Today's post comes from a long line of 'inspired by posts' all pretty much leading back (so far as I can tell) to this post by j.tarbell: <a href="http://www.complexification.net/gallery/machines/invaderfractal/">invader.procedural</a> from 2003.</p>
 <p>The basic idea is that we want to generate 'invaders' in the style of <a href="https://en.wikipedia.org/wiki/space_invaders">space invaders</a>. Except we don't want 10 or 20, we want tens of thousands. So how do we do it? Well, take a look at this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>Today's post comes from a long line of 'inspired by posts' all pretty much leading back (so far as I can tell) to this post by j.tarbell: <a href="http://www.complexification.net/gallery/machines/invaderfractal/">invader.procedural</a> from 2003.</p>
 <p>The basic idea is that we want to generate 'invaders' in the style of <a href="https://en.wikipedia.org/wiki/space_invaders">space invaders</a>. Except we don't want 10 or 20, we want tens of thousands. So how do we do it? Well, take a look at this:</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
 <!--more-->
 <p>Despite the fact that it's scaled up, on the lowest level we actually have a 5x5 grid of pixels. In addition, it's mirrored to make it symmetrical, so (counting the non-mirrored center row), we actually only have 15 pixels:</p>
 <pre class="text"><code>+----+----+----+----+----+
@@ -1516,10 +1900,10 @@ AAAD</code></pre>
 <p>There are really two parts here. First we covert the given integer into a vector of <code>#t</code> / <code>#f</code>. There are certainly far faster ways to do this (<code>bitwise-and</code> with the correct bit for example), but given that the size is set and small, this is good enough for the time being.</p>
 <p>After that, we take those bits and use <code><a href="http://docs.racket-lang.org/search/index.html?q=build-flomap*">build-flomap*</a></code> to create a 5x5 image where <code>#t</code> is white and <code>#f</code> is black. Shiny. Now unfortunately Dr. Racket will not display flomaps directly inline, but if we convert them to bitmaps it will:</p>
 <pre class="scheme"><code>&gt; (flomap-&gt;bitmap (procedural-invader 11173))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-tiny.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-tiny.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-tiny.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-tiny.png" /></a></p>
 <p>Oof. Tiny. Let's make it bigger:</p>
 <pre class="scheme"><code>&gt; (flomap-&gt;bitmap (flomap-resize (procedural-invader 11173) 50 50))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big-blurry.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big-blurry.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big-blurry.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big-blurry.png" /></a></p>
 <p>Well that's not what I was looking for. The problem is that flomaps by default are designed for interpolated values. So that if you have a black pixel right next to a white pixel, you can actually ask for the 'pixel' halfway between the two, getting a gray value. But in this case, that's not what we want. We want sharp (<a href="https://en.wikipedia.org/wiki/nearest_neighbor">nearest neighbor</a>) scaling:</p>
 <pre class="scheme"><code>; Resize a flomap using nearest-neighbors to preserve sharp edges
 (define (flomap-resize/nn img new-width [new-height new-width])
@@ -1533,7 +1917,7 @@ AAAD</code></pre>
                   (floor (* old-height (/ new-y new-height)))))))</code></pre>
 <p>Same as before, we are creating a new image. But this time, we covert the old coordinate system to the new and throw away any of the decimal part, getting an exact answer. That way we never interpolate:</p>
 <pre class="scheme"><code>&gt; (flomap-&gt;bitmap (flomap-resize/nn (procedural-invader 11173) 50 50))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
 <p>Nice and sharp. That's exactly what we were looking for.</p>
 <p>For the base of the problem, that's pretty much it. But we're not quite done. What if we want to make a nice display mode so that we can see a bunch of them at once?</p>
 <pre class="scheme"><code>; Generate a demo shee\t of procedural invaders
@@ -1556,10 +1940,10 @@ AAAD</code></pre>
      (apply above (map (curry apply beside) images))]))</code></pre>
 <p>That way we can make nice mixed sheets of the things:</p>
 <pre class="scheme"><code> &gt; (demo) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders.png" /></a></p>
 <p>Or even giant sheets:</p>
 <pre class="scheme"><code> &gt; (demo 40 80 #:image-size 5 #:margins 1) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40.png" /></a></p>
 <p>Pop quiz: Find two identical invaders. What is the likelihood of that happening? Well using the same math as in <a href="http://blog.jverkamp.com/2012/10/01/the-birthday-paradox">The Birthday Paradox</a>, the chance of no duplicates is:</p>
 <div>$$ B(n, x) = 1 - \prod_{i=1}^{(n-1)}(1-\frac{i}{x}) $$</div>
 <p>Where <span>\(n\)</span> is the number of generated invaders and <span>\(x = 15^{2} = 32768\)</span> is the total number of possible invaders.</p>
@@ -1587,190 +1971,12 @@ AAAD</code></pre>
          (make-vector 3 (flomap-ref img-w/o-highlight 0 x y))))))</code></pre>
 <p>Basically, we pull off the lowest four bits with a <a href="https://en.wikipedia.org/wiki/bitmask">bitmask</a> for the highlight then shift all the rest down and pass off to the original <code>procedural-invader</code> function. Then we build a new image from that, mostly copying but taking a single pixel and making it red. Adding an argument so that our <code>demo</code> function can handle highlighting:</p>
 <pre class="scheme"><code> &gt; (demo #:highlights? #t) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-highlights.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-highlights.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-highlights.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-highlights.png" /></a></p>
 <p>Or even giant sheets:</p>
 <pre class="scheme"><code> &gt; (demo 40 80 #:image-size 5 #:margins 1 #:highlights? #t) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40-highlights.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40-highlights.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40-highlights.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40-highlights.png" /></a></p>
 <p>Ooh. That's starting to look like a game. Perhaps I'll revist these for the next <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>...</p>
 <p>What else can we do with these? Well, take the <a href="http://www.complexification.net/gallery/machines/invaderfractal/">post I was inspired by</a>. In that case, they fill up a space with procedural invaders of different sizes. That would be neat to check out. I've started implementing something...</p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png" /></a></p>
+<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png" /></a></p>
 <p>But it's not quite right yet. Perhaps next time...</p>
-<p>If you'd like to check out the entire code for today's post, as always, it's available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a></p>]]></content></entry><entry><title>Chess Puzzles: Knight's Tour</title><link href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour" /><id>urn:uuid:7b068d00-2bb7-61fb-e0d8-045306814067</id><updated>2014-09-04T20:00:00Z</updated><summary type="html"><![CDATA[<p>Onwards and upwards! For today's chess puzzle, let's take a first crack at the <a href="https://en.wikipedia.org/wiki/Knight's_Tour">Knight's Tour</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
-]]></summary><content type="html"><![CDATA[<p>Onwards and upwards! For today's chess puzzle, let's take a first crack at the <a href="https://en.wikipedia.org/wiki/Knight's_Tour">Knight's Tour</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></p>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
-<!--more-->
-<p>As with <a href="http://blog.jverkamp.com/2014/09/03/chess-puzzles-n-queens">N Queens</a>, the problem is simply stated:</p>
-<blockquote>A knight's tour is a sequence of moves of a knight on a chessboard such that the knight visits every square only once.</blockquote>
-<p>And once again, we can get a solution working relatively well using <a href="https://en.wikipedia.org/wiki/backtracking">backtracking</a>:</p>
-<pre class="scheme"><code>(define-piece Knight (move 1 (leaper 1 2)))
-(define-piece Visited '())
-
-; Solve a knights tour on a given board
-(define (knights-tour width [height width])
-  ; Create a new empty board
-  (define b (make-board width height #:pieces (list Knight Visited)))
-
-  ; A board is completed if there are no empty squares
-  ; All squares are either the Knight or Visited
-  (define (completed? b)
-    (not (for*/first ([x (in-range width)]
-                      [y (in-range height)]
-                      #:when (not (board-ref b (pt x y))))
-           #t)))
-
-  ; Move the knight from the given point to each possible next point in turn
-  ; Return a list of valid moves to finish the tour if such a list exists, #f otherwise
-  (define (move-knight b p)
-    (cond
-      ; Done, we have a tour and there are no more valid moves necessary
-      [(completed? b) '()]
-      ; Otherwise, try all possible moves from this point
-      ; Since all pieces are the same color, moves from is only empty tiles
-      [else
-       (for*/first ([next (in-list (moves-from b p))]
-                    [recur (in-value (let* ([b (board-move b p next)]
-                                            [b (board-set b p '(Black Visited))])
-                                       (move-knight b next)))]
-                    #:when recur)
-         (cons p recur))]))
-
-  ; Try each possible initial location until we find one that works
-  (for*/first ([x (in-range width)]
-               [y (in-range height)]
-               [solution (in-value
-                           (move-knight
-                             (board-set b (pt x y) '(Black Knight))
-                             (pt x y)))]
-               #:when solution)
-    solution))</code></pre>
-<p>Basically, there are three interesting pieces here: <code>completed?</code>, <code>move-knight</code>, and the <code>for*/first</code> initial loop.</p>
-<p>First, how can a tour be <code>completed?</code> If all of the locations on the board are filled. We get around this with the psuedo-piece: <code>Visited</code>. It fills up the board as we continue to move our knight around. Technically, I could have just filled the board with knights, but I like how visited lets us visualize things.</p>
-<p>Next, <code>move-knight</code>. This is the core of the algorithm. As it states, we are building up a list of moves recursively. So the base case (when the board is completed) return the empty list <code>'()</code>. Otherwise, we're going to use <code><a href="http://docs.racket-lang.org/search/index.html?q=for*/first">for*/first</a></code> to find the first move which recursively solves the problem (or <code>#f</code> if none does). The use of <code><a href="http://docs.racket-lang.org/search/index.html?q=in-value">in-value</a></code> is a trick I picked up <a href="https://groups.google.com/forum/#!topic/racket-users/p2S6F3FAiU0">from the mailing list</a> for using an 'expensive' value in a <code>#:when</code> clause and body without having to recalculate it.</p>
-<p>Finally, we loop across all of the starting states. It doesn't matter in the case of closed tours (where the start and end points match and thus any point can be a start point), but on some boards not every starting location is valid.</p>
-<p>So now we can solve a tour:</p>
-<pre class="scheme"><code>&gt; (knights-tour 5)
-(list
- (pt 0 0) (pt 1 2) (pt 0 4) (pt 2 3) (pt 3 1)
- (pt 1 0) (pt 0 2) (pt 1 4) (pt 2 2) (pt 4 3)
- (pt 2 4) (pt 0 3) (pt 1 1) (pt 3 0) (pt 4 2)
- (pt 3 4) (pt 1 3) (pt 0 1) (pt 2 0) (pt 4 1)
- (pt 3 3) (pt 2 1) (pt 4 0) (pt 3 2))</code></pre>
-<p>Whee! Okay, what does that actually look like? Let's animate it!</p>
-<pre class="scheme"><code>(current-glyphs (hash 'Knight "♞"
-                      'Visited "♘"))
-
-; Render a knights tour into an animation
-(define (knights-tour/animate-solution width [height width])
-  (define tour (knights-tour width height)
-
-  ; Create an initial board
-  (define board (make-board width height #:pieces (list Knight Visited)))
-
-  ; Prerender the board once so we know how large of a scene to create
-  (define r (render board #:player-colors (const "black")))
-  (define render-width (send r get-width))
-  (define render-height (send r get-height))
-
-  ; Animate the tour, rendering each frame once
-  (big-bang tour
-    [on-tick cdr]
-    [to-draw (λ (tour)
-               (place-image
-                (render (if (null? tour)
-                            board
-                            (board-set board (car tour) '(Black Knight))))
-                (/ render-width 2)
-                (/ render-height 2)
-                (empty-scene render-width render-height)))]
-    [stop-when null?]
-    [record? #t]))</code></pre>
-<pre class="scheme"><code> &gt; (knights-tour/animate-solution 5) </code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-5-solution.gif" /></a></p>
-<p>Shiny.</p>
-<p>Okay, so that's all well and good for normal boards. What if instead you want a board with holes in it / a non-regular board?</p>
-<p>Simple! We'll just add a third type of piece <code>Invalid</code> and pre-populate the board with those:</p>
-<pre class="scheme"><code>(current-glyphs (hash 'Knight "♞"
-                      'Invalid "✗"
-                      'Visited "♘"))
-
-(define-piece Knight (move 1 (leaper 1 2)))
-(define-piece Invalid '())
-(define-piece Visited '())
-
-; Solve a knights tour on a given board (optionally with some pieces removed)
-(define (knights-tour width [height width] #:removed [removed '()])
-  ; Create a new board (potentially removing some pieces)
-  (define b
-    (for/fold ([b (make-board width height
-                    #:pieces (list Knight Invalid Visited))])
-              ([p (in-list removed)])
-      (board-set b p '(Black Invalid))))
-
-  ...)</code></pre>
-<p>All the rest of the code stays the same. Pretty nice eh? Let's try an example:</p>
-<pre class="scheme"><code>&gt; (knights-tour/animate-solution 4
-    #:removed (list (pt 1 0) (pt 0 2) (pt 0 3) (pt 2 3) (pt 3 3)))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-solution.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-solution.gif" /></a></p>
-<p>Hmm, that's all well and code showing off the final tour. But what if we want to see the search in progress? Let's put in a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code> again so we can animate this. This time around though, I'm actually going to fold the generator code into the main method rather than duplicating a bunch of code.</p>
-<pre class="scheme"><code>(define (knights-tour width [height width] #:generator? [generator? #f])
-  (define g
-    (generator ()
-      ...
-
-      (define (move-knight b p)
-        (when generator?
-          (yield b p))
-
-        ...)))
-
-  (if generator? g (g)))</code></pre>
-<p>In this case, we create the <code>generator</code> no matter what. But we only call <code>yield</code> if we actually specify it to the function. This way we can see each step of our simultion as we go. If we don't want the generator, we immediately call it as we're returning, forcing it to return a value: the implicit <code>yield</code> at the end of the function.</p>
-<p>So with this, we have enough that we can animate the search space:</p>
-<pre class="scheme"><code>; Render the search for a knights tour into an animation
-(define (knights-tour/animate-search width [height width] #:removed [removed '()])
-  ; Create an initial board including the missing tiles
-  (define board
-    (for/fold ([b (make-board width height #:pieces (list Knight Invalid Visited))])
-              ([p (in-list removed)])
-      (board-set b p '(Black Invalid))))
-
-  ; Prerender the board once so we know how large of a scene to create
-  (define r (render board #:player-colors (const "black")))
-  (define render-width (send r get-width))
-  (define render-height (send r get-height))
-
-  ; Set the last board, which will be updated on each yield
-  (define last-board board)
-  (define last-point (pt 0 0))
-  (define g (knights-tour width height #:removed removed #:generator? #t))
-
-  ; Animate the tour, rendering each frame once
-  ; Stop when the generator returns 1 value
-  (big-bang #t
-    [on-tick
-     (λ (running?)
-       (and running?
-            (with-handlers ([exn? (const #f)])
-              (define-values (board point) (g))
-              (set! last-board board)
-              (set! last-point point)
-              #t)))]
-    [to-draw
-     (λ (_)
-       (place-image
-        (render last-board)
-        (/ render-width 2)
-        (/ render-height 2)
-        (empty-scene render-width render-height)))]
-    [stop-when (negate identity)]
-    [record? #t]))</code></pre>
-<p>And in action:</p>
-<pre class="scheme"><code>&gt; (knights-tour/animate-search 4
-     #:removed (list (pt 1 0) (pt 0 2) (pt 0 3) (pt 2 3) (pt 3 3)))</code></pre>
-<p><a data-toggle="lightbox" href="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-search.gif"><img src="http://blog.jverkamp.com/2014/09/04/chess-puzzles-knights-tour/tour-4-limited-search.gif" /></a></p>
-<p>Sweet!</p>
-<p>That's about all for today. If you were following along though, you might have noticed one very important omission...</p>
-<p>It doesn't work on 8x8 boards.</p>
-<p>Well, that's not strictly speaking true. It will work. If you wait long enough, you will eventually get a solution, but it's going to be a <em>very</em> long wait. So looks like we'll need a follow looking for a better solution<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span></p>
-<p>That's for another time though. If you'd like to see the entire code, you can do so in the <a href="https://github.com/jpverkamp/chess-puzzles">chess-puzzles</a> repo on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles/blob/master/puzzles/knights-tour.rkt">knights-tour.rkt</a>. Check it out!</p>]]></content></entry></feed>
+<p>If you'd like to check out the entire code for today's post, as always, it's available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a></p>]]></content></entry></feed>
