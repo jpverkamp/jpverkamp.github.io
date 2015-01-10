@@ -1,5 +1,181 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-01-01T00:10:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Generating omnichromatic images</title><link href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images" /><id>urn:uuid:f0391a98-c064-56fb-c8aa-b1b2cfcb9966</id><updated>2015-01-01T00:10:00Z</updated><summary type="html"><![CDATA[<p>Inspired half by a <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">post on the Code Golf StackExchange</a> and half by the corresponding website <a href="http://allrgb.com/">allrgb.com</a>, today's post tasks us with making images like this:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-01-09T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Let it snow!</title><link href="http://blog.jverkamp.com/2015/01/09/let-it-snow" /><id>urn:uuid:fa564bef-0d12-6077-4670-d0535b5acc9c</id><updated>2015-01-09T00:00:00Z</updated><summary type="html"><![CDATA[<p>♫ Oh the weather outside is frightful<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>... ♫</p>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake.gif" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>♫ Oh the weather outside is frightful<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>... ♫</p>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake.gif" /></a></p>
+<!--more-->
+<p>Today's post is inspired once again by the <a href="https://codegolf.stackexchange.com/">Code Golf StackExchange</a>: <a href="https://codegolf.stackexchange.com/questions/42506/draw-a-snowflake">Draw a snowflake</a>. Sounds simple enough, yes?</p>
+<p>The basic idea is to take a similar sort of code to what I used about 10 months ago when I wrote a post on <a href="http://blog.jverkamp.com/2014/03/11/brownian-trees">Brownian trees</a>. The main difference this time is that this time we want <a href="https://en.wikipedia.org/wiki/rotational_symmetry">rotational/radial</a> and <a href="https://en.wikipedia.org/wiki/reflectional_symmetry">reflectional</a> symmetry. To do that, instead of generating points in an entire circular world, we will instead use only a slice, which we can than repeat and rotate. It turns out there's a reasonable amount of math involved in making that actually work right, but the code should still be fairly straight forward.</p>
+<p>First, we need to decide what data types we're going to work with. Originally, I had a struct for both the points and the snowflakes themselves, but then I realized with have a very powerful tool at our disposal: <a href="https://en.wikipedia.org/wiki/complex_numbers">complex numbers</a>.</p>
+<p>What does representing points as complex numbers buy us?</p>
+<ul>
+    <li>Conversion between <a href="https://en.wikipedia.org/wiki/cartesian_coordinates">cartesian coordinates</a> (<code><a href="http://docs.racket-lang.org/search/index.html?q=make-rectangular">make-rectangular</a></code>) and <a href="https://en.wikipedia.org/wiki/polar_coordinates">polar coordinates</a> with <code><a href="http://docs.racket-lang.org/search/index.html?q=make-rectangular">make-rectangular</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=make-polar">make-polar</a></code></li>
+    <li>Add offsets to points</li>
+    <li>Determine the distance between two points with subtration and <code><a href="http://docs.racket-lang.org/search/index.html?q=magnitude">magnitude</a></code></li>
+    <li>The ability to rate points (again via <code><a href="http://docs.racket-lang.org/search/index.html?q=make-polar">make-polar</a></code>)</li>
+</ul>
+<p>Sounds worth doing. :)</p>
+<p>So then we just need a structure for snowflakes to start with:</p>
+<pre class="scheme"><code>(struct snowflake (radius arms points) #:prefab)
+
+; Generate a new snowflake with the given number of arms
+(define (make-snowflake radius arms)
+  (snowflake radius arms '(0)))</code></pre>
+<p><code>radius</code> and <code>arms</code> will be constants that store the structure of the snowflake, while <code>points</code> will change (sans mutation, since we didn't make it <code>#:mutable</code>) as we add more points. Originally I had a grid of points, but since we're moving going to be constantly converting between cartesean and polar coordinates and moving about in a continuous space, it didn't work so well. On the down side, the larger an image gets, the longer it takes to compare to previous points. If I wanted to optimize this, something like a <a href="https://en.wikipedia.org/wiki/quadtree">quadtree</a>, but at the moment, this works well enough.</p>
+<p>Next, we want the ability to add points to a snowflake, or to check if a point is currently in it:</p>
+<pre class="scheme"><code>; Rotate a point so that the angle is in the range [θ, -θ)
+(define (clampθ p θmin θmax)
+  (define θΔ (- θmax θmin))
+  (make-polar
+   (magnitude p)
+   (let loop ([θ (if (= 0 p) 0 (angle p))])
+     (cond
+       [(&lt;  θ θmin) (loop (+ θ θΔ))]
+       [(&gt;= θ θmax) (loop (- θ θΔ))]
+       [else        θ]))))
+
+; Test if a snowflake contains a point within a given Δ
+; Return the index of the point if it does, #f otherwise
+(define (snowflake-contains? s p Δ)
+  (match-define (snowflake radius arms points) s)
+
+  (define θ  (/ 2π arms))
+  (define pα (clampθ p 0 θ))
+  (define pβ (make-polar (magnitude pα) (if (= pα 0) 0 (- θ (angle pα)))))
+
+  (for/first ([i (in-naturals)]
+              [point (in-list points)]
+              #:when (or (&lt; (magnitude (- pα point)) Δ)
+                         (&lt; (magnitude (- pβ point)) Δ)))
+    i))
+
+; Add a new point to the snowflake
+(define (snowflake-set s p)
+  (match-define (snowflake radius arms points) s)
+  (define θmax (/ 2π arms))
+  (snowflake radius arms (cons (clampθ p 0 θmax) points)))</code></pre>
+<p>Oof. That's an intense bit of code. First, the <code>clampθ</code> function. The goal here is, as mentioned earlier, we want to be able to take an arbitrary point and rotate it so that it's in a range we can specify. Basically, modular arithmatic on angles, whee!</p>
+<p>Next, checking if a <code>snowflake-contains?</code> a point. This has one particularly interesting argument: <code>Δ</code>. This basically is a margin of error. That way we can check if a point is 'close enough' to any of the points currently in the snowflake, thus building the brownian tree. Next, we have <code>pα</code> and <code>pβ</code>. <code>pα</code> is taking the point and rotating it into the proper frame of reference (giving the rotational symmetry we want), while <code>pβ</code> gives us reflectional symmetry.</p>
+<p>Likewise, <code>snowflake-set</code> adds a point to the snowflake. This one is much simpler, just adding the point to the snowflake. Here's where we aren't actually mutating the snowflake, but rather returning a new copy.</p>
+<p>Cool<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>.</p>
+<p>Now, the meat and potatoes: The function that makes a snowflake grow:</p>
+<pre class="scheme"><code>; Generate a new point on the snowflake by drifting a point inwards
+(define (snowflake-grow s [Δ (sqrt 2)])
+  (match-define (snowflake radius arms points) s)
+
+  (let loop ([p (make-polar radius (* (random) 2π))])
+    (cond
+      ; Hit an already existing point, add it and return
+      [(snowflake-contains? s p Δ)
+       (snowflake-set s p)]
+      ; Otherwise, try to drift inwards
+      [else
+       (loop
+        (for/fold ([p p])
+                  ([step (in-list
+                          (list
+                           ; Drift randomly
+                           (λ (p) (+ p (make-polar
+                                        (* (random) Δ)
+                                        (* (random) 2π))))
+                           ; Drift inwards
+                           (λ (p) (make-polar
+                                   (- (magnitude p) (* (random) Δ))
+                                   (angle p)))))])
+          (step p)))])))</code></pre>
+<p>I think the strangest bit in this code is the <code>for/fold</code> in the middle. Basically, it will apply a series of functions to a point in order to make it wiggle around. Why I did this was that I was experimenting with a number of other 'wiggle' functions as I was developing. In the end, I only have two--one for random motion, the other for inwards drift--but I liked the style well enough so I kept it.</p>
+<p>Specifically, the first of the two functions, will generate a new random point that is up <code>Δ</code> units away in any direction and add it to our current flake. The second will keep the same angle, but move directly inwards, again by a random amount up to <code>Δ</code>. This is exactly why we wanted to use complex numbers for our points.</p>
+<p>So all we have to do to make a snowflake is to call this function a bunch of times in a row:</p>
+<pre class="scheme"><code>(render-snowflake
+   (for/fold ([s (make-snowflake 50 6)])
+             ([i (in-range 20)])
+     (snowflake-grow s 4)))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-6-20steps.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-6-20steps.png" /></a></p>
+<p>(We'll define <code>render-snowflake</code> in a bit.)</p>
+<p>Cool! We already have some nice flakey structure. Let's take it out to it's logical conclusion and keep growing until we hit the radius:</p>
+<pre class="scheme"><code>; Generate an entire snowflake
+(define (generate-snowflake radius arms [Δ (sqrt 2)])
+  (let loop ([s (make-snowflake radius arms)])
+    (define s^ (snowflake-grow s Δ))
+    (if (&gt; (magnitude (car (snowflake-points s^))) radius)
+        s^
+        (loop s^))))</code></pre>
+<p>Basically, we keep adding points. If, at any point, the newest point added was further out from the center than our radius, we're done. Bam.</p>
+<pre class="scheme"><code>&gt; (render-snowflake (generate-snowflake 50 6 4))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-6.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-6.png" /></a></p>
+<p>Or we can generate a bunch of snowflakes with different numbers of arms:</p>
+<pre class="scheme"><code>&gt; (for/list ([arms (in-range 3 9)])
+    (render-snowflake (generate-snowflake 50 arms 4)))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-3.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-4.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-4.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-5.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-5.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-6.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-6.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-7.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-7.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-8.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-arms-8.png" /></a></p>
+<p>Or we can experiment with different values for the packing radius:</p>
+<pre class="scheme"><code>&gt; (for/list ([Δ (in-list (list 1 (sqrt 2) 2 3 π 4))])
+    (render-snowflake (generate-snowflake 50 6 Δ)))</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-1.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-1.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-root2.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-root2.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-2.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-2.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-3.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-3.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-pi.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-pi.png" /></a> <a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-4.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/sample-delta-4.png" /></a></p>
+<p>Okay, so how have I been rendering these things?</p>
+<pre class="scheme"><code>; Render a snowflake to a bitmap
+(define (render-snowflake s)
+  (match-define (snowflake radius arms data) s)
+  (define size (+ 1 (* radius 2)))
+
+  (flomap-&gt;bitmap
+   (build-flomap*
+    1 size size
+    (λ (x y)
+      (define p (make-rectangular (- x radius) (- y radius)))
+      (vector (if (snowflake-contains? s p 1) 1 0))))))</code></pre>
+<p>Simple. That's the beauty of making that <code>snowflake-contains?</code> function as we did earlier.</p>
+<p>One neat trick that we can do though, since we have all of the points ordered by how they were added to the snowflake (albeit in reverse), we can render each step along the way as a single frame:</p>
+<pre class="scheme"><code>; Render a snowflake being formed
+(define (render-snowflake/frames s)
+  (match-define (snowflake radius arms data) s)
+
+  (define snowflakes
+    (reverse
+     (for/fold ([s* (list (make-snowflake radius arms))])
+               ([pt (in-list (reverse data))])
+       (match-define (list* first rest) s*)
+       (match-define (snowflake _ _ data^) first)
+       (list* (snowflake radius arms (cons pt data^)) s*))))
+
+  (map render-snowflake snowflakes))</code></pre>
+<p>And turn that into a fun animation:</p>
+<pre class="scheme"><code>(require mrlib/gif)
+
+(write-animated-gif
+ (render-snowflake/frames (generate-snowflake 50 8 4))
+ 5
+ filename
+ #:last-frame-delay 50)</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake.gif" /></a></p>
+<p>I've not used the <code><a href="http://docs.racket-lang.org/search/index.html?q=mrlib/gif">mrlib/gif</a></code> library before (instead I've been using <code><a href="http://docs.racket-lang.org/search/index.html?q=2htdp/universe">2htdp/universe</a></code> to generate the frames and <a href="http://www.imagemagick.org/">ImageMagick</a> to combine them), but it's really nice. Should make future animations even easier!</p>
+<p>One step further, we can take that index from <code>snowflake-contains?</code> to colorize images. We just need to tweak <code>render-snowflake</code> a bit:</p>
+<pre class="scheme"><code>; Render a snowflake to a bitmap
+(define (render-snowflake s #:colorize? [colorize? #f])
+  (match-define (snowflake radius arms data) s)
+  (define size (+ 1 (* radius 2)))
+  (define data-length (length data))
+
+  (flomap-&gt;bitmap
+   (build-flomap*
+    (if colorize? 3 1) size size
+    (λ (x y)
+      (define p (make-rectangular (- x radius) (- y radius)))
+      (define index (snowflake-contains? s p 1))
+      (cond
+        [(and colorize? index) (let ([g (- 1 (/ index data-length))])
+                                 (vector g g 1))]
+        [colorize?             (vector 0 0 0)]
+        [index                 (vector 1)]
+        [else                  (vector 0)])))))</code></pre>
+<p>Trying it out:</p>
+<pre class="scheme"><code>&gt; (write-animated-gif
+   (render-snowflake/frames (generate-snowflake 50 8 4) #:colorize? #t)
+   5
+   filename
+   #:last-frame-delay 50)</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake-colorized.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/09/let-it-snow/snowflake-colorized.gif" /></a></p>
+<p>And there we have it. As always, the code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/let-it-snow.rkt">let-it-snow.rkt</a></p>
+<p>♫ Let it snow, let it snow, let it snow! ♫<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span></p>]]></content></entry><entry><title>Generating omnichromatic images</title><link href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images" /><id>urn:uuid:f0391a98-c064-56fb-c8aa-b1b2cfcb9966</id><updated>2015-01-01T00:10:00Z</updated><summary type="html"><![CDATA[<p>Inspired half by a <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">post on the Code Golf StackExchange</a> and half by the corresponding website <a href="http://allrgb.com/">allrgb.com</a>, today's post tasks us with making images like this:</p>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" /></a></p>
 <p>So what's so interesting about that picture?</p>
 ]]></summary><content type="html"><![CDATA[<p>Inspired half by a <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">post on the Code Golf StackExchange</a> and half by the corresponding website <a href="http://allrgb.com/">allrgb.com</a>, today's post tasks us with making images like this:</p>
@@ -1858,125 +2034,4 @@ AAAD</code></pre>
    #px"(.)(\\1*)"
    str
    (λ (match block repeat) (~a (string-length match) block))))</code></pre>
-<p>Regular expressions for the win! Of course, it's an order of magnitude slower than the list version, but it's still neat.</p>]]></content></entry><entry><title>Procedural Invaders</title><link href="http://blog.jverkamp.com/2014/09/14/procedural-invaders" /><id>urn:uuid:41ac4ba4-e097-9023-3504-488ff41b9a68</id><updated>2014-09-14T09:00:00Z</updated><summary type="html"><![CDATA[<p>Today's post comes from a long line of 'inspired by posts' all pretty much leading back (so far as I can tell) to this post by j.tarbell: <a href="http://www.complexification.net/gallery/machines/invaderfractal/">invader.procedural</a> from 2003.</p>
-<p>The basic idea is that we want to generate 'invaders' in the style of <a href="https://en.wikipedia.org/wiki/space_invaders">space invaders</a>. Except we don't want 10 or 20, we want tens of thousands. So how do we do it? Well, take a look at this:</p>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
-]]></summary><content type="html"><![CDATA[<p>Today's post comes from a long line of 'inspired by posts' all pretty much leading back (so far as I can tell) to this post by j.tarbell: <a href="http://www.complexification.net/gallery/machines/invaderfractal/">invader.procedural</a> from 2003.</p>
-<p>The basic idea is that we want to generate 'invaders' in the style of <a href="https://en.wikipedia.org/wiki/space_invaders">space invaders</a>. Except we don't want 10 or 20, we want tens of thousands. So how do we do it? Well, take a look at this:</p>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
-<!--more-->
-<p>Despite the fact that it's scaled up, on the lowest level we actually have a 5x5 grid of pixels. In addition, it's mirrored to make it symmetrical, so (counting the non-mirrored center row), we actually only have 15 pixels:</p>
-<pre class="text"><code>+----+----+----+----+----+
-|  1 |  6 | 11 |  6 |  1 |
-+----+----+----+----+----+
-|  2 |  7 | 12 |  7 |  2 |
-+----+----+----+----+----+
-|  3 |  8 | 13 |  8 |  3 |
-+----+----+----+----+----+
-|  4 |  9 | 14 |  9 |  4 |
-+----+----+----+----+----+
-|  5 | 10 | 15 | 10 |  5 |
-+----+----+----+----+----+</code></pre>
-<p>Represent those 15 pixels as a 15 bit number. For example, the above image, we have bits 2, 4, 6, 7, 8, 10, 13, and 15 set, so we have the number:</p>
-<pre class="scheme"><code>&gt; #b010101110100101
-11173</code></pre>
-<p>Given that there are over 32 thousand 15 bit numbers (<span>\(2^{15}=32768\)</span>), that's a lot of invaders. So how do we generate them?</p>
-<pre class="scheme"><code>; Create a symmetric 5x5 image similar to a space invader with this bit pattern
-; 0 5 10 5 0
-; 1 6 11 6 1
-; 2 7 12 7 2
-; 3 8 13 8 3
-; 4 9 14 9 4
-(define (procedural-invader i)
-  (define bits
-    (for/vector ([c (in-string (~a (number-&gt;string i 2) #:width 15 #:pad-string "0" #:align 'right))])
-      (eq? c #\1)))
-
-  (build-flomap*
-   1 5 5
-   (λ (x y)
-     (define i (+ y (* 5 (if (&lt; x 3) x (- 4 x)))))
-     (if (vector-ref bits i) '#(1.0) '#(0.0)))))</code></pre>
-<p>There are really two parts here. First we covert the given integer into a vector of <code>#t</code> / <code>#f</code>. There are certainly far faster ways to do this (<code>bitwise-and</code> with the correct bit for example), but given that the size is set and small, this is good enough for the time being.</p>
-<p>After that, we take those bits and use <code><a href="http://docs.racket-lang.org/search/index.html?q=build-flomap*">build-flomap*</a></code> to create a 5x5 image where <code>#t</code> is white and <code>#f</code> is black. Shiny. Now unfortunately Dr. Racket will not display flomaps directly inline, but if we convert them to bitmaps it will:</p>
-<pre class="scheme"><code>&gt; (flomap-&gt;bitmap (procedural-invader 11173))</code></pre>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-tiny.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-tiny.png" /></a></p>
-<p>Oof. Tiny. Let's make it bigger:</p>
-<pre class="scheme"><code>&gt; (flomap-&gt;bitmap (flomap-resize (procedural-invader 11173) 50 50))</code></pre>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big-blurry.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big-blurry.png" /></a></p>
-<p>Well that's not what I was looking for. The problem is that flomaps by default are designed for interpolated values. So that if you have a black pixel right next to a white pixel, you can actually ask for the 'pixel' halfway between the two, getting a gray value. But in this case, that's not what we want. We want sharp (<a href="https://en.wikipedia.org/wiki/nearest_neighbor">nearest neighbor</a>) scaling:</p>
-<pre class="scheme"><code>; Resize a flomap using nearest-neighbors to preserve sharp edges
-(define (flomap-resize/nn img new-width [new-height new-width])
-  (match-define (flomap _ components old-width old-height) img)
-
-  (build-flomap*
-   components new-width new-height
-   (λ (new-x new-y)
-     (flomap-ref* img
-                  (floor (* old-width (/ new-x new-width)))
-                  (floor (* old-height (/ new-y new-height)))))))</code></pre>
-<p>Same as before, we are creating a new image. But this time, we covert the old coordinate system to the new and throw away any of the decimal part, getting an exact answer. That way we never interpolate:</p>
-<pre class="scheme"><code>&gt; (flomap-&gt;bitmap (flomap-resize/nn (procedural-invader 11173) 50 50))</code></pre>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invader-big.png" /></a></p>
-<p>Nice and sharp. That's exactly what we were looking for.</p>
-<p>For the base of the problem, that's pretty much it. But we're not quite done. What if we want to make a nice display mode so that we can see a bunch of them at once?</p>
-<pre class="scheme"><code>; Generate a demo shee\t of procedural invaders
-(define (demo [rows 5] [cols rows] #:image-size [image-size 20] #:margins [margins 5])
-  (define images
-    (for/list ([row (in-range rows)])
-      (for/list ([col (in-range cols)])
-        (define r (random 32768))
-        (define img (procedural-invader r))
-        (flomap-&gt;bitmap (flomap-add-margin (flomap-resize/nn img image-size) margins)))))
-
-  (cond
-    [(and (= rows 1) (= cols 1))
-     (caar images)]
-    [(= rows 1)
-     (car (map (curry apply beside) images))]
-    [(= cols 1)
-     (apply above (map car images))]
-    [else
-     (apply above (map (curry apply beside) images))]))</code></pre>
-<p>That way we can make nice mixed sheets of the things:</p>
-<pre class="scheme"><code> &gt; (demo) </code></pre>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders.png" /></a></p>
-<p>Or even giant sheets:</p>
-<pre class="scheme"><code> &gt; (demo 40 80 #:image-size 5 #:margins 1) </code></pre>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40.png" /></a></p>
-<p>Pop quiz: Find two identical invaders. What is the likelihood of that happening? Well using the same math as in <a href="http://blog.jverkamp.com/2012/10/01/the-birthday-paradox">The Birthday Paradox</a>, the chance of no duplicates is:</p>
-<div>$$ B(n, x) = 1 - \prod_{i=1}^{(n-1)}(1-\frac{i}{x}) $$</div>
-<p>Where <span>\(n\)</span> is the number of generated invaders and <span>\(x = 15^{2} = 32768\)</span> is the total number of possible invaders.</p>
-<p>Specifically, for the 5x5 case:</p>
-<div>$$B(25, 32768)
-= 1 - \prod_{i=1}^{(25-1)}(1-\frac{i}{32768})
-\approx 9.1\%$$</div>
-<p>And for the 80x40 case:</p>
-<div>$$B(3200, 32768)
-= 1 - \prod_{i=1}^{(3200-1)}(1-\frac{i}{32768})
-\approx 100\%$$</div>
-<p>So it's (almost certainly) there... you just have to find it. :)</p>
-<p>Okay, what else can we do with these things? Well, at the moment, they're a little bit bland. Let's add a few bits to the generation and spice them up a bit with highlights. Specifically, let's choose one of the 15 bits to be red instead of black or white. In order to do that (choose 1 of 15), we need 4 bits (with one left over). SOmething like this should work:</p>
-<pre class="scheme"><code>; Create a procedural invader as above, but highlight the point specified by four highest bits
-(define (procedural-invader/highlight i)
-  (define highlight (bitwise-and i #b1111))
-  (define img-w/o-highlight (procedural-invader (arithmetic-shift i -4)))
-
-  (build-flomap*
-   3 5 5
-   (λ (x y)
-     (define i (+ y (* 5 (if (&lt; x 3) x (- 4 x)))))
-     (if (= highlight i)
-         '#(1.0 0.0 0.0)
-         (make-vector 3 (flomap-ref img-w/o-highlight 0 x y))))))</code></pre>
-<p>Basically, we pull off the lowest four bits with a <a href="https://en.wikipedia.org/wiki/bitmask">bitmask</a> for the highlight then shift all the rest down and pass off to the original <code>procedural-invader</code> function. Then we build a new image from that, mostly copying but taking a single pixel and making it red. Adding an argument so that our <code>demo</code> function can handle highlighting:</p>
-<pre class="scheme"><code> &gt; (demo #:highlights? #t) </code></pre>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-highlights.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-highlights.png" /></a></p>
-<p>Or even giant sheets:</p>
-<pre class="scheme"><code> &gt; (demo 40 80 #:image-size 5 #:margins 1 #:highlights? #t) </code></pre>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40-highlights.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/procedural-invaders-80x40-highlights.png" /></a></p>
-<p>Ooh. That's starting to look like a game. Perhaps I'll revist these for the next <a href="http://blog.jverkamp.com/category/programming/by-source/ludum-dare">Ludum Dare</a>...</p>
-<p>What else can we do with these? Well, take the <a href="http://www.complexification.net/gallery/machines/invaderfractal/">post I was inspired by</a>. In that case, they fill up a space with procedural invaders of different sizes. That would be neat to check out. I've started implementing something...</p>
-<p><a href="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/09/14/procedural-invaders/fractal-invaders.png" /></a></p>
-<p>But it's not quite right yet. Perhaps next time...</p>
-<p>If you'd like to check out the entire code for today's post, as always, it's available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a></p>]]></content></entry></feed>
+<p>Regular expressions for the win! Of course, it's an order of magnitude slower than the list version, but it's still neat.</p>]]></content></entry></feed>
