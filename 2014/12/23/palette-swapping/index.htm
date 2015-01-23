@@ -115,7 +115,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
     <li>For each pair of pixels in the two lists, take the color from the target image and the location from the source image</li>
 </ol>
 <p>And that's actually it. It turns out the code is just about as simple, with most of the length going into loading and saving the images and format juggling. First, we want a way of representing pixels which in this context are a color and a location:</p>
-<pre class="scheme"><code>; A color with a location
+<pre class="racket"><code>; A color with a location
 (struct pixel (x y c) #:transparent)
 
 ; Sorting function based on grayscale value
@@ -124,7 +124,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
        (apply + (flvector-&gt;list (pixel-c p2)))))</code></pre>
 <p>We'll use <code>pixel&lt;?/grayscale</code> as a basic sorting function. It works well enough, although it could probably be tuned to more accurately model human vision.</p>
 <p>Next, the pièce de résistance:</p>
-<pre class="scheme"><code>; Recolor an image by sorting the pixels in both images
+<pre class="racket"><code>; Recolor an image by sorting the pixels in both images
 (define (recolor/sort original-src target-src
                       #:pixel&lt;? [pixel&lt;? pixel&lt;?/grayscale])
   (define original (load-flomap original-src))
@@ -186,7 +186,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
     </li>
 </ol>
 <p>First, let's define an error function based on the distance between two colors in RGB space (again, there are better functions we could use here):</p>
-<pre class="scheme"><code>; Find the distance between two flvectors
+<pre class="racket"><code>; Find the distance between two flvectors
 (define (fl-distance fl1 fl2)
   (sqrt (for/sum ([a (in-vector (flvector-&gt;vector fl1))]
                   [b (in-vector (flvector-&gt;vector fl2))])
@@ -198,7 +198,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
     (match-define (pixel _ _ c) color-pixel)
     (fl-distance (flomap-ref* original-fm x y) c))</code></pre>
 <p>Using that, we can  the algorithm fairly directly into Racket:</p>
-<pre class="scheme"><code>; Recolor an image by randomly swapping pixels based on improving error
+<pre class="racket"><code>; Recolor an image by randomly swapping pixels based on improving error
 (define (recolor/swap original-src target-src
                       #:threshold [threshold 100]
                       #:error-function [err error/rgb-distance])
@@ -274,7 +274,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 <p>That's a lot better for The Scream, but now the Mona Lisa is having some issues with the red in hear hair. It turns out there's a reasonable amount of brown, but too much red so they're both fairly close in grayscale distance. Perhaps a better error metric would work better.</p>
 <p>Also, it takes a lot longer. While sorting worked in seconds and 100 took about 30 seconds, 1000 took about 5 minutes per image. Especially in The Scream recolored, the different in quality is obvious, but the cost really isn't worth it when you compare to how just sorting the pixels did.</p>
 <p>Alternatively, you can try a different error function. For example, this one takes the weighted average of a 3x3 area rather than a single pixel (threshold = 1000).</p>
-<pre class="scheme"><code>; Slightly more complicated error function takes original image average into account
+<pre class="racket"><code>; Slightly more complicated error function takes original image average into account
 (define (error/rgb-distance/average
          original-fm target-fm
          color-pixel location-pixel)
@@ -311,7 +311,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 </ol>
 <p>As a <a href="https://en.wikipedia.org/wiki/greedy_algorithm">greedy algorithm</a>, it's theoretically fast but likely not optimal. What you end up getting is really good results for the first part of the image but increasingly bad results as the images diverge.</p>
 <p>One neat trick I did here was that I could have just run from the top of the image down. But that would have lost out on a lot of the detail from the center of the image. So instead, I used the <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/generator">racket/generator</a></code> library to make this neat gem:</p>
-<pre class="scheme"><code>; Spiral outwards from (0,0) in squares
+<pre class="racket"><code>; Spiral outwards from (0,0) in squares
 (define (in-spiral [radius +inf.0])
   (in-generator
     (yield (list 0 0))
@@ -327,7 +327,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
         (yield (list d r))))))</code></pre>
 <p>That's much more Pythonic than Rackety, but it does work. Essentially, you get a square spiral moving out from the origin, first every pixel with x or y 1 different from the origin, then 2, then 3, etc. Neat.</p>
 <p>Using that, we can  the psuedocode into Racket:</p>
-<pre class="scheme"><code>; Recolor an image finding the best pixels from the center out
+<pre class="racket"><code>; Recolor an image finding the best pixels from the center out
 (define (recolor/fill/slow original-src target-src)
   (define original (load-flomap original-src))
   (define target (load-flomap target-src))
@@ -409,7 +409,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
 </ol>
 <p>If we could get something like that working, we would only need <span>\( \mathcal{O}(\log{}n) \)</span> per lookup, reducing the runtime to the same as the <code>recolor/sort</code> method. And... it turns out that Racket has just the sort of data strucure we need: a <a href="https://en.wikipedia.org/wiki/splay_tree">splay tree</a>. Specifically, a splay tree is a binary tree (enabling binary search), that self-adjusts (to avoid worst case badly unbalanced trees), which has the additional property of making recently accessed elements quick to access. That's helpful in this case, since we'll have blocks of similar colors, which are close in the tree. Neat!</p>
 <p>In Racket, to build a splay tree, we need to set up a couple of things in the <code><a href="http://docs.racket-lang.org/search/index.html?q=data/order">data/order</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=data/splay-tree">data/splay-tree</a></code> modules:</p>
-<pre class="scheme"><code>; Find the distance between two flvectors
+<pre class="racket"><code>; Find the distance between two flvectors
 (define (fl-distance fl1 fl2)
   (sqrt (for/sum ([a (in-vector (flvector-&gt;vector fl1))]
                   [b (in-vector (flvector-&gt;vector fl2))])
@@ -429,7 +429,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
               #:when (not (= v1 v2)))
     (&lt; v1 v2)))</code></pre>
 <p>Then, when loading the colors instead of building a list, we can make the splay tree:</p>
-<pre class="scheme"><code>; Generate a list of target colors
+<pre class="racket"><code>; Generate a list of target colors
 (define colors
   (make-splay-tree
    (order 'pixel-grayscale-order
@@ -445,7 +445,7 @@ Your task is to create an algorithm that makes the most accurate looking copy of
   (splay-tree-set! colors color count))</code></pre>
 <p>One thing we didn't have to do earlier was to keep track of counts for each pixel. In a list, we just duplicated the elements, for the splay tree this won't work as well.</p>
 <p>Then, in the <code>recolor/fill</code> method, we tweak the color choosing function (previously the <code>for/fold</code>):</p>
-<pre class="scheme"><code>...
+<pre class="racket"><code>...
 
 ; Get the source color at that point
 (define target-color (flomap-ref* original x y))

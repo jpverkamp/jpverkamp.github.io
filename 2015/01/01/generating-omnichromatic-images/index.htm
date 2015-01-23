@@ -94,7 +94,7 @@
 <p>Specifically, a producer is something that I can use with <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code>. A thunk (a function of no arguments) that I can call over and over again that will return a new item with each call. In the case of color producers, I will be returning a vector of ARGB colors in the range <code>[0.0, 1.0]</code> (for use with the <code><a href="http://docs.racket-lang.org/search/index.html?q=images/flomap">images/flomap</a></code> module). In the case of location producers, the returned value will be a <code>(struct pt (x y))</code>.</p>
 <p>This way, I can make a new color producer and almost immediately see how it looked with all of the location producers (and vice versa). Neat, no?</p>
 <p>To do that, I made a module each for colors and locations. For each then, I defined code something like this:</p>
-<pre class="scheme"><code>(provide list-rgb-producers
+<pre class="racket"><code>(provide list-rgb-producers
          get-rgb-producer
          in-rgb-producers)
 
@@ -119,7 +119,7 @@
 <h2>Color producers</h2>
 <p>Okay, let's get to the meat of the situation now. First, let's define a whole series of color producers. Since we need a location producer to actually render these, let's assume we have an <code>order-producer</code> that runs left to right, top to bottom. <code>reading</code> order, as it were (we'll define it in the next section).</p>
 <p>First thought, let's just run directly through the RGB color space:</p>
-<pre class="scheme"><code>; Move evenly through the RGB color space
+<pre class="racket"><code>; Move evenly through the RGB color space
 (define-rgb-producer (sequential-noskip count)
   (generator ()
     (for ([i (in-range 256^3)])
@@ -135,7 +135,7 @@
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential-noskip_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential-noskip_400x200.png" /></a></p>
 <p>Nice and simple. We're using a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code> despite the performance problems mostly because they make the code so nice and clean. Also, especially once we get to the more complicated location generation code, the algorithmic complexity is going to dwarf the cost of a generator anyways...</p>
 <p>Simple enough, but it has one major disadvantage. Because we're working in RGB, but only using 0.1% of the color space (20 thousand of the available 16 million colors), everything is blue. That's because since we're only changing the low bits, we change the blue value first (0-255). Green changes as well, but much slower, only getting up to around 80. Oops. So instead, let's skip enough colors each time so we go through the entire color space:</p>
-<pre class="scheme"><code>; Move evenly through the RGB color space
+<pre class="racket"><code>; Move evenly through the RGB color space
 (define-rgb-producer (sequential count)
   (define increment (quotient 256^3 count))
   (generator ()
@@ -143,7 +143,7 @@
       (yield (-&gt;rgb i)))))</code></pre>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_sequential_400x200.png" /></a>.</p>
 <p>Much better. This time we have a reasonable sampling of colors. Well... sort of. This time we have the opposite problem. Now instead of too much blue, we have less blue, more red and green. This time, the problem is that since we're changing the most in the low bits, we're skipping over a lot of the possible values for blue in each pixel, using all of the red values and still only some of the green. What we really want to do is iterate through each of the three channels, skipping the same amount for each:</p>
-<pre class="scheme"><code>; Cascade through red, then green, then blue
+<pre class="racket"><code>; Cascade through red, then green, then blue
 (define-rgb-producer (cascade count)
   (define increment (inexact-&gt;exact (floor (/ 256 (expt count 1/3)))))
   (generator ()
@@ -154,7 +154,7 @@
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_cascade_400x200.png" /></a></p>
 <p>One problem is that unless you have a specific power, this isn't quite going to give you an even split, but it's certainly better than the previous examples.</p>
 <p>Another idea would be to make use of <a href="https://en.wikipedia.org/wiki/gray_codes">gray codes</a>, rather than directly use the indicies. Also known as a reflected binary code, the idea of a gray code is that between any two values, you change only one bit. This has two advantages. First, gray codes avoid the sudden change we have in previous images where we go from the end of one iteration to the beginning of the next. Second, gray codes essentially form a <a href="https://en.wikipedia.org/wiki/space_filling curve">space filling curve</a>. If you have a power of 2, <em>n</em> gray codes will cover the same space as <em>n</em> sequential values, just in a different order. Let's see what that means for our color generation:</p>
-<pre class="scheme"><code>(define (-&gt;gray-code i)
+<pre class="racket"><code>(define (-&gt;gray-code i)
   (bitwise-xor (arithmetic-shift i 1) i))
 
 ; Generate codes using gray codes
@@ -163,7 +163,7 @@
     (for ([i (in-range 256^3)])
       (yield (-&gt;rgb (-&gt;gray-code i))))))</code></pre>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code-noskip_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code-noskip_400x200.png" /></a></p>
-<pre class="scheme"><code>(define-rgb-producer (gray-code count)
+<pre class="racket"><code>(define-rgb-producer (gray-code count)
   (define increment (quotient 256^3 count))
   (generator ()
     (for ([i (in-range 0 256^3 increment)])
@@ -171,7 +171,7 @@
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" /></a></p>
 <p>As before, if you don't skip you get change mostly in the lowest/blue channel with a slower change in the green. None at all in the red. If you skip around though, you get exactly the pattern we're looking for, smooth changes uniformly through the entire color space. Nice!</p>
 <p>Last but not least, let's through all this nice theoretically color space stuff out the window. Random colors for the win!</p>
-<pre class="scheme"><code>; Randomly generate colors (regenerating on duplicates)
+<pre class="racket"><code>; Randomly generate colors (regenerating on duplicates)
 (define-rgb-producer (randomly count)
   (define used (make-hasheq))
   (λ ()
@@ -185,7 +185,7 @@
 <p>Also, this one has a major performance problem, especially with larger images. Can you guess what it is?</p>
 <h2>Location producers</h2>
 <p>Okay, enough with the color generation. That should be enough for the moment. Let's instead move on to location producers. First, we'll start with the simple one we've been actually using all along:</p>
-<pre class="scheme"><code>; Left to right, top to bottom
+<pre class="racket"><code>; Left to right, top to bottom
 (define-order-producer (reading width height get-new-color get-color-at)
   (generator ()
     (for* ([y (in-range height)] [x (in-range width)])
@@ -194,7 +194,7 @@
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/reading_gray-code_400x200.png" /></a></p>
 <p>This time, you may have noticed a few more parameters. Specifically, this time we care about not just how many colors to generate, but also the size of the iamge we're going to put them in. Likewise, in some of the later functions, we're going to want to determine which color we're about to place (generated from the color producers) and what neighbors we're about to place it nearby. In the next section, we'll have to show how we came to those last two functions / parameters.</p>
 <p>How about next, we spiral from a central point outwards. This is similar to the <code>in-spiral</code> function I defined in the post on <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping">palette swapping</a>, only this time we'll use a <a href="https://en.wikipedia.org/wiki/Queue_(abstract_data_type)">queue</a> rather than a generator:</p>
-<pre class="scheme"><code>; Spiral from the center point outwards
+<pre class="racket"><code>; Spiral from the center point outwards
 (require data/queue)
 
 (define-order-producer (spiral width height get-new-color get-color-at)
@@ -219,7 +219,7 @@
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/spiral_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/spiral_gray-code_400x200.png" /></a></p>
 <p>Not very functional code, but it certainly does work. The beauty of using a queue here is that by processing each pixel in the order it was added, we will do each layer in turn. As we do each layer, the next is added to the end of the queue. It's arguable which code is cleaner between this and <code>in-spiral</code>.</p>
 <p>Neat. Okay, how about we take that code one step further. Rather than generating a single square, how about we generate a seed square randomly in the image, expanding it until we hit the edge. Once we do, generate another square, repeating over and over again with smaller and smaller seeds. Something like this:</p>
-<pre class="scheme"><code>; Generate random squares each until they hit an edge or another square
+<pre class="racket"><code>; Generate random squares each until they hit an edge or another square
 (define-order-producer (square-fill width height get-new-color get-color-at)
   (define q (make-queue))
   (enqueue! q (pt (random width) (random height)))
@@ -259,7 +259,7 @@
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/square-fill_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/square-fill_cascade_400x200.png" /></a></p>
 <p>Next, let's take a similar idea, but instead of squares, let's go back to something I posted about all of the way in 2012: <a href="http://blog.jverkamp.com/2012/09/27/html5-bugs">random walk / bugs</a>.</p>
 <p>Basically, start with a seed as before. This time though, randomly expand in one of the eight possible directions. If that doesn't work (either it's an edge or already set), try another direction until we fail at all eight. If that's the case (and we've walked ourselves into a corner), generate a new seed.</p>
-<pre class="scheme"><code>; Walk randomly, starting a new seed if there are no more options
+<pre class="racket"><code>; Walk randomly, starting a new seed if there are no more options
 (define-order-producer (random-walk width height get-new-color get-color-at)
   (define current-point (pt (random width) (random height)))
 
@@ -308,7 +308,7 @@
   </li>
 </ol>
 <p>That's a bit of a mouthful, but it's relatively straight forward to turn into code:</p>
-<pre class="scheme"><code>; Organically grow outwards, finding the best match among border pixels
+<pre class="racket"><code>; Organically grow outwards, finding the best match among border pixels
 
 ; combine is how distances of border pixels are combined
 ; missing is the initial value and the value used if a point is missing
@@ -370,19 +370,19 @@
   <li><code>grow-average</code> - take the average color of any set neighbors and use the distance to that as the error</li>
 </ul>
 <p>We can use the <code>make-grower</code> function to define these as such:</p>
-<pre class="scheme"><code>; Choose the border pixel closest to any one of its neighbors
+<pre class="racket"><code>; Choose the border pixel closest to any one of its neighbors
 (define-order-producer (grow-minimum width height get-new-color get-color-at)
   ((make-grower #:combine min #:missing +inf.0)
    width height get-new-color get-color-at))</code></pre>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_gray-code_400x200.png" /></a></p>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-minimum_cascade_400x200.png" /></a></p>
-<pre class="scheme"><code>; Choose the border pixel closest to the furthest away neighbor
+<pre class="racket"><code>; Choose the border pixel closest to the furthest away neighbor
 (define-order-producer (grow-maximum width height get-new-color get-color-at)
   ((make-grower #:combine max #:missing -inf.0)
    width height get-new-color get-color-at))</code></pre>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_gray-code_400x200.png" /></a></p>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_cascade_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum_cascade_400x200.png" /></a></p>
-<pre class="scheme"><code>; Choose the border pixel where the difference from the average of already placed pixels is minimal
+<pre class="racket"><code>; Choose the border pixel where the difference from the average of already placed pixels is minimal
 (define-order-producer (grow-average width height get-new-color get-color-at)
   ; Sneaky trick to track both sum (real) and count (imagionary)
   ((make-grower #:combine (λ (old-v new-v) (+ old-v new-v 0+1i))
@@ -395,7 +395,7 @@
 <p>I really also like how different <code>grow-minimum</code> and <code>grow-maximum</code> are, despite how similar their definitions are. Specifically, since in the latter we take the worst case error, we get neat ridges between the expanding color sections which are only filled right at the very end. Likewise, <code>grow-average</code> has it's own distinct feel. Because of the averaging of the error, it tends to be much more muted.</p>
 <p>Another interesting note is runtime. Because of how the border pixels are filled in, <code>grow-maximum</code> will have a much longer list through most of its run. Furthermore, since we have to compare every current border pixel to each new color, that results in a correspondingly longer runtime. While they would have the same runtime in <a href="https://en.wikipedia.org/wiki/Big_O notation">Big O notation</a>, the constants are very different.</p>
 <p>You may be asking yourself, so what about that <code>#:seeds</code> paramater? Well, with that, you can do something like this: growing in from the edges rather than from the center:</p>
-<pre class="scheme"><code>(define-order-producer (grow-maximum-corners width height get-new-color get-color-at)
+<pre class="racket"><code>(define-order-producer (grow-maximum-corners width height get-new-color get-color-at)
   ((make-grower #:combine max #:missing -inf.0 #:seeds (corners width height))
    width height get-new-color get-color-at))</code></pre>
 <p><a href="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum-corners_gray-code_400x200.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/01/01/generating-omnichromatic-images/grow-maximum-corners_gray-code_400x200.png" /></a></p>
@@ -403,7 +403,7 @@
 <p>And... that's that. That's all of the different algorithms I've come up with thus far. I have a few more ideas percolating in the back of my head (in particular, the idea of combining the ideas in this post with those in <a href="http://blog.jverkamp.com/2014/12/23/palette-swapping">palette swapping</a>), but those will have to wait for another day.</p>
 <h2>Putting it all together</h2>
 <p>Before we go though, I think it would be interesting to show how I've been putting these images all together. Given one of each producer, how do you render that into an image?</p>
-<pre class="scheme"><code>; Given a color and order producer, make an image
+<pre class="racket"><code>; Given a color and order producer, make an image
 (define (render width height rgb-producer order-producer)
   ; Initialize the image to error pixels
   (define output (make-vector (* width height) (void)))

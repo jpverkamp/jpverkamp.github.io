@@ -83,7 +83,7 @@
                         <p>A recent post on Reddit caught my attention: <a href="https://www.reddit.com/r/Python/comments/2m6d4z/a_one_line_echo_server_using_let_in_python/">A “One” Line Echo Server Using “let” in Python</a> (<a href="http://sigusr2.net/one-line-echo-server-using-let-python.html">original article</a>). The basic idea is that you can use Python's <code>lambda</code> with default arguments as a <code>let</code>, which in turn allows you to write a simple <a href="https://en.wikipedia.org/wiki/echo_server">echo server</a> in <del>one line</del> a nicely functional style.</p>
 <!--more-->
 <p>To start with, here is their original code:</p>
-<pre class="scheme"><code>import socket
+<pre class="racket"><code>import socket
 import itertools
 
 (lambda port=9000, s=socket.socket(socket.AF_INET, socket.SOCK_STREAM):
@@ -102,7 +102,7 @@ import itertools
 </ul>
 <p>It got me thinking though, what would the same sort of code look like in Racket?</p>
 <p>Well, one of the draws Racket advertises (rightfully so) on its <a href="http://racket-lang.org">home page</a> is that it comes <a href="http://docs.racket-lang.org/">batteries included</a>. That means that if you're using <code><a href="http://docs.racket-lang.org/search/index.html?q=#lang racket">#lang racket</a></code>, you get a bunch of useful functions for TCP built in. Let's start with a fairly direct translation:</p>
-<pre class="scheme"><code>(let ([s (tcp-listen 9000)])
+<pre class="racket"><code>(let ([s (tcp-listen 9000)])
   (sequence-&gt;list
    (sequence-map
     (λ (in+out) (thread (thunk (apply copy-port in+out))))
@@ -110,12 +110,12 @@ import itertools
 <p>Okay, so that looks really weird. But it's a fairly straight forward translation. A few of the lines got folded into the <code><a href="http://docs.racket-lang.org/search/index.html?q=tcp-connect">tcp-connect</a></code> call and the list comprehension became a <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code> <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence">sequence</a></code>. It's kicked off via <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence-map">sequence-map</a></code> and forced to run to termination (which will never happend) with <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence->list">sequence->list</a></code>. Unfortunately, it has the same problem that the original Python code does. Since we're constructing a list, we'll eventually run out of memory.</p>
 <p>One interesting addition it does that the Python version didn't is that it both allows for multiple lines (the Python version would read one packet and hang up) and any amount of data. I've never actually used the <code><a href="http://docs.racket-lang.org/search/index.html?q=copy-port">copy-port</a></code> function before. It's really cool!</p>
 <p>If we broaden our definition of "one" line a little more to allow <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code> sequences (which aren't really that different under the hood), we can clean it up a bit to this:</p>
-<pre class="scheme"><code>(let ([s (tcp-listen 9000)])
+<pre class="racket"><code>(let ([s (tcp-listen 9000)])
   (for ([(in out) (in-producer (thunk (tcp-accept s)))])
     (thread (thunk (copy-port in out)))))</code></pre>
 <p>This is especially nice, since <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code> work together to deal with the multiple values from <code><a href="http://docs.racket-lang.org/search/index.html?q=tcp-accept">tcp-accept</a></code>. Very clean.</p>
 <p>Heck, if you want to get a little less clear about it, you can actually fold the <code>let</code> into the <code>for</code>:</p>
-<pre class="scheme"><code>(for* ([s (in-value (tcp-listen 9000))]
+<pre class="racket"><code>(for* ([s (in-value (tcp-listen 9000))]
        [(in out) (in-producer (thunk (tcp-accept s)))])
   (thread (thunk (copy-port in out))))</code></pre>
 <p>This works because <code>for*</code> is actually a nested loop. So in the outer loop, it runs over the single value of the open socket. The inner loop then runs forever, accepting new incoming connections.</p>

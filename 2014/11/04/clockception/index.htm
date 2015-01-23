@@ -94,7 +94,7 @@
 <!--more-->
 <p>I got the basic idea for this post from <a href="http://io9.com/these-stylish-minimalistic-clocks-let-you-tell-time-wit-1652202065">this post</a> on io9. That first clock ought to look awfully familiar (although theirs looks a bit better). Let's see how we can make one of our own.</p>
 <p>First, some basic structure:</p>
-<pre class="scheme"><code>(struct time-data (hour minute second) #:transparent)
+<pre class="racket"><code>(struct time-data (hour minute second) #:transparent)
 
 (define (time hour minute [second #f])
   (time-data hour minute second))
@@ -102,7 +102,7 @@
 (define current-size (make-parameter 30))</code></pre>
 <p>This will represent the times that we are dealing with. I specifically broke the <code>time-data</code> structure and <code>time</code> function apart, since I wanted to have optional parameters. There is an <code>#:auto</code> option for struct fields, but it doesn't quite do what I want. Finally, <code>current-size</code> will be the width of each individual analog clock.</p>
 <p>Speaking of which, let's draw some basic analog clocks. I went through several different Racket drawing libraries (<code><a href="http://docs.racket-lang.org/search/index.html?q=pict">pict</a></code>, (<code><a href="http://docs.racket-lang.org/search/index.html?q=2htdp/image">2htdp/image</a></code>, (<code><a href="http://docs.racket-lang.org/search/index.html?q=racket/draw">racket/draw</a></code>) before finally settling on <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/draw">racket/draw</a></code>. I'm sure any of them could be used, but I just kept running into odd issues with coordinates.</p>
-<pre class="scheme"><code>; Render a clock at the current-size
+<pre class="racket"><code>; Render a clock at the current-size
 (define (analog-clock when)
   (match-define (time-data hour minute second) when)
 
@@ -132,13 +132,13 @@
   target)</code></pre>
 <p>The basic idea of <code>racket/draw</code> is that you have a sort of canvas (<code>target</code>) on which you can draw. You then issue a series of commands that either change your state (<code><a href="http://docs.racket-lang.org/search/index.html?q=set-pen">set-pen</a></code>) or draw (<code><a href="http://docs.racket-lang.org/search/index.html?q=draw-ellipse">draw-ellipse</a></code> and <code><a href="http://docs.racket-lang.org/search/index.html?q=draw-line">draw-line</a></code>). I did abstract a little bit the function to create the clock hands: <code>draw-hand!</code>, mostly so I wouldn't have to redo the centering offset (<code>c</code>, since <code>0,0</code> is in the top left, not the center as I'd hoped) and the <a href="https://en.wikipedia.org/wiki/trigonometry">trigonometry</a> to convert a radius and angle to x and y.</p>
 <p>And that's actually all you need to make a basic clock:</p>
-<pre class="scheme"><code> &gt; (analog-clock (time 4 10)) </code></pre>
+<pre class="racket"><code> &gt; (analog-clock (time 4 10)) </code></pre>
 <p><a href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
 <p>Straight forward enough. What's especially neat is that because radians cycle every two 2π rotations, you can put in some crazy times:</p>
-<pre class="scheme"><code> &gt; (analog-clock (time 208 -350)) </code></pre>
+<pre class="racket"><code> &gt; (analog-clock (time 208 -350)) </code></pre>
 <p><a href="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/analog.png" /></a></p>
 <p>Cool. Okay, next step. Let's figure out how to animate these, so we can transition from one time to another. In this, I had two options. Either I could move as a clock moves (where the minute hand has to move an entire rotation for the hour hand to move 1/12) or independently (such that both hands move at the same speed). Because it's both less code and honestly works better in the final result, I went with the second option:</p>
-<pre class="scheme"><code>; Render a sequence of frames animating a clock spinnging from one time to another
+<pre class="racket"><code>; Render a sequence of frames animating a clock spinnging from one time to another
 ; Hands will always move clockwise but will both move at once (not as a normal clock)
 (define (analog-frames α β frames)
   (match-define (time-data α-hour α-minute α-second) α)
@@ -163,7 +163,7 @@
 <p>Basically, we will loop through the frames and interpolate for each frame. The <code>frame-multiplier</code> will range evenly from 0 to 1 over the course of the frames. Also, the <code>let</code> block setting <code>β-hour</code> etc is to make sure that the clocks rotate clockwise. Since the second (<code>β</code>) value will always be higher, we always rotate right.</p>
 <p>Okay, next let's switch gears and make some digital clocks. Since the eventual end goal was to make clocks out of clocks, I wanted a nice blocky font, built out of only a few different pieces. That way we could animate it more easily. Luckily the Unicode <a href="https://en.wikipedia.org/wiki/box-drawing_characters">box-drawing characters</a> will do exactly what we need:</p>
 <p>I went with a 3x3 character map for each letter:</p>
-<pre class="scheme"><code>(define digits
+<pre class="racket"><code>(define digits
   (vector "┌─┐│ │└─┘" ; 0
           "─┐  │ ─┴─" ; 1
           " ─┐┌─┘└──" ; 2
@@ -182,7 +182,7 @@
 ──┘</pre>
 <p>They're not perfect, but I think they have a certain sort of charm.</p>
 <p>Putting that all together, we can loop across all of the digits in the final clock and then each character that makes them up:</p>
-<pre class="scheme"><code>; Render a digital clock using ascii bar graphics
+<pre class="racket"><code>; Render a digital clock using ascii bar graphics
 (define (digital-clock when)
   (match-define (time-data hour minute second) when)
 
@@ -209,17 +209,17 @@
         char)))
    "\n"))</code></pre>
 <p>It's a bit ugly, but the bulk of the code is to make sure that we have enough digits for numbers less than 10. I bet I could do something nice with string formatting, but it works well enough. An example:</p>
-<pre class="scheme"><code>&gt; (digital-clock (time 4 10))
+<pre class="racket"><code>&gt; (digital-clock (time 4 10))
 "┌─┐  │ │ ─┐ ┌─┐\n│ │└─┤    │ │ │\n└─┘  │ │ ─┴─└─┘"</code></pre>
 <p>Oops.</p>
-<pre class="scheme"><code>&gt; (display (digital-clock (time 4 10)))
+<pre class="racket"><code>&gt; (display (digital-clock (time 4 10)))
 ┌─┐  │ │ ─┐ ┌─┐
 │ │└─┤    │ │ │
 └─┘  │ │ ─┴─└─┘</code></pre>
 <p>Much better.</p>
 <p>Okay, now we're at the point of no return. How do we turn a digital clock with that 3x3 font into smaller clocks?</p>
 <p>First, we need a map of the bar characters to times:</p>
-<pre class="scheme"><code>; Convert the bar images used back into clocks
+<pre class="racket"><code>; Convert the bar images used back into clocks
 (define bar-&gt;clock
   (hash #\└ (time 3 0 0)
         #\┘ (time 9 0 0)
@@ -235,7 +235,7 @@
         #\○ #f
         #\space #f))</code></pre>
 <p>These could probably use a little more tuning. But what this does allow us to make is a very simple function to make a clock out of clocks:</p>
-<pre class="scheme"><code>(define timeless (make-parameter (time 12 0 0)))
+<pre class="racket"><code>(define timeless (make-parameter (time 12 0 0)))
 
 ; Make a clock out of clocks!
 (define (clock-clock when)
@@ -251,11 +251,11 @@
 
   (apply above (map (curry apply beside) rows)))</code></pre>
 <p>In use:</p>
-<pre class="scheme"><code> &gt; (clock-clock (time 4 10)) </code></pre>
+<pre class="racket"><code> &gt; (clock-clock (time 4 10)) </code></pre>
 <p><a href="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/clockception.png" /></a></p>
 <p>That right there is actually one of the parts of programming I love the most. Where you write a small pile of functions, each of which does one specific piece and then when you finally get to the big overall algorithm... bam. Simple.</p>
 <p>But... back to being a little more complicated. How do we do the transition from one <code>clock-clock</code> to another? It would be nice if we could use the previous function, but we really can't. A similar idea will work though:</p>
-<pre class="scheme"><code>; Animate a clock of clocks turning from one time to another
+<pre class="racket"><code>; Animate a clock of clocks turning from one time to another
 (define (tick-tock α β frames)
   (define α-chars (digital-clock α))
   (define β-chars (digital-clock β))
@@ -280,14 +280,14 @@
     (apply above (map (curry apply beside) rows))))</code></pre>
 <p>Basically, we have two steps. First we define <code>rows*</code> by generating each of the subclocks for each of the intermediate times. Then, that last is in the wrong order (indexed by row, column, then frame, rather than frame, row, then column) so we unpack it and put it back together. This is pretty terribly inefficient, but there will only ever be 3 rows and up to 20 columns, so it's not that bad.</p>
 <p>With that, we can make simple animations:</p>
-<pre class="scheme"><code>&gt; ; Fix bitmaps so that big-bang / run-movie / etc can render them
+<pre class="racket"><code>&gt; ; Fix bitmaps so that big-bang / run-movie / etc can render them
 &gt; (define (fix img) (rotate 0 img))
 &gt; (run-movie 0.1 (tick-tock (time 7 59) (time 8 0) 56))</code></pre>
 <p><a href="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2014/11/04/clockception/animated.gif" /></a></p>
 <p>I really wish that <code>fix</code> wasn't necessary, but for whatever reason, <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> / <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> / et al don't like <code><a href="http://docs.racket-lang.org/search/index.html?q=bitmap%">bitmap%</a></code>s. So it goes.</p>
 <p>On the other hand though, <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> is really cool. I've been doing things like this with <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> and the <code>stop-when</code> parameter, but this just needs a list of images and stops automatically. Another tool for my toolchest!</p>
 <p>Okay, one more step. I know I just said <code><a href="http://docs.racket-lang.org/search/index.html?q=run-movie">run-movie</a></code> is the new shiny, but let's step back to <code><a href="http://docs.racket-lang.org/search/index.html?q=big-bang">big-bang</a></code> for a second. Given that we have a clock made of clocks, what would it take to actually render it in real time?</p>
-<pre class="scheme"><code>; Make a tick-tock real time clock
+<pre class="racket"><code>; Make a tick-tock real time clock
 (define (tick-tock-real-time-clock #:12-hour? [12-hour? #f])
   ; Get the current time in hours/minutes/seconds
   (define (now)

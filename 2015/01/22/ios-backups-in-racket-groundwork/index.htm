@@ -74,7 +74,7 @@
 
                         <div class="entry-meta">
                                 <span class="posted-on"><time class="entry-date" datetime="2015-01-22"><span class="year">2015</span> <span class="month">Jan</span> <span class="day">22</span></time></span>
-                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-topic/data-structures">Data Structures</a></li><li><a href="http://blog.jverkamp.com/category/programming/libraries">Libraries</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/racket">Racket</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/scheme">Scheme</a></li></ul></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-topic/data-structures">Data Structures</a></li><li><a href="http://blog.jverkamp.com/category/programming/libraries">Libraries</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/racket">Racket</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/scheme">Scheme</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-project/ios-backup">iOS Backup</a></li></ul></span>
                         </div>
 
                         <hr />
@@ -121,10 +121,10 @@
     <li><code>Status.plist</code> - Mostly a subset of the information in <code>Info.plist</code></li>
 </ul>
 <p>Of those, we'll start with the first one. We want to be able to load that information into a basic structure to represent a backup:</p>
-<pre class="scheme"><code>; Represents an iPhone backup on disk
+<pre class="racket"><code>; Represents an iPhone backup on disk
 (struct backup (name hash date phone-number path) #:prefab)</code></pre>
 <p>Cool. First thing first, let's find the backups on disk. We want to be able to support either Windows or OSX (I use both), so try both locations:</p>
-<pre class="scheme"><code>; Load all backups on disk into a list
+<pre class="racket"><code>; Load all backups on disk into a list
 (define list-backups
   (let* (; OS agnostic (I hope) way of finding the backup root
          [backup-root
@@ -154,7 +154,7 @@
     (λ () backups)))</code></pre>
 <p>The function is a little strange looking, mostly because of caching. Rather than scanning and loading the backup every time we want a list, scan it once on load, then return that whenever the function is called.</p>
 <p>One thing missing though, we have to define the function <code>read-plist/jsexpr</code> yet. Luckily, we have the <code><a href="http://docs.racket-lang.org/search/index.html?q=xml/plist">xml/plist</a></code> library to handle the first part of this<span class="footnote"><sup><a href="#footnote-4">[4]</a></sup></span>, but personally I'd rather a more straight forward format (a <code><a href="http://docs.racket-lang.org/search/index.html?q=jsexpr">jsexpr</a></code> is basically a mix of hashes, lists, and atoms):</p>
-<pre class="scheme"><code>; Convert a plist into a JSON expression
+<pre class="racket"><code>; Convert a plist into a JSON expression
 (define (plist-&gt;jsexpr data)
   (match data
     [(? string?) data]
@@ -175,7 +175,7 @@
   (plist-&gt;jsexpr (read-plist in)))</code></pre>
 <p>I still haven't decided if special casing <code>data</code> and <code>date</code> elements is worthwhile.</p>
 <p>The other interesting function is another utility function <code>normalize-contact</code>:</p>
-<pre class="scheme"><code>; Process a phone number or email address into a common format
+<pre class="racket"><code>; Process a phone number or email address into a common format
 (define (normalize-contact value)
   (define re #px"^\\+?1? ?[\\(\\.]?(\\d\\d\\d)[\\)\\.-]? ?(\\d\\d\\d)[ \\.-]?(\\d\\d\\d\\d)$")
   (cond
@@ -195,7 +195,7 @@
     [else #f]))</code></pre>
 <p>Phone numbers in an iPhone backup are stored all sorts of odd ways. In particular, once you start looking at the contacts, you can get three or four different formats just for normal area code + 7 phone numbers (I haven't yet decided how to support international numbers). So this can be used to at least put them all in the same format.</p>
 <p>But with that, we now have the ability to list all backups on the local system:</p>
-<pre class="scheme"><code>&gt; (list-backups)
+<pre class="racket"><code>&gt; (list-backups)
 '(#s(backup
      "JP’s iPhone"
      "63b5...a651"
@@ -204,7 +204,7 @@
      #&lt;path:/Users/jp/Library/Application Support/MobileSync/Backup/63b5....a651&gt;))</code></pre>
 <p>It's an older backup, but that's fine.</p>
 <p>Next, what if we have more than one backup on the system? It would be nice to have a function that could take that list of backups and load just one (that other parts of the library can access) based on name/hash/phone number:</p>
-<pre class="scheme"><code>; Store the most recently used backup for other modules
+<pre class="racket"><code>; Store the most recently used backup for other modules
 (define current-backup (make-parameter #f))
 
 ; Load a specific backup, try to guess what the identifier is
@@ -217,7 +217,7 @@
     backup))</code></pre>
 <p>Fair enough. At the moment, you have to have an exact match, but that's fine. If we want to later, we could replace the calls to <code><a href="http://docs.racket-lang.org/search/index.html?q=equal?">equal?</a></code> with <code><a href="http://docs.racket-lang.org/search/index.html?q=regexp-match">regexp-match</a></code>.</p>
 <p>So now I can find my own backup:</p>
-<pre class="scheme"><code>&gt; (read-backup "86b1...aa36")
+<pre class="racket"><code>&gt; (read-backup "86b1...aa36")
 '#s(backup
     "JP’s iPhone"
     "63b5...a651"
@@ -225,16 +225,18 @@
     "{redacted}"
     #&lt;path:/Users/jp/Library/Application Support/MobileSync/Backup/63b5....a651&gt;)</code></pre>
 <p>One more utility macro:</p>
-<pre class="scheme"><code>; Parameterize code with a current backup
+<pre class="racket"><code>; Parameterize code with a current backup
 (define-syntax-rule (with-backup identifier body ...)
   (parameterize ([current-backup (read-backup identifier)])
     body ...))</code></pre>
 <p>This will be nice, since it can let us do things like this:</p>
-<pre class="scheme"><code>&gt; (define contacts
+<pre class="racket"><code>&gt; (define contacts
     (with-backup "86b1...aa36"
       (list-contacts)))</code></pre>
 <p>Nice and clean.</p>
 <p>I think that's about enough for today. The entire code for today's post (along with the entire library thus far, which is significantly further along<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>), is available on GitHub: <a href="https://github.com/jpverkamp/ios-backup">ios-backup</a></p>
+<p>Here is a list of all of the posts in this series:</p>
+<ul class="list-unstyled"><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork">iOS Backups in Racket: Groundwork</a></li><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts">iOS Backups in Racket: Contacts</a></li></ul>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol><li><a name="footnote-1"></a>Yeah, I know I'm something of a digital packrat. ¯\_(ツ)_/¯ Disk space is cheap.</li><li><a name="footnote-2"></a>Except on iPhones. Seriously, that's the only difference within a model, yes?</li><li><a name="footnote-3"></a>For some definitions of helpful...</li><li><a name="footnote-4"></a>Sort of. Turns out that library doesn't handle binary plists. We'll work around that when we handle applications.</li><li><a name="footnote-5"></a>Although still somewhat lacking in documentation</li></ol></div>
@@ -257,7 +259,7 @@ var disqus_url = "http://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-grou
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2015/01/20/wool">← Wool</a></li><li><a href="http://blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow">← Let it snow!</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2015/01/20/wool">← Wool</a></li><li><a href="http://blog.jverkamp.com/category/archives">Archives</a></li><li><a href="http://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts">iOS Backups in Racket: Contacts →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2015/01/09/let-it-snow">← Let it snow!</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts">iOS Backups in Racket: Contacts →</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="http://blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="http://blog.jverkamp.com/rss.png" /></a><br />
