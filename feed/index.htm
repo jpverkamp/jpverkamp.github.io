@@ -1,9 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-03-27T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>White Trash Zombie</title><link href="http://blog.jverkamp.com/2015/03/27/white-trash-zombie" /><id>urn:uuid:3985c60a-19e9-91ae-1029-68cb85330059</id><updated>2015-03-27T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/9640626-my-life-as-a-white-trash-zombie"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/1-i-was-a-white-trash-zombie.jpg" /></a> <a href="https://www.goodreads.com/book/show/12766833-even-white-trash-zombies-get-the-blues"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/2-even-white-trash-zombies-get-the-blues.jpg" /></a> <a href="https://www.goodreads.com/book/show/15738579-white-trash-zombie-apocalypse"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/3-white-trash-zombie-apocalypse.jpg" /></a> <a href="https://www.goodreads.com/book/show/19486406-how-the-white-trash-zombie-got-her-groove-back"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/4-how-the-white-trash-zombie-got-her-groove-back.jpg" /></a></p>
-<p>Series number six: <a href="https://www.goodreads.com/series/show/54966-white-trash-zombie">White Trash Zombie</a> by <a href="https://www.goodreads.com/author/show/852078.Diana_Rowland">Diana Rowland</a>.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-04-01T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Parsing AWS instance data with jq</title><link href="http://blog.jverkamp.com/2015/04/01/parsing-aws-instance-data-with-jq" /><id>urn:uuid:db7917d7-1267-4fde-d9a4-c2d153f23979</id><updated>2015-04-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>Semi-random amusing code snippet of the day:</p>
+<pre class="bash"><code>aws ec2 describe-instances | jq &lt;&lt; EOF
+    .[][].Instances[]
+    | select(.Tags[]?.Value == "production")
+    | .PrivateIpAddress
+EOF</code></pre>
+]]></summary><content type="html"><![CDATA[<p>Semi-random amusing code snippet of the day:</p>
+<pre class="bash"><code>aws ec2 describe-instances | jq &lt;&lt; EOF
+    .[][].Instances[]
+    | select(.Tags[]?.Value == "production")
+    | .PrivateIpAddress
+EOF</code></pre>
+<!--more-->
+<p>Basically, it's combining the <a href="https://aws.amazon.com/cli/">AWS command line tools</a> and the excellent <a href="https://stedolan.github.io/jq/"><code>jq</code></a> tool for parsing JSON to extract a field from all instances with a particular tag on your AWS account (whatever account you have configured in your <code>~/.aws/</code> directory).</p>
+<p>To describe it a little bit more, the data is structured as a list of <code>Instance</code> objects. The first line of the <code>jq</code> query loops over each instance object.</p>
+<p>Next, each of those has zero or more <code>Tags</code> (the <code>[]?</code> is to not fail if the tag object is empty), with <code>Key</code> and <code>Value</code> entries. <code>select</code> is a new feature I hadn't seen before which will pass along an object if the condition holds. These are essentially equivalent:</p>
+<pre class="text"><code> select(condition) </code></pre>
+<pre class="text"><code> if condition then . else empty end </code></pre>
+<p>After that, we extract a given field. In this particular case, I wanted IP addresses, but there are a bunch of other fields you can access. Here are a few other interesting ones:</p>
+<ul>
+    <li>AmiLaunchIndex</li>
+    <li>Architecture</li>
+    <li>ImageId</li>
+    <li>InstanceId</li>
+    <li>InstanceType</li>
+    <li>LaunchTime</li>
+    <li>PrivateDnsName</li>
+    <li>PrivateIpAddress</li>
+    <li>PublicDnsName</li>
+    <li>PublicIpAddress</li>
+    <li>SecurityGroups</li>
+    <li>State</li>
+    <li>SubnetId</li>
+    <li>Tags</li>
+</ul>
+<p>The beauty of doing this directly in the shell is that you can then chain it to something else. For example, what if I wanted to log into every production server in turn and ask how much free disk space they have:</p>
+<pre class="bash"><code>for IP in aws ec2 describe-instances | jq &lt;&lt; EOF
+    .[][].Instances[]
+    | select(.Tags[]?.Value == "production")
+    | .PrivateIpAddress
+EOF
+do
+    echo $IP
+    ssh $IP du -h
+    echo
+done</code></pre>
+<p>I'm really starting to admire the 'Do One Thing and Do It Well' philosophy of Unix and chaining things together.</p>]]></content></entry><entry><title>Precinct 13</title><link href="http://blog.jverkamp.com/2015/03/31/precinct-13" /><id>urn:uuid:1a16133b-f599-b842-82bc-c629ff57c19b</id><updated>2015-03-31T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/12779838-precinct-13"><img src="http://blog.jverkamp.com/2015/03/31/precinct-13/precinct-13.jpg" /></a></p>
+<p>Onward and upward on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> with #7: <a href="https://www.goodreads.com/book/show/12779838-precinct-13">Precinct 13</a> by <a href="https://www.goodreads.com/author/show/379444.Tate_Hallaway">Tate Hallaway</a>. It's a little amusing to be reading this back to back with <a href="http://blog.jverkamp.com/2015/03/27/white-trash-zombie">White Trash Zombie</a>, given that in both cases the main character works in a morgue.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/12779838-precinct-13"><img src="http://blog.jverkamp.com/2015/03/31/precinct-13/precinct-13.jpg" /></a></p>
+<p>Onward and upward on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> with #7: <a href="https://www.goodreads.com/book/show/12779838-precinct-13">Precinct 13</a> by <a href="https://www.goodreads.com/author/show/379444.Tate_Hallaway">Tate Hallaway</a>. It's a little amusing to be reading this back to back with <a href="http://blog.jverkamp.com/2015/03/27/white-trash-zombie">White Trash Zombie</a>, given that in both cases the main character works in a morgue.</p>
+<!--more-->
+<p>That being said, I think that unfortunately Precinct 13 was a somewhat weaker book. In particular, it had a pair of problems: a <a href="http://tvtropes.org/pmwiki/pmwiki.php/Main/FantasyKitchenSink">fantasy kitchen sink</a> and <a href="http://tvtropes.org/pmwiki/pmwiki.php/Main/ChosenOne">chosen one</a> syndrome. Both have the possibility--as do all tropes--of being done well, but in this case I wasn't particularly thrilled with it.</p>
+<p>So far as the kitchen sink, I feel like to do it right, you have to either introduce new beasties slowly (that's one thing I liked about both the Dresden Files and <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a>) or just hint about the bigger world. Instead, we're hit pretty immediately over the head with witches and vampire-werewolves and fairies and golems.</p>
+<p>Other than that, I don't really like 'chosen one' stories. I think this is less of a general issue and more one that bugs me in particularly. Specifically, I'm not a fan of stories where the main character is unique, with powers (especially unexplainable) unique that no one else has.</p>
+<p>That being said, I thought two parts of the world building were neat: the aforementioned <a href="https://en.wikipedia.org/wiki/golem">golem</a> and parts of the magic system. Related to the golem, I don't often see Jewish influences in urban fantasy, so that was neat. I would like to see a little bit more of that. Also, the magic was neat--especially the magical tattoo early in the book and curses literally based on cursing.</p>
+<p>Another idea that was interesting was the division between natural and unnatural magic. Basically, you can either use the natural ebb and flow of magic or you can force it to do your bidding. It's an interesting way to bring some prejudice into your story--which Hallaway does--although I think she could have done more with it.</p>
+<p>All together, I thought it was a good enough story. I'm a little burned out on urban fantasy at the moment (I'm glad <a href="https://www.goodreads.com/book/show/3220405-ender-in-exile?from_search=true">Ender in Exile</a> is up next) and I'm not sure I liked Precinct 13 enough to continue with the series when the inevitable sequel comes about, but you could do worse.</p>]]></content></entry><entry><title>White Trash Zombie</title><link href="http://blog.jverkamp.com/2015/03/27/white-trash-zombie" /><id>urn:uuid:3985c60a-19e9-91ae-1029-68cb85330059</id><updated>2015-03-27T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/9640626-my-life-as-a-white-trash-zombie"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/1-i-was-a-white-trash-zombie.jpg" /></a> <a href="https://www.goodreads.com/book/show/12766833-even-white-trash-zombies-get-the-blues"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/2-even-white-trash-zombies-get-the-blues.jpg" /></a> <a href="https://www.goodreads.com/book/show/15738579-white-trash-zombie-apocalypse"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/3-white-trash-zombie-apocalypse.jpg" /></a> <a href="https://www.goodreads.com/book/show/19486406-how-the-white-trash-zombie-got-her-groove-back"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/4-how-the-white-trash-zombie-got-her-groove-back.jpg" /></a></p>
+<p>Series number six on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>: <a href="https://www.goodreads.com/series/show/54966-white-trash-zombie">White Trash Zombie</a> by <a href="https://www.goodreads.com/author/show/852078.Diana_Rowland">Diana Rowland</a>.</p>
 <p>Continuing on my recent trend, here is the third urban fantasy novel series in a row. After <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a> and <a href="http://blog.jverkamp.com/2015/03/13/alpha-and-omega">Alpha and Omega</a>, it's actually a breath of fresh air to see a series that doesn't take the everything-is-real approach and make a world where only one thing is different: zombies.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/9640626-my-life-as-a-white-trash-zombie"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/1-i-was-a-white-trash-zombie.jpg" /></a> <a href="https://www.goodreads.com/book/show/12766833-even-white-trash-zombies-get-the-blues"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/2-even-white-trash-zombies-get-the-blues.jpg" /></a> <a href="https://www.goodreads.com/book/show/15738579-white-trash-zombie-apocalypse"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/3-white-trash-zombie-apocalypse.jpg" /></a> <a href="https://www.goodreads.com/book/show/19486406-how-the-white-trash-zombie-got-her-groove-back"><img src="http://blog.jverkamp.com/2015/03/27/white-trash-zombie/4-how-the-white-trash-zombie-got-her-groove-back.jpg" /></a></p>
-<p>Series number six: <a href="https://www.goodreads.com/series/show/54966-white-trash-zombie">White Trash Zombie</a> by <a href="https://www.goodreads.com/author/show/852078.Diana_Rowland">Diana Rowland</a>.</p>
+<p>Series number six on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>: <a href="https://www.goodreads.com/series/show/54966-white-trash-zombie">White Trash Zombie</a> by <a href="https://www.goodreads.com/author/show/852078.Diana_Rowland">Diana Rowland</a>.</p>
 <p>Continuing on my recent trend, here is the third urban fantasy novel series in a row. After <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a> and <a href="http://blog.jverkamp.com/2015/03/13/alpha-and-omega">Alpha and Omega</a>, it's actually a breath of fresh air to see a series that doesn't take the everything-is-real approach and make a world where only one thing is different: zombies.</p>
 <!--more-->
 <p>On one hand, it's particularly interesting to see a zombie main character. Far more often than not, the zombies are the bad guys. Only rarely are they even particularly intelligent, let alone much more than evil monsters. Here, they're just like everyone else--just so long as they get a nice supply of brains. With brains, they not only remain human, but can actually push harder and faster.</p>
@@ -17,10 +73,10 @@
 <div><div class="flickr-gallery" data-set-id="72157651496600235" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157651496600235">View on Flickr</a></p></div>]]></content></entry><entry><title>Half Moon Bay State Beach</title><link href="http://blog.jverkamp.com/2015/03/15/half-moon-bay-state-beach" /><id>urn:uuid:8a6853fb-d575-1d01-2060-9dc7cdd98932</id><updated>2015-03-15T00:00:00Z</updated><summary type="html"><![CDATA[<p>Three beaches in a row! Don't worry, there will be something new next time. And hey, at least this time, it isn't dead crabs. :)</p>
 <div><div class="flickr-gallery" data-set-id="72157651077899690" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157651077899690">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Three beaches in a row! Don't worry, there will be something new next time. And hey, at least this time, it isn't dead crabs. :)</p>
 <div><div class="flickr-gallery" data-set-id="72157651077899690" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157651077899690">View on Flickr</a></p></div>]]></content></entry><entry><title>Alpha and Omega</title><link href="http://blog.jverkamp.com/2015/03/13/alpha-and-omega" /><id>urn:uuid:4fba16fd-f197-c4b3-dc04-facf8a172097</id><updated>2015-03-13T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/2355575.Cry_Wolf"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/1-cry-wolf.jpg" /></a> <a href="https://www.goodreads.com/book/show/5292853-hunting-ground"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/2-hunting-ground.jpg" /></a> <a href="https://www.goodreads.com/book/show/7942786-fair-game"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/3-fair-game.jpg" /></a> <a href="https://www.goodreads.com/book/show/18941694-dead-heat"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/4-dead-heat.jpg" /></a></p>
-<p>Series number five: <a href="https://www.goodreads.com/series/45135-alpha-omega">Alpha &amp; Omega</a> by <a href="https://www.goodreads.com/author/show/40563.Patricia_Briggs">Patricia Briggs</a>.</p>
+<p>Series number five on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>: <a href="https://www.goodreads.com/series/45135-alpha-omega">Alpha &amp; Omega</a> by <a href="https://www.goodreads.com/author/show/40563.Patricia_Briggs">Patricia Briggs</a>.</p>
 <p>It's not that often I actually read two books/series in the same genre back to back. But after <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a> last time and <a href="https://www.goodreads.com/series/54966-white-trash-zombie">White Trash Zombie</a> up next, we've got something of an interesting contrast.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/2355575.Cry_Wolf"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/1-cry-wolf.jpg" /></a> <a href="https://www.goodreads.com/book/show/5292853-hunting-ground"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/2-hunting-ground.jpg" /></a> <a href="https://www.goodreads.com/book/show/7942786-fair-game"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/3-fair-game.jpg" /></a> <a href="https://www.goodreads.com/book/show/18941694-dead-heat"><img src="http://blog.jverkamp.com/2015/03/13/alpha-and-omega/4-dead-heat.jpg" /></a></p>
-<p>Series number five: <a href="https://www.goodreads.com/series/45135-alpha-omega">Alpha &amp; Omega</a> by <a href="https://www.goodreads.com/author/show/40563.Patricia_Briggs">Patricia Briggs</a>.</p>
+<p>Series number five on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>: <a href="https://www.goodreads.com/series/45135-alpha-omega">Alpha &amp; Omega</a> by <a href="https://www.goodreads.com/author/show/40563.Patricia_Briggs">Patricia Briggs</a>.</p>
 <p>It's not that often I actually read two books/series in the same genre back to back. But after <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a> last time and <a href="https://www.goodreads.com/series/54966-white-trash-zombie">White Trash Zombie</a> up next, we've got something of an interesting contrast.</p>
 <!--more-->
 <p>Back to Alpha &amp; Omega. I'd previously read the <a href="https://www.goodreads.com/series/40932-mercy-thompson">Mercy Thompson</a> series, set in the same universe. It is a really interesting world in which a subset of the supernatural critters (only the fae at the start of the series) are 'out' in the public consciousness. Since the story is told from the perspective of various supernaturals and takes place primarily in their world, Briggs manages to avoid some of the problems that would come with such a revelation.</p>
@@ -83,104 +139,4 @@ stamp('--- &lt;/ts&gt; ---')</code></pre>
 [2015-02-25 17:05:53] all done
 [2015-02-25 17:05:53] --- &lt;/ts&gt; ---</code></pre>
 <p>Whee!</p>
-<p>If you'd like to download this or any of my other <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a>, you can do so on on GitHub: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/ts">ts</a>.</p>]]></content></entry><entry><title>The Iron Druid Chronicles</title><link href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles" /><id>urn:uuid:b7de8f5f-07ce-a841-53bb-be60df2c806f</id><updated>2015-02-20T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/9533378-hounded"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/1-hounded.jpg" /></a> <a href="https://www.goodreads.com/book/show/9595650-hexed"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/2-hexed.jpg" /></a> <a href="https://www.goodreads.com/book/show/9595620-hammered"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/3-hammered.jpg" /></a> <a href="https://www.goodreads.com/book/show/12700306-tricked"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/4-tricked.jpg" /></a> <a href="https://www.goodreads.com/book/show/13536649-trapped"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/5-trapped.jpg" /></a> <a href="https://www.goodreads.com/book/show/16071748-hunted"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/6-hunted.jpg" /></a> <a href="https://www.goodreads.com/book/show/16280678-shattered"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/7-shattered.jpg" /></a></p>
-<p>On to my fourth series this year: <a href="https://www.goodreads.com/series/52837-the-iron-druid-chronicles">The Iron Druid Chronicles</a> by <a href="https://www.goodreads.com/author/show/4414255.Kevin_Hearne">Kevin Hearne</a>.</p>
-<p>First, let's start with the good parts:</p>
-<p>I really like urban fantasy series and this is a fairly prototypical example there of. It's always interesting to see how an author marries the real world with various mythologies. In particular, this series forcuses on Irish mythology, which is something that I haven't really had that much experience with.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/9533378-hounded"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/1-hounded.jpg" /></a> <a href="https://www.goodreads.com/book/show/9595650-hexed"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/2-hexed.jpg" /></a> <a href="https://www.goodreads.com/book/show/9595620-hammered"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/3-hammered.jpg" /></a> <a href="https://www.goodreads.com/book/show/12700306-tricked"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/4-tricked.jpg" /></a> <a href="https://www.goodreads.com/book/show/13536649-trapped"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/5-trapped.jpg" /></a> <a href="https://www.goodreads.com/book/show/16071748-hunted"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/6-hunted.jpg" /></a> <a href="https://www.goodreads.com/book/show/16280678-shattered"><img src="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles/7-shattered.jpg" /></a></p>
-<p>On to my fourth series this year: <a href="https://www.goodreads.com/series/52837-the-iron-druid-chronicles">The Iron Druid Chronicles</a> by <a href="https://www.goodreads.com/author/show/4414255.Kevin_Hearne">Kevin Hearne</a>.</p>
-<p>First, let's start with the good parts:</p>
-<p>I really like urban fantasy series and this is a fairly prototypical example there of. It's always interesting to see how an author marries the real world with various mythologies. In particular, this series forcuses on Irish mythology, which is something that I haven't really had that much experience with.</p>
-<!--more-->
-<p>Another thing I liked is how many/all of various religious figures are represented. It gets a little crazy at times, seeing how various aspects of all the different world religious figures are all all out and about but it's fun to see them interact. I was particularly amused when Mary (yup, that Mary) showed up. That's not something I've often seen.</p>
-<p>Finally, the books are really funny. Some of the humor was more than a little crude. I particularly enjoyed a lot of the mental back and forth between Atticus and his hound. While I agree with a lot of other reviews I've read about the series in that the latter doesn't actually feel like a dog, but that's not really the point. The point is that he's funny. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>
-<p>Okay, now the less than great parts:</p>
-<p>Atticus is supposed to be 2,100 years old. He really doesn't feel it. He claims that he's gotten very good at fitting in with modern young adults, but there's never really a sense of age or weight to him. He comments on all manner of events that he's been involved in, but there's really nothing to it other than those slight mentions.</p>
-<p>How in the world have none of the mortal gods died by the beginning of the series? In the very first book, it becomes all too obvious that gods can be killed. But we're supposed to believe that pretty much all of them have survived for millenia until Atticus happens to come around? All righty then.</p>
-<p>There is a tendency towards a male fantasy centric / sexist view, especially in the earlier books. I'd be willing to be that the author got more than a few reviews and comments about this and it is toned down somewhat by the latter books. Still, the idea of random goddesses and other woman seemingly ranodmly falling for the main character and the sidekick dog's obsession with poodles are offputting.</p>
-<p>All that being said, there's an obvious comparison (at least in my mind) between this series and <a href="https://www.goodreads.com/series/40346-the-dresden-files">The Dresden Files</a> by <a href="https://www.goodreads.com/author/show/10746.Jim_Butcher">Jim Butcher</a>. They are both urban fantasy series with a male-fantasy-powerful male protagonist; they both rely heavily on a quick moving snarky sense of humor. Iron Druid starts out at a higher level, although the latter Dresden Books do catch up rather well. All together, if you're only going to read one of them read The Dresden Files. But if you run out of Dresden Files, you could do worse than The Iron Druid Chronicles.</p>
-<p>So far this year, that puts me at 20 books out of 100 after 51 days; 7 books ahead of schedule. I guess that's another indicator for how much I wanted to keep reading the Iron Druid Chronicles.</p>
-<p>Up next, more urban fantasy! <a href="https://www.goodreads.com/series/45135-alpha-omega">Alpha &amp; Omega</a> by <a href="https://www.goodreads.com/author/show/40563.Patricia_Briggs">Patricia Briggs</a>.</p>]]></content></entry><entry><title>Writing Excuses prompt: Interviews</title><link href="http://blog.jverkamp.com/2015/02/13/writing-excuses-prompt-interviews" /><id>urn:uuid:0a19eae4-4fc0-3a0f-9b24-4abc07ffae94</id><updated>2015-02-13T00:00:00Z</updated><summary type="html"><![CDATA[<p><strong><a href="http://www.writingexcuses.com/2015/01/25/writing-excuses-10-4-qa-on-ideas/">Writing Excuses 10.4: Q&A on Ideas</a> writing prompt</strong>: <em>Take one of the ideas you're excited about, and then audition five different characters for the lead role in that story. Make sure they're all different from each other.</em></p>
-<hr />
-<p>"So what brings you all of the way out here?"</p>
-<p>The man on the other side of the table blinked. That was all the more reaction he showed, but it was more than I had seen since he'd entered the building.</p>
-]]></summary><content type="html"><![CDATA[<p><strong><a href="http://www.writingexcuses.com/2015/01/25/writing-excuses-10-4-qa-on-ideas/">Writing Excuses 10.4: Q&A on Ideas</a> writing prompt</strong>: <em>Take one of the ideas you're excited about, and then audition five different characters for the lead role in that story. Make sure they're all different from each other.</em></p>
-<hr />
-<p>"So what brings you all of the way out here?"</p>
-<p>The man on the other side of the table blinked. That was all the more reaction he showed, but it was more than I had seen since he'd entered the building.</p>
-<!--more-->
-<p>"The job?"</p>
-<p>Mentally, I shook my head. Of course he'd come for the job. That wasn't the point. The entire thing was something of a test.</p>
-<p>"It's a bit of a long way to go for work."</p>
-<p>Based on his robe and rope belt, I had a sneaking suspicion that he was from some religious order or another. It seemed unlikely that he was looking for a new job, so there had to be something else there.</p>
-<p>He just nodded.</p>
-<p>Perhaps a different tack.</p>
-<p>"You know what the job will entail?"</p>
-<p>He nodded again.</p>
-<p>I paused a moment, but when he remained silent I prompted, "care to elaborate?"</p>
-<p>"I'm here to step through a hole in the end of the world."</p>
-<p>It was an oddly poetic answer. But then again, if he actually were a man of the cloth it made some manner of sense. A lifetime devoted to the study of one holy text or another would do that to you.</p>
-<p>The next was the most important question of the interview. Given the ... unique situation I found myself in...</p>
-<p>"Why?"</p>
-<p>He studied me for a long moment before answering. *Good* I thought. That was good.</p>
-<p>"Because He is calling to me."</p>
-<p>I swear I could hear the capital in his voice. Not entirely sure that I even wanted to know the answer, I asked the obvious question.</p>
-<p>"Who?"</p>
-<p>"He-Who-Waits" His eyes had grown wide and almost warm, although how such an adjective could be applied to one's eyes, I couldn't quite describe. "He-Who-Lives-Beyond"</p>
-<p>"And this 'He-Who-Waits'," I asked, "what will you do if you find him?</p>
-<p>A shake of his head and a smile was all the answer I got. No matter how I rephrased the question, he refused to answer.</p>
-<p>If it had been up to me, that right there would have been enough to remove him from the pool of applicants, small as it was. Unfortunately though, for me as much as for them, it wasn't up to be.</p>
-<p>And the powers that be had been very clear.</p>
-<p>Madness was *not* to be considered a deal breaker.</p>
-<hr />
-<p>The second and third candidates for the position came in together, holding hands in fact.</p>
-<p>The first woman was tall and thin, with a veritable name of unruly red hair drawing attention onwards and upwards. I could have sworn I saw twigs tangled throughout and--stranger yet--what appeared to be a potted tree sticking out of one over large pocket.</p>
-<p>The second seemed as tied to get machines as the first was to nature. She walked with an odd gate, every second step taking longer than the one before, swinging outwards with a dull thump unlike a footfall had any right to sound.</p>
-<p>They took their seats as one, not letting go of one another even as they did, instead scooting the chairs ever closer, just so they could reach without a strain.</p>
-<p>"Hi!" the first woman exclaimed. I don't believe I've ever before or since heard a voice better matching the description of sunshine. "I'm Flora."</p>
-<p>"Cogs." The other woman's reply wasn't rude, strictly speaking, just on the very edge of curt.</p>
-<p>And those names...</p>
-<p>Based on the nature of our work--and the position we were attempting to fill in particular--we had suggested, né required that applicants not use their real names. Names have power, and if there's one thing the Others don't need, it's more power over us mere mortals.</p>
-<p>Still, they could at least have tried to make up slightly less unusual names.</p>
-<p>* * * * *</p>
-<p>"Why?" I asked. Despite their nom de choice, the two women were among the best candidates I'd had yet. Truth be told, given how far we were from even the fringes of civilization, it was a miracle that we had choices at all.</p>
-<p>To my surprise, Cogs was the first to answer. Up until now, Flora had been taking point, with her friend only chiming in for the few questions with a more mechanical gent.</p>
-<p>"They say the rules are different there. Machines don't work. Physics is less rigid. Navigation isn't always reliable."</p>
-<p>I nodded to each point. That was often among the more difficult aspect for applicants to wrap their heads around. The rules we'd all grown up with just didn't work on the other side of the portal. To most, it was disorientating, sickening even. To some--like Cogs apparently--it was intriguing.</p>
-<p>"And you?" I turned to Flora.</p>
-<p>"Isn't it obvious?" Her voice was low, lilting. "I want to be the first to find Otherlife."</p>
-<p>I blinked at her. It wasn't the first time I'd heard the idea--the monk had seemed to think there'd be life there at least. But thus far, the other side had been entirely sterile. The only life was what we brought with us, even if it did tend to go... strange, given enough time.</p>
-<p>"And if you find it," I asked, "what then?" I was sure my employers wouldn't actually care about that particular question, but I was actually a little curious myself.</p>
-<p>She waited a moment before answering, watching me closely. I had the feeling she was weighing me, judging me. As if I were the interviewee, rather than the other way around.</p>
-<p>"We've already screwed up this world," she finally said with a nod. "I want to find a world where we can do better. I want to give life a chance."</p>
-<p>That sounded like just the right sort of crazy to me. Ultimately it would be up to the powers that were to choose whether or not the lair of them were chosen. I thought they had a chance though.</p>
-<hr />
-<p>The final interview candidate looked a little bit off even as he walked through the door. It wasn't until he sat down and looked right at me that I could begin to figure out why though.</p>
-<p>The first thing that jumped out at me was the eyes. Pale blue, so pale they were almost white. I hadn't seen anyone with eyes that color before. And the pupils. They weren't entirely... Round. Slightly oblong, although without another pair of eyes to compare too, I couldn't say for certain how different they were.</p>
-<p>After a sufficiently long pause where I was sure he was beginning to wonder if perhaps he had somehow miraculously come to the wrong place, I finally greeted him. "Good morning."</p>
-<p>He smiled.</p>
-<p>That was when I got the second surprise--his teeth were ground each to a fine point, overlapping I'm a saw tooth pattern. And it wasn't just that, it couldn't be. To have been ground like that, they couldn't have started out at a normal human size. They had to have been several times that to begin with.</p>
-<p>"Good morning," he intoned. Third surprise: his voice was unusually high, edging well into the range of an alto. And neither was a single harmonic, as voices tended towards, but rather a complex layering, a choir all in one.</p>
-<p>What <em>was</em> this man?</p>
-<p>* * * * *</p>
-<p>"So tell me," I asked. "Why do you want the job?" Although the strangeness kept mounting, I still couldn't quite figure out what the man was. I had seen all manner of strange men and women in my travels, but nothing quite like this. It was almost like he didn't quite fit together.</p>
-<p>The man answered almost immediately, that layered voice every bit as intriguing as the first I had heard it. I don't think I would ever tire of listening to him. "New parts."</p>
-<p>I blinked.</p>
-<p>"What?"</p>
-<p>He smiled. It wasn't a jovial smile, but rather a predatory one. His eyes glinted, that pale blue catching the light.</p>
-<p>He raised his hand, turning it slowly, watching it as he did.</p>
-<p>It took me a moment, but eventually I noticed. Running along the back of each finger, right where the tendons would have been was a thin spoke of what looked like bone. I thought at first that he was wearing some sort of glove, but it moved too smoothly, pulling against the skin in too natural a way.</p>
-<p>It was part of his hand.</p>
-<p>The hand. They eyes. The legs.</p>
-<p>This wasn't a single man, this was a patchwork. A mix of who knew how many different organisms.</p>
-<p>That predatory glint in his eyes? For all I knew, they were actually a predator's eyes.</p>
-<p>This was something I hadn't ever heard of before. Some sort of magic? Whether or not the powers in charge of the expedition wanted him, I was going to have to keep an eye on this one.</p>
-<hr />
-<p>Why do I want to go? Is that your question?</p>
-<p>Well, everyone is looking for something. Be it an alien god or a new set of rules for reality, there's always something.</p>
-<p>But me? I study people. That's the reason you hired me in the first place, isn't it? Because I can see how people think, and because it fascinates me to do so.</p>
-<p>Well I really want to see what happens to long term explorers in this Otherspace. To date, we've only sent out small trips, a day or two at most.</p>
-<p>Even in those, there were changes. Small neurosis, changes so slight you wouldn't even notice them if you weren't watching carefully.</p>
-<p>Me, I've been watching carefully.</p>
-<p>What will happen if you take a group through for weeks, even months at a time? I don't know. No one does. Well, except maybe He-Who-Waits. You'll have to take that up with the monk though.</p>
-<p>But I do know one thing for certain.  I can't wait to find out.</p>]]></content></entry></feed>
+<p>If you'd like to download this or any of my other <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a>, you can do so on on GitHub: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/ts">ts</a>.</p>]]></content></entry></feed>
