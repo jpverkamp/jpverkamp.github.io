@@ -1,5 +1,165 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-04-06T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Ender in Exile</title><link href="http://blog.jverkamp.com/2015/04/06/ender-in-exile" /><id>urn:uuid:de289b67-a5f5-b9c9-05a4-58e38a793379</id><updated>2015-04-06T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/375802.Ender_s_Game"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/1-enders-game.jpg" /></a> <a href="https://www.goodreads.com/book/show/552987.A_War_of_Gifts"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/1.5-a-war-of-gifts.jpg" /></a> <a href="https://www.goodreads.com/book/show/3220405-ender-in-exile"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/2-ender-in-exile.jpg" /></a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-04-07T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Generating perfect portmaneaus</title><link href="http://blog.jverkamp.com/2015/04/07/generating-perfect-portmaneaus" /><id>urn:uuid:b6a3a5ba-c315-27de-adb0-f5871a3c83c9</id><updated>2015-04-07T00:00:00Z</updated><summary type="html"><![CDATA[<p>A quick programming post, since it's been a while, inspired by this video:</p>
+<p><iframe width="560" height="315" src="//www.youtube.com/embed/QVn2PZGZxaI" frameborder="0" allowfullscreen="allowfullscreen"></iframe></p>
+<p>I'm not going to go quite as far as that, but I thought it would be interesting to write up some quick code to generate portmanteaus<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
+]]></summary><content type="html"><![CDATA[<p>A quick programming post, since it's been a while, inspired by this video:</p>
+<p><iframe width="560" height="315" src="//www.youtube.com/embed/QVn2PZGZxaI" frameborder="0" allowfullscreen="allowfullscreen"></iframe></p>
+<p>I'm not going to go quite as far as that, but I thought it would be interesting to write up some quick code to generate portmanteaus<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
+<!--more-->
+<p>Basically<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>, a portmanteau is a combination of two words, smooshing them together<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span> and dropping some letters from each. In this case, what I'm specifically interested in is 'perfect' portmanteaus (I'm not sure if there is a better term for it), where the suffix of one word exactly matches the prefix of the other.</p>
+<p>As an example, consider the words <code>hamster</code> and <code>termine</code>. The last three letters of the former, perfectly matches the first three of the latter, so let's overlap them. <code>hamstermite</code>. Bam.</p>
+<p>So how do we do it?</p>
+<pre class="racket"><code>(define current-minimum-overlap (make-parameter 3))
+
+(define (portmanteau left right)
+  (define maximum-overlap (- (min (string-length left) (string-length right)) 1))
+
+  (for*/first ([overlap (in-range maximum-overlap (- (current-minimum-overlap) 1) -1)]
+               #:when (equal? (substring left (- (string-length left) overlap))
+                              (substring right 0 overlap)))
+    (list left
+          right
+          (string-append
+           (substring left 0 (- (string-length left) overlap))
+           right))))</code></pre>
+<p>Should be straight forward enough. Basically, we start with the longest possible overlap (1 less than the length of the shorter word, since we don't want to completely subsume a word), counting down until we reach some minimum overlap. For each possible sequence, we compare the prefix and suffix of the two words, only proceeding into the body of the loop when they match. That's the beauty of <code><a href="http://docs.racket-lang.org/search/index.html?q=for*/first">for*/first</a></code>, it will loop until it gets a valid value, returning when it does.</p>
+<p>And that's really it. Try it out with the example from earlier:</p>
+<pre class="racket"><code>&gt; (portmanteau "hamster" "termite")
+'("hamster" "termite" "hamstermite")</code></pre>
+<p>Since that was so quick, let's put some simple wrapper code around it in order to find all portmanteaus from a given word list. First, do the heavy lifting of finding portmanteaus:</p>
+<pre class="racket"><code>(define (portmanteaus)
+  (define words
+    (for*/list ([raw-line (in-lines)]
+                [line (in-value (string-trim (string-downcase raw-line)))]
+                #:when (not (equal? "" line)))
+      line))
+
+  (for*/list ([left (in-list words)]
+              [right (in-list words)]
+              #:when (not (eq? left right))
+              [portmanteau (in-value (portmanteau left right))]
+              #:when portmanteau)
+    portmanteau))</code></pre>
+<p><code><a href="http://docs.racket-lang.org/search/index.html?q=in-value">in-value</a></code> is useful in <code><a href="http://docs.racket-lang.org/search/index.html?q=for*">for*</a></code> since it lets you bind a single value for future <code>#:when</code> blocks without having to recalculate anything.</p>
+<p>After that, a wrapper to process some command line parameters and render output in a few different ways:</p>
+<pre class="racket"><code>(define paths
+  (command-line
+   #:program "portmanteau"
+   #:once-each
+   [("--minimum-overlap")
+    overlap
+    "Specify the minimum necessary overlap (default = 3)"
+    (cond
+      [(string-&gt;number overlap) =&gt; current-minimum-overlap]
+      [else (error '--minimum-overlap "must specify a number")])]
+   #:once-any
+   [("--verbose")
+    "Print in verbose mode (default = false)"
+    (verbose-mode #t)]
+   [("--graph")
+    "Print out a dotfile"
+    (graph-mode #t)]
+   #:args paths
+
+   paths))
+
+(when (null? paths)
+  (set! paths '("-")))
+
+(for ([path (in-list paths)])
+  (define results
+    (cond
+      [(equal? path "-")
+       (portmanteaus)]
+      [else
+       (with-input-from-file path portmanteaus)]))
+
+  (define g (unweighted-graph/directed '()))
+
+  (for ([result (in-list results)])
+    (match-define (list left right portmanteau) result)
+    (cond
+      [(verbose-mode)
+       (printf "~a + ~a = ~a\n" left right portmanteau)]
+      [(graph-mode)
+       (add-edge! g (~a "\"" left "\"") (~a "\"" right "\""))]
+      [else
+       (displayln portmanteau)]))
+
+  (when (graph-mode)
+    (displayln (graphviz g))))</code></pre>
+<p>Now you can do some interesting things:</p>
+<pre class="bash"><code>$ racket portmanteau.rkt animals.txt
+
+brown recluse spider monkey
+gila monstermite
+grasshopperegrine falcon
+hamstermite
+leechidna
+ottermite</code></pre>
+<p>Just in case you cannot figure out what animals actually went into that list:</p>
+<pre class="bash"><code>$ racket portmanteau.rkt --verbose animals.txt
+
+brown recluse spider + spider monkey = brown recluse spider monkey
+gila monster + termite = gila monstermite
+grasshopper + peregrine falcon = grasshopperegrine falcon
+hamster + termite = hamstermite
+leech + echidna = leechidna
+otter + termite = ottermite</code></pre>
+<p>Or if you want to be a little more general, matching with only 2 characters rather than the default 3:</p>
+<pre class="bash"><code>$ racket portmanteau.rkt --minimum-overlap 2 --verbose animals.txt
+
+armadillo + loon = armadilloon
+armadillo + lorikeet = armadillorikeet
+armadillo + louse = armadillouse
+black mamba + badger = black mambadger
+brown bear + armadillo = brown bearmadillo
+brown recluse spider + spider monkey = brown recluse spider monkey
+chinchilaa + aardvark = chinchilaardvark
+copperhead snake + kestrel = copperhead snakestrel
+coyote + termite = coyotermite
+crow + owl = crowl
+eagle + leech = eagleech
+eagle + leopard seal = eagleopard seal
+echidna + narwhal = echidnarwhal
+gecko + koala = geckoala
+gila monster + termite = gila monstermite
+grasshopper + peregrine falcon = grasshopperegrine falcon
+hamster + termite = hamstermite
+hyena + narwhal = hyenarwhal
+jackal + albatross = jackalbatross
+king cobra + rattlesnake = king cobrattlesnake
+king cobra + raven = king cobraven
+kingsnake + kestrel = kingsnakestrel
+kiwi + wild boar = kiwild boar
+leech + chinchilaa = leechinchilaa
+leech + echidna = leechidna
+leopard seal + albatross = leopard sealbatross
+narwhal + albatross = narwhalbatross
+ostrich + chinchilaa = ostrichinchilaa
+otter + termite = ottermite
+polar bear + armadillo = polar bearmadillo
+rattlesnake + kestrel = rattlesnakestrel
+sloth bear + armadillo = sloth bearmadillo
+snapping turtle + leech = snapping turtleech
+snapping turtle + leopard seal = snapping turtleopard seal
+sparrow + owl = sparrowl
+sperm whale + leech = sperm whaleech
+sperm whale + leopard seal = sperm whaleopard seal
+sponge + gecko = spongecko
+swan + anaconda = swanaconda
+wild boar + armadillo = wild boarmadillo</code></pre>
+<p>Heh. Narwhalbatross. Wild boarmadillo. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>
+<p>And as a final bonus, using the <a href="https://github.com/stchang/graph/tree/master">graph</a> library I've used (and contributed to) before, we can render the structure of the thing):</p>
+<pre class="bash"><code>$ racket portmanteau.rkt --graph --minimum-overlap 2 animals.txt \
+    | sed "s/edge \[dir=none\];//g" \
+    | fdp -Tpng &gt; animals.png \
+    && open animals.png</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/04/07/generating-perfect-portmaneaus/animals.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/07/generating-perfect-portmaneaus/animals.png" /></a></p>
+<p>Fun. :)</p>
+<p>Think of the arrows as going from the stuck on word to where it's sticking rather than in the order the words would be written. It's easy enough to change though if you'd like, just swap the arguments in the <code>add-edge!</code> call above.</p>
+<p>And... that's it. Not much more to do with this one, unless I want to duplicate the above video and portmanteau all the things! We'll see.</p>
+<p>As with all my code, you can see the entire thing on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/portmanteau.rkt">portmanteau.rkt</a></p>]]></content></entry><entry><title>Ender in Exile</title><link href="http://blog.jverkamp.com/2015/04/06/ender-in-exile" /><id>urn:uuid:de289b67-a5f5-b9c9-05a4-58e38a793379</id><updated>2015-04-06T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/375802.Ender_s_Game"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/1-enders-game.jpg" /></a> <a href="https://www.goodreads.com/book/show/552987.A_War_of_Gifts"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/1.5-a-war-of-gifts.jpg" /></a> <a href="https://www.goodreads.com/book/show/3220405-ender-in-exile"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/2-ender-in-exile.jpg" /></a></p>
 <p><a href="https://www.goodreads.com/author/show/589.Orson_Scott_Card">Orson Scott Card's</a> <a href="https://www.goodreads.com/book/show/375802.Ender_s_Game">Ender's Game</a> has long been among my favorite science fiction novels<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, ever since I first read it years ago. I've always found it interesting how, given the two branches of sequels to Ender's Game, most people prefer one or the other, either <a href="https://www.goodreads.com/series/43963-the-ender-quintet">Ender's Quintet</a> or <a href="https://www.goodreads.com/series/40409-ender-s-shadow">Ender's Shadow</a>. Personally, I tend towards the former, perhaps because I read it first, perhaps because it's more science fictiony and philosophical rather than militaristic and political.</p>
 <p>So when I recently realized that between when I last read <a href="https://www.goodreads.com/book/show/7967.Speaker_for_the_Dead">Speaker for the Dead</a> et al, a new book had been released: <a href="https://www.goodreads.com/book/show/3220405-ender-in-exile">Ender in Exile</a>, taking place between Ender's Game and Speaker for the Dead. So of course I had to read it.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/375802.Ender_s_Game"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/1-enders-game.jpg" /></a> <a href="https://www.goodreads.com/book/show/552987.A_War_of_Gifts"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/1.5-a-war-of-gifts.jpg" /></a> <a href="https://www.goodreads.com/book/show/3220405-ender-in-exile"><img src="http://blog.jverkamp.com/2015/04/06/ender-in-exile/2-ender-in-exile.jpg" /></a></p>
@@ -196,24 +356,4 @@ done</code></pre>
 <p>So far this year, that puts me at 24 books out of 100 after two and a half months. I've fallen behind a bit (only 5 books ahead of schedule instead of 7), but still well on my way.</p>
 <p>Up next: <a href="https://www.goodreads.com/series/54966-white-trash-zombie">White Trash Zombie</a> by <a href="https://www.goodreads.com/author/show/852078.Diana_Rowland">Diana Rowland</a>.</p>]]></content></entry><entry><title>Pescadero State Beach</title><link href="http://blog.jverkamp.com/2015/03/07/pescadero-state-beach" /><id>urn:uuid:3aec8073-c62f-58e7-f17b-02d715fd328d</id><updated>2015-03-07T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another beach! This time A borrowed the camera and took a few pictures of a. Adorable. :)</p>
 <div><div class="flickr-gallery" data-set-id="72157651233600192" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157651233600192">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Another beach! This time A borrowed the camera and took a few pictures of a. Adorable. :)</p>
-<div><div class="flickr-gallery" data-set-id="72157651233600192" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157651233600192">View on Flickr</a></p></div>]]></content></entry><entry><title>gif shrinkage with ImageMagick</title><link href="http://blog.jverkamp.com/2015/03/05/gif-shrinkage-with-imagemagick" /><id>urn:uuid:ca361209-13d0-9725-3b15-9d0d7f368a98</id><updated>2015-03-05T00:00:00Z</updated><summary type="html"><![CDATA[<p>I have a gif collection now. :)</p>
-<p><a href="http://blog.jverkamp.com/2015/03/05/gif-shrinkage-with-imagemagick/dun-dun-dunnnnn.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/03/05/gif-shrinkage-with-imagemagick/dun-dun-dunnnnn.gif" /></a></p>
-]]></summary><content type="html"><![CDATA[<p>I have a gif collection now. :)</p>
-<p><a href="http://blog.jverkamp.com/2015/03/05/gif-shrinkage-with-imagemagick/dun-dun-dunnnnn.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/03/05/gif-shrinkage-with-imagemagick/dun-dun-dunnnnn.gif" /></a></p>
-<!--more-->
-<p>One problem with gifs is that they tend to be somewhat sizable. To keep that at least a little under control, I've added a quick script to my <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a> to trim all files passed on the command line to a maximum edge size of 256 pixels:</p>
-<pre class="bash"><code>#!/bin/bash
-
-tmpdir=&lt;code&gt;mktemp -d /tmp/shrink-gifs.XXXX&lt;/code&gt;
-echo "$tmpdir"
-
-for file in "$@"
-do
-  echo "$file"
-  convert "$file" -alpha on -channel rgba -coalesce -resize 256x256 -layers OptimizeFrame -colors 64 "$tmpdir/$file"
-  mv "$tmpdir/$file" "$file"
-done</code></pre>
-<p>Basically, I'm using the excellent <a href="http://www.imagemagick.org/">ImageMagick</a> software, specifically the <code>convert</code> utility. All of those flags are necessary since gifs have layers. This results in both a properly converted gif but also a somewhat optimized palette.</p>
-<p>Also, we're using a temporary directory rather than using the in place version of <code>convert</code>: <code>mogrify</code>. For whatever reason, <code>mogrify</code> doesn't seem to work on gifs. So it goes.</p>
-<p>As a side note, <code>identify</code> (another tool that comes with ImageMagick) is really useful. Give it an image and it will tell you how large it is, all on the command line.</p>
-<p>This script (and all of my <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a>) is available on GitHub: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/shrink-gifs">shrink-gifs</a></p>]]></content></entry></feed>
+<div><div class="flickr-gallery" data-set-id="72157651233600192" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157651233600192">View on Flickr</a></p></div>]]></content></entry></feed>
