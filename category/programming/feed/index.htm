@@ -1,5 +1,152 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-04-14T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>A Quick Look at RC4</title><link href="http://blog.jverkamp.com/2015/04/14/a-quick-look-at-rc4" /><id>urn:uuid:7faa7241-8deb-6230-5db2-37d89e5af00c</id><updated>2015-04-14T00:00:00Z</updated><summary type="html"><![CDATA[<p>In cryptography work, <a href="https://en.wikipedia.org/wiki/RC4">RC4</a> (Rivest Cipher 4) is well known as both one of the easiest to implement and fastest to run <a href="https://en.wikipedia.org/wiki/symmetric_encryption">symmetric encryption</a> algorithms. Unfortunately, over time there have been a number of attacks on RC4, both in poorly written protocols (such as in the case of <a href="https://en.wikipedia.org/wiki/WEP">WEP</a>) or statistical attacks against the protocol itself.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-04-17T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>It's all Greek to me</title><link href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me" /><id>urn:uuid:b361ed4c-c170-609c-a31d-3fbc5642e648</id><updated>2015-04-17T00:00:00Z</updated><summary type="html"><![CDATA[<p>A few days ago an interesting article came across my RSS feeds: <a href="http://flowingdata.com/2015/04/14/its-all-greek-or-chinese-or-spanish-or-to-me/">It’s All Greek (or Chinese or Spanish or…) to Me</a>. Basically, in English, when you're confused, you'll often say 'It's all Greek to me'. It turns out that man (if not all) languages around the world have a similar saying, but the target varies. Luckily, Wikipedia has a lovely page about it: <a href="https://en.wikipedia.org/wiki/Greek_to me">Greek to me</a>.</p>
+]]></summary><content type="html"><![CDATA[<p>A few days ago an interesting article came across my RSS feeds: <a href="http://flowingdata.com/2015/04/14/its-all-greek-or-chinese-or-spanish-or-to-me/">It’s All Greek (or Chinese or Spanish or…) to Me</a>. Basically, in English, when you're confused, you'll often say 'It's all Greek to me'. It turns out that man (if not all) languages around the world have a similar saying, but the target varies. Luckily, Wikipedia has a lovely page about it: <a href="https://en.wikipedia.org/wiki/Greek_to me">Greek to me</a>.</p>
+<!--more-->
+<p>When I posted the link to Facebook, I got a quick question: are there any cycles? While one could just scan through the document, it would be a lot more interesting (at least to me!) if you could do it automatically. Let's toss together a quick script to do it.</p>
+<p>First thing we need: a way to get the content of the Wikipedia page. Python is great for this, with <a href="http://docs.python-requests.org/en/latest/">requests</a> to grab the page and <a href="http://www.crummy.com/software/BeautifulSoup/">BeautifulSoup</a> to process it:</p>
+<pre class="python"><code>content = requests.get('https://en.wikipedia.org/wiki/Greek_to_me').text
+soup = bs4.BeautifulSoup(content)
+
+table = soup.find('table', {'class': 'wikitable sortable'})
+
+pairs = collections.defaultdict(set)
+
+for row in table.findAll('tr'):
+    cols = row.findAll('td')
+    if not cols:
+        continue
+
+    if len(cols) == 5:
+        srcs = [src.strip() for src in cols[0].text.split(',')]
+
+    dsts = [dst.strip() for dst in cols[-1].text.split(',')]
+    for i, dst in enumerate(dsts):
+        dsts[i] = re.sub(r'[\[(].*?[\])]', '', dst)
+
+    for src in srcs:
+        if ' ' in src: continue
+
+        for dst in dsts:
+            if ' ' in dst: continue
+
+            pairs[src].add(dst)</code></pre>
+<p>Basically, we download the page. Then we go through each of the rows (<code>tr</code>). Skip any rows without column elements (<code>td</code>) as that's probably the header, otherwise, pull them out. The first column (index <code>0</code>) is the language with the idiom (English in the example) while the last column (index <code>-1</code>) is the target (Greek). There's one caveat though, that sometimes the table uses a <code>rowspan</code> when one source can have multiple targets but is only listed once. We check that by only changing the <code>srcs</code> when there are 5 columns.</p>
+<p>Parse through all of that and what do you have?</p>
+<pre class="python"><code>&gt;&gt;&gt; import pprint
+&gt;&gt;&gt; pprint.pprint(dict(pairs))
+{u'': set([]),
+ u'Afrikaans': set([u'Greek']),
+ u'Albanian': set([u'Chinese']),
+ u'Arabic': set([u'Chinese', u'Garshuni']),
+ ...
+ u'Vietnamese': set([u'Cambodian']),
+ u'Volap\xfck': set([]),
+ u'Yiddish': set([u'Aramaic'])}</code></pre>
+<p>Exactly what I was looking for. Okay, next step. Find any cycles in the graph. This is straight forward enough by performing a <a href="https://en.wikipedia.org/wiki/depth_first search">depth first search</a>:</p>
+<pre class="python"><code>def cycle(node, seen):
+
+    for neighbor in pairs[node]:
+        new_seen = seen + [neighbor]
+
+        if neighbor in seen:
+            yield new_seen[new_seen.index(neighbor):]
+        else:
+            for recur in cycle(neighbor, new_seen):
+                yield recur</code></pre>
+<p>The basic idea is to make a generator that returns each cycle as it finds it. It does so by search down each branch, maintaining a list of all nodes it has <code>seen</code>. If it sees the same node twice, that's a cycle. Otherwise, try all of the neighbors. We avoid infinite loops since there's a guaranteed base case to the recursion: <code>seen</code> is always one bigger on each step and it's maximum size is the number of nodes in the graph.</p>
+<p>So how does it work?</p>
+<pre class="python"><code>&gt;&gt;&gt; for result in cycle('English', ['English']):
+...     print result
+...
+['English', u'Greek', u'Chinese', u'English']
+['English', u'Greek', u'Turkish', u'Arabic', u'Chinese', u'English']
+['English', u'Greek', u'Turkish', u'French', u'Chinese', u'English']
+['English', u'Greek', u'Turkish', u'French', u'Hebrew', u'Chinese', u'English']
+['English', u'Dutch', u'Chinese', u'English']</code></pre>
+<p>Neat! We've already found 5 cycles that involve English alone. But how many cycles are there all together? For that, we need a way to determine if a cycle is actually unique. If you have the cycles <code>A -> B -> C -> A</code>, that's the same as <code>B -> C -> A -> B</code>. You can do this by putting the cycles in <a href="https://en.wikipedia.org/wiki/lexical_order">lexical order</a> (so that the 'smallest' element in the cycle is first).</p>
+<pre class="python"><code>def reorder(cycle):
+    if cycle[0] == cycle[-1]:
+        cycle = cycle[1:]
+
+    smallest = min(cycle)
+    for el in list(cycle):
+        if el == smallest:
+            break
+        else:
+            cycle = cycle[1:] + [cycle[0]]
+
+    return cycle</code></pre>
+<p>It also is smart enough that if we pass it a list with the first and last node the same (as we will), it trims that off automatically.</p>
+<pre class="python"><code>&gt;&gt;&gt; reorder(['A', 'B', 'C', 'A'])
+['A', 'B', 'C']
+&gt;&gt;&gt; reorder(['B', 'C', 'A', 'B'])
+['A', 'B', 'C']</code></pre>
+<p>Bam. So we use that and a <code>set</code> to keep track of what we've seen:</p>
+<pre class="python"><code>&gt;&gt;&gt; seen = set()
+&gt;&gt;&gt; for src in pairs.keys():
+...     for result in cycle(src, [src]):
+...         result = reorder(result)
+...         if not str(result) in seen:
+...             print(result)
+...             seen.add(str(result))
+...
+[u'Chinese', u'English', u'Greek']
+[u'Chinese', u'English', u'Dutch']
+[u'Arabic', u'Chinese', u'English', u'Greek', u'Turkish']
+[u'Chinese', u'English', u'Greek', u'Turkish', u'French']
+[u'Chinese', u'English', u'Greek', u'Turkish', u'French', u'Hebrew']</code></pre>
+<p>Huh. So they all go through English. I didn't actually expect that. :) Still, it's cool to be able to unify them like that.</p>
+<p>Okay, one last trick. Let's visualize them. Luckily, there's a nice Python interface for <a href="https://pypi.python.org/pypi/graphviz">graphviz</a> that we can use:</p>
+<pre class="python"><code># --- Render a nice graph ---
+
+g = graphviz.Digraph()
+for src in pairs.keys():
+    for dst in pairs[src]:
+        g.edge(src, dst)
+
+g.graph_attr['overlap'] = 'false'
+g.graph_attr['splines'] = 'true'
+
+g.format = 'png'
+g.engine = 'neato'
+
+g.render('greek-to-me')</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me.png" /></a></p>
+<p>Awesome.</p>
+<p>It's not the easiest thing in the world to read, but if you look carefully you can pick out a few interesting things. Let's tweak it a bit to color nodes if and only if they have both an inward edge and an outward one:</p>
+<pre class="python"><code>for src in pairs.keys():
+    # Does this node lead to another
+    has_out = pairs[src]
+
+    # Does any node lead to this one
+    has_in = False
+    for dst in pairs.keys():
+        if src in pairs[dst]:
+            has_in = True
+            break
+
+    # If both, color it
+    if has_out and has_in:
+        g.node(src, color = 'blue')
+</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color-nodes.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color-nodes.png" /></a></p>
+<p>That's a little better, all of the nodes in any cycle are in there. Let's go ahead and show all of the edges in any cycle:</p>
+<pre class="python"><code># Get all edges that are part of a cycle
+cycle_edges = set()
+for cycle in cycles:
+    for src, dst in zip(cycle, cycle[1:]):
+        cycle_edges.add((src, dst))
+    cycle_edges.add((cycle[-1], cycle[0]))
+
+for src in pairs.keys():
+    for dst in pairs[src]:
+        if (src, dst) in cycle_edges:
+            g.edge(src, dst, color = 'blue')
+        else:
+            g.edge(src, dst)</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color.png" /></a></p>
+<p>So they're all in that pocket. If I had a few more minutes, I could show all of the cycles as different colors, but that gets complicated in that many re-use the same paths. So it goes.</p>
+<p>If you'd like to see / run the code, you can grab it from GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/greek-to-me.py">greek-to-me.py</a></p>]]></content></entry><entry><title>A Quick Look at RC4</title><link href="http://blog.jverkamp.com/2015/04/14/a-quick-look-at-rc4" /><id>urn:uuid:7faa7241-8deb-6230-5db2-37d89e5af00c</id><updated>2015-04-14T00:00:00Z</updated><summary type="html"><![CDATA[<p>In cryptography work, <a href="https://en.wikipedia.org/wiki/RC4">RC4</a> (Rivest Cipher 4) is well known as both one of the easiest to implement and fastest to run <a href="https://en.wikipedia.org/wiki/symmetric_encryption">symmetric encryption</a> algorithms. Unfortunately, over time there have been a number of attacks on RC4, both in poorly written protocols (such as in the case of <a href="https://en.wikipedia.org/wiki/WEP">WEP</a>) or statistical attacks against the protocol itself.</p>
 <p>Still, for how well it formed, it's an amazingly simple algorithm, so I decided to try my hand at implementing it.</p>
 ]]></summary><content type="html"><![CDATA[<p>In cryptography work, <a href="https://en.wikipedia.org/wiki/RC4">RC4</a> (Rivest Cipher 4) is well known as both one of the easiest to implement and fastest to run <a href="https://en.wikipedia.org/wiki/symmetric_encryption">symmetric encryption</a> algorithms. Unfortunately, over time there have been a number of attacks on RC4, both in poorly written protocols (such as in the case of <a href="https://en.wikipedia.org/wiki/WEP">WEP</a>) or statistical attacks against the protocol itself.</p>
 <p>Still, for how well it formed, it's an amazingly simple algorithm, so I decided to try my hand at implementing it.</p>
@@ -867,276 +1014,5 @@ if path.endswith('.aes'):
 <p>Once you start digging through these lists, there are some pretty interesting files ... but that will have to wait for another post. This one is already pretty long. I think I'll have at least one more post in this series taking everything I've done thus far and turning it into an actual backup solution. Keep an eye out!</p>
 <p>The full source thus far (and I've finally caught up) is on GitHub: <a href="https://github.com/jpverkamp/ios-backup">ios-backup</a>.</p>
 <p>If you've installed <code>ios-backup</code> as a library, you can import these new functions with <code>(require ios-backup/apps)</code> or if you really want to get adventerous <code>(require ios-backup/mbdb)</code>.</p>
-<p>Here is a list of all of the posts in this series:</p>
-<ul class="list-unstyled"><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork">iOS Backups in Racket: Groundwork</a></li><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts">iOS Backups in Racket: Contacts</a></li><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/27/ios-backups-in-racket-messages">iOS Backups in Racket: Messages</a></li><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps">iOS Backups in Racket: Apps</a></li></ul>]]></content></entry><entry><title>iOS Backups in Racket: Messages</title><link href="http://blog.jverkamp.com/2015/01/27/ios-backups-in-racket-messages" /><id>urn:uuid:5a638d35-714a-ea03-68c1-9a6ac3d30dcd</id><updated>2015-01-27T00:00:00Z</updated><summary type="html"><![CDATA[<p>So far we've <a href="http://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork">laid the groundwork</a>, loading local iOS backups and parsed out <a href="http://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts">contacts</a>. Today let's take another step down the rabbit hole and figure out how messages are stored.</p>
-]]></summary><content type="html"><![CDATA[<p>So far we've <a href="http://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork">laid the groundwork</a>, loading local iOS backups and parsed out <a href="http://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts">contacts</a>. Today let's take another step down the rabbit hole and figure out how messages are stored.</p>
-<!--more-->
-<p>Okay, first things first, we need to find the database(s) that messages are stored in. Using the <a href="https://theiphonewiki.com/wiki/ITunes_Backup#Files">same source</a> as last time, we have:</p>
-<pre class="racket"><code>&gt; (hash-filename "Library/SMS/sms.db" "HomeDomain")
-"3d0d7e5fb2ce288813306e4d4636395e047a3d28"</code></pre>
-<p>Interesting. What's in there?</p>
-<pre class="sql"><code>sqlite&gt; .tables
-_SqliteDatabaseProperties  chat_message_join
-attachment                 handle
-chat                       message
-chat_handle_join           message_attachment_join</code></pre>
-<p>Dang. That's rather less than there was when dealing with contacts. From a first guess, I would say that <code>message</code> contains the text itself, <code>chat</code> is a group of messages with the same people, and <code>*_join</code> are tables that related those. <code>handle</code> could perhaps be a way of relating who is in a chat to the information in contacts from last week. Let's see how I did:</p>
-<pre class="sql"><code>CREATE TABLE message (ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
-    guid TEXT UNIQUE NOT NULL,
-    text TEXT,
-    replace INTEGER DEFAULT 0,
-    service_center TEXT,
-    handle_id INTEGER DEFAULT 0,
-    subject TEXT,
-    country TEXT,
-    attributedBody BLOB,
-    version INTEGER DEFAULT 0,
-    type INTEGER DEFAULT 0,
-    service TEXT,
-    account TEXT,
-    account_guid TEXT,
-    error INTEGER DEFAULT 0,
-    date INTEGER,
-    date_read INTEGER,
-    date_delivered INTEGER,
-    is_delivered INTEGER DEFAULT 0,
-    is_finished INTEGER DEFAULT 0,
-    is_emote INTEGER DEFAULT 0,
-    is_from_me INTEGER DEFAULT 0,
-    is_empty INTEGER DEFAULT 0,
-    is_delayed INTEGER DEFAULT 0,
-    is_auto_reply INTEGER DEFAULT 0,
-    is_prepared INTEGER DEFAULT 0,
-    is_read INTEGER DEFAULT 0,
-    is_system_message INTEGER DEFAULT 0,
-    is_sent INTEGER DEFAULT 0,
-    has_dd_results INTEGER DEFAULT 0,
-    is_service_message INTEGER DEFAULT 0,
-    is_forward INTEGER DEFAULT 0,
-    was_downgraded INTEGER DEFAULT 0,
-    is_archive INTEGER DEFAULT 0,
-    cache_has_attachments INTEGER DEFAULT 0,
-    cache_roomnames TEXT,
-    was_data_detected INTEGER DEFAULT 0,
-    was_deduplicated INTEGER DEFAULT 0,
-    is_audio_message INTEGER DEFAULT 0,
-    is_played INTEGER DEFAULT 0,
-    date_played INTEGER,
-    item_type INTEGER DEFAULT 0,
-    other_handle INTEGER DEFAULT -1,
-    group_title TEXT,
-    group_action_type INTEGER DEFAULT 0,
-    share_status INTEGER,
-    share_direction INTEGER,
-    is_expirable INTEGER DEFAULT 0,
-    expire_state INTEGER DEFAULT 0,
-    message_action_type INTEGER DEFAULT 0,
-    message_source INTEGER DEFAULT 0
- );</code></pre>
-<p>Oof. Okay, that's more like what I was expecting. In particular though, it looks like we don't care about most of those fields. In particular, I think the interesting fields will be <code>guid</code>, <code>text</code>, <code>handle_id</code> (it looks like we will need the <code>handle</code> table), <code>date</code>, and <code>is_from_me</code>.</p>
-<p>Next, <code>chat</code>:</p>
-<pre class="sql"><code>sqlite&gt; .schema chat
-CREATE TABLE chat (ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
-    guid TEXT UNIQUE NOT NULL,
-    style INTEGER,
-    state INTEGER,
-    account_id TEXT,
-    properties BLOB,
-    chat_identifier TEXT,
-    service_name TEXT,
-    room_name TEXT,
-    account_login TEXT,
-    is_archived INTEGER DEFAULT 0,
-    last_addressed_handle TEXT,
-    display_name TEXT,
-    group_id TEXT
-);</code></pre>
-<p>Hmm. It turns out that we don't actually need anything there. All that we need to know about chats is which ID we need, which because it's a join table, that will be in <code>chat_message_join</code>:</p>
-<pre class="sql"><code>sqlite&gt; .schema chat_message_join
-CREATE TABLE chat_message_join (
-    chat_id INTEGER REFERENCES chat (ROWID) ON DELETE CASCADE,
-    message_id INTEGER REFERENCES message (ROWID) ON DELETE CASCADE,
-    PRIMARY KEY (chat_id, message_id)
-);</code></pre>
-<p>So if we have a chat ID, we can get all of that information:</p>
-<pre class="sql"><code>SELECT
-  message.ROWID as message_id,
-  message.date,
-  message.service,
-  message.is_from_me,
-  (CASE WHEN message.subject IS NULL THEN '' ELSE message.subject END),
-  (CASE WHEN message.text IS NULL THEN '' ELSE message.text END)
-FROM
-  chat_message_join,
-  message
-WHERE
-  chat_id = ?
-  AND message_id = message.ROWID
-ORDER BY date ASC</code></pre>
-<p>The conversion from <code>NULL</code> to an empty string is mostly for later. I know that I'll want to serialize these, most likely to JSON and I don't particularly care about the difference between a <code>NULL</code> entry and an empty string.</p>
-<p>That's a good start. We still need to know who they're from though.</p>
-<pre class="sql"><code>sqlite&gt; .schema handle
-CREATE TABLE handle (
-    ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-    id TEXT NOT NULL,
-    country TEXT,
-    service TEXT NOT NULL,
-    uncanonicalized_id TEXT,
-    UNIQUE (id,
-    service)
-);</code></pre>
-<p>Looking at some of the values, it seems that <code>id</code> is either an email or a phone number, while service is either SMS or iMessage (at least in my case). Country might be interesting later, but we'll ignore it for the moment.</p>
-<p>So let's expand the query to include that information:</p>
-<pre class="sql"><code>SELECT
-  message.ROWID as message_id,
-  message.date,
-  message.service,
-  message.is_from_me,
-  handle.id as them,
-  (CASE WHEN message.subject IS NULL THEN '' ELSE message.subject END),
-  (CASE WHEN message.text IS NULL THEN '' ELSE message.text END)
-FROM
-  chat_message_join,
-  message,
-  handle
-WHERE
-  chat_id = ?
-  AND message_id = message.ROWID
-  AND handle_id = handle.ROWID
-ORDER BY date ASC</code></pre>
-<p>Cool. One last thing. Remember that <code>attachment</code> table? Let's go ahead and add that in, just loading the attachments as a single string:</p>
-<pre class="sql"><code>SELECT
-  message.ROWID as message_id,
-  message.date,
-  message.service,
-  message.is_from_me,
-  handle.id as them,
-  (CASE WHEN message.subject IS NULL THEN '' ELSE message.subject END),
-  (CASE WHEN message.text IS NULL THEN '' ELSE message.text END),
-  (SELECT group_concat(attachment.filename)
-     FROM message_attachment_join, attachment
-     WHERE message_attachment_join.message_id = message.ROWID
-       AND message_attachment_join.attachment_id = attachment.ROWID)
-FROM
-  chat_message_join,
-  message,
-  handle
-WHERE
-  chat_id = ?
-  AND message_id = message.ROWID
-  AND handle_id = handle.ROWID
-ORDER BY date ASC</code></pre>
-<p>Okay. They say that <a href="https://www.youtube.com/watch?v=pele5vptVgc" data-toggle="lightbox">knowing is half the battle</a>, so having all of the structure and that SQL query should translate pretty directly to code:</p>
-<pre class="racket"><code>(struct chat (contacts messages) #:prefab)
-(struct message (date service sender subject text attachments) #:prefab)
-(struct attachment (name path) #:prefab)
-
-; Load all chats from a backup directory
-(define (list-chats)
-  (hash-ref!
-   chats-by-backup
-   (current-backup)
-   (λ ()
-     (parameterize ([date-display-format 'iso-8601])
-       ; Connect to the correct DB
-       (define sms-db
-         (sqlite3-connect
-           #:database (build-path (backup-path (current-backup))
-                                  MESSAGES-DB)))
-
-       ; Loop over the individual chat ids
-       (for/list ([(chat-id) (in-query sms-db "SELECT ROWID FROM chat")])
-         ; Determine which contacts were involved in the conversation by contact
-         ; Use models/contacts.rkt to figure out who belongs to contact information
-         (define user-query "SELECT id FROM chat_handle_join, handle
-                             WHERE chat_id = $1 AND handle_id = ROWID
-                             ORDER BY handle_id ASC")
-         (define contacts
-           (for/list ([(contact) (in-query sms-db user-query chat-id)])
-             (find-contact (normalize-contact contact))))
-
-         ; Load the individual messages
-         (define msg-query "
-SELECT
-  message.ROWID as message_id,
-  message.date,
-  message.service,
-  message.is_from_me,
-  handle.id as them,
-  (CASE WHEN message.subject IS NULL THEN '' ELSE message.subject END),
-  (CASE WHEN message.text IS NULL THEN '' ELSE message.text END),
-  (SELECT group_concat(attachment.filename)
-     FROM message_attachment_join, attachment
-     WHERE message_attachment_join.message_id = message.ROWID
-       AND message_attachment_join.attachment_id = attachment.ROWID)
-FROM
-  chat_message_join,
-  message,
-  handle
-WHERE
-  chat_id = ?
-  AND message_id = message.ROWID
-  AND handle_id = handle.ROWID
-ORDER BY date ASC")
-         (define messages
-           (for/list ([(message-id
-                        raw-date
-                        service
-                        from-me?
-                        other-party
-                        subject
-                        text
-                        raw-attachments)
-                       (in-query sms-db msg-query chat-id)])
-             ; Correct dates from Apple time to unix time
-             ; TODO: Account for timezones?
-             (define date (seconds-&gt;date (+ raw-date 978336000 (- (* 16 60 60))) #f))
-
-             (define sender
-               (if (= 1 from-me?)
-                   (backup-phone-number (current-backup))
-                   (normalize-contact other-party)))
-
-             ; Load attachments,
-             (define attachments
-               (if (sql-null? raw-attachments)
-                   '()
-                   (for/list ([path (in-list (string-split raw-attachments ","))])
-                     (attachment
-                      (path-&gt;string (last (explode-path path)))
-                      (build-path (backup-path (current-backup))
-                                  (hash-filename path))))))
-
-             (message date service sender subject text attachments)))
-
-         ; Create the chat object
-         (chat contacts messages))))))</code></pre>
-<p>Theoretically, that should be a fairly direct translation. One interesting bit is the format of <code>date</code>. It's actually a timestamp, but not a normal <a href="https://en.wikipedia.org/wiki/Unix_timestamp">Unix timestamp</a>. So I have a bit of a <a href="https://en.wikipedia.org/wiki/magic_number">magic number</a>, but it works correctly for my backups, so we'll just leave it for the moment. Other than that, we use the <code>hash-filename</code> function from last time to get a local path for any <code>attachment</code> and we've got everything pretty much written.</p>
-<p>And that's really all we need. One thing that would be nice to be able to do though is, given a contact, filter for only the messages with that contact (either directly or in group chats as well):</p>
-<pre class="racket"><code>; Get all chats involving a specific chat
-(define (find-chats-by-contact contact #:direct? [direct? #f])
-  ; Allow the user to specify the contact by name / phone number / email / etc
-  (when (not (contact? contact))
-    (set! contact (find-contact contact)))
-
-  ; Filter the list of chats
-  (for/list ([chat (in-list (list-chats))]
-             #:when (if direct?
-                        (equal? (list contact) (chat-contacts chat))
-                        (member contact (chat-contacts chat))))
-    chat))</code></pre>
-<p>If you have an iOS device, check it out. It makes certain things really easy. For example, if I want to have a log of every word that I've ever said in a conversation with Jenny:</p>
-<pre class="racket"><code>&gt; (with-backup "86b18...aa36"
-    (for*/list ([chat (in-list (find-chats-by-contact "Jenny" #:direct? #t))]
-                [message (in-list (chat-messages chat))])
-      (message-text message)))
-'("Jenny, Jenny, who can I turn to?"
-  "You give me somethin' I can hold on to"
-  ...)</code></pre>
-<p>That's exactly the sort of that prompted this entire thought: the ability to take the fairly opaque structure of iOS backups and dump them into an easily readable / easily diffable format for my own purposes. Sweet.</p>
-<p>If you'd like to see the entire project, you can do so on GitHub: <a href="https://github.com/jpverkamp/ios-backup">ios-backup</a>. Alternatively, it's set up as a package, so you should be able to install it with <code>raco pkg install</code>. If you do, just import one or more of these:</p>
-<pre class="racket"><code>(require ios-backup
-         ios-backup/contacts
-         ios-backup/messages)</code></pre>
 <p>Here is a list of all of the posts in this series:</p>
 <ul class="list-unstyled"><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork">iOS Backups in Racket: Groundwork</a></li><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts">iOS Backups in Racket: Contacts</a></li><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/27/ios-backups-in-racket-messages">iOS Backups in Racket: Messages</a></li><li class="post-listing"><a href="http://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps">iOS Backups in Racket: Apps</a></li></ul>]]></content></entry></feed>
