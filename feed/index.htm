@@ -1,5 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-04-28T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Year Zero</title><link href="http://blog.jverkamp.com/2015/04/28/year-zero" /><id>urn:uuid:a0507ac6-d1ec-9e91-ff33-5842a395cbb6</id><updated>2015-04-28T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/12953520-year-zero"><img src="http://blog.jverkamp.com/2015/04/28/year-zero/year-zero.jpg" /></a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-05-07T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Tupper's self-referential formula</title><link href="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula" /><id>urn:uuid:bf58a9a0-f27e-d83e-acd1-97ca1db67a9b</id><updated>2015-05-07T00:00:00Z</updated><summary type="html"><![CDATA[<p>Quick post today. Let's implement <a href="https://en.wikipedia.org/wiki/Tupper's_self-referential formula">Tupper's self-referential formula</a> in Racket!</p>
+<div>$$ \frac{1}{2} < \left \lfloor mod \left ( \left \lfloor \frac{y}{17} 2^{-17 \lfloor x \rfloor - mod(\lfloor y \rfloor, 2)} \right \rfloor, 2 \right ) \right \rfloor $$</div>
+<pre class="racket"><code> (tupper 960939379918958884971672962127852754715004339660129306651505519271702802395266424689642842174350718121267153782770623355993237280874144307891325963941337723487857735749823926629715517173716995165232890538221612403238855866184013235585136048828693337902491454229288667081096184496091705183454067827731551705405381627380967602565625016981482083418783163849115590225610003652351370343874461848378737238198224849863465033159410054974700593138339226497249461751545728366702369745461014655997933798537483143786841806593422227898388722980000748404719) </code></pre>
+<p><a href="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.png" /></a></p>
+<p>That's the result of graphing the above function at a point rather far away from the origin. Specifically, where <code>y</code> is around that crazy big number. Look familiar?</p>
+]]></summary><content type="html"><![CDATA[<p>Quick post today. Let's implement <a href="https://en.wikipedia.org/wiki/Tupper's_self-referential formula">Tupper's self-referential formula</a> in Racket!</p>
+<div>$$ \frac{1}{2} < \left \lfloor mod \left ( \left \lfloor \frac{y}{17} 2^{-17 \lfloor x \rfloor - mod(\lfloor y \rfloor, 2)} \right \rfloor, 2 \right ) \right \rfloor $$</div>
+<pre class="racket"><code> (tupper 960939379918958884971672962127852754715004339660129306651505519271702802395266424689642842174350718121267153782770623355993237280874144307891325963941337723487857735749823926629715517173716995165232890538221612403238855866184013235585136048828693337902491454229288667081096184496091705183454067827731551705405381627380967602565625016981482083418783163849115590225610003652351370343874461848378737238198224849863465033159410054974700593138339226497249461751545728366702369745461014655997933798537483143786841806593422227898388722980000748404719) </code></pre>
+<p><a href="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.png" /></a></p>
+<p>That's the result of graphing the above function at a point rather far away from the origin. Specifically, where <code>y</code> is around that crazy big number. Look familiar?</p>
+<!--more-->
+<p>The basic idea behind the formula is that it can encode any arbitrary bitmap (so long as it's black and white and only 106x17 pixels). Essentially under the hood everything is in base 17. First, let's fairly directly translate the original formula into Racket:</p>
+<pre class="racket"><code>; Tupper's "self-referential" formula
+; Encodes a bitmap as an integer
+(define (tupper k)
+  (flomap-&gt;bitmap
+   (build-flomap*
+    1 106 17
+    (λ (x y)
+      (set! y (+ y k))
+      (set! x (- 105 x))
+      (cond
+        [(&lt; 1/2 (floor (mod (* (floor (/ y 17)) (expt 2 (- (* -17 (floor x)) (mod (floor y) 17)))) 2)))
+         (vector 0)]
+        [else
+         (vector 1)])))))</code></pre>
+<p>One amusing caveat that we have to deal with here is that <code>modulus</code> doesn't work on numbers this large. So instead, we're going to have to do it manually:</p>
+<pre class="racket"><code>; Modulus that will work with really large numbers
+(define (mod a b)
+  (define q (floor (/ a b)))
+  (define r (- a (* b q)))
+  r)</code></pre>
+<p>Whee!</p>
+<p>Another neat trick I was playing with is "rendering" the image by adding one digit at a time (in base 10, so it's mostly noise):</p>
+<pre class="racket"><code>(define (render-to target)
+  (define str-target (number-&gt;string target))
+  (define str-buffer (make-string (string-length str-target) #\0))
+
+  (for/list ([i (in-range (sub1 (string-length str-target)) -1)])
+    (string-set! str-buffer i (string-ref str-target i))
+    (tupper (string-&gt;number str-buffer))))
+
+&gt; (write-animated-gif
+   (render-to 960939379918958884971672962127852754715004339660129306651505519271702802395266424689642842174350718121267153782770623355993237280874144307891325963941337723487857735749823926629715517173716995165232890538221612403238855866184013235585136048828693337902491454229288667081096184496091705183454067827731551705405381627380967602565625016981482083418783163849115590225610003652351370343874461848378737238198224849863465033159410054974700593138339226497249461751545728366702369745461014655997933798537483143786841806593422227898388722980000748404719)
+   5
+   "tupper.gif"
+   #:last-frame-delay 50)</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.gif" /></a></p>
+<p>If you look carefully, you'll occasionally see flashes of the final image being rendered. This happens whenever the base-10 numbers that we're adding line up with the base-17 encoding.</p>
+<p>I'm not sure it's particularly useful for anything, but I found it amusing.</p>
+<p>Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tupper.rkt">tupper.rkt</a></p>]]></content></entry><entry><title>Year Zero</title><link href="http://blog.jverkamp.com/2015/04/28/year-zero" /><id>urn:uuid:a0507ac6-d1ec-9e91-ff33-5842a395cbb6</id><updated>2015-04-28T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/12953520-year-zero"><img src="http://blog.jverkamp.com/2015/04/28/year-zero/year-zero.jpg" /></a></p>
 <p>Confession time: I didn't particularly like <a href="https://www.goodreads.com/book/show/11.The_Hitchhiker_s_Guide_to_the_Galaxy">The Hitchhiker's Guide to the Galaxy</a>. It seems a bit of blasphemy for a self professed 'geek', but I just don't particularly care for this style of humorous science fiction. A novel with a large helping of humor? Good. Example: <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a>. But when that humor is pushed to the level of world building, that's a bit of a problem.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/12953520-year-zero"><img src="http://blog.jverkamp.com/2015/04/28/year-zero/year-zero.jpg" /></a></p>
 <p>Confession time: I didn't particularly like <a href="https://www.goodreads.com/book/show/11.The_Hitchhiker_s_Guide_to_the_Galaxy">The Hitchhiker's Guide to the Galaxy</a>. It seems a bit of blasphemy for a self professed 'geek', but I just don't particularly care for this style of humorous science fiction. A novel with a large helping of humor? Good. Example: <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a>. But when that humor is pushed to the level of world building, that's a bit of a problem.</p>
@@ -599,14 +649,4 @@ do
     ssh $IP du -h
     echo
 done</code></pre>
-<p>I'm really starting to admire the 'Do One Thing and Do It Well' philosophy of Unix and chaining things together.</p>]]></content></entry><entry><title>Precinct 13</title><link href="http://blog.jverkamp.com/2015/03/31/precinct-13" /><id>urn:uuid:1a16133b-f599-b842-82bc-c629ff57c19b</id><updated>2015-03-31T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/12779838-precinct-13"><img src="http://blog.jverkamp.com/2015/03/31/precinct-13/precinct-13.jpg" /></a></p>
-<p>Onward and upward on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> with #7: <a href="https://www.goodreads.com/book/show/12779838-precinct-13">Precinct 13</a> by <a href="https://www.goodreads.com/author/show/379444.Tate_Hallaway">Tate Hallaway</a>. It's a little amusing to be reading this back to back with <a href="http://blog.jverkamp.com/2015/03/27/white-trash-zombie">White Trash Zombie</a>, given that in both cases the main character works in a morgue.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/12779838-precinct-13"><img src="http://blog.jverkamp.com/2015/03/31/precinct-13/precinct-13.jpg" /></a></p>
-<p>Onward and upward on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> with #7: <a href="https://www.goodreads.com/book/show/12779838-precinct-13">Precinct 13</a> by <a href="https://www.goodreads.com/author/show/379444.Tate_Hallaway">Tate Hallaway</a>. It's a little amusing to be reading this back to back with <a href="http://blog.jverkamp.com/2015/03/27/white-trash-zombie">White Trash Zombie</a>, given that in both cases the main character works in a morgue.</p>
-<!--more-->
-<p>That being said, I think that unfortunately Precinct 13 was a somewhat weaker book. In particular, it had a pair of problems: a <a href="http://tvtropes.org/pmwiki/pmwiki.php/Main/FantasyKitchenSink">fantasy kitchen sink</a> and <a href="http://tvtropes.org/pmwiki/pmwiki.php/Main/ChosenOne">chosen one</a> syndrome. Both have the possibility--as do all tropes--of being done well, but in this case I wasn't particularly thrilled with it.</p>
-<p>So far as the kitchen sink, I feel like to do it right, you have to either introduce new beasties slowly (that's one thing I liked about both the Dresden Files and <a href="http://blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a>) or just hint about the bigger world. Instead, we're hit pretty immediately over the head with witches and vampire-werewolves and fairies and golems.</p>
-<p>Other than that, I don't really like 'chosen one' stories. I think this is less of a general issue and more one that bugs me in particularly. Specifically, I'm not a fan of stories where the main character is unique, with powers (especially unexplainable) unique that no one else has.</p>
-<p>That being said, I thought two parts of the world building were neat: the aforementioned <a href="https://en.wikipedia.org/wiki/golem">golem</a> and parts of the magic system. Related to the golem, I don't often see Jewish influences in urban fantasy, so that was neat. I would like to see a little bit more of that. Also, the magic was neat--especially the magical tattoo early in the book and curses literally based on cursing.</p>
-<p>Another idea that was interesting was the division between natural and unnatural magic. Basically, you can either use the natural ebb and flow of magic or you can force it to do your bidding. It's an interesting way to bring some prejudice into your story--which Hallaway does--although I think she could have done more with it.</p>
-<p>All together, I thought it was a good enough story. I'm a little burned out on urban fantasy at the moment (I'm glad <a href="https://www.goodreads.com/book/show/3220405-ender-in-exile?from_search=true">Ender in Exile</a> is up next) and I'm not sure I liked Precinct 13 enough to continue with the series when the inevitable sequel comes about, but you could do worse.</p>]]></content></entry></feed>
+<p>I'm really starting to admire the 'Do One Thing and Do It Well' philosophy of Unix and chaining things together.</p>]]></content></entry></feed>
