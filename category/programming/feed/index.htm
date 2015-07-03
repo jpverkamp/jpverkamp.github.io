@@ -1,5 +1,149 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-05-11T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Generating YouTube user RSS feeds</title><link href="http://blog.jverkamp.com/2015/05/11/generating-youtube-user-rss-feeds" /><id>urn:uuid:a097ad77-6800-c1be-c4de-26a9af4348d9</id><updated>2015-05-11T00:00:00Z</updated><summary type="html"><![CDATA[<p>On 4 March 2014, YouTube deprecated the v2.0 API for YouTube (<a href="https://developers.google.com/youtube/2.0/developers_guide_protocol_deprecated">source</a>). One of the unfortunate side effects was that RSS feeds for user uploads were included in what was deprecated.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-07-02T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Scraping Kindle Highlights</title><link href="http://blog.jverkamp.com/2015/07/02/scraping-kindle-highlights" /><id>urn:uuid:607a86a7-2b7b-24ef-d68a-fed6db77517e</id><updated>2015-07-02T00:00:00Z</updated><summary type="html"><![CDATA[<p>As part of an ongoing effort to <a href="http://blog.jverkamp.com/category/programming/by-topic/backups">backup all the things</a>, combined with a rather agressive <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, I wanted to the ability to back up any sections that I've highlighted on my Kindle. Unfortunately, Amazon doesn't seem to have an API to do that, but why should that stop me?</p>
+<p>Using a combination of <a href="http://blog.jverkamp.com/category/programming/by-language/python">Python</a> and the Python libraries <a href="http://docs.python-requests.org/en/latest/">Requests</a> and <a href="http://www.crummy.com/software/BeautifulSoup/">BeautifulSoup</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, it's entirely possible to write a Python script that will log into Amazon, get a list of all of the books on your account, and download the highlights for each.</p>
+<p>Let's do it!</p>
+]]></summary><content type="html"><![CDATA[<p>As part of an ongoing effort to <a href="http://blog.jverkamp.com/category/programming/by-topic/backups">backup all the things</a>, combined with a rather agressive <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, I wanted to the ability to back up any sections that I've highlighted on my Kindle. Unfortunately, Amazon doesn't seem to have an API to do that, but why should that stop me?</p>
+<p>Using a combination of <a href="http://blog.jverkamp.com/category/programming/by-language/python">Python</a> and the Python libraries <a href="http://docs.python-requests.org/en/latest/">Requests</a> and <a href="http://www.crummy.com/software/BeautifulSoup/">BeautifulSoup</a><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, it's entirely possible to write a Python script that will log into Amazon, get a list of all of the books on your account, and download the highlights for each.</p>
+<p>Let's do it!</p>
+<!--more-->
+<p>First, we are going to be using a Requests <code>session</code>. This will keep track of any cookies that Amazon decides to send us so that we know that we're logged in.</p>
+<pre class="python"><code>session = requests.Session()</code></pre>
+<p>After that, the next thing we need to do is to use requests to log into Amazon. Loading up the login page (<code>https://kindle.amazon.com/login</code>), we see that the <code>form</code> target is a <code>POST</code> request to <code>https://www.amazon.com/ap/signin</code>, specifying the fields <code>email</code> and <code>password</code>. Something like this:</p>
+<pre class="python"><code>signin_data = {}
+
+signin_data[u'email'] = os.environ['AMAZON_USERNAME']
+signin_data[u'password'] = os.environ['AMAZON_PASSWORD']
+
+response = session.post('https://www.amazon.com/ap/signin', data = signin_data)</code></pre>
+<p>I'm reading my Amazon username and password from the environment. In general, that means I can have a simple file like this:</p>
+<pre class="bash"><code>export AMAZON_USERNAME="me@example.com"
+export AMAZON_PASSWORD="correct horse battery staple"</code></pre>
+<p>Then I can source that script before running my program:</p>
+<pre class="bash"><code>. ./env.conf && python3 kindle-highlights-backups.py</code></pre>
+<p>That should work, but unfortunately it doesn't. It looks like Amazon is sending a small pile of hidden fields. Theoretically, I could look at the page and hard code them, but where's the fun in that? Instead, let's use Requests to grab the login page and BeautifulSoup to parse out all of the fiels we're going to send:</p>
+<pre class="python"><code># Log in to Amazon, we have to get the real login page to bypass CSRF
+print('Logging in...')
+response = session.get('https://kindle.amazon.com/login')
+soup = bs4.BeautifulSoup(response.text)
+
+signin_data = {}
+signin_form = soup.find('form', {'name': 'signIn'})
+for field in signin_form.find_all('input'):
+    try:
+        signin_data[field['name']] = field['value']
+    except:
+        pass
+
+signin_data[u'email'] = os.environ['AMAZON_USERNAME']
+signin_data[u'password'] = os.environ['AMAZON_PASSWORD']
+
+response = session.post('https://www.amazon.com/ap/signin', data = signin_data)
+if response.status_code != 200:
+    print('Failed to login: {0} {1}'.format(response.status_code, response.reason))
+    sys.exit(0)</code></pre>
+<p>... Still doesn't work. I'm getting a page back that says I need to enable cookies, which I most definitely have enabled (that's why I created the <code>session</code>). A bit of Google-fu later, and I find out that Amazon will only allow connections from semi-reasonable <a href="https://en.wikipedia.org/wiki/User_Agents">User Agents</a>. Let's set it to a recent Chrome build on Windows 8.1:</p>
+<pre class="python"><code>session = requests.Session()
+session.headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.61 Safari/537.36'
+}</code></pre>
+<p>Ah ha! That works. Finally logged in. Next, we know that we can get a list of your current books by going to <code>https://kindle.amazon.com/your_reading/0/0/0</code>. The last three numbers are:</p>
+<ul>
+    <li>mode (all, read, reading)</li>
+    <li>starting index / page (increments in 25)</li>
+    <li>all books (0) versus kindle only (1)</li>
+</ul>
+<p>So let's write a loop to keep fetching pages of these books, 25 at a time:</p>
+<pre class="python"><code># Iterate through pages of books, 25 at a time
+# Note: The last three parts of the URL are:
+#   - mode (all, read, reading)
+#   - starting index / page (increments in 25)
+#   - all books (0) versus kindle only (1)
+print('Getting books...')
+book_page = 0
+while True:
+    time.sleep(0.5) # Half a second between pages
+
+    response = session.get('https://kindle.amazon.com/your_reading/0/{book_page}/0'.format(book_page = book_page))
+    soup = bs4.BeautifulSoup(response.text)
+    found_book = False
+
+    ...
+
+    if found_book:
+        book_page += 25
+    else:
+        break</code></pre>
+<p>Within that page, there are a series of <code>td</code> elements linking to books, each with the class <code>titleAndAuthor</code>. That's the beauty of BeautifulSoup:</p>
+<pre class="python"><code>...
+
+# For each page of books, find all of the individual book links
+# The last part of each URL is Amazon's internal ID for that book
+for el in soup.findAll('td', {'class': 'titleAndAuthor'}, recursive = True):
+    time.sleep(0.1) # 1/10 of a second between books
+
+    found_book = True
+
+    book_id = el.find('a')['href'].split('/')[-1]
+    title = el.find('a').text
+    sys.stdout.write(title + ' ... ')
+
+    highlights = []
+    cursor = 0
+
+    ...</code></pre>
+<p>Luckily, the next part is a little easier to deal with. There is actually an API of sorts of Kindle highlights, once you have a user ID. All you have to do is hit <code>https://kindle.amazon.com/kcw/highlights?asin={book_id}</code> (potentially many times, it's <a href="https://en.wikipedia.org/wiki/paginated">paginated</a>):</p>
+<pre class="python"><code>...
+
+# Ask the Amazon API for highlights one page of 10 at a time until we have them all
+while True:
+    response = session.get('https://kindle.amazon.com/kcw/highlights?asin={book_id}&cursor={cursor}&count=10'.format(
+        book_id = book_id,
+        cursor = cursor,
+    ))
+    js = response.json()
+
+    found_highlight = False
+    for item in js['items']:
+        found_highlight = True
+        item['highlight'] = html_unescape(item['highlight'])
+        highlights.append(item)
+
+    if found_highlight:
+        cursor +=1
+    else:
+        break
+
+...</code></pre>
+<p>One caveat is that we don't want to store HTML entities (like <code>&amp;rsquo;</code>), we want the real characters. This is a little annoying, since the library to parse that has moved around in various Python versions:</p>
+<pre class="python"><code># Get a function to unescape html entites
+try:
+    import html
+    html_unescape = html.unescape
+except:
+    try:
+        import html.parser
+        html_unescape = html.parser.HTMLParser().unescape
+    except:
+        import HTMLParser
+        html_unescape = HTMLParser.HTMLParser().unescape</code></pre>
+<p>Yeah...</p>
+<p>Now that we have a list of highlights, let's save them to disk. Generate a filename from the book title, and use the <code>json</code> library to write them out. Make sure that we're writing everything as UTF8 so that any more unusual characters (like more interesting quotes) save correctly:</p>
+<pre class="python"><code># Use book title as filename, but strip out 'dangerous' characters
+print('{count} highlights found'.format(count = len(highlights)))
+if highlights:
+    filename = re.sub(r'[\/:*?"&lt;&gt;|"\']', '', title).strip() + '.json'
+    path = os.path.join('Kindle Highlights', filename)
+
+    with open(path, 'w', encoding = 'utf8') as fout:
+        fout.write(json.dumps(highlights, fout, indent = 4, sort_keys = True, ensure_ascii = False))</code></pre>
+<p>And there you have it. A simple(ish) way to download your Kindle highlights.</p>
+<p>Unfortunately... that's not all she wrote. After running my script for a few days, it started to fail. Why? Because Amazon detected some strange activity on my account and started displaying a captcha. I can detect it easily enough:</p>
+<pre class="python"><code>warning = soup.find('div', {'id': 'message_warning'})
+if warning:
+    print('Failed to login: {0}'.format(warning.text))
+    sys.exit(0)</code></pre>
+<p>Put that just after the previous 'Failed to login' block and you'll seem some text to the order of 'please enter these characters to continue'. It's actually not that hard to solve a catcha programmatically... but we'll save that for another post.</p>
+<p>And that's it for today. So far I have 308 highlights spread over 20 books and it's only growing. It's fun to go back and read them again.</p>]]></content></entry><entry><title>Generating YouTube user RSS feeds</title><link href="http://blog.jverkamp.com/2015/05/11/generating-youtube-user-rss-feeds" /><id>urn:uuid:a097ad77-6800-c1be-c4de-26a9af4348d9</id><updated>2015-05-11T00:00:00Z</updated><summary type="html"><![CDATA[<p>On 4 March 2014, YouTube deprecated the v2.0 API for YouTube (<a href="https://developers.google.com/youtube/2.0/developers_guide_protocol_deprecated">source</a>). One of the unfortunate side effects was that RSS feeds for user uploads were included in what was deprecated.</p>
 <p>Previously, you could get an RSS feed with a link of the form: <code>https://gdata.youtube.com/feeds/base/users/{user}/uploads</code> For the longest time, even after the deprecation, those links still worked, but a couple weeks ago, more and more of the video feeds I was subscribed to started redirecting to <a href="https://www.youtube.com/channel/UCMDQxm7cUx3yXkfeHa5zJIQ/videos">YouTube Help account</a>. As thrilling as that channel is, it's not what I'm looking for.</p>
 <p>Let's fix it.</p>
 ]]></summary><content type="html"><![CDATA[<p>On 4 March 2014, YouTube deprecated the v2.0 API for YouTube (<a href="https://developers.google.com/youtube/2.0/developers_guide_protocol_deprecated">source</a>). One of the unfortunate side effects was that RSS feeds for user uploads were included in what was deprecated.</p>
@@ -760,100 +904,4 @@ stamp('--- &lt;/ts&gt; ---')</code></pre>
 [2015-02-25 17:05:53] all done
 [2015-02-25 17:05:53] --- &lt;/ts&gt; ---</code></pre>
 <p>Whee!</p>
-<p>If you'd like to download this or any of my other <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a>, you can do so on on GitHub: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/ts">ts</a>.</p>]]></content></entry><entry><title>update-dotfiles encryption</title><link href="http://blog.jverkamp.com/2015/02/11/update-dotfiles-encryption" /><id>urn:uuid:da93efa1-4aa3-e880-6082-ac2b0647ffa5</id><updated>2015-02-11T00:00:00Z</updated><summary type="html"><![CDATA[<p>I do like having my <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a> on GitHub. For one, it means that they're always available when I set up a new machine. For two, others can see them and take whatever is interesting for their own dotfiles. But all that has a disadvantage: what if I want to store my SSH configs?</p>
-]]></summary><content type="html"><![CDATA[<p>I do like having my <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a> on GitHub. For one, it means that they're always available when I set up a new machine. For two, others can see them and take whatever is interesting for their own dotfiles. But all that has a disadvantage: what if I want to store my SSH configs?</p>
-<!--more-->
-<p>Technically, they're not secret. I don't have my actual SSH keys in there. But I do have some names of machines and at least not having those on the GitHub means that the spiders trolling the repos have at least one more step before finding them. Especially those running on non-standard ports.</p>
-<p>To that end, here's a quick script to AES encrypt / decrypt files with Python.</p>
-<p>First, we want something that can turn any password into an AES key. Since they have to be an exact number of bits a hashing function works particularly well here:</p>
-<pre class="python"><code>def get_key():
-    if 'AESKEY' in os.environ:
-        key = os.environ['AESKEY']
-    else:
-        key = getpass.getpass('AES passphrase: ')
-
-    return hashlib.sha256(key.encode('utf-8')).digest()</code></pre>
-<p>(Yes, I should be using a <a href="https://en.wikipedia.org/wiki/Password-Based_Key Derivation Function">Password-Based Key Derivation Function</a>. So it goes.)</p>
-<p>Next, the encryption function. We need to set up a random <a href="https://en.wikipedia.org/wiki/initialization_vector">initialization vector</a>.</p>
-<p>Then, since the file might not be evenly divisible into blocks, we'll need to pad it. Since we want this to be able to deal with binary or other files, there's no guarantee that we can tell when a file has ended. So we'll use the <code>struct</code> library to store the file length as well. Given that we're storing the size as a 64-bit integer, we'll be able to store files up to 18.56 exabytes. Yeah, I think we'll be fine for a while.</p>
-<p>Finally, we want to add a hash so we can verify that the file was not tampered with via <a href="https://crypto.stackexchange.com/questions/202/should-we-mac-then-encrypt-or-encrypt-then-mac">encrypt-then-MAC</a>. All together:</p>
-<pre class="python"><code>def encrypt(file):
-
-    key = get_key()
-
-    iv = os.urandom(16)
-    encryptor = AES.new(key, AES.MODE_CBC, IV = iv)
-
-    with open(file, 'rb') as fin:
-        content = fin.read()
-
-    # Store the original file size as uint64 and pad to 16 bytes
-    content = struct.pack('&gt;Q', len(content)) + content
-    content = content + (b'\0' * (16 - len(content) % 16))
-
-    content = encryptor.encrypt(content)
-    hash = hashlib.sha256(content).digest()
-
-    content = base64.b64encode(iv + hash + content)
-
-    outfile = file + '.aes'
-    with open(outfile, 'wb') as fout:
-        fout.write(content)</code></pre>
-<p>Straight forward.</p>
-<p>Likewise, decryption pulls apart the parts of the file, checks the integrity with the hash, then decrypts:</p>
-<pre class="python"><code>def decrypt(file):
-
-    key = get_key()
-
-    with open(file, 'r') as fin:
-        content = fin.read()
-
-    content = base64.b64decode(content)
-    if len(content) &lt; 32:
-        print('Malformed content: not enough data')
-        sys.exit(1)
-
-    iv = content[:16]
-    hash = content[16:48]
-    content = content[48:]
-
-    if hash != hashlib.sha256(content).digest():
-        print('Failed hash check')
-        sys.exit(1)
-
-    decryptor = AES.new(key, AES.MODE_CBC, IV = iv)
-    content = decryptor.decrypt(content)
-
-    fileSize = struct.unpack('&gt;Q', content[:8])[0]
-    content = content[8:fileSize+8]
-
-    outfile = file[:-4]
-    with open(outfile, 'wb') as fout:
-        fout.write(content)</code></pre>
-<p>Shiny. Now let's tweak the script that updates dotfiles to handle encrypted files:</p>
-<p>Basically, the only code that changes is if the user choose <code>y</code> to replace a file. If that file ends with <code>.aes</code>, ask for the password and try to decrypt it.</p>
-<pre class="python"><code>...
-
-# If the file is encrypted, decrypt it
-if path.endswith('.aes'):
-    try:
-        if not aes:
-            aes = imp.load_source('aes', os.path.expanduser('~/.bin/aes'))
-
-        if aes:
-            print('{0} decrypting'.format(path))
-            aes.decrypt(path)
-            shutil.copymode(path, path[:-4])
-            path = path[:-4]
-    except:
-        print('{0} cannot decrypt, aes does not exist'.format(path))
-
-...</code></pre>
-<p>One caveat is that since the <code>aes</code> library is stored without the <code>py</code> suffix, we load it dynamically with the <code>imp</code> module. I love how that's possible (even easy) in Python.</p>
-<p>And that's about it. I've moved my SSH configs over and vastly expended them with a number of servers that I work with on a daily basis. Also there's another level which allows for different environments (work or home) and operating systems (to deal with different keyboard standards).</p>
-<p>Very cool.</p>
-<p>If you'd like to see the full source for either piece, you can on GitHub:</p>
-<ul>
-    <li><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/aes">aes</a></li>
-    <li><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/update-dotfiles">update-dotfiles</a></li>
-</ul>]]></content></entry></feed>
+<p>If you'd like to download this or any of my other <a href="http://blog.jverkamp.com/category/programming/by-topic/dotfiles">dotfiles</a>, you can do so on on GitHub: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/ts">ts</a>.</p>]]></content></entry></feed>
