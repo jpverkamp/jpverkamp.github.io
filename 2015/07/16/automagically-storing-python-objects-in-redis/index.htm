@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+        
+        
+
+        <title>Automagically storing Python objects in Redis | jverkamp.com | John-Paul Verkamp</title>
+
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
+        <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
+
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" defer />
+        <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css" defer />
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js" defer></script>
+
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.css" defer />
+        <script src="//cdnjs.cloudflare.com/ajax/libs/ekko-lightbox/3.0.3a/ekko-lightbox.min.js" defer></script>
+
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery.transit/0.9.9/jquery.transit.min.js" defer></script>
+
+        <!-- Highlight.js for syntax highlighting -->
+        <link rel="stylesheet" href="/highlight/styles/obsidian.css" defer />
+        <script src="/highlight/highlight.pack.js" defer></script>
+
+        <!-- MathJax for LaTeX support -->
+        <script src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
+
+        <!-- nanoGallery for Flickr Galleries -->
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/css/themes/light/nanogallery_light.css" defer />
+        <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/nanogallery/4.4.2/jquery.nanogallery.min.js" defer ></script>
+
+        <!-- Pretty pretty fonts -->
+        <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Calligraffitti" defer />
+
+        <!-- Any custom CSS or JS that I've written; this should be kept minimal -->
+        <link rel="stylesheet" href="/custom.css" defer />
+        <script src="/custom.js" defer></script>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <link rel="alternate" type="application/atom+xml" title="jverkamp.com (Atom 2.0)" href="http://blog.jverkamp.com/feed/" />
+</head>
+<body>
+        <header class="container">
+        <nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="http://blog.jverkamp.com"><span style="color: green;">jv</span>erkamp.com</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav"><li class="dropdown"><a href="http://blog.jverkamp.com/category/archives" class="dropdown-toggle">Archives<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://blog.jverkamp.com/category/archives/2004">2004</a></li><li><a href="http://blog.jverkamp.com/category/archives/2005">2005</a></li><li><a href="http://blog.jverkamp.com/category/archives/2006">2006</a></li><li><a href="http://blog.jverkamp.com/category/archives/2007">2007</a></li><li><a href="http://blog.jverkamp.com/category/archives/2008">2008</a></li><li><a href="http://blog.jverkamp.com/category/archives/2009">2009</a></li><li><a href="http://blog.jverkamp.com/category/archives/2010">2010</a></li><li><a href="http://blog.jverkamp.com/category/archives/2011">2011</a></li><li><a href="http://blog.jverkamp.com/category/archives/2012">2012</a></li><li><a href="http://blog.jverkamp.com/category/archives/2013">2013</a></li><li><a href="http://blog.jverkamp.com/category/archives/2014">2014</a></li><li><a href="http://blog.jverkamp.com/category/archives/2015">2015</a></li></ul></li><li class="dropdown"><a href="http://blog.jverkamp.com/category/other" class="dropdown-toggle">Other<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://blog.jverkamp.com/category/other/board-game-reviews">Board Game Reviews</a></li><li><a href="http://blog.jverkamp.com/category/other/book-reviews">Book Reviews</a></li><li><a href="http://blog.jverkamp.com/category/other/cooking">Cooking</a></li><li><a href="http://blog.jverkamp.com/category/other/movie-reviews">Movie Reviews</a></li></ul></li><li class="dropdown"><a href="http://blog.jverkamp.com/category/photography" class="dropdown-toggle">Photography<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://blog.jverkamp.com/category/photography/dp-challenge">DP Challenge</a></li><li><a href="http://blog.jverkamp.com/category/photography/photosets">Photosets</a></li><li><a href="http://blog.jverkamp.com/category/photography/photosynth">Photosynth</a></li></ul></li><li class="dropdown"><a href="http://blog.jverkamp.com/category/programming" class="dropdown-toggle">Programming<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://blog.jverkamp.com/category/programming/by-language">By Language</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-project">By Project</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-source">By Source</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-topic">By Topic</a></li><li><a href="http://blog.jverkamp.com/category/programming/libraries">Libraries</a></li></ul></li><li class="dropdown"><a href="http://blog.jverkamp.com/category/research" class="dropdown-toggle">Research<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://blog.jverkamp.com/category/research/by-topic">By Topic</a></li><li><a href="http://blog.jverkamp.com/category/research/publications">Publications</a></li></ul></li><li class="dropdown"><a href="http://blog.jverkamp.com/category/writing" class="dropdown-toggle">Writing<span class="caret"></span></a><ul class="dropdown-menu"><li><a href="http://blog.jverkamp.com/category/writing/by-genre">By Genre</a></li><li><a href="http://blog.jverkamp.com/category/writing/ideas">Ideas</a></li><li><a href="http://blog.jverkamp.com/category/writing/nanowrimo">NaNoWriMo</a></li><li><a href="http://blog.jverkamp.com/category/writing/novels">Novels</a></li><li><a href="http://blog.jverkamp.com/category/writing/other">Other</a></li><li><a href="http://blog.jverkamp.com/category/writing/short-stories">Short Stories</a></li><li><a href="http://blog.jverkamp.com/category/writing/writing-excuses">Writing Excuses</a></li></ul></li></ul>
+
+      <form action="http://www.google.com/search" method="get" onSubmit="(function(obj){obj.q.value='site:blog.jverkamp.com '+obj.qfront.value;})(this)" class="navbar-form navbar-right" role="search">
+        <div class="form-group">
+          <input name="q" type="hidden" />
+          <input name="qfront" type="text" class="form-control" placeholder="Search" />
+          <button type="submit" class="btn btn-default" value="Search">Search</button>
+        </p>
+      </form>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
+        </header>
+
+        <article class="container">
+                <header>
+                        <h1 class="entry-title">Automagically storing Python objects in Redis</h1>
+
+                        <div class="entry-meta">
+                                <span class="posted-on"><time class="entry-date" datetime="2015-07-16"><span class="year">2015</span> <span class="month">July</span> <span class="day">16</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="http://blog.jverkamp.com/category/programming/by-topic/databases">Databases</a></li><li><a href="http://blog.jverkamp.com/category/programming/libraries">Libraries</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-language/python">Python</a></li><li><a href="http://blog.jverkamp.com/category/programming/by-topic/redis">Redis</a></li></ul></span>
+                        </div>
+
+                        <hr />
+                </header>
+                <div class="entry-content">
+                        <p>When you're starting out on a simple web application, eventually<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> you will reach the point where you need to store some form of persistant data. Basically, you have three options<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>:</p>
+<ul>
+    <li>Store the information in flat files on the file system</li>
+    <li>Store the information in a database (<a href="https://www.mysql.com/">MySQL</a>, <a href="https://www.sqlite.org/">SQLite</a> etc)</li>
+    <li>Store the information in a key/value store (<a href="https://www.mongodb.org/">mongoDB</a>, <a href="http://redis.io/">reddis</a>)</li>
+</ul>
+<p>There are all manner of pros and cons to each, in particular how easy they are to get started in, how well they fit the data you are using, and how well they will scale horizontally (adding more machines rather than bigger ones).</p>
+<!--more-->
+<p>For the project that I was working on (I'll post about it eventually), I didn't have terribly many different kinds of data to store, so it would be easy enough to start with anything. I started with a simple file system backing, with one json file per object that I was storing. That worked well enough, but I didn't particularly care for having to write all of the code myself to join / find child objects. I wanted something a little more powerful.</p>
+<p>Next, I considered using a database with an <a href="https://en.wikipedia.org/wiki/Object-relational_mapping">ORM</a> layer. That would let me define everything as Python objects and let the library handle all of the mappings to the actual database. That way, I could write a bare minimum of code for my actual models. Unfortunately, the data wasn't particularly well structured for a relational database, being more hierarchical in struture. It's entirely possible to represent hierarchical data in a relational database, it's just not what they are best suited for.</p>
+<p>Finally, I came to Redis. I've used Redis in a few projects at work and come to really like it. It works great as a simple key/value store and even better when you start taking advatage of some of their other data structures. In particular, Redis hashes and lists map nicely to Python dicts and lists. So that's what I ended up doing: Writing a pair of base classes (<code>RedisDict</code> and <code>RedisList</code>) which to the programmer act just like a Python dict or list, but actually store all of their data transparently in Redis.</p>
+<p>Let's get to it.</p>
+<p>First, there is a bit of shared code that both <code>RedisDict</code> and <code>RedisList</code> share, which we can factor out into a base class for the two of them: <code>RedisObject</code>.</p>
+<pre class="python"><code>import base64
+import json
+import redis
+import os
+
+class RedisObject(object):
+    '''
+    A base object backed by redis.
+    Genrally, use RedisDict or RedisList rather than this directly.
+    '''
+
+    def __init__(self, id = None):
+        '''Create or load a RedisObject.'''
+
+        self.redis = redis.StrictRedis(host = 'redis', decode_responses = True)
+
+        if id:
+            self.id = id
+        else:
+            self.id = base64.urlsafe_b64encode(os.urandom(9)).decode('utf-8')
+
+        if ':' not in self.id:
+            self.id = self.__class__.__name__ + ':' + self.id
+
+    def __bool__(self):
+        '''Test if an object currently exists'''
+
+        return self.redis.exists(self.id)
+
+    def __eq__(self, other):
+        '''Tests if two redis objects are equal (they have the same key)'''
+
+        return self.id == other.id
+
+    def __str__(self):
+        '''Return this object as a string for testing purposes.'''
+
+        return self.id
+
+    def delete(self):
+        '''Delete this object from redis'''
+
+        self.redis.delete(self.id)
+
+    @staticmethod
+    def decode_value(type, value):
+        '''Decode a value if it is non-None, otherwise, decode with no arguments.'''
+
+        if value == None:
+            return type()
+        else:
+            return type(value)
+
+    @staticmethod
+    def encode_value(value):
+        '''Encode a value using json.dumps, with default = str'''
+
+        return str(value)</code></pre>
+<p>Most of that should be pretty straight forward. The basic idea is that any <code>RedisObject</code>, be it a <code>RedisDict</code> or a <code>RedisList</code> has an ID. This will be used as the key that Redis stores the object under. In particular, I've used a neat (in my opinion) trick to generate random alphanumeric identifiers:</p>
+<pre class="python"><code>&gt;&gt;&gt; base64.urlsafe_b64encode(os.urandom(9)).decode('utf-8')
+u'UQTfwq8XLZr6'</code></pre>
+<p>Neat. Alternatively, if you want to use a specific value for an ID (such as a user's email address), you can just specify that instead. Next, the <code>__bool__</code> method will make a <code>RedisObject</code> 'truthy'. You can use Python's <code>if</code> to tell if an object acutally exists or not. Finally, <code>delete</code>. I wanted to use <code>__del__</code> originally, but that actually gets called when an object is garbage collected, which doesn't quite work for this usage<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span></p>
+<p>Finally, static helper functions <code>decode_value</code> and <code>encode_value</code>. These will be used in a bit, since Redis only stores strings. Thus a <code>RedisObject</code> stores the type of each value and needs to know how to read/write that in a systematic way. For that, I'm using Python's <code>json</code> encoding, falling back to <code>str</code> (and thus the <code>__str__</code> magic function on objects). This will deal nicely with most default Python objects and can be easily extended for all manner of more interesting ones if you'd like (I've done it for <code>RedisObject</code>s).</p>
+<p>One oddity that you've probably noticed is that I've hard coded the Reids IP to connect to. I'm using <a href="https://github.com/docker/compose">docker-compose</a> to run my project, which sets up hostnames automagically within the various containers.</p>
+<p>Next, <code>RedisDict</code>:</p>
+<pre class="python"><code>import json
+import redis
+
+from lib.RedisObject import RedisObject
+
+class RedisDict(RedisObject):
+    '''An equivalent to dict where all keys/values are stored in Redis.'''
+
+    def __init__(self, id = None, fields = {}, defaults = None):
+        '''
+        Create a new RedisObject
+        id: If specified, use this as the redis ID, otherwise generate a random ID.
+        fields: A map of field name to construtor used to read values from redis.
+            Objects will be written with json.dumps with default = str, so override __str__ for custom objects.
+            This should generally be set by the subobject's constructor.
+        defaults: A map of field name to values to store when constructing the object.
+        '''
+
+        RedisObject.__init__(self, id)
+
+        self.fields = fields
+
+        if defaults:
+            for key, val in defaults.items():
+                self[key] = val
+
+    def __getitem__(self, key):
+        '''
+        Load a field from this redis object.
+        Keys that were not specified in self.fields will raise an exception.
+        Keys that have not been set (either in defaults or __setitem__) will return the default for their type (if set)
+        '''
+
+        if key == 'id':
+            return self.id
+
+        if not key in self.fields:
+            raise KeyError('{} not found in {}'.format(key, self))
+
+        return RedisObject.decode_value(self.fields[key], self.redis.hget(self.id, key))
+
+    def __setitem__(self, key, val):
+        '''
+        Store a value in this redis object.
+        Keys that were not specified in self.fields will raise an exception.
+        Keys will be stored with json.dumps with a default of str, so override __str__ for custom objects.
+        '''
+
+        if not key in self.fields:
+            raise KeyError('{} not found in {}'.format(key, self))
+
+        self.redis.hset(self.id, key, RedisObject.encode_value(val))
+
+    def __iter__(self):
+        '''Return (key, val) pairs for all values stored in this RedisDict.'''
+
+        yield ('id', self.id.rsplit(':', 1)[-1])
+
+        for key in self.fields:</code></pre>
+<p>Basically, there are three interesting parts to this code: <code>__init__</code> stores the fields that this object has (and should be set by the constructors in subclasses) and can also be used as as a constructor for new objects. <code>__get/setitem__</code> will load/store items via Redis. Given the <code>encode/decode_value</code> functions in <code>RedisObject</code>, this is actually really straight forward.</p>
+<p>So how would you use something like this?</p>
+<p>Here's is most of the <code>User</code> class from the project I am working on:</p>
+<pre class="python"><code>import bcrypt
+
+import lib
+import models
+import utils
+
+class User(lib.RedisDict):
+    '''A user. Duh.'''
+
+    def __init__(self, id = None, email = None, **defaults):
+
+        # Use email as id, if specified
+        if email:
+            id = email
+            defaults['email'] = email
+
+        lib.RedisDict.__init__(
+            self,
+            id = email,
+            fields = {
+                'name': str,
+                'email': str,
+                'password': str,
+                'friends': lib.RedisList.as_child(self, 'friends', models.User),
+            },
+            defaults = defaults
+        )
+
+    def __setitem__(self, key, val):
+        '''Override the behavior if user is trying to change the password'''
+
+        if key == 'password':
+            val = bcrypt.hashpw(
+                val.encode('utf-8'),
+                bcrypt.gensalt()
+            ).decode('utf-8')
+
+        lib.RedisDict.__setitem__(self, key, val)
+
+    def verifyPassword(self, testPassword):
+        '''Verify if a given password is correct'''
+
+        hashedTestPassword = bcrypt.hashpw(
+            testPassword.encode('utf-8'),
+            self['password'].encode('utf-8')
+        ).decode('utf-8')
+
+        return hashedTestPassword == self['password']</code></pre>
+<p>A <code>User</code> will have four fields: a <code>name</code>, an <code>email</code>, a <code>password</code>, and a list of <code>friends</code> (we'll get to how that works in a bit). Then, I've added some custom code to automatically store passwords using <a href="https://en.wikipedia.org/wiki/bcrypt">bcrypt</a><span class="footnote"><sup><a href="#footnote-4">[4]</a></sup></span>. You can use it just like you would a <code>dict</code>:</p>
+<pre class="python"><code>&gt;&gt;&gt; han = User(
+...     name = 'Luke Skywalker',
+...     email = 'luke@rebel-alliance.io',
+...     password = 'TheForce',
+... )
+...
+
+&gt;&gt;&gt; print(luke['name'])
+Luke Skywalker
+
+&gt;&gt;&gt; luke.verifyPassword('password')
+False
+
+&gt;&gt;&gt; luke.verifyPassword('TheForce')
+True
+
+&gt;&gt;&gt; han = User(
+...     name = 'Han Solo',
+...     email = 'han@rebel-alliance.io',
+...     password = 'LetTheWookieWin',
+... )
+...
+
+&gt;&gt;&gt; luke['friends'].append(han)
+
+&gt;&gt;&gt; han['friends'].append(luke)
+
+&gt;&gt;&gt; print(luke['friends'][0]['name'])
+'Han Solo'</code></pre>
+<p>Then we can go into the <code>redis-cli</code> to verify that everything saved correctly:</p>
+<pre class="bash"><code>127.0.0.1:6379&gt; keys *
+1) "User:han@rebel-alliance.io:friends"
+2) "User:han@rebel-alliance.io"
+3) "User:luke@rebel-alliance.io:friends"
+4) "User:luke@rebel-alliance.io"
+
+127.0.0.1:6379&gt; hgetall User:luke@rebel-alliance.io
+1) "name"
+2) "Luke Skywalker"
+3) "email"
+4) "luke@rebel-alliance.io"
+5) "password"
+6) "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq"
+
+127.0.0.1:6379&gt; lrange User:luke@rebel-alliance.io:friends 0 -1
+1) "User:han@rebel-alliance.io"</code></pre>
+<p>There are two entires for each, since technically the <code>friends</code> list is a <code>RedisList</code>. Originally, I was storing these as JSON encoded lists, but as they got larger, this started to get a little unweildy.</p>
+<p>Another plus is that since all of the objects are backed by Redis, you get automatic persistance. Stop Python completely, start it back up, and you can just load the same objects again (remember, for these objects, I'm using the <code>email</code> as the ID):</p>
+<pre class="python"><code>&gt;&gt;&gt; luke = User('luke@rebel-alliance.io')
+
+&gt;&gt;&gt; print(luke['friends'][0]['name'])
+'Han Solo'</code></pre>
+<p>Very cool.</p>
+<p>So, speaking of <code>RedisList</code>, how does that work? Mostly the same as <code>RedisDict</code> (although I had a few more functions to implement):</p>
+<pre class="python"><code>import json
+import redis
+
+from lib.RedisObject import RedisObject
+
+class RedisList(RedisObject):
+    '''An equivalent to list where all items are stored in Redis.'''
+
+    def __init__(self, id = None, item_type = str, items = None):
+        '''
+        Create a new RedisList
+        id: If specified, use this as the redis ID, otherwise generate a random ID.
+        item_type: The constructor to use when reading items from redis.
+        values: Default values to store during construction.
+        '''
+
+        RedisObject.__init__(self, id)
+
+        self.item_type = item_type
+
+        if items:
+            for item in items:
+                self.append(item)
+
+    @classmethod
+    def as_child(cls, parent, tag, item_type):
+        '''Alternative callable constructor that instead defines this as a child object'''
+
+        def helper(_ = None):
+            return cls(parent.id + ':' + tag, item_type)
+
+        return helper
+
+    def __getitem__(self, index):
+        '''
+        Load an item by index where index is either an int or a slice
+        Warning: this is O(n))
+        '''
+
+        if isinstance(index, slice):
+            if slice.step != 1:
+                raise NotImplemented('Cannot specify a step to a RedisObject slice')
+
+            return [
+                RedisObject.decode_value(self.item_type, el)
+                for el in self.redis.lrange(self.id, slice.start, slice.end)
+            ]
+        else:
+            return RedisObject.decode_value(self.item_type, self.redis.lindex(self.id, index))
+
+    def __setitem__(self, index, val):
+        '''Update an item by index
+        Warning: this is O(n)
+        '''
+
+        self.redis.lset(self.id, index, RedisObject.encode_value(val))
+
+    def __len__(self):
+        '''Return the size of the list.'''
+
+        return self.redis.llen(self.id)
+
+    def __delitem__(self, index):
+        '''Delete an item from a RedisList by index. (warning: this is O(n))'''
+
+        self.redis.lset(self.id, index, '__DELETED__')
+        self.redis.lrem(self.id, 1, '__DELETED__')
+
+    def __iter__(self):
+        '''Iterate over all items in this list.'''
+
+        for el in self.redis.lrange(self.id, 0, -1):
+            yield RedisObject.decode_value(self.item_type, el)
+
+    def lpop(self):
+        '''Remove and return a value from the left (low) end of the list.'''
+
+        return RedisObject.decode_value(self.item_type, self.redis.lpop(self.id))
+
+    def rpop(self):
+        '''Remove a value from the right (high) end of the list.'''
+
+        return RedisObject.decode_value(self.item_type, self.redis.rpop(self.id))
+
+    def lpush(self, val):
+        '''Add an item to the left (low) end of the list.'''
+
+        self.redis.lpush(self.id, RedisObject.encode_value(val))
+
+    def rpush(self, val):
+        '''Add an item to the right (high) end of the list.'''
+
+        self.redis.rpush(self.id, RedisObject.encode_value(val))
+
+    def append(self, val):
+        self.rpush(val)</code></pre>
+<p>Basically, I'm mapping a lot of the default Python <code>list</code> functionality to Redis lists and vice versa<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>. It's a little odd and some things aren't as efficient as I'd like (you only get <code>O(1)</code> access to the beginning and end of the list), but so it goes. It works great, as you saw in the <code>friends</code> example above.</p>
+<p>The one interesting function is <code>as_child</code>. Since either a <code>RedisDict</code> or a <code>RedisList</code> expect a 'constructor-like' function as the data type, I need something that will correctly store a <code>RedisList</code> inside of a <code>RedisDict</code> while generating a human readable ID (with <code>:friends</code> appended in the example above). I love <a href="https://en.wikipedia.org/wiki/higher_order functions">higher order functions</a>.</p>
+<p>And... that's it. Eventually, I think I'll look into publishing this as a library to <code>pip</code> or the like. But since I've never done that before and this post is already a little on the long sice, we'll leave that for another day. All of the code is included in the post, so you can copy and paste it into your project if you'd like to try it out before I publish it. Once I have, I'll edit this post.</p>
+                </div>
+                <div class="entry-footnotes">
+                        <div id="footnotes"><ol><li><a name="footnote-1"></a>Pretty quickly actually</li><li><a name="footnote-2"></a>Yes, there are a few other choices; these are the most common in practice</li><li><a name="footnote-3"></a>Although I did have a similar model with lazily loaded objects from disk that would only save when they were <code>del</code>eted. That was neat.</li><li><a name="footnote-4"></a>A combination hash+salt; never store plain text or unsalted passwords</li><li><a name="footnote-5"></a>I can never remember exactly how that's spelled...</li></ol></div>
+                </div>
+
+                <div id="disqus_thread"></div>
+<script type="text/javascript">
+var disqus_shortname = "jverkamp";
+var disqus_title = "Automagically storing Python objects in Redis";
+var disqus_url = "http://blog.jverkamp.com/2015/07/16/automagically-storing-python-objects-in-redis/";
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+        </article>
+
+        <footer class="container" role="contentinfo">
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2015/07/10/backing-up-moves-data">← Backing up Moves Data</a></li><li><a href="http://blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="http://blog.jverkamp.com/2015/07/10/backing-up-moves-data">← Backing up Moves Data</a></li><li><a href="http://blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
+
+                <div class="legal">
+                        <a href="http://blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="http://blog.jverkamp.com/rss.png" /></a><br />
+                        All posts unless otherwise mentioned are licensed under <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-nc-sa/3.0/80x15.png" /></a><br />
+                        Any source code unless otherwise mentioned is licensed under the <a href="http://directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+                </div>
+        </footer>
+
+<script>
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.defer=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+ga('create', 'UA-53688146-1', 'auto');
+ga('send', 'pageview');
+</script>
+</body>
+</html>
