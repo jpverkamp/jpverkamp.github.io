@@ -49,7 +49,35 @@ server {
     --load-balancer-name $ELB_NAME \
     --instance-port 80 \
     --policy-names $ELB_NAME-proxy-protocol</code></pre>
-<p>Make sure that you're using <code>https://</code> for the web traffic and <code>wss://</code> for the websocket and you're golden. Encrypted websockets behind an AWS ELB. Now if only they would expose the proxy protocol options in the console...</p>]]></content></entry><entry><title>Pacifica II</title><link href="http://blog.jverkamp.com/2015/07/19/pacifica-ii" /><id>urn:uuid:383c47d0-4a3c-abcc-e80d-8b6da43ee4d0</id><updated>2015-07-19T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another trip to Pacifica towards the end of the day. I had a bit of fun with a polarizing filter and HDR shots. Take a wild guess which shots those were. :)</p>
+<p>Make sure that you're using <code>https://</code> for the web traffic and <code>wss://</code> for the websocket and you're golden. Encrypted websockets behind an AWS ELB. Now if only they would expose the proxy protocol options in the console...</p>]]></content></entry><entry><title>Finding AWS IAM users by access key</title><link href="http://blog.jverkamp.com/2015/07/20/finding-aws-iam-users-by-access-key" /><id>urn:uuid:de410b08-f76c-4ca3-fb5a-30fccb14273b</id><updated>2015-07-20T00:00:00Z</updated><summary type="html"><![CDATA[<p>Every once in a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, I find myself with an <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html">AWS access key</a> and need to figure out who in the world it belongs to. Unfortunately, so far as I've been able to find, there's no way to directly do this in either the <a href="https://aws.amazon.com/console/">AWS console</a> or with the <a href="https://aws.amazon.com/cli/">AWS api</a>.</p>
+]]></summary><content type="html"><![CDATA[<p>Every once in a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, I find myself with an <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html">AWS access key</a> and need to figure out who in the world it belongs to. Unfortunately, so far as I've been able to find, there's no way to directly do this in either the <a href="https://aws.amazon.com/console/">AWS console</a> or with the <a href="https://aws.amazon.com/cli/">AWS api</a>.</p>
+<!--more-->
+<p>Luckily, <a href="https://aws.amazon.com/cli/">boto</a>:</p>
+<pre class="python"><code>#!/usr/bin/env python3
+
+import boto.iam.connection
+import pprint
+import sys
+
+if len(sys.argv) == 1:
+    print('Usage: who-iam [access-key ...]')
+    sys.exit(0)
+
+conn = boto.iam.connection.IAMConnection()
+users = conn.get_all_users()
+
+for user in users['list_users_response']['list_users_result']['users']:
+    keys = conn.get_all_access_keys(user['user_name'])
+    for key in keys['list_access_keys_response']['list_access_keys_result']['access_key_metadata']:
+        for target in sys.argv[1:]:
+            if key['access_key_id'] == target:
+                print(key['access_key_id'], user['user_name'])</code></pre>
+<p>Check it out (keys changed on the off chance that actually matters):</p>
+<pre class="bash"><code>$ who-iam AKIAIOSWISKB6EXAMPLE AKIAIOSGWISN7EXAMPLE
+AKIAIOSWISKB6EXAMPLE luke
+AKIAIOSGWISN7EXAMPLE han</code></pre>
+<p>It's rather slow (since it has to make <code>O(n)</code> requests and doesn't short circuit), but this should be something you do rarely enough that it doesn't matter.</p>
+<p>If you'd like to download the script, it's available in my <a href="https://github.com/jpverkamp/dotfiles">dotfiles</a>: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/who-iam">who-iam</a></p>]]></content></entry><entry><title>Pacifica II</title><link href="http://blog.jverkamp.com/2015/07/19/pacifica-ii" /><id>urn:uuid:383c47d0-4a3c-abcc-e80d-8b6da43ee4d0</id><updated>2015-07-19T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another trip to Pacifica towards the end of the day. I had a bit of fun with a polarizing filter and HDR shots. Take a wild guess which shots those were. :)</p>
 <div><div class="flickr-gallery" data-set-id="72157655694180549" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157655694180549">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Another trip to Pacifica towards the end of the day. I had a bit of fun with a polarizing filter and HDR shots. Take a wild guess which shots those were. :)</p>
 <div><div class="flickr-gallery" data-set-id="72157655694180549" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157655694180549">View on Flickr</a></p></div>]]></content></entry><entry><title>Automagically storing Python objects in Redis</title><link href="http://blog.jverkamp.com/2015/07/16/automagically-storing-python-objects-in-redis" /><id>urn:uuid:e83d21ba-8555-bfba-b05f-ceefc0808723</id><updated>2015-07-16T00:00:00Z</updated><summary type="html"><![CDATA[<p>When you're starting out on a simple web application, eventually<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> you will reach the point where you need to store some form of persistant data. Basically, you have three options<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>:</p>
 <ul>
@@ -718,108 +746,4 @@ if warning:
 <p>But the story itself drags at points, with several sections (the dreams in particular) which I thought were interesting, but I wasn't entirely sure why they were there. I've heard it said that Gaiman cut half of American Gods even before it was released, but at ~650 pages, it's still a hefty tome. I think it could have lost a little more.</p>
 <p>Conversely, I did think that most of the characters were pretty solid. I thought Shadow was a solid enough protagonist, going along with a world gone mad until he'd had enough... and then a step or two more. I felt for Mr. Wednesday, trying to take back pieces of a world gone wrong. I liked the little hints and pieces of how the gods' lives had changed on coming to the new world.</p>
 <p>All in all, it's the sort of book that I'm glad that I've read... but I doubt I will ever reread. There are a few interesting ideas buried in there that I'm sure will surface years from now, long after I've forgotten where they came from.</p>
-<p>Since it took me so long (Two weeks? Was it really that long?) to read American Gods, I'm now at only 42 of 100 for my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, fallen from 7 ahead to 3. Still, onwards! Next up, with an amusingly related title<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>, <a href="https://www.goodreads.com/book/show/2302159.Whitechapel_Gods">Whitechapel Gods</a>.</p>]]></content></entry><entry><title>Generating YouTube user RSS feeds</title><link href="http://blog.jverkamp.com/2015/05/11/generating-youtube-user-rss-feeds" /><id>urn:uuid:a097ad77-6800-c1be-c4de-26a9af4348d9</id><updated>2015-05-11T00:00:00Z</updated><summary type="html"><![CDATA[<p>On 4 March 2014, YouTube deprecated the v2.0 API for YouTube (<a href="https://developers.google.com/youtube/2.0/developers_guide_protocol_deprecated">source</a>). One of the unfortunate side effects was that RSS feeds for user uploads were included in what was deprecated.</p>
-<p>Previously, you could get an RSS feed with a link of the form: <code>https://gdata.youtube.com/feeds/base/users/{user}/uploads</code> For the longest time, even after the deprecation, those links still worked, but a couple weeks ago, more and more of the video feeds I was subscribed to started redirecting to <a href="https://www.youtube.com/channel/UCMDQxm7cUx3yXkfeHa5zJIQ/videos">YouTube Help account</a>. As thrilling as that channel is, it's not what I'm looking for.</p>
-<p>Let's fix it.</p>
-]]></summary><content type="html"><![CDATA[<p>On 4 March 2014, YouTube deprecated the v2.0 API for YouTube (<a href="https://developers.google.com/youtube/2.0/developers_guide_protocol_deprecated">source</a>). One of the unfortunate side effects was that RSS feeds for user uploads were included in what was deprecated.</p>
-<p>Previously, you could get an RSS feed with a link of the form: <code>https://gdata.youtube.com/feeds/base/users/{user}/uploads</code> For the longest time, even after the deprecation, those links still worked, but a couple weeks ago, more and more of the video feeds I was subscribed to started redirecting to <a href="https://www.youtube.com/channel/UCMDQxm7cUx3yXkfeHa5zJIQ/videos">YouTube Help account</a>. As thrilling as that channel is, it's not what I'm looking for.</p>
-<p>Let's fix it.</p>
-<!--more-->
-<p>First step, we need a YouTube Data API (v3) key. Unfortunately it doesn't look like they provide un-authenticated use of the API as before. That's easy enough though, just <a href="https://developers.google.com/youtube/registering_an_application">go through the steps to register an application</a>. Next, dig through the APIs. It doesn't look like there is a way to directly get a user's videos, but you can get a list of a users 'uploads' playlist, which functions much the same way.</p>
-<p>Using Python's <a href="http://docs.python-requests.org/en/latest/">requests</a> library, we just have to hit the correct endpoint:</p>
-<pre class="python"><code># Use the channel to get the 'uploads' playlist id
-response = requests.get(
-    'https://www.googleapis.com/youtube/v3/channels',
-    params = {
-        'part': 'contentDetails',
-        'forUsername': user,
-        'key': API_KEY,
-    }
-)</code></pre>
-<p>One example response:</p>
-<pre class="json"><code>{"etag": "\"tbWC5XrSXxe1WOAx6MK9z4hHSU8/6wRGj4eVz7tGNiDQjCMuhP6B4vQ\"",
- "items": [{"contentDetails": {"googlePlusUserId": "112244684143881021368",
-                               "relatedPlaylists": {"likes": "LL6nSFpj9HTCZ5t-N3Rm3-HA",
-                                                    "uploads": "UU6nSFpj9HTCZ5t-N3Rm3-HA"}},
-            "etag": "\"tbWC5XrSXxe1WOAx6MK9z4hHSU8/yMieoczWtu9QiK_MEdJrC0hqmdU\"",
-            "id": "UC6nSFpj9HTCZ5t-N3Rm3-HA",
-            "kind": "youtube#channel"}],
- "kind": "youtube#channelListResponse",
- "pageInfo": {"resultsPerPage": 5, "totalResults": 1}}</code></pre>
-<p>That's some progress. Specifically, you can get the playlist ID for the user uploads:</p>
-<pre class="python"><code>playlistId = response.json()['items'][0]['contentDetails']['relatedPlaylists']['uploads']</code></pre>
-<p>From there, we can query the API again in order to get the most recent 20 items from that specific playlist:</p>
-<pre class="python"><code># Get the most recent 20 videos on the 'uploads' playlist
-response = requests.get(
-    'https://www.googleapis.com/youtube/v3/playlistItems',
-    params = {
-        'part': 'snippet',
-        'maxResults': 20,
-        'playlistId': playlistId,
-        'key': API_KEY
-    }
-)</code></pre>
-<p>Some snippets from that output (it's rather large):</p>
-<pre class="json"><code>{"etag": "\"tbWC5XrSXxe1WOAx6MK9z4hHSU8/PH2ohKtd9aLBba_d7dVtVUfFle0\"",
- "items": [{"etag": "\"tbWC5XrSXxe1WOAx6MK9z4hHSU8/-LUTubHPIceTTTPMrBW-Qs9KOZQ\"",
-            "id": "UUKzDohq4XHVIEl9O19Nd8rKuqCo1VravR",
-            "kind": "youtube#playlistItem",
-            "snippet": {"channelId": "UC6nSFpj9HTCZ5t-N3Rm3-HA",
-                        "channelTitle": "Vsauce",
-                        "description": "Vsauce is nominated for a Webby "
-                                       "in Science & Education! You can "
-                                       ...,
-                        "playlistId": "UU6nSFpj9HTCZ5t-N3Rm3-HA",
-                        "position": 0,
-                        "publishedAt": "2015-04-13T19:26:03.000Z",
-                        "resourceId": {"kind": "youtube#video",
-                                       "videoId": "f8WsO__XcI0"},
-                        "thumbnails": {"default": {"height": 90,
-                                                   "url": "https://i.ytimg.com/vi/f8WsO__XcI0/default.jpg",
-                                                   "width": 120},
-                                       ...},
-                       "title": "When Will We Run Out Of Names?"}},
-           {"etag": "\"tbWC5XrSXxe1WOAx6MK9z4hHSU8/kCpPYobMQgr7w9gfxaR-_cfkJkc\"",
-           ...]}</code></pre>
-<p>In that snippets blob, we have everything we need. Specifically, the <code>title</code>, <code>thumbnails</code>, and <code>link</code> (by way of <code>resourceID.videoId</code>). Specifically, we can start to construct an RSS feed using the <a href="https://pypi.python.org/pypi/feedgen/">feedgen</a> library<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
-<pre class="python"><code># Generate a list of results that can be used as feed items
-feed = feedgen.feed.FeedGenerator()
-feed.title(user + ' (YRSS)')
-feed.author({'name': user + ' (YRSS)'})
-feed.id('YRSS:' + user)
-
-for item in response.json()['items']:
-    title = item['snippet']['title']
-    video_id = item['snippet']['resourceId']['videoId']
-    published = item['snippet']['publishedAt']
-    thumbnail = item['snippet']['thumbnails']['high']['url']
-    video_url = 'https://www.youtube.com/watch?v=' + video_id
-
-    item = feed.add_entry()
-    item.title(title)
-    item.link(href = video_url)
-    item.published(dateutil.parser.parse(published))
-    item.updated(dateutil.parser.parse(published))
-    item.id(video_id)
-    item.content('''
-&lt;a href="{url}"&gt;&lt;img src="{img}" /&gt;&lt;/a&gt;
-&lt;a href="{url}"&gt;{title}&lt;/a&gt;
-'''.format(
-        url = video_url,
-        img = thumbnail,
-        title = title,
-    ))</code></pre>
-<p>And generate the feed:</p>
-<pre class="python"><code>feed.atom_str()</code></pre>
-<p>I love how (relatively) elegant that was. You don't have to worry about or even know anything about how the underlying XML will be structured.</p>
-<p>Since eventually I want this to be a web service, I used Flask to generate a simple API:</p>
-<pre class="python"><code>app = flask.Flask(__name__)
-
-@app.route('/&lt;user&gt;.xml')
-@app.route('/&lt;user&gt;/atom.xml')
-def generatefeed(user):
-    ...
-
-    return feed.atom_str()</code></pre>
-<p>That way, if you go to <code>http://myserver.com/{user}.xml</code>, you would get an RSS feed for that user's most recent 20 videos. There are a few other considerations to keep in mind (For example, I have a cache that only re-queries the YouTube API once per hour and otherwise re-serves the same feed. And better error handling.)</p>
-<p>If you'd like to see the full source in all it's glory, it's available on GitHub: <a href="https://github.com/jpverkamp/yrss">jpverkamp/yrss</a>. You will have to supply an <code>API_KEY</code> as an environment variable to run it, but that should be relatively straight forward.</p>]]></content></entry></feed>
+<p>Since it took me so long (Two weeks? Was it really that long?) to read American Gods, I'm now at only 42 of 100 for my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, fallen from 7 ahead to 3. Still, onwards! Next up, with an amusingly related title<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>, <a href="https://www.goodreads.com/book/show/2302159.Whitechapel_Gods">Whitechapel Gods</a>.</p>]]></content></entry></feed>

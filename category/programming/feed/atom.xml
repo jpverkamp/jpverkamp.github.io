@@ -49,7 +49,35 @@ server {
     --load-balancer-name $ELB_NAME \
     --instance-port 80 \
     --policy-names $ELB_NAME-proxy-protocol</code></pre>
-<p>Make sure that you're using <code>https://</code> for the web traffic and <code>wss://</code> for the websocket and you're golden. Encrypted websockets behind an AWS ELB. Now if only they would expose the proxy protocol options in the console...</p>]]></content></entry><entry><title>Automagically storing Python objects in Redis</title><link href="http://blog.jverkamp.com/2015/07/16/automagically-storing-python-objects-in-redis" /><id>urn:uuid:e83d21ba-8555-bfba-b05f-ceefc0808723</id><updated>2015-07-16T00:00:00Z</updated><summary type="html"><![CDATA[<p>When you're starting out on a simple web application, eventually<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> you will reach the point where you need to store some form of persistant data. Basically, you have three options<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>:</p>
+<p>Make sure that you're using <code>https://</code> for the web traffic and <code>wss://</code> for the websocket and you're golden. Encrypted websockets behind an AWS ELB. Now if only they would expose the proxy protocol options in the console...</p>]]></content></entry><entry><title>Finding AWS IAM users by access key</title><link href="http://blog.jverkamp.com/2015/07/20/finding-aws-iam-users-by-access-key" /><id>urn:uuid:de410b08-f76c-4ca3-fb5a-30fccb14273b</id><updated>2015-07-20T00:00:00Z</updated><summary type="html"><![CDATA[<p>Every once in a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, I find myself with an <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html">AWS access key</a> and need to figure out who in the world it belongs to. Unfortunately, so far as I've been able to find, there's no way to directly do this in either the <a href="https://aws.amazon.com/console/">AWS console</a> or with the <a href="https://aws.amazon.com/cli/">AWS api</a>.</p>
+]]></summary><content type="html"><![CDATA[<p>Every once in a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, I find myself with an <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html">AWS access key</a> and need to figure out who in the world it belongs to. Unfortunately, so far as I've been able to find, there's no way to directly do this in either the <a href="https://aws.amazon.com/console/">AWS console</a> or with the <a href="https://aws.amazon.com/cli/">AWS api</a>.</p>
+<!--more-->
+<p>Luckily, <a href="https://aws.amazon.com/cli/">boto</a>:</p>
+<pre class="python"><code>#!/usr/bin/env python3
+
+import boto.iam.connection
+import pprint
+import sys
+
+if len(sys.argv) == 1:
+    print('Usage: who-iam [access-key ...]')
+    sys.exit(0)
+
+conn = boto.iam.connection.IAMConnection()
+users = conn.get_all_users()
+
+for user in users['list_users_response']['list_users_result']['users']:
+    keys = conn.get_all_access_keys(user['user_name'])
+    for key in keys['list_access_keys_response']['list_access_keys_result']['access_key_metadata']:
+        for target in sys.argv[1:]:
+            if key['access_key_id'] == target:
+                print(key['access_key_id'], user['user_name'])</code></pre>
+<p>Check it out (keys changed on the off chance that actually matters):</p>
+<pre class="bash"><code>$ who-iam AKIAIOSWISKB6EXAMPLE AKIAIOSGWISN7EXAMPLE
+AKIAIOSWISKB6EXAMPLE luke
+AKIAIOSGWISN7EXAMPLE han</code></pre>
+<p>It's rather slow (since it has to make <code>O(n)</code> requests and doesn't short circuit), but this should be something you do rarely enough that it doesn't matter.</p>
+<p>If you'd like to download the script, it's available in my <a href="https://github.com/jpverkamp/dotfiles">dotfiles</a>: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/who-iam">who-iam</a></p>]]></content></entry><entry><title>Automagically storing Python objects in Redis</title><link href="http://blog.jverkamp.com/2015/07/16/automagically-storing-python-objects-in-redis" /><id>urn:uuid:e83d21ba-8555-bfba-b05f-ceefc0808723</id><updated>2015-07-16T00:00:00Z</updated><summary type="html"><![CDATA[<p>When you're starting out on a simple web application, eventually<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> you will reach the point where you need to store some form of persistant data. Basically, you have three options<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>:</p>
 <ul>
     <li>Store the information in flat files on the file system</li>
     <li>Store the information in a database (<a href="https://www.mysql.com/">MySQL</a>, <a href="https://www.sqlite.org/">SQLite</a> etc)</li>
@@ -1226,100 +1254,4 @@ wild boar + armadillo = wild boarmadillo</code></pre>
 <p>Fun. :)</p>
 <p>Think of the arrows as going from the stuck on word to where it's sticking rather than in the order the words would be written. It's easy enough to change though if you'd like, just swap the arguments in the <code>add-edge!</code> call above.</p>
 <p>And... that's it. Not much more to do with this one, unless I want to duplicate the above video and portmanteau all the things! We'll see.</p>
-<p>As with all my code, you can see the entire thing on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/portmanteau.rkt">portmanteau.rkt</a></p>]]></content></entry><entry><title>Performance problems with Flask and Docker</title><link href="http://blog.jverkamp.com/2015/04/03/performance-problems-with-flask-and-docker" /><id>urn:uuid:8d7d8e5b-effe-34a6-b190-d0068d5879a0</id><updated>2015-04-03T00:00:00Z</updated><summary type="html"><![CDATA[<p>I had an interesting problem recently on a project I was working on. It's a simple <a href="http://flask.pocoo.org/">Flask</a>-based webapp, designed to be deployed to <a href="https://aws.amazon.com/">AWS</a> using <a href="https://www.docker.com/">Docker</a>. The application worked just fine when I was running it locally, but as soon as I pushed the docker container...</p>
-<p>Latency spikes. Bad enough that the application was failing AWS's healthy host checks, cycling in and out of existence<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
-<p><a href="http://blog.jverkamp.com/2015/04/03/performance-problems-with-flask-and-docker/health-check.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/03/performance-problems-with-flask-and-docker/health-check.png" /></a></p>
-]]></summary><content type="html"><![CDATA[<p>I had an interesting problem recently on a project I was working on. It's a simple <a href="http://flask.pocoo.org/">Flask</a>-based webapp, designed to be deployed to <a href="https://aws.amazon.com/">AWS</a> using <a href="https://www.docker.com/">Docker</a>. The application worked just fine when I was running it locally, but as soon as I pushed the docker container...</p>
-<p>Latency spikes. Bad enough that the application was failing AWS's healthy host checks, cycling in and out of existence<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>:</p>
-<p><a href="http://blog.jverkamp.com/2015/04/03/performance-problems-with-flask-and-docker/health-check.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/03/performance-problems-with-flask-and-docker/health-check.png" /></a></p>
-<!--more-->
-<p>At that time, the only traffic to the container was the health checks, every 30 seconds, as regular as clockwork. So it wasn't load that was making them fail. And it was exactly the same code each time<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span><span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>:</p>
-<pre class="python"><code>@app.route('/', methods = ['GET'])
-def healthcheck():
-    return "I'm a teapot"</code></pre>
-<p>So not that either. So what in the world was going on?</p>
-<p>Google to the rescue! <code><a href="https://www.google.com/search?q=flask application periodically slow">flask application periodically slow</a></code></p>
-<p>The very first link is a response on StackOverflow:</p>
-<blockquote>
-    On operating systems that support ipv6 and have it configured such as modern Linux systems, OS X 10.4 or higher as well as Windows Vista some browsers can be painfully slow if accessing your local server. The reason for this is that sometimes “localhost” is configured to be available on both ipv4 and ipv6 socktes and some browsers will try to access ipv6 first and then ivp4. -- <a href="http://stackoverflow.com/questions/11150343/slow-requests-on-local-flask-server">Slow Requests on Local Flask Server</a>
-</blockquote>
-<p>Huh. Get a shell into my docker container, and what do you know:</p>
-<pre class="bash"><code>$ cat /etc/hosts
-172.17.1.112	27392a3e0fa5
-127.0.0.1	localhost
-::1	localhost ip6-localhost ip6-loopback
-fe00::0	ip6-localnet
-ff00::0	ip6-mcastprefix
-ff02::1	ip6-allnodes
-ff02::2	ip6-allrouters</code></pre>
-<p>Yup. <code>localhost</code> routes to both IPv4's <code>127.0.0.1</code> and IPv6's <code>::1</code>. Comment out the <code>::1</code> line and give it a shot... Yup. That did it. Waited ten minutes and the hosts weren't marked unhealthy once. All I should need to do is add it to the <code>Dockerfile</code> and we should be golden, yes?</p>
-<pre class="text"><code>$ vi Dockerfile
-...
-RUN sed -i "s/::1.*//g"
-...
-
-$ docker build .
-...
-Step 9 : RUN sed -i "s/::1.*//g" /etc/hosts
- ---&gt; Running in 7c73dc473507
-sed: cannot rename /etc/sedXZv0Yy: Device or resource busy</code></pre>
-<p>What.</p>
-<pre class="text"><code>$ vi Dockerfile
-...
-RUN sed "s/::1.*//g" /etc/hosts &gt; /etc/hosts-new && mv /etc/hosts-new /etc/hosts
-...
-
-$ docker build .
-...
-RUN sed "s/::1.*//g" /etc/hosts &gt; /etc/hosts-new && mv /etc/hosts-new /etc/hosts
- ---&gt; Running in d6b896f4fc9e
-sed: cannot rename /etc/sedqYrfxO: Device or resource busy</code></pre>
-<p>Double what.</p>
-<p>Back to Google: <code><a href="https://www.google.com/search?q=docker edit hosts">docker edit hosts</a></code></p>
-<p>Specifically: <a href="https://github.com/docker/docker/issues/1951">Unable to modify /etc/hosts file in a container #1951</a>. Looks like there was a fix that would let you edit <code>/etc/hosts</code> if you were in a container (that used to not be possible), but (because it's actually mounted rather than just a container file), it's non-trivial to edit it as part of a build.</p>
-<p>All righty then.</p>
-<p>That's about when I decided to listen to the Flask documentation:</p>
-<blockquote>You can use the builtin server during development, but you should use a full deployment option for production applications. (Do not use the builtin development server in production.)</blockquote>
-<p>All right. Not only is it what I'm actually supposed to be doing, but if I used CGI, I can avoid Flask trying to resolve <code>localhost</code> at all. I've worked with <a href="http://wiki.nginx.org/Main">nginx</a> before. Let's use that.</p>
-<p>Picking some documentation from a hat, I decided to use <a href="https://uwsgi-docs.readthedocs.org/en/latest/">uWSGI</a> as the glue between nginx and Flask. Easy enough to install with pip (although I had to grab a C compiler from the apt package <code>build-essential</code>) and off we go.</p>
-<p>First, a small <code>nginx</code> config:</p>
-<pre class="nginx"><code>location / { try_files $uri @project; }
-location @project {
-    include uwsgi_params;
-    uwsgi_pass unix:/tmp/uwsgi.sock;
-}</code></pre>
-<p>Then, to start it all up, a change to the <code>Dockerfile</code> <code>CMD</code>:</p>
-<pre class="bash"><code>CMD uwsgi -s /tmp/uwsgi.sock -w project:app --chown-socket=www-data:www-data --enable-threads & \
-    nginx -g 'daemon off;'</code></pre>
-<p>That <code>--chown-socket</code> flag really drove me a bit batty. Basically, <code>uwsgi</code> was starting as the <code>root</code> user (within the Docker container). <code>nginx</code> was starting as <code>root</code>. But the <code>nginx</code> threads were not. They were starting as <code>www-data</code> and thus couldn't read the Unix socket between the two.</p>
-<p>All righty then.</p>
-<p>Let's go!</p>
-<p>Starting successfully... And it's running. Not on the first try or even the 10th (I left out quite a bit of fumbling around tweaking flags), but eventually as was well in the world.</p>
-<p>Push it out to AWS...</p>
-<p>Health check passed.</p>
-<p>Bam.</p>
-<p>Awesome.</p>
-<p>Now I not only have a neat little webapp, I have one that doesn't randomly decide to take forever on every other request or so.</p>
-<p>If you're looking for the bare minimum <code>requirements.txt</code> and <code>Dockerfile</code> that I'm using (in addition to that <code>nginx</code> host configuration file above), here they are:</p>
-<p><code>requirements.txt</code></p>
-<pre class="text"><code>flask
-flup6
-uwsgi</code></pre>
-<p><code>Dockerfile</code>:</p>
-<pre class="text"><code>FROM ubuntu:14.04
-
-RUN apt-get update && apt-get install -y build-essential nginx python3.4 python3.4-dev
-RUN easy_install3 pip
-
-WORKDIR /project
-
-ADD requirements.txt /project/requirements.txt
-RUN pip install -r requirements.txt
-
-ADD . /project
-
-ADD nginx /etc/nginx
-
-CMD uwsgi -s /tmp/uwsgi.sock -w project:app --chown-socket=www-data:www-data --enable-threads & \
-    nginx -g 'daemon off;'</code></pre>
-<p>It's for moments like these that I do software. That little moment when everything comes together just right and it all just ... works.</p>]]></content></entry></feed>
+<p>As with all my code, you can see the entire thing on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/portmanteau.rkt">portmanteau.rkt</a></p>]]></content></entry></feed>
