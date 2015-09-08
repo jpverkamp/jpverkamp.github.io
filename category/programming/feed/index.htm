@@ -1,5 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-08-24T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Adjacency Matrix Generator</title><link href="http://blog.jverkamp.com/2015/08/24/adjacency-matrix-generator" /><id>urn:uuid:136b3438-1761-5142-adc5-95a8b5586bca</id><updated>2015-08-24T00:00:00Z</updated><summary type="html"><![CDATA[<p>Been a while since I've actually tackled one of the <a href="http://blog.jverkamp.com/category/programming/by-source/daily-programmer">Daily Programmer</a> challenges, so let's try one out. From <a href="https://www.reddit.com/r/dailyprogrammer/comments/3h0uki/20150814_challenge_227_hard_adjacency_matrix/)">a week and a half ago</a>, we are challeneged to make an adjacency matrix generator, turning a graphical representation of a graph into an <a href="https://en.wikipedia.org/wiki/adjacency_matrix">adjacency matrix</a>.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-09-08T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Backing up GitHub repositories</title><link href="http://blog.jverkamp.com/2015/09/08/backing-up-github-repositories" /><id>urn:uuid:1441231b-25d9-0022-7eb4-23a4966e0f50</id><updated>2015-09-08T00:00:00Z</updated><summary type="html"><![CDATA[<p>The newest chapter in my quest to collect entirely too much data / back up All The Things!: GitHub.</p>
+<p>Basically, I want to back up all of my own personal GitHub repositories along with any from organizations that I am involved with. Strictly speaking, this is a little strange, since it's unlikely that GitHub is going anywhere soon and, if it does, we are likely to have fair warning. But still, it's nice to have a local copy just in case GitHub is down.</p>
+]]></summary><content type="html"><![CDATA[<p>The newest chapter in my quest to collect entirely too much data / back up All The Things!: GitHub.</p>
+<p>Basically, I want to back up all of my own personal GitHub repositories along with any from organizations that I am involved with. Strictly speaking, this is a little strange, since it's unlikely that GitHub is going anywhere soon and, if it does, we are likely to have fair warning. But still, it's nice to have a local copy just in case GitHub is down.</p>
+<!--more-->
+<p>The code is actually really straight forward. Most of the heavy lifting is being done by the <a href="https://github.com/copitux/python-github3">pygithub3</a> library. One caveat: it's a little strange to install. In my case, I had to first install <code>pygithub</code> and then <code>pygithub3</code> in order to satisfy a missing dependency (<a href="https://github.com/copitux/python-github3/issues/41">previously reported</a>).</p>
+<p>After that, you can authenticate to GitHub, get a list of repositories, and download them all:</p>
+<pre class="python"><code>#!/usr/bin/env python3
+
+import pygithub3
+import os
+
+# Load a list of repos we don't want to download / update
+ignored = set()
+if os.path.exists('ignore.txt'):
+    with open('ignore.txt', 'r') as fin:
+        for line in fin:
+            ignored.add(line.strip())
+
+# Connect to github (if you have MFA, your password must be a token)
+gh = pygithub3.Github(os.environ['GITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
+
+# Loop over repos for the specified user, this will include their organization's repos as well
+for repo in gh.get_user().get_repos():
+
+    remote_path = repo.ssh_url
+    size = repo.size
+    owner = repo.owner.login
+    name = repo.name
+    name_with_owner = '{owner}/{name}'.format(owner = owner, name = name)
+    print(name_with_owner)
+
+    # Check if the repo is in the ignore list
+    if name in ignored or name_with_owner in ignored:
+        print('... skipping')
+        continue
+
+    # Build up a list of commands that will be run for the given repo
+    local_path = os.path.join('repos', owner, name)
+    cmds = ['mkdir -p repos/{owner}; cd repos/{owner}'.format(owner = owner)]
+
+    # Already exists, update it
+    if os.path.exists(local_path):
+        print('... updating')
+        cmds += [
+            'cd {name}'.format(name = name),
+            'git pull --rebase --prune',                 # Update to the most recent master
+            'git submodule update --init --recursive',   # Update submodules
+        ]
+    # Doesn't exist yet, clone it
+    else:
+        print('... cloning')
+        cmds += [
+            'git clone {url}'.format(url = remote_path), # Download a new clean copy using repo name as directory
+            'cd {name}'.format(name = name),
+            'git submodule update --init --recursive',   # Download and update submodules
+        ]
+
+    # Run each command specified above, bailing out if any failed (&&)
+    cmds = ' && '.join(cmds)
+    os.system(cmds)
+    print()</code></pre>
+<p>Basically, we're going to run a sequence of commands depending on if the repo was previously checked out or not. If it hasn't been (this is the first time), we want to run:</p>
+<ul>
+    <li><code>git clone {url}</code></li>
+    <li><code>cd {name}</code></li>
+    <li><code>git submodule update --init --recursive</code></li>
+</ul>
+<p>This will get the initial version and any submodules. I'm not sure that I'm going to keep the submodule code around, but in interest of keeping everything in a runnable state even if GitHub were to vanish tomorrow, it seemed a good idea.</p>
+<p>Alternatively, if we want to update a previously cloned repo:</p>
+<ul>
+    <li><code>cd {name}</code></li>
+    <li><code>git pull --rebase --prune</code></li>
+    <li><code>git submodule update --init --recursive</code></li>
+</ul>
+<p>This is much the same, it just pulls any new code first.</p>
+<p>And that's it. It took a little while to pull all of my repositories down (I have about 15 GB all told, counting various private repositories from work and my university days (which I still help to maintain)), but that's only necessary the first time. After that, it's much quicker.</p>]]></content></entry><entry><title>Adjacency Matrix Generator</title><link href="http://blog.jverkamp.com/2015/08/24/adjacency-matrix-generator" /><id>urn:uuid:136b3438-1761-5142-adc5-95a8b5586bca</id><updated>2015-08-24T00:00:00Z</updated><summary type="html"><![CDATA[<p>Been a while since I've actually tackled one of the <a href="http://blog.jverkamp.com/category/programming/by-source/daily-programmer">Daily Programmer</a> challenges, so let's try one out. From <a href="https://www.reddit.com/r/dailyprogrammer/comments/3h0uki/20150814_challenge_227_hard_adjacency_matrix/)">a week and a half ago</a>, we are challeneged to make an adjacency matrix generator, turning a graphical representation of a graph into an <a href="https://en.wikipedia.org/wiki/adjacency_matrix">adjacency matrix</a>.</p>
 <p>Input:</p>
 <pre class="text"><code>a-----b
 |\   / \
@@ -1158,151 +1234,4 @@ def generatefeed(user):
 <p><a href="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.gif" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/05/07/tuppers-self-referential-formula/tupper.gif" /></a></p>
 <p>If you look carefully, you'll occasionally see flashes of the final image being rendered. This happens whenever the base-10 numbers that we're adding line up with the base-17 encoding.</p>
 <p>I'm not sure it's particularly useful for anything, but I found it amusing.</p>
-<p>Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tupper.rkt">tupper.rkt</a></p>]]></content></entry><entry><title>It's all Greek to me</title><link href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me" /><id>urn:uuid:b361ed4c-c170-609c-a31d-3fbc5642e648</id><updated>2015-04-17T00:00:00Z</updated><summary type="html"><![CDATA[<p>A few days ago an interesting article came across my RSS feeds: <a href="http://flowingdata.com/2015/04/14/its-all-greek-or-chinese-or-spanish-or-to-me/">It’s All Greek (or Chinese or Spanish or…) to Me</a>. Basically, in English, when you're confused, you'll often say 'It's all Greek to me'. It turns out that man (if not all) languages around the world have a similar saying, but the target varies. Luckily, Wikipedia has a lovely page about it: <a href="https://en.wikipedia.org/wiki/Greek_to me">Greek to me</a>.</p>
-]]></summary><content type="html"><![CDATA[<p>A few days ago an interesting article came across my RSS feeds: <a href="http://flowingdata.com/2015/04/14/its-all-greek-or-chinese-or-spanish-or-to-me/">It’s All Greek (or Chinese or Spanish or…) to Me</a>. Basically, in English, when you're confused, you'll often say 'It's all Greek to me'. It turns out that man (if not all) languages around the world have a similar saying, but the target varies. Luckily, Wikipedia has a lovely page about it: <a href="https://en.wikipedia.org/wiki/Greek_to me">Greek to me</a>.</p>
-<!--more-->
-<p>When I posted the link to Facebook, I got a quick question: are there any cycles? While one could just scan through the document, it would be a lot more interesting (at least to me!) if you could do it automatically. Let's toss together a quick script to do it.</p>
-<p>First thing we need: a way to get the content of the Wikipedia page. Python is great for this, with <a href="http://docs.python-requests.org/en/latest/">requests</a> to grab the page and <a href="http://www.crummy.com/software/BeautifulSoup/">BeautifulSoup</a> to process it:</p>
-<pre class="python"><code>content = requests.get('https://en.wikipedia.org/wiki/Greek_to_me').text
-soup = bs4.BeautifulSoup(content)
-
-table = soup.find('table', {'class': 'wikitable sortable'})
-
-pairs = collections.defaultdict(set)
-
-for row in table.findAll('tr'):
-    cols = row.findAll('td')
-    if not cols:
-        continue
-
-    if len(cols) == 5:
-        srcs = [src.strip() for src in cols[0].text.split(',')]
-
-    dsts = [dst.strip() for dst in cols[-1].text.split(',')]
-    for i, dst in enumerate(dsts):
-        dsts[i] = re.sub(r'[\[(].*?[\])]', '', dst)
-
-    for src in srcs:
-        if ' ' in src: continue
-
-        for dst in dsts:
-            if ' ' in dst: continue
-
-            pairs[src].add(dst)</code></pre>
-<p>Basically, we download the page. Then we go through each of the rows (<code>tr</code>). Skip any rows without column elements (<code>td</code>) as that's probably the header, otherwise, pull them out. The first column (index <code>0</code>) is the language with the idiom (English in the example) while the last column (index <code>-1</code>) is the target (Greek). There's one caveat though, that sometimes the table uses a <code>rowspan</code> when one source can have multiple targets but is only listed once. We check that by only changing the <code>srcs</code> when there are 5 columns.</p>
-<p>Parse through all of that and what do you have?</p>
-<pre class="python"><code>&gt;&gt;&gt; import pprint
-&gt;&gt;&gt; pprint.pprint(dict(pairs))
-{u'': set([]),
- u'Afrikaans': set([u'Greek']),
- u'Albanian': set([u'Chinese']),
- u'Arabic': set([u'Chinese', u'Garshuni']),
- ...
- u'Vietnamese': set([u'Cambodian']),
- u'Volap\xfck': set([]),
- u'Yiddish': set([u'Aramaic'])}</code></pre>
-<p>Exactly what I was looking for. Okay, next step. Find any cycles in the graph. This is straight forward enough by performing a <a href="https://en.wikipedia.org/wiki/depth_first search">depth first search</a>:</p>
-<pre class="python"><code>def cycle(node, seen):
-
-    for neighbor in pairs[node]:
-        new_seen = seen + [neighbor]
-
-        if neighbor in seen:
-            yield new_seen[new_seen.index(neighbor):]
-        else:
-            for recur in cycle(neighbor, new_seen):
-                yield recur</code></pre>
-<p>The basic idea is to make a generator that returns each cycle as it finds it. It does so by search down each branch, maintaining a list of all nodes it has <code>seen</code>. If it sees the same node twice, that's a cycle. Otherwise, try all of the neighbors. We avoid infinite loops since there's a guaranteed base case to the recursion: <code>seen</code> is always one bigger on each step and it's maximum size is the number of nodes in the graph.</p>
-<p>So how does it work?</p>
-<pre class="python"><code>&gt;&gt;&gt; for result in cycle('English', ['English']):
-...     print result
-...
-['English', u'Greek', u'Chinese', u'English']
-['English', u'Greek', u'Turkish', u'Arabic', u'Chinese', u'English']
-['English', u'Greek', u'Turkish', u'French', u'Chinese', u'English']
-['English', u'Greek', u'Turkish', u'French', u'Hebrew', u'Chinese', u'English']
-['English', u'Dutch', u'Chinese', u'English']</code></pre>
-<p>Neat! We've already found 5 cycles that involve English alone. But how many cycles are there all together? For that, we need a way to determine if a cycle is actually unique. If you have the cycles <code>A -> B -> C -> A</code>, that's the same as <code>B -> C -> A -> B</code>. You can do this by putting the cycles in <a href="https://en.wikipedia.org/wiki/lexical_order">lexical order</a> (so that the 'smallest' element in the cycle is first).</p>
-<pre class="python"><code>def reorder(cycle):
-    if cycle[0] == cycle[-1]:
-        cycle = cycle[1:]
-
-    smallest = min(cycle)
-    for el in list(cycle):
-        if el == smallest:
-            break
-        else:
-            cycle = cycle[1:] + [cycle[0]]
-
-    return cycle</code></pre>
-<p>It also is smart enough that if we pass it a list with the first and last node the same (as we will), it trims that off automatically.</p>
-<pre class="python"><code>&gt;&gt;&gt; reorder(['A', 'B', 'C', 'A'])
-['A', 'B', 'C']
-&gt;&gt;&gt; reorder(['B', 'C', 'A', 'B'])
-['A', 'B', 'C']</code></pre>
-<p>Bam. So we use that and a <code>set</code> to keep track of what we've seen:</p>
-<pre class="python"><code>&gt;&gt;&gt; seen = set()
-&gt;&gt;&gt; for src in pairs.keys():
-...     for result in cycle(src, [src]):
-...         result = reorder(result)
-...         if not str(result) in seen:
-...             print(result)
-...             seen.add(str(result))
-...
-[u'Chinese', u'English', u'Greek']
-[u'Chinese', u'English', u'Dutch']
-[u'Arabic', u'Chinese', u'English', u'Greek', u'Turkish']
-[u'Chinese', u'English', u'Greek', u'Turkish', u'French']
-[u'Chinese', u'English', u'Greek', u'Turkish', u'French', u'Hebrew']</code></pre>
-<p>Huh. So they all go through English. I didn't actually expect that. :) Still, it's cool to be able to unify them like that.</p>
-<p>Okay, one last trick. Let's visualize them. Luckily, there's a nice Python interface for <a href="https://pypi.python.org/pypi/graphviz">graphviz</a> that we can use:</p>
-<pre class="python"><code># --- Render a nice graph ---
-
-g = graphviz.Digraph()
-for src in pairs.keys():
-    for dst in pairs[src]:
-        g.edge(src, dst)
-
-g.graph_attr['overlap'] = 'false'
-g.graph_attr['splines'] = 'true'
-
-g.format = 'png'
-g.engine = 'neato'
-
-g.render('greek-to-me')</code></pre>
-<p><a href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me.png" /></a></p>
-<p>Awesome.</p>
-<p>It's not the easiest thing in the world to read, but if you look carefully you can pick out a few interesting things. Let's tweak it a bit to color nodes if and only if they have both an inward edge and an outward one:</p>
-<pre class="python"><code>for src in pairs.keys():
-    # Does this node lead to another
-    has_out = pairs[src]
-
-    # Does any node lead to this one
-    has_in = False
-    for dst in pairs.keys():
-        if src in pairs[dst]:
-            has_in = True
-            break
-
-    # If both, color it
-    if has_out and has_in:
-        g.node(src, color = 'blue')
-</code></pre>
-<p><a href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color-nodes.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color-nodes.png" /></a></p>
-<p>That's a little better, all of the nodes in any cycle are in there. Let's go ahead and show all of the edges in any cycle:</p>
-<pre class="python"><code># Get all edges that are part of a cycle
-cycle_edges = set()
-for cycle in cycles:
-    for src, dst in zip(cycle, cycle[1:]):
-        cycle_edges.add((src, dst))
-    cycle_edges.add((cycle[-1], cycle[0]))
-
-for src in pairs.keys():
-    for dst in pairs[src]:
-        if (src, dst) in cycle_edges:
-            g.edge(src, dst, color = 'blue')
-        else:
-            g.edge(src, dst)</code></pre>
-<p><a href="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/04/17/its-all-greek-to-me/greek-to-me-color.png" /></a></p>
-<p>So they're all in that pocket. If I had a few more minutes, I could show all of the cycles as different colors, but that gets complicated in that many re-use the same paths. So it goes.</p>
-<p>If you'd like to see / run the code, you can grab it from GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/greek-to-me.py">greek-to-me.py</a></p>]]></content></entry></feed>
+<p>Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/tupper.rkt">tupper.rkt</a></p>]]></content></entry></feed>
