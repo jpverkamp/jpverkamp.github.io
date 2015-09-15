@@ -1,5 +1,231 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-09-11T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Writing Excuses prompt: Second place</title><link href="http://blog.jverkamp.com/2015/09/11/writing-excuses-prompt-second-place" /><id>urn:uuid:36281250-cea1-33fa-2a89-c27a9644d28c</id><updated>2015-09-11T00:00:00Z</updated><summary type="html"><![CDATA[<p><strong><a href="http://www.writingexcuses.com/2015/02/08/writing-excuses-10-6-the-worldbuilding-revolves-around-me-the-magical-1/">Writing Excuses 10.6</a> writing prompt</strong>: <em>Think about the last time you lost at a game. What was the process of thought that led to your loss? Now, replicate that moment in the dramatic structure of the story, except the story isn't about games.</em></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-09-14T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Mandelbrot</title><link href="http://blog.jverkamp.com/2015/09/14/mandelbrot" /><id>urn:uuid:466b7de5-1cb6-2bfa-8b63-e1e10e296799</id><updated>2015-09-14T00:00:00Z</updated><summary type="html"><![CDATA[<p>Perhaps the best known fractal of all: the <a href="https://en.wikipedia.org/wiki/Mandelbrot_set">Mandelbrot set</a>.</p>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" /></a></p>
+<p>Since I was already working on Python code that would render an image given a function (for a future post), I figured that I might as well render fractals with it.</p>
+]]></summary><content type="html"><![CDATA[<p>Perhaps the best known fractal of all: the <a href="https://en.wikipedia.org/wiki/Mandelbrot_set">Mandelbrot set</a>.</p>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" /></a></p>
+<p>Since I was already working on Python code that would render an image given a function (for a future post), I figured that I might as well render fractals with it.</p>
+<!--more-->
+<p>The basic idea is simple. Use <a href="https://python-pillow.github.io/">pillow</a> (the successor <a href="http://www.pythonware.com/products/pil/">PIL</a>), create an empty image of a given size. Then, call a given function for each point in that image, passing the <code>x</code> and <code>y</code> coordinates of the function as parameters. Basically, the <code><a href="http://docs.racket-lang.org/search/index.html?q=build-flomap*">build-flomap*</a></code> function I use all the time in Racket.</p>
+<p>It turns out, that's actually really straight forward:</p>
+<pre class="python"><code>def generate_image(width, height, generator):
+    '''
+    Generate an RGB image using a generator function.
+
+    width, height -- the size of the generated image
+    generator -- a function that takes (x, y) and returns (r, g, b)
+    '''
+
+    # Generate the data as a row-major list of (r, g, b)
+    data = [generator(x, y) for y in range(height) for x in range(width)]
+
+    # Pack that into a Pillow image and return it
+    img = PIL.Image.new('RGB', (width, height))
+    img.putdata(data)
+    return img</code></pre>
+<p>I like that you can have multiple <code>for</code> statements in a generator like that. It's very similiar to the different forms of Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I always seem to forget that I can do that in Python.</p>
+<p>One downside of this is that it's relatively slow (at least on the big multi-core machines we have now). Luckily, we can use the <code><a href="https://docs.python.org/2/library/multiprocessing.html">multiprocessing</a></code> module to speed things up:</p>
+<pre class="python"><code>def generate_image(width, height, generator, threads = 1):
+    '''
+    Generate an RGB image using a generator function.
+
+    width, height -- the size of the generated image
+    generator -- a function that takes (x, y) and returns (r, g, b)
+    threads -- if != 1, use multiprocessing to spawn this many processes
+    '''
+
+    # Generate the data as a row-major list of (r, g, b)
+    if threads == 1:
+        data = [generator(x, y) for y in range(height) for x in range(width)]
+    else:
+        pool = multiprocessing.Pool(threads)
+        data = pool.starmap(generator, [(x, y) for y in range(height) for x in range(width)])
+
+    # Pack that into a Pillow image and return it
+    img = PIL.Image.new('RGB', (width, height))
+    img.putdata(data)
+    return img</code></pre>
+<p>By using <code>multiprocessing</code> rather than <code>threading</code>, we are actually spawning multiple Python processes, so we get a true multithreaded speedup. Since this program is almost entirely CPU bound, <code>threading</code> (with Python's <a href="https://en.wikipedia.org/wiki/global_interpreter lock">global interpreter lock</a>) wouldn't actually be any faster.</p>
+<p>An aside: Using <code>starmap</code> allows us to pass multiple parameters to the function we are mapping over. This was only introduced in Python 2.6 / 3.3, so make sure you have a sufficiently new version<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>.</p>
+<p>With that, we can make some pretty pictures like I'm sure I've shown off before<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>.</p>
+<pre class="python"><code>generate_image(
+    400,
+    300,
+    lambda x, y: (
+        (x * y) % 256,
+        (x + y) % 256,
+        max(x, y) % 256
+    )
+).save('sample.png')</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/sample.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/sample.png" /></a></p>
+<p>Yes, I realize that's not the most Pythonic code in the world. And because the body of a Python <code>lambda</code> has to be an expression, you cannot write nearly as complicated functions as you could in Racket. It's perfectly valid though. :)</p>
+<p>Okay, so we have a way to generate images, let's use it to generate Mandelbrot sets. The basic idea of the Mandelbrot set is surprisingly simple<span class="footnote"><sup><a href="#footnote-4">[4]</a></sup></span>:</p>
+<p>Given a complex number <span>\( \mathbb{C} \)</span>, the <a href="https://en.wikipedia.org/wiki/complex_number">complex</a> <a href="https://en.wikipedia.org/wiki/quadratic_polynomial">quadratic polynomial</a>:</p>
+<div>$$\mathbb{Z}_n+1 = \mathbb{Z}_n^2 + \mathbb{C}$$</div>
+<p>Either does or does not escape to infinity. If the result remains bounded as <span>\( n \to \infty \)</span>, the number is part of the Mandelbrot set. If not, it's not. Because Python has built in support for complex numbers, this code is fairly elegant:</p>
+<pre class="python"><code>def make_mandelbrot_generator(width, height, center, size, max_iterations = 256):
+        '''
+        A generator that makes generate_image compatible mandelbrot generators.
+
+        width, height -- the size of the resulting image (used for scale)
+        center -- the focus point of the image
+        size -- the size of the larger dimension
+        max_iterations -- the scale to check before exploding, used for coloring
+        '''
+
+        # Scale the size so that is the size of the larger dimension
+        if width &gt;= height:
+            size_x = size
+            size_y = size * height / width
+        else:
+            size_x = size * width / height
+            size_y = size
+
+        # Convert to a bounding box
+        min_x = center[0] - size_x / 2
+        max_x = center[0] + size_x / 2
+        min_y = center[1] - size_y / 2
+        max_y = center[1] + size_y / 2
+
+        def generator(x, y):
+            # Scale to the mandlebrot frame; convert to a complex number
+            x = (x / width) * (max_x - min_x) + min_x
+            y = (y / height) * (max_y - min_y) + min_y
+            c = x + y * 1j
+
+            # Iterate until we escape to infinity or run out of iterations
+            # For our purposes, we can consider infinity = 2
+            z = 0
+            for iteration in range(max_iterations):
+                z = z * z + c
+
+                # Size is r of polar coordinates
+                (r, phi) = cmath.polar(z)
+                if r &gt; 2:
+                    break
+
+            g = int(256 * iteration / max_iterations)
+            return (g, g, g)
+
+        return generator</code></pre>
+<p>I've chosen here to make a function that returns the actual color generator primarily so that we would have access to the <code>width</code> and <code>height</code> within the main function.</p>
+<p>Amusingly, it's been proven that if the magnitude of <span>\(\mathbb{Z}_n\)</span> crosses 2, it will go to infinity. Since <code>r</code> is the magnitude in the <a href="https://en.wikipedia.org/wiki/polar_coordinate system">polar coordinate system</a> (<code>r</code>,<code>ϕ</code>), we can use that as an escape hatch and even as a basic way to color the output.</p>
+<p>One side note: using the <code>multiprocessing</code> module, we have to be able to <code><a href="https://docs.python.org/2/library/pickle.html">pickle</a></code> any variables to the function called. Functions defined in the global scope can be pickled, but functions used directly as parameters to other functions cannot; don't ask me why.</p>
+<p>So if <code>threads</code> is not 1, this does not work:</p>
+<pre class="python"><code>generate_image(
+    400,
+    300,
+    make_mandelbrot_generator(400, 300, (-0.5, 0), 3),
+    threads = 4
+)</code></pre>
+<p>But this does:</p>
+<pre class="python"><code>generator = make_mandelbrot_generator(400, 300, (-0.5, 0), 3),
+generate_image(400, 300, generator, threads = 4)</code></pre>
+<p>Weird.</p>
+<p>Anyways, what do we get when we try it out?</p>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_grayscale.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_grayscale.png" /></a></p>
+<p>Beautiful<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>!</p>
+<p>We need some color. Let's introduce one more parameter to the <code>make_mandelbrot_generator</code> function: <code>coloring</code>. Basically, a function that takes in a number in the range <code>[0, 1]</code> (which we're already computing; that is <code>iteration / max_iterations</code>) and return an RGB color. That way, we can have some more interesting colorations.</p>
+<p>For example, the grayscale coloring function from earlier:</p>
+<pre class="python"><code>def grayscale(v):
+    '''Simple grayscale value.'''
+
+    g = int(256 * v)
+    return (g, g, g)</code></pre>
+<p>Or how about instead, we render something in blue and red. Start at black, then fade up the blue channel, crossfade to red in the next third, and fade back to black in the last:</p>
+<pre class="python"><code>def hot_and_cold(v):
+    '''Scale from black to blue to red and back to black.'''
+
+    r = g = b = 0
+
+    if v &lt; 1/3:
+        v = 3 * v
+        b = int(256 * v)
+    elif v &lt; 2/3:
+        v = 3 * (v - 1/3)
+        r = int(256 * v)
+        b = int(256 * (1 - v))
+    else:
+        v = 3 * (v - 2/3)
+        r = int(256 * (1 - v))
+
+    return (r, g, b)</code></pre>
+<p>Let's render that one instead:</p>
+<pre class="python"><code>generator = make_mandelbrot_generator(400, 300, (-0.5, 0), 3),
+generate_image(400, 300, generator, threads = 4, coloring = hot_and_cold)</code></pre>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" /></a></p>
+<p>Excellent. We have a simple Mandelbrot generator. It's not exactly what I set out to do for this post (really only the <code>generate_image</code> function is), but I think it's pretty cool.</p>
+<p>As a bonus round, I made something of a basic testing framework:</p>
+<pre class="python"><code>THREAD_COUNT = max(1, multiprocessing.cpu_count() - 1)
+
+SIZES = [
+    (400, 300),
+    (1920, 1080)
+]
+
+COLORINGS = [
+    ('grayscale', grayscale),
+    ('hot-and-cold', hot_and_cold),
+]
+
+IMAGES = [
+    ('default', (-0.5, 0), 3),
+    # http://www.nahee.com/Derbyshire/manguide.html
+    ('seahorse-valley', (-0.75, 0.1), 0.05),
+    ('triple-spiral-valley', (0.088, 0.654), 0.25),
+    ('quad-spiral-valley', (0.274, 0.482), 0.005),
+    ('double-scepter-valley', (-0.1, 0.8383), 0.005),
+    ('mini-mandelbrot', (-1.75, 0), 0.1),
+
+]
+
+for width, height in SIZES:
+    for image_name, center, size in IMAGES:
+        for coloring_name, coloring in COLORINGS:
+            filename = os.path.join('{width}x{height}', 'mandelbrot_{name}_{width}x{height}_{coloring}.png')
+            filename = filename.format(
+                name = image_name,
+                width = width,
+                height = height,
+                coloring = coloring_name,
+            )
+            generator = make_mandelbrot_generator(width, height, center, size, coloring = coloring)
+
+            start = time.time()
+            img = generate_image(
+                width,
+                height,
+                generator,
+                threads = THREAD_COUNT
+            )
+            end = time.time()
+
+            if not os.path.exists(os.path.dirname(filename)):
+                os.makedirs(os.path.dirname(filename))
+            img.save(filename)
+
+            print('{} generated in {} seconds with {} threads'.format(
+                filename,
+                end - start,
+                THREAD_COUNT
+            ))</code></pre>
+<p><code>multiprocessing.cpu_count() - 1</code> means that I leave one processor for other work (I was having issues with my computer freazing, <code>multiprocessing</code> is good at that). Other than that, generate a bunch of images and shove them into directories by size.</p>
+<p>Here are a few examples from <a href="http://www.nahee.com/Derbyshire/manguide.html">nahee.com</a>:</p>
+<h3>Seahorse Valley<h3>
+<a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_400x300_hot-and-cold.png" /></a>
+
+<h3>Double Scepter Valley</h3>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_double-scepter-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_double-scepter-valley_400x300_hot-and-cold.png" /></a></p>
+<h3>Triple Spiral Valley</h3>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_triple-spiral-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_triple-spiral-valley_400x300_hot-and-cold.png" /></a></p>
+<h3>Quad Spiral Valley</h3>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_quad-spiral-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_quad-spiral-valley_400x300_hot-and-cold.png" /></a></p>
+<h3>Mini Mandelbrot</h3>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_mini-mandelbrot_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_mini-mandelbrot_400x300_hot-and-cold.png" /></a></p>
+<p>Or how about one nice large one (right click, save as):</p>
+<p><a href="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_1920x1080_hot-and-cold.png" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_1920x1080_hot-and-cold.png" /></a></p>
+<p>So much detail!</p>
+<p>Enjoy!</p>]]></content></entry><entry><title>Writing Excuses prompt: Second place</title><link href="http://blog.jverkamp.com/2015/09/11/writing-excuses-prompt-second-place" /><id>urn:uuid:36281250-cea1-33fa-2a89-c27a9644d28c</id><updated>2015-09-11T00:00:00Z</updated><summary type="html"><![CDATA[<p><strong><a href="http://www.writingexcuses.com/2015/02/08/writing-excuses-10-6-the-worldbuilding-revolves-around-me-the-magical-1/">Writing Excuses 10.6</a> writing prompt</strong>: <em>Think about the last time you lost at a game. What was the process of thought that led to your loss? Now, replicate that moment in the dramatic structure of the story, except the story isn't about games.</em></p>
 <hr />
 <p>The almost. The not quite. The second place.</p>
 <p>All words to describe a feeling. A state of mind. That of not quite making it, when you knew in your heart of hearts that you should.</p>
@@ -605,128 +831,4 @@ g--h--#
 <p>Shiny!</p>
 <p>I wonder how hard it would be to program the inverse: take an adjacency matrix as input and generate one of these graphical matrices as output? Even better, generate an 'optimal' graphic, with the smallest possible area.</p>
 <p>We'll see.</p>
-<p>The full code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/matrix-reader.py">matrix-reader.py</a></p>]]></content></entry><entry><title>Setting up Postfix and OpenDKIM</title><link href="http://blog.jverkamp.com/2015/08/10/setting-up-postfix-and-opendkim" /><id>urn:uuid:65ecefd0-9ca8-1ba1-d32a-ae3857191285</id><updated>2015-08-10T00:00:00Z</updated><summary type="html"><![CDATA[<p>Last week, I was presented with a fairly interesting challenge: add DKIM (via <a href="http://www.opendkim.org/">OpenDKIM</a>) support to our mail servers (running <a href="http://www.postfix.org/">Postfix</a>). Given that I've never actually worked on a mail server before, it sounded fun. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>
-]]></summary><content type="html"><![CDATA[<p>Last week, I was presented with a fairly interesting challenge: add DKIM (via <a href="http://www.opendkim.org/">OpenDKIM</a>) support to our mail servers (running <a href="http://www.postfix.org/">Postfix</a>). Given that I've never actually worked on a mail server before, it sounded fun. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>
-<!--more-->
-<p>First, a bit of background on what exactly DKIM is:</p>
-<blockquote>
-    DomainKeys Identified Mail (DKIM) is an email validation system designed to detect email spoofing by providing a mechanism to allow receiving mail exchangers to check that incoming mail from a domain is authorized by that domain's administrators and that the email (including attachments) has not been modified during transport. A digital signature included with the message can be validated by the recipient using the signer's public key published in the DNS.
-    -- Wikipedia: <a href="https://en.wikipedia.org/wiki/DKIM">DKIM</a>
-</blockquote>
-<p>Sounds nice. So what in the world does that mean?</p>
-<h2>A bit of background</h2>
-<p>Starting in the details, we have <a href="https://en.wikipedia.org/wiki/public_key cryptography">public key cryptography</a>. The basic idea of public key cryptography is that you have some sort of algorithm with two keys: one of which can be used to encrypt things and can be made public and another separate piece of information which can be used to decrypt things and should remain private. That way, you can publish your public key, well, publically. Then anyone that wants to send you a message can do so, knowing that only you (since only you possess the private key) can read it.</p>
-<p>If we take this a step further, we can swap the roles of the public and private key<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Instead of encrypting with the public key, we will use the private key, requiring the <em>public</em> key for decryption. This sounds mad, since the public key is, by definition public. So what's the point of a message that only you can write but anyone can read?</p>
-<p>Well, that's exactly the point: <em>only you</em> can write it. This is what's called a digital signature. Since only your private key could have encoded the message and since only you have the private key, this allows anyone to read your message and be safe in the knowledge that you wrote it.</p>
-<p>This is exactly what DKIM does.</p>
-<p>By creating an public/private key pair, publishing the public key to a DNS record, and using the private key to sign messages, you are allowing any receiver to verify that <em>you</em> were person who sent them. Don't get me wrong, there are still a few problems with this approach (we'll get to them later), but it's a cool idea.</p>
-<h2>Implementation</h2>
-<p>So how do you actually implement it in practice?</p>
-<p>Given that I don't have any particular previous experience with mail servers, the answer involves a lot of Google. Here are the steps that worked for me.</p>
-<h4>1 - Have a previously configured server correctly delivering mail via <a href="http://www.postfix.org/">Postfix</a></h4>
-<h4>2 - Install <a href="http://www.opendkim.org/">OpenDKIM</a></h4>
-<pre class="bash"><code>sudo apt-get install -y opendkim opendkim-tools</code></pre>
-<h4>3 - Generate a new keypair</h4>
-<pre class="bash"><code>sudo opendkim-genkey -s mail -d example.com</code></pre>
-<p>The <code>-s</code> argument specifies a selector, which allows us to have multiple keypairs specified on the same domain (if we wanted to), while the <code>-d</code> is the domain we are signing for. In this case, we are generating a record for <code>mail._domainkey.example.com</code>.</p>
-<p>This will generate two files. The first is <code>mail.private</code>, which we will move to <code>/etc/opendkim/keys/example.com.private</code> (to match the <code>KeyFile</code> later). Also, we need to make sure that the file has correctly narrow Unix permissions, or OpenDKIM will refuse to use it (for our own safety):</p>
-<pre class="bash"><code>sudo chmod 0400 /etc/opendkim/keys/example.com.private
-sudo chown opendkim:opendkim /etc/opendkim/keys/example.com.private
-sudo adduser postfix opendkim</code></pre>
-<p>The second file is <code>mail.txt</code>, which is a DNS record for the above domain. Set it up so this returns successfully:</p>
-<pre class="bash"><code>$ dig mail._domainkey.example.com TXT
-
-...
-;; ANSWER SECTION:
-mail._domainkey.example.com. 599	IN TXT "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC5N3lnvvrYgPCRSoqn+awTpE+iGYcKBPpo8HHbcFfCIIV10Hwo4PhCoGZSaKVHOjDm4yefKXhQjM7iKzEPuBatE7O47hAx1CJpNuIdLxhILSbEmbMxJrJAG0HZVn8z6EAoOHZNaPHmK2h4UUrjOG8zA5BHfzJf7tGwI+K619fFUwIDAQAB" ; ----- DKIM key mail for example.com
-...</code></pre>
-<p>That's (almost) all we have to do to configure the public half of the key pair. (We still have to use the same selector later in the <code>KeyFile</code>, but that's it.)</p>
-<h4>4 - Create an OpenDKIM configuration file (<code>/etc/opendkim.conf</code>)</h4>
-<pre class="bash"><code>Canonicalization        relaxed/relaxed
-ExternalIgnoreList      refile:/etc/opendkim/TrustedHosts
-InternalHosts           refile:/etc/opendkim/TrustedHosts
-KeyTable                refile:/etc/opendkim/KeyTable
-LogWhy                  Yes
-MinimumKeyBits          1024
-Mode                    sv
-PidFile                 /var/run/opendkim/opendkim.pid
-SigningTable            refile:/etc/opendkim/SigningTable
-Socket                  inet:8891@localhost
-Syslog                  Yes
-SyslogSuccess           Yes
-UMask                   022
-UserID                  opendkim:opendkim</code></pre>
-<p>What in the world do those all mean? Well, (based somewhat on documentation and somewhat on expirimentation):</p>
-<ul>
-    <li><code>Canonicalization</code> - controls whether further mail servers can edit the message contents with destroying the signature. <code>relaxed</code> allows more modification, <code>simple</code> is more strict. <code>relaxed</code> seems to be the more common option.</li>
-    <li><code>ExternalIgnoreList</code> - hosts that we trust to send us mail; do not validate their DKIM signatures (if present). Specifying <code>refile</code> means that we can use wildcards.</li>
-    <li><code>InternalHosts</code> - hosts that will relay mail through us; if we see an unsigned message coming from one of them, sign it before forwarding it along (This is important! I'll get to why in a bit)</li>
-    <li><code>KeyTable</code> - a list of private keys we can use to sign messages (included later)</li>
-    <li><code>LogWhy</code> - log errors to <code>/var/log/mail.log</code> (useful for debugging)</li>
-    <li><code>MinimumKeyBits</code> - flag an error if we try to specify a private key shorter (less secure) than this</li>
-    <li><code>Mode</code> - various options, <code>sv</code> is fairly common and means <code>s</code>ign outgoing messages and <code>v</code>erify incoming ones</li>
-    <li><code>PidFile</code> - where to store the <a href="https://en.wikipedia.org/wiki/PID_file">PID file</a></li>
-    <li><code>SigningTable</code> - specify which key from the <code>KeyTable</code> should be used for a given message</li>
-    <li><code>Socket</code> - how Postfix and OpenDKIM communicate</li>
-    <li><code>Syslog</code>, <code>SyslogSuccess</code> - log to <a href="https://en.wikipedia.org/wiki/syslog">syslog</a> as well as <code>mail.log</code>; log successes as well as failures</li>
-    <li><code>UMask</code> - allows other Linux users (such as Postfix's) to talk to OpenDKIM</li>
-    <li><code>UserID</code> - the user that OpenDKIM runs as</li>
-</ul>
-<p>Fairly straight forward.</p>
-<h4>5 - Next, another copy of the socket definition in <code>/etc/default/opendkim</code> (I'm actually not sure why this one is necessary)</h4>
-<pre class="bash"><code>SOCKET="inet:8891@localhost"</code></pre>
-<p>Next, specify our keys in <code>/etc/opendkim/KeyTable</code>:</p>
-<pre class="bash"><code>example.com example.com:mail:/etc/opendkim/keys/example.com.private</code></pre>
-<p>The first entry is a name for the key. It can be anything and doesn't necessary have to match the domain, just so long as the corresponding entry in <code>SigningTable</code> matches. After that, you have the domain where your public key is hosted, the selector on that domain, and where the private key is locally located. So in the above example, <code>example.com:mail</code> corresponds to a key at <code>mail._domainkey.example.com</code>.</p>
-<p>And what emails to sign in <code>/etc/opendkim/SigningTable</code>:</p>
-<pre class="bash"><code>*@example.com example.com
-*@*.example.com example.com
-*@*.example.org example.com</code></pre>
-<p>This one is a bit more complicated, since for my particular case, I had emails coming from two different domains, along with subdomains in both cases (the first field). They can (and in this case) all use the same key, since the second entry matches the value specified in <code>KeyTable</code>.</p>
-<p>Note again: Since we're using wildcards here, we have to specify <code>refile</code> up above in <code>opendkim.conf</code>.</p>
-<h4>6 - Next, <code>/etc/opendkim/TrustedHosts</code></h4>
-<p>This file will be used to specify both incoming message we trust and outgoing message we will sign (although it doesn't have to do both).</p>
-<pre class="bash"><code>127.0.0.1
-10.77.0.0/16
-example.com
-*.example.com
-*.example.org
-*.*.example.org</code></pre>
-<p>Entries here can be either IP addresses, <a href="https://en.wikipedia.org/wiki/CIDR">CIDR</a> style IP ranges, or hostnames (including wildcards, since this is a <code>refile</code>), all of which I use above. This actually took a bit to figure out, since originally I was signing email directly from the box (successfully), but when I attempted to actually send a signed email from the product, it didn't work (since the frontends relay mail to the mail servers).</p>
-<h4>7 - Okay, that's enough to configure OpenDKIM. Next, we need to tell Postfix to talk to it</h4>
-<p>This one is relatively straight forward as well. Just add a few lines to the bottom of <code>/etc/postfix/main.cf</code>:</p>
-<pre class="bash"><code># DKIM
-milter_default_action = accept
-milter_protocol = 2
-smtpd_milters = inet:localhost:8891
-non_smtpd_milters = inet:localhost:8891</code></pre>
-<p>Essentially, milter is a protocol Postfix uses for plugins. We want to configure all mail traffic (both from smptd and not) to go to OpenDKIM, via the port we specified (twice) earlier. Shiny.</p>
-<h4>8 - Finally, restart both OpenDKIM and Postfix, so they can take advantage of their new settings</h4>
-<pre class="bash"><code>sudo service opendkim restart
-sudo service postfix restart</code></pre>
-<p>This should only take a few seconds.</p>
-<p>And that's it. We can send a test email:</p>
-<pre class="bash"><code>echo "test email" | mail -s &lt;code&gt;hostname&lt;/code&gt; me@example.com</code></pre>
-<p>That will send an email with the <code>hostname</code> of the current machine to the specified address, useful if you're working with multiple different machines and need to know which are up to date.</p>
-<p>Check the message headers and you should see a block that looks like this:</p>
-<pre class="bash"><code>DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=mail;
-        t=1439063676; bh=RnRlt9pNo9HfghopMAD1V157IZOFVrE6piv9xdXYFNs=;
-        h=To:Subject:Reply-To:From:Date;
-        b=LekoRRQgOX97WUHP/ELtl/yhMzZsiCPr8kqaYUpZER5sYZ1dyAwgOKKvuI3mL3IMo
-         4Y90NDGv+CHm2ZmAaGmFOgGnDPsDxLE+ptleVBP/cQny9grftwA8Emc3MKS6aJ/w5P
-         E1bh2wFE8LiRTl/wcof6JL0MyeoR8R63FCKMgnA8=</code></pre>
-<p>Bam.</p>
-<h2>A few caveats</h2>
-<p>So, what is DKIM actually used for?</p>
-<p>The original claim is that it's an <em>email validation system designed to detect email spoofing</em>. Which is all well and good, but there's one big problem: adaptation.</p>
-<p>Numbers are a little hard to come by, but one site that I found is builtWith trends: <a href="https://trends.builtwith.com/mx/DKIM">DKIM Usage Statistics</a>. Their reported coverage notes:</p>
-<ul>
-    <li>Quantcast Top 10k - 14 of 10,000</li>
-    <li>Quantcast Top 100k - 104 of 100,000</li>
-    <li>Quantcast Top Million - 585 of 865,105</li>
-    <li>Entire Internet - 24,064 of 328,844,222</li>
-</ul>
-<p>That's less than 0.1% in any category. Not so great.</p>
-<p>This is a problem, not because it means that mail servers aren't using it, but rather because there is little reason for mail <em>clients</em> to support it. It's easy enough to verify a DKIM signature if present, but they're so rarely present, that most will not go through that effort.</p>
-<p>Furthmore, the header does not sign the message headers and (unless you are using SMTP over TLS), it is trivial to remove. If the DKIM header is not present, the message is trivial to modify with the recipient none the wiser. This could be offset--for some business models--by requiring messages to contain a DKIM header and rejecting those that don't.</p>
-<p>Still, it's an interesting technology and there's no particular harm (other than a small amount of extra CPU effort to do the signing) in implementing it.</p>]]></content></entry></feed>
+<p>The full code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/matrix-reader.py">matrix-reader.py</a></p>]]></content></entry></feed>
