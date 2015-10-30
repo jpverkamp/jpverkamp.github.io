@@ -1,5 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-10-29T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Takuzu solver</title><link href="http://blog.jverkamp.com/2015/10/29/takuzu-solver" /><id>urn:uuid:db1688ed-6c5a-fd87-ce8b-71c39075285b</id><updated>2015-10-29T00:00:00Z</updated><summary type="html"><![CDATA[<p>Based on a <a href="">/r/dailyprogrammer</a> puzzle: <a href="https://www.reddit.com/r/dailyprogrammer/comments/3pwf17/20151023_challenge_237_hard_takuzu_solver/">Takuzu solver</a>.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-10-30T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Finding EC2 instances by tag</title><link href="http://blog.jverkamp.com/2015/10/30/finding-ec2-instances-by-tag" /><id>urn:uuid:dcd71490-1abf-0503-d116-70fb4eeb29cd</id><updated>2015-10-30T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another script similar to my previous post about <a href="http://blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
+]]></summary><content type="html"><![CDATA[<p>Another script similar to my previous post about <a href="http://blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
+<!--more-->
+<pre class="python"><code>#!/usr/bin/env python3
+
+import argparse
+import boto.ec2
+import json
+import re
+import sys
+
+parser = argparse.ArgumentParser(description = 'Find out information about EC2 instances')
+parser.add_argument('--region', default = 'us-west-2', help = 'The AWS region to search')
+parser.add_argument('--limit', type = int, default = 1, help = 'How many results to report, 0 will return all')
+parser.add_argument('--output', default = 'private_ip_address', help = 'The output to fetch for each instance; json will output a json object will all of the outputs')
+parser.add_argument('filters', nargs = argparse.REMAINDER, help = 'Regular expressions to apply to each tag')
+args = parser.parse_args()
+
+ec2 = boto.ec2.connect_to_region('us-west-2')
+
+if not args.filters:
+    raise Exception('You must specify at least one instance')
+
+def include_instance(instance):
+    if instance.state != 'running':
+        return
+
+    if not args.filters:
+        return instance
+
+    for filter in args.filters:
+        for tag_key in instance.tags:
+            tag_value = instance.tags[tag_key]
+            tag = '{}={}'.format(tag_key, tag_value).lower()
+
+            if re.search(filter, tag_value):
+                return instance
+
+def filter():
+    for reservation in ec2.get_all_instances():
+        for instance in reservation.instances:
+            if include_instance(instance):
+                yield instance
+
+for i, instance in enumerate(filter(), 1):
+    if args.output == 'json':
+        print(json.dumps(instance.__dict__, default = str))
+    else:
+        print(getattr(instance, args.output))
+
+    if args.limit and i &gt;= args.limit:
+        break</code></pre>
+<p>It's original goal was to get a single IP from a group of servers with a specific tag so that I could log in and poke around:</p>
+<pre class="bash"><code>$ ssh &grave;ec2 prod-server&grave;</code></pre>
+<p>There are a few other uses though, especially when combined with other tools such as <a href="https://stedolan.github.io/jq/"><code>jq</code></a>.</p>
+<pre class="bash"><code>ec2 --limit 0 --output json | jq '.instance_type' | sort | uniq -c | sort -nr
+
+  27 "t2.micro"
+   5 "m3.medium"
+   1 "c4.xlarge"</code></pre>
+<p>That's neat.</p>
+<p>Much as <code>who-iam</code> it's a bit slow, but it still works great.</p>
+<p>If you'd like to download the script, it's available in my <a href="https://github.com/jpverkamp/dotfiles">dotfiles</a>: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/ec2">ec2</a></p>]]></content></entry><entry><title>Takuzu solver</title><link href="http://blog.jverkamp.com/2015/10/29/takuzu-solver" /><id>urn:uuid:db1688ed-6c5a-fd87-ce8b-71c39075285b</id><updated>2015-10-29T00:00:00Z</updated><summary type="html"><![CDATA[<p>Based on a <a href="">/r/dailyprogrammer</a> puzzle: <a href="https://www.reddit.com/r/dailyprogrammer/comments/3pwf17/20151023_challenge_237_hard_takuzu_solver/">Takuzu solver</a>.</p>
 <p>Basically, Takuzu is a logic puzzle similar to Sudoku. You are given a grid partially filled with 0s and 1s. You have to fill in the rest of the grid according to three simple rules:</p>
 <ul>
     <li>You cannot have more than three of the same number in a line</li>
@@ -712,65 +774,4 @@ Solved in 0.67 seconds</code></pre>
 <p>Overall, great book, great series. Not quite on my list of favorites ever, but I'm glad I read it.</p>
 <hr />
 <p>Next up, we get a nice fantasy adventure based on Arabic history, rather than the European fantasy I've read piles of: <a href="https://www.goodreads.com/book/show/11487807-throne-of-the-crescent-moon">Throne of the Crescent Moon</a> by <a href="https://www.goodreads.com/author/show/4025591.Saladin_Ahmed">Saladin Ahmed</a></p>
-<p>I'm looking forward to it.</p>]]></content></entry><entry><title>Writing Excuses 10.7: The Market - Johanas</title><link href="http://blog.jverkamp.com/2015/09/28/writing-excuses-10-7-the-market-johanas" /><id>urn:uuid:fceb73f0-c971-e42a-e3c8-a1413d6368e9</id><updated>2015-09-28T00:00:00Z</updated><summary type="html"><![CDATA[<p><strong><a href="http://www.writingexcuses.com/2015/02/15/writing-excuses-10-7-who-are-all-these-people/">Writing Excuses 10.7</a> writing prompt</strong>: <em>Pick one of the dead-drop characters from the exercise two weeks ago, and turn them into a secondary character. Now take one of the characters with whom they interacted, and write the same scene again, but from this new character's POV.</em></p>
-<hr />
-<p>My master is not always the brightest of men.</p>
-<p>Not in all regards, not in all things.</p>
-<p>But he paid for my mother's transition, when there was no pressing need that he do such a thing. So far as I can tell, he didn't even know what he was paying for.</p>
-<p>And for that, I shall be eternally grateful.</p>
-]]></summary><content type="html"><![CDATA[<p><strong><a href="http://www.writingexcuses.com/2015/02/15/writing-excuses-10-7-who-are-all-these-people/">Writing Excuses 10.7</a> writing prompt</strong>: <em>Pick one of the dead-drop characters from the exercise two weeks ago, and turn them into a secondary character. Now take one of the characters with whom they interacted, and write the same scene again, but from this new character's POV.</em></p>
-<hr />
-<p>My master is not always the brightest of men.</p>
-<p>Not in all regards, not in all things.</p>
-<p>But he paid for my mother's transition, when there was no pressing need that he do such a thing. So far as I can tell, he didn't even know what he was paying for.</p>
-<p>And for that, I shall be eternally grateful.</p>
-<!--more-->
-<p>For that, I shall protect him from himself.</p>
-<p>The package arrived as all do, the sigils of the Parcel's Guild marking the edges. Lord Bronwin did not even seem to recognize them. Granted, it is generally I who answers the door.</p>
-<p>In this instance though, Lord Bronwin was walking to the stairs when the package was delivered and as such took an inordinate interest in its contents.</p>
-<p>That alone should have been enough to warn me that something was awry. Not in the sense that I recognized the package for what it was--something more subtle. My mother had always said that I had a gift for seeing what truly was.</p>
-<p>Yet still, I opened the package. I couldn't very well explain such a feeling to my master. Not without more to go on than just that.</p>
-<p>Inside the package, there were three smaller packages and a note. Before I could stop him, Lord Bronwin had snatched the letter from the package and began to read.</p>
-<p>My uneasy feeling was confirmed. I could see in his face that it was not good news. And from the sidelong look he spared me, I was involved.</p>
-<p>Still, I well knew my place. If my master required it of me, I would do it. No matter the personal cost.</p>
-<hr />
-<p>Without telling me precisely why, my master bid me prepare his carriage to go to market. While it was common enough for me to go to market--especially on such days when other servants of the hour could not attend to such duties--Lord Bronwin had never, to my knowledge, gone.</p>
-<p>Yet an order was an order, and without seeing the letter, I had no particular reason to believe that my master was in any danger whatsoever. So of course, I was going to have to take the letter.</p>
-<hr />
-<p>My opportunity came just as we were leaving.</p>
-<p>In order to step up into the carriage, while still holding on to all three of the individual packages, Lord Bronwin needed both of his hands. Thus he had no room to hold the letter and handed it to me. With only the barest of moments to glance at its contents, I managed to catch only a section:</p>
-<p><center> ... your indiscretions shall become common knowledge. Do not send Johanas. ... </center></p>
-<p>Then, my master held his waiting hand back out the door, the expectance clear in his stance.</p>
-<p>I handed it back, my brain whirling with activity.</p>
-<p>I wasn't sure which bothered me more.</p>
-<p>The reference to 'indiscretions' or my own name.</p>
-<p>At least it explained why he was being particularly short with me.</p>
-<p>I would just have to help him without knowing any more. Surely I could do that.</p>
-<hr />
-<p>At the edge of the market, my master signaled for me to stop the carriage. I made to go to the door to let him out--despite still thinking his plan mad--but he waved me off. Instead, he asked me to find the first two I could find willing to act as couriers. Curious.</p>
-<p>It took some short time, but eventually I found a golem and a young boy on the street. The golem seemed to be off duty and more than happy enough to take my--and by extension, Lord Bronwin's--money. Of course, it was hard to read anything on the expressionless, voiceless face, but once a golem agreed to a job, they were incredibly reliable.</p>
-<p>The young boy, he at least seemed enthusiastic. And what was more, he didn't seem to have much in the way of bargaining skill. Two silver pennies? A steal.</p>
-<p>Then we were off again. It seemed that he wanted to hand deliver one of the three smaller packages. Again, it wasn't my place to question my master, but if he were going to hand deliver one of them himself, then why not deliver all three?</p>
-<p>I was still contemplating said thought when a flash of movement just before me drew my attention.</p>
-<p>I only had a moment to see a golem walking directly across my path before a terrible screech and the rearing of the metal beasts pulling the carriage required all of my attention.</p>
-<p>The horses were strange that way. It wasn't that they were spooked; mechanical beasts as they were, they didn't get spooked. Rather they were trying to avoid damaging either themselves or the golem who had darted in front of them.</p>
-<p>At least they succeeded in one.</p>
-<p>I saw the golem's head pop off and roll an arm's length away. From what I knew about golems, that wasn't actually fatal--although what does fatal mean to something that is not alive?</p>
-<p>I heard my master's voice call up from the carriage. "What's the trouble?"</p>
-<p>I debated a second, but only a second. My primary duty was to him, not to these packages. There was a chance that the situation would devolve. The sooner his package was delivered, the sooner we could return to the safety of his mansion.</p>
-<p>"Nothing, sir," I said, already directing the steeds to continue on their way.</p>
-<hr />
-<p>We dropped off the package my master had kept and he had me retreat a safe distance to watch the other two. Or at least, I assume the distance was such that he thought it safe. I wouldn't have minded a few blocks more.</p>
-<p>The boy arrived first. He put the package down without even really paying terribly much attention to it. Instead, he was inspecting a metalic object. It took a moment for me to place it.</p>
-<p>The golem's head.</p>
-<p>I shook my own.</p>
-<p>The kid was in for some trouble. The Golemancy Guild was one of the strongest organizations in the city and they didn't take kindly to anyone encroaching on their turf, even unintentionally. I thought to give the boy a bit of advice, but I was sure he wouldn't take it.</p>
-<p>A few minutes later, just as I was about to ask Lord Bronwin what exactly he was waiting for, the golem trotted up as well. I admit, I was surprised to see it. It was one thing to know that a golem can lose a head with little to no ill effect; it was quite another to experience it first hand, as it were.</p>
-<p>Still, that meant that we had all three packages. That meant we could head home.</p>
-<p>We tarried only a moment longer before Lord Bronwin signaled me onward. He seemed to be debating something, although he wouldn't go so far as to tell me.</p>
-<p>Halfway home, there was a sharp report. The sound of an explosion, followed closely by two more. I waited, letting the horses trod their inexorable way home, but that was it.</p>
-<p>Three.</p>
-<p>Three explosions.</p>
-<p>Three packages.</p>
-<p>It had to be a coincidence.</p>
-<p>Didn't it?</p>]]></content></entry></feed>
+<p>I'm looking forward to it.</p>]]></content></entry></feed>
