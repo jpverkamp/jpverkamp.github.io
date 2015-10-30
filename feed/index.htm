@@ -1,5 +1,590 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-10-23T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>The Kane Chronicles</title><link href="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles" /><id>urn:uuid:5fcdb108-3d88-2e8f-19e3-9454cdebeb7a</id><updated>2015-10-23T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/7090447-the-red-pyramid"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/1-the-red-pyramid.jpg" /></a> <a href="https://www.goodreads.com/book/show/9067850-the-throne-of-fire"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/2-the-throne-of-fire.jpg" /></a> <a href="https://www.goodreads.com/book/show/12893742-the-serpent-s-shadow"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/3-the-serpents-shadow.jpg" /></a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-10-29T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Takuzu solver</title><link href="http://blog.jverkamp.com/2015/10/29/takuzu-solver" /><id>urn:uuid:db1688ed-6c5a-fd87-ce8b-71c39075285b</id><updated>2015-10-29T00:00:00Z</updated><summary type="html"><![CDATA[<p>Based on a <a href="">/r/dailyprogrammer</a> puzzle: <a href="https://www.reddit.com/r/dailyprogrammer/comments/3pwf17/20151023_challenge_237_hard_takuzu_solver/">Takuzu solver</a>.</p>
+<p>Basically, Takuzu is a logic puzzle similar to Sudoku. You are given a grid partially filled with 0s and 1s. You have to fill in the rest of the grid according to three simple rules:</p>
+<ul>
+    <li>You cannot have more than three of the same number in a line</li>
+    <li>Each column must have an equal number of 0s and 1s<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
+    <li>No two rows or no two columns can be identical</li>
+</ul>
+<p>Thus, if you have a puzzle like this:</p>
+<pre class="text"><code>0.01.1
+0....1
+..00..
+..00..
+1....0
+10.0.0</code></pre>
+<p>One valid solution (most puzzles should have only a single valid answer, but that doesn't always seem to be the case):</p>
+<pre class="text"><code>010101
+001101
+110010
+010011
+101100
+101010</code></pre>
+<p>Let's do it!</p>
+]]></summary><content type="html"><![CDATA[<p>Based on a <a href="">/r/dailyprogrammer</a> puzzle: <a href="https://www.reddit.com/r/dailyprogrammer/comments/3pwf17/20151023_challenge_237_hard_takuzu_solver/">Takuzu solver</a>.</p>
+<p>Basically, Takuzu is a logic puzzle similar to Sudoku. You are given a grid partially filled with 0s and 1s. You have to fill in the rest of the grid according to three simple rules:</p>
+<ul>
+    <li>You cannot have more than three of the same number in a line</li>
+    <li>Each column must have an equal number of 0s and 1s<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
+    <li>No two rows or no two columns can be identical</li>
+</ul>
+<p>Thus, if you have a puzzle like this:</p>
+<pre class="text"><code>0.01.1
+0....1
+..00..
+..00..
+1....0
+10.0.0</code></pre>
+<p>One valid solution (most puzzles should have only a single valid answer, but that doesn't always seem to be the case):</p>
+<pre class="text"><code>010101
+001101
+110010
+010011
+101100
+101010</code></pre>
+<p>Let's do it!</p>
+<!--more-->
+<p>First, we need some sort of structure to represent and read in a Takuzu board. I think I'm going to over-engineer a little bit here, since I think it will be helpful in the long run.</p>
+<p>My basic idea is to represent it in a way without mutation, that is to say once I've created a board, that board will never change. That will make it easier to write a backtracking solution, since when we need to back up to a previous state, we just throw away any of the derivative boards.</p>
+<p>Taking that a level further, let's represent the Takuzu board as a base board with an essentially a 'changelog' on top of it, storing any differences from the boards 'under' it. Something like this:</p>
+<pre class="text"><code>....    ..1.    ....    ..1.
+0.0. {- .... {- .... == 0.0.
+..0.    ....    ....    ..0.
+...1    ..1.    .0..    .011</code></pre>
+<p>In that diagram, the board on the far left is the first layer, then the second is the next layer up, and the third is the final layer. The fourth image is the virtual board that any user of the program would actually see.</p>
+<p>So how do we turn that into code?</p>
+<pre class="python"><code>class Takuzu(object):
+
+    def __init__(self, filename = None, parent = None):
+        '''
+        Represent a Takuzu puzzle (a grid of 0, 1, and .)
+
+        If filename is set, load from file.
+        If parent is set, extend that Takuzu puzzle.
+
+        If neither or both is set, that is an error.
+        '''
+
+        if not (filename or parent) or (filename and parent):
+            raise Exception('Set exactly one of filename and parent')
+
+        self.size = 0
+        self.tiles = collections.defaultdict(lambda : False)
+        self.parent = False
+
+        if parent:
+            self.size = parent.size
+            self.parent = parent
+
+        elif filename:
+            with open(filename, 'r') as fin:
+                for row, line in enumerate(fin):
+                    for col, char in enumerate(line.strip()):
+                        if char in '01':
+                            self.tiles[row, col] = char
+
+                        self.size = col + 1
+
+    def get(self, row = None, col = None):
+        '''
+        Access a tile in the current puzzle, return False for unset values
+
+        If the current puzzle doesn't have a value set, recur to parents.
+        If either row or col is set to None, return that entire row or column.
+        If neither is set, return nested lists containing all current values.
+        '''
+
+        # Note: We need the ugly != None to correctly deal with row or col = 0.
+        # Sometimes truthiness is annoying.
+
+        if row != None and col != None:
+            return self.tiles[row, col] or (self.parent and self.parent.get(row, col))
+        elif row != None:
+            return [self.get(row, col) for col in range(self.size)]
+        elif col != None:
+            return [self.get(row, col) for row in range(self.size)]
+        else:
+            return [
+                [self.get(row, col) for col in range(self.size)]
+                for row in range(self.size)
+            ]
+
+    def set(self, row, col, val):
+        '''
+        Create a child Takuzu object with the specific value set.
+
+        If either row or column is set to None, fill any empty elements in that entire row
+        with the given value.
+        '''
+
+        child = Takuzu(parent = self)
+
+        if row != None and col != None:
+            child.tiles[row, col] = val
+        elif row != None:
+            for col in range(self.size):
+                if not child.get(row, col):
+                    child.tiles[row, col] = val
+        elif col != None:
+            for row in range(self.size):
+                if not child.get(row, col):
+                    child.tiles[row, col] = val
+        else:
+            raise Exception('Must set at least one of row and column')
+
+        return child</code></pre>
+<p>The interesting bits here are the <code>get</code> and <code>set</code> methods. <code>get</code>, as mentioned, assumes the layered structure above. It will start on the topmost layer (the actual object the program has a reference to) and try to look up the given point. If that fails (we're using a <code>collections.defaultdict</code>, so every reference will either by <code>'0'</code>, <code>'1'</code>, or <code>False</code>), fall back to the next layer up (the <code>parent</code>) until we either find one or run out of <code>parent</code> nodes.</p>
+<p>Similarly, <code>set</code> doesn't actually change the current Takuzu object. Instead, it creates a new object with the current one as its parent, setting the new value in the child. This means that any values that were previously set are transparently available in the child, but we can at any point backtrack so long as we keep a reference to the now parent object around.</p>
+<p>In addition, I've gone ahead and built in a bit of functionality that I know we're going to need into <code>get</code> and <code>set</code>. In either case, if you only specify either the <code>row</code> or <code>col</code> and leave the other empty (<code>None</code>), then we will return that entire row or column (or <code>set</code> any empty values). That's easy enough to code and it has the advantage of making it easy to compare rows to one another (for the third requirement above).</p>
+<p>Okay, up next, we'll probably want a few more helper functions in this class in order to actually tell when we've solved one of these puzzles so the algorithms we eventually write can actually terminate:</p>
+<pre class="python"><code>class Takuzu(object):
+    ...
+
+    def __eq__(self, other):
+        '''Check if two Takuzu puzzles are equal.'''
+
+        for row in range(self.size):
+            for col in range(self.size):
+                if self.get(row, col) != other.get(row, col):
+                    return False
+
+        return True
+
+    def __str__(self):
+        '''Return a string representation the same as can be read from a file.'''
+
+        out = ''
+
+        for row in range(self.size):
+            for col in range(self.size):
+                out += str(self.get(row, col) or '.')
+            out += '\n'
+
+        return out
+
+    def is_full(self):
+        '''If all values have been filled in.'''
+
+        for row in range(self.size):
+            for col in range(self.size):
+                if not self.get(row, col):
+                    return False
+
+        return True
+
+    def is_valid(self):
+        '''Test if the current is still possibly a valid solution. If it also is_full,
+        the board is solved.'''
+
+        # Cannot have three identical numbers in a line
+        # Ignore unset pieces
+        for row in range(self.size):
+            for col in range(self.size):
+                if not self.get(row, col):
+                    continue
+
+                if self.get(row - 1, col) == self.get(row, col) == self.get(row + 1, col):
+                    return False
+
+                if self.get(row, col - 1) == self.get(row, col) == self.get(row, col + 1):
+                    return False
+
+        # All rows and columns must have no more than the maximum (size/2) number of 0s or 1s
+        for index in range(self.size):
+            if (
+                self.get(index, None).count('0') &gt; self.size / 2
+                or self.get(index, None).count('1') &gt; self.size / 2
+                or self.get(None, index).count('0') &gt; self.size / 2
+                or self.get(None, index).count('1') &gt; self.size / 2
+            ):
+                return False
+
+        # No two rows or columns can be equal (ignore rows/columns that contain unset values)
+        # all(...) on a row or column will be true iff all values are set
+        for first_index in range(self.size):
+            for second_index in range(first_index):
+                if (
+                    all(self.get(first_index, None))
+                    and all(self.get(None, first_index))
+                    and (
+                        self.get(first_index, None) == self.get(second_index, None)
+                        or self.get(None, first_index) == self.get(None, second_index)
+                    )
+                ):
+                    return False
+
+        # Whee passed all three conditions!
+        return True
+
+    def is_solved(self):
+        '''Return True iff this puzzle is solved.'''
+
+        return self.is_full() and self.is_valid()</code></pre>
+<p><code>__eq__</code> and <code>__str__</code> are 'magic' methods in Python that will define equality and converting this object to a string respectively. This will be nice to make sure we don't investigate the same board more than once later.</p>
+<p>After that, we have <code>is_full</code>, <code>is_valid</code>, and <code>is_solved</code><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>. In the first case, we're checking if a puzzle has everything filled in. That way we know if we can stop recurring one way or the other.</p>
+<p><code>is_valid</code> is actually a relatively new method. Before that, I could only check if a puzzle <code>is_solved</code>, but this way we can eliminate entire branches of the search space much earlier. For example, as soon as a backtracking solution places the third <code>0</code> in a row, it can stop looking down that path since <code>is_valid</code> will return <code>False</code>. Finally, <code>is_solved</code>. It used to have most of the <code>is_valid</code> code, but once that method existed, a puzzle <code>is_solved</code> simply if both it <code>is_full</code> and it <code>is_valid</code>. Easy enough.</p>
+<p>So how do we actually solve a puzzle with this?</p>
+<p>Let's start with the simple (relatively speaking, since we've done it before) backtracking solution. Given everything that we have in the Takuzu class, the actual solver is actually really simple:</p>
+<pre class="python"><code>def solve(takuzu):
+    '''Solve a puzzle using backtracking (also a fall back for the human solver).'''
+
+    queue = [takuzu]
+
+    while queue:
+        takuzu = queue.pop()
+
+        # Solved, we're done!
+        if takuzu.is_solved():
+            return takuzu
+
+        # If we don't have a valid solution, stop looking on this branch
+        if not takuzu.is_valid():
+            continue
+
+        # Otherwise, find one empty spot and try both possiblities
+        def enqueue():
+            for row in range(takuzu.size):
+                for col in range(takuzu.size):
+                    if not takuzu.get(row, col):
+                        for value in '01':
+                            queue.insert(takuzu.set(row, col, value), 0)
+                        return
+        enqueue()
+
+    return False</code></pre>
+<p>Basically, we keep a stack of solutions, which will allow us to perform a <a href="https://en.wikipedia.org/wiki/depth-first_search">depth-first search</a><span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>.</p>
+<p>Basically, create a branch, trying first a <code>0</code> in the first empty spot. Looking down that path, if we find a solution, we're done. If we don't try a <code>1</code> instead. That's really it. And it's actually relatively fast.</p>
+<p>Given the input:</p>
+<pre class="test"><code>0..1.0
+0.11..
+......
+......
+1..1..
+.....0</code></pre>
+<p>We can solve it easily enough:</p>
+<pre class="bash"><code>$ python3 takuzu.py --method backtracker sample_6x6.takuzu
+
+010110
+001101
+110010
+011001
+100101
+101010
+
+Solved in 0.15 seconds</code></pre>
+<p>Nice. (You can check out the <a href="https://github.com/jpverkamp/takuzu">full source</a> if you'd like to see how I'm handling the command line parameters along with a few other goodies.<span class="footnote"><sup><a href="#footnote-4">[4]</a></sup></span>)</p>
+<p>Unfortunately, as puzzles get a bit larger, that runtime isn't so great:</p>
+<pre class="bash"><code>$ python3 takuzu.py --method backtracker sample_8x8.takuzu
+
+10011010
+11001100
+01100101
+10110010
+01011001
+01001101
+10100110
+00110011
+
+Solved in 47.03 seconds</code></pre>
+<p>Yeah...</p>
+<p>We can do better.</p>
+<p>How about instead of trying to solve the puzzle like a computer (brute forcing it), let's apply some heuristics more like a human would solve the puzzle. For example, if we see a pair of 0s next to each other, we know the tile on either side of it is a 1 (likewise for a pair of 0s separated by a single space and said space):</p>
+<pre class="python"><code>def __third_of_a_kind__(takuzu):
+    '''If adding a value would make three in a row, add the other.'''
+
+    for row in range(takuzu.size):
+        for col in range(takuzu.size):
+            if takuzu.get(row, col):
+                continue
+
+            for ((offset1_row, offset1_col), (offset2_row, offset2_col)) in [
+                # Two already in a line
+                (( 0,  1), ( 0,  2)),
+                (( 0, -1), ( 0, -2)),
+                (( 1,  0), ( 2,  0)),
+                ((-1,  0), (-2,  0)),
+                # Two with a hole in between
+                (( 0,  1), ( 0, -1)),
+                (( 1,  0), (-1,  0)),
+            ]:
+
+                val1 = takuzu.get(row + offset1_row, col + offset1_col)
+                val2 = takuzu.get(row + offset2_row, col + offset2_col)
+
+                if val1 and val2 and val1 == val2:
+                    return takuzu.set(row, col, invert(val1))
+
+    return False</code></pre>
+<p>Basically, for each empty tile in the current puzzle, compare each of six pairs. Either those in the four cardinal directions or the pair on either side horizontally or vertically.</p>
+<p>Next rule, let's look for rows where we already have the necessary number of 0s and only need 1s. We can just fill those out:</p>
+<pre class="python"><code>def __fill_rows__(takuzu):
+    '''If we can figure out how many 0s and 1s we need for each and any row/col needs
+    only 0s or 1s, add them'''
+
+    # Try to fill any rows that have all of the needed 0s/1s but not the other
+    for index in range(takuzu.size):
+        for row, col in [(index, None), (None, index)]:
+            for value in '01':
+                # Have enough of 'value'
+                if takuzu.get(row, col).count(value) == takuzu.size / 2:
+                    # Not enough of the other one
+                    if takuzu.get(row, col).count(invert(value)) &lt; takuzu.size / 2:
+                        return takuzu.set(row, col, invert(value))
+
+    return False</code></pre>
+<p>It's neat how short that code is.</p>
+<p>Finally (for the moment at least), let's write a slightly more complicated method. This time, let's take a single row or column and generate all the possible ways we can fill it out. Then remove those that would either lead to a duplicate or three in a row. If we have only exactly one row left, then we're golden. That's our row:</p>
+<pre class="python"><code>def __fill_by_duplicates__(takuzu):
+    '''Fill a puzzle by checking if any rows/cols are near enough to done that only one
+    possibility is left.'''
+
+    def row_or_col(which, index):
+        if which == 'row':
+            return takuzu.get(index, None)
+        else:
+            return takuzu.get(None, index)
+
+    for major in ('row', 'col'):
+        # Completed rows/cols have no Nones (so are 'all')
+        completed = filter(all, [
+            row_or_col(major, index)
+            for index in range(takuzu.size)
+        ])
+
+        for index in range(takuzu.size):
+            current = row_or_col(major, index)
+
+            # Already a complete row/col, skip it
+            if all(current):
+                continue
+
+            # Generate all posibilities, removing any that we already see
+            possibilities = [
+                option
+                for option in permute_nones(current)
+                if (
+                    option not in completed
+                    and option.count('0') == takuzu.size / 2
+                    and option.count('1') == takuzu.size / 2
+                    and '000' not in ''.join(option)
+                    and '111' not in ''.join(option)
+                )
+            ]
+
+            # If we have exactly one, set that one
+            if len(possibilities) == 1:
+                for other_index, value in enumerate(possibilities[0]):
+                    if major == 'row':
+                        takuzu = takuzu.set(index, other_index, value)
+                    else:
+                        takuzu = takuzu.set(other_index, index, value)
+
+                return takuzu
+
+    # Never found one
+    return False</code></pre>
+<p>I'm not nearly as happy with this rule as I am with the other two. Mostly because of the difference between rows and columns, the code is a little strange. The core of it is the <code>permute_nones</code> helper, which will take a list containing some number of <code>None</code> entries and fill them each with either a <code>0</code> or <code>1</code>, generating all possibilities:</p>
+<pre class="python"><code>def permute_nones(ls):
+    '''Helper function to generate all permutations from filling in 0s and 1s into a list'''
+
+    if ls == []:
+        yield []
+    elif ls[0]:
+        for recur in permute_nones(ls[1:]):
+            yield [ls[0]] + recur
+    else:
+        for value in '01':
+            for recur in permute_nones(ls[1:]):
+                yield [value] + recur</code></pre>
+<p>And that's all of my rules from now. The basic algorithm will be to apply each of those three rules in turn (since even after one has stopped working, another may 'unblock it'). If we get to the point where none of those three rules work, fall back to the backtracker we discussed above:</p>
+<pre class="python"><code>RULES = [
+    __third_of_a_kind__,
+    __fill_rows__,
+    __fill_by_duplicates__,
+    solvers.backtracker.solve,
+]
+
+def solve(takuzu):
+    '''Solve a Takuzu puzzle much as a human would: by applying a series of logical rules.'''
+
+    while True:
+        updated = False
+
+        # If we've already solved it, return
+        if takuzu.is_solved():
+            return takuzu
+
+        # Try to apply each rule in turn; if any rule works start over
+        for rule in RULES:
+            next_takuzu = rule(takuzu)
+
+            if next_takuzu:
+                takuzu = next_takuzu
+                updated = True
+                break
+
+        # If we didn't apply any rule this iteration, done trying
+        if not updated:
+            break
+
+    return takuzu</code></pre>
+<p>Since we don't have to use the much slower (runtime <span>\(O(2^n)\)</span>) backtracking solution for the entire puzzle, this should run significantly faster:</p>
+<pre class="python"><code>$ python3 takuzu.py --method human sample_6x6.takuzu
+
+010110
+001101
+110010
+011001
+100101
+101010
+
+Solved in 0.13 seconds
+
+$ python3 takuzu.py --method human sample_8x8.takuzu
+
+10011010
+11001100
+01100101
+10110010
+01011001
+01001101
+10100110
+00110011
+
+Solved in 37.23 seconds</code></pre>
+<p>Okay. So 0.13 seconds isn't <em>that</em> much faster than 0.15 seconds, and 37.23 seconds is only a bit faster than 47.03 seconds. For easier puzzles (those where a human wouldn't have to guess), you'll get a better improvement. These were considered 'hard'.</p>
+<p>We can do better though.</p>
+<p>Right now, we fall back to a pure backtracking solution rather than the faster human rules if we ever fail to advance. What if we combined the two models? Use the human solution until you get stuck; then advance exactly one step with the backtracking model; then switch back to the human model. If that branch fails, you reset back to the backtracking step, the human steps can be skipped for this.</p>
+<p>Let's try it:</p>
+<pre class="python"><code>RULES = copy.copy(solvers.human.RULES)
+RULES.remove(solvers.backtracker.solve)
+
+def solve(takuzu):
+    '''
+    Solve a puzzle using a hybrid model.
+
+    Start with the human solver.
+    Every time you get stuck, guess at a spot.
+    Switch back to the human solver (backtracking to step 2 on failures).
+    '''
+
+    queue = [takuzu]
+
+    while queue:
+        takuzu = queue.pop()
+
+        # Solved, we're done!
+        if takuzu.is_solved():
+            return takuzu
+
+        # If we don't have a valid solution, stop looking on this branch
+        if not takuzu.is_valid():
+            continue
+
+        # Try to advance using the human rules until they all fail
+        while True:
+            updated = False
+            for rule in RULES:
+                next_takuzu = rule(takuzu)
+
+                if next_takuzu:
+                    takuzu = next_takuzu
+                    updated = True
+                    break
+
+            if not updated:
+                break
+
+        # Solved, we're done!
+        if takuzu.is_solved():
+            return takuzu
+
+        # Once they've failed, find one empty spot and try both possibilities
+        def enqueue():
+            for row in range(takuzu.size):
+                for col in range(takuzu.size):
+                    if not takuzu.get(row, col):
+                        for value in '01':
+                            queue.append(takuzu.set(row, col, value))
+                        return
+        enqueue()
+
+    return False</code></pre>
+<p>So how much does that buy us?</p>
+<pre class="python"><code>$ python3 takuzu.py --method hybrid sample_6x6.takuzu
+
+010110
+001101
+110010
+011001
+100101
+101010
+
+Solved in 0.05 seconds
+
+$ python3 takuzu.py --method hybrid sample_8x8.takuzu
+
+10011010
+11001100
+01100101
+10110010
+01011001
+01001101
+10100110
+00110011
+
+Solved in 0.67 seconds</code></pre>
+<p>Hah! That's more like it!</p>
+<p>For now, that's it<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>. If you'd like to see how I structured the code (it's big enough to spread into multiple files), how I parsed command line parameters, or how I dynamically load the various solvers, you can see the entire code on GitHub: <a href="https://github.com/jpverkamp/takuzu">jpverkamp/takuzu</a>.</p>
+<p>I like puzzles. Perhaps I'll try <a href="https://en.wikipedia.org/wiki/Suduko">Suduko</a> next. Or maybe <a href="https://en.wikipedia.org/wiki/Hashiwokakero">Hashi puzzles</a><span class="footnote"><sup><a href="#footnote-6">[6]</a></sup></span>. Onwards!<span class="footnote"><sup><a href="#footnote-7">[7]</a></sup></span></p>]]></content></entry><entry><title>Oven sheet omlette</title><link href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omlette" /><id>urn:uuid:f47f4512-a6d2-3426-44de-d14e81a700cb</id><updated>2015-10-27T00:00:00Z</updated><summary type="html"><![CDATA[<p>Cooked something worth blogging about, if only because it's so easy.</p>
+<p><strong>Ingredients</strong></p>
+<ul>
+        <li>Ground beef (cooked and seasoned)</li>
+    <li>3 small potatoes</li>
+        <li>A dozen eggs</li>
+        <li>An onion</li>
+        <li>Cheese</li>
+</ul>
+<p><strong>Recipe</strong></p>
+<ol>
+    <li>Preheat oven to 425℉</li>
+        <li>Slice the potatoes thinly (I used a food processor)</li>
+        <li>Pre-cook the potatoes for 5 minutes in the microwave</li>
+    <li>Spray a deep oven sheet</li>
+    <li>Put down a layer of potatoes and onions, then the beef</li>
+    <li>Pour eggs over the whole thing</li>
+    <li>Bake for 10 minutes</li>
+    <li>Slice and server</li>
+</ol>
+<p>In progress, we have everything ready to go in the oven:</p>
+<p><a href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omlette/1-ready-to-cook.jpg" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/10/27/oven-sheet-omlette/1-ready-to-cook.jpg" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>Cooked something worth blogging about, if only because it's so easy.</p>
+<p><strong>Ingredients</strong></p>
+<ul>
+        <li>Ground beef (cooked and seasoned)</li>
+    <li>3 small potatoes</li>
+        <li>A dozen eggs</li>
+        <li>An onion</li>
+        <li>Cheese</li>
+</ul>
+<p><strong>Recipe</strong></p>
+<ol>
+    <li>Preheat oven to 425℉</li>
+        <li>Slice the potatoes thinly (I used a food processor)</li>
+        <li>Pre-cook the potatoes for 5 minutes in the microwave</li>
+    <li>Spray a deep oven sheet</li>
+    <li>Put down a layer of potatoes and onions, then the beef</li>
+    <li>Pour eggs over the whole thing</li>
+    <li>Bake for 10 minutes</li>
+    <li>Slice and server</li>
+</ol>
+<p>In progress, we have everything ready to go in the oven:</p>
+<p><a href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omlette/1-ready-to-cook.jpg" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/10/27/oven-sheet-omlette/1-ready-to-cook.jpg" /></a></p>
+<!--more-->
+<p>(Keen-eyed observers will note I may have forgotten the onions...)</p>
+<p>And done / partially eaten:</p>
+<p><a href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omlette/2-finished-dig-in.jpg" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/10/27/oven-sheet-omlette/2-finished-dig-in.jpg" /></a></p>
+<p>It's really easy with only a couple minutes of prep and 15 minutes of waiting time. Nice for when you have only limited supplies and want a breakfasty dish.</p>]]></content></entry><entry><title>The Kane Chronicles</title><link href="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles" /><id>urn:uuid:5fcdb108-3d88-2e8f-19e3-9454cdebeb7a</id><updated>2015-10-23T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/7090447-the-red-pyramid"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/1-the-red-pyramid.jpg" /></a> <a href="https://www.goodreads.com/book/show/9067850-the-throne-of-fire"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/2-the-throne-of-fire.jpg" /></a> <a href="https://www.goodreads.com/book/show/12893742-the-serpent-s-shadow"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/3-the-serpents-shadow.jpg" /></a></p>
 <p>Three more down on my <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>: <a href="https://www.goodreads.com/series/49971-kane-chronicles">The Kane Chronicles</a> by <a href="https://www.goodreads.com/author/show/15872.Rick_Riordan">Rick Riordan</a>. This is the same author (and based on a few hints, the same universe) as <a href="http://blog.jverkamp.com/2015/01/18/the-heroes-of-olympus">The Heroes of Olympus</a> and before that the Percy Jackson series. Basically, it's the same rough idea, except instead of Greek/Roman mythology, we have Egyptian.</p>
 <p>On one hand: Egyptian myths are awesome (and weird). There is a lot to mine from that. On the other: Riordan has told essentially the same core story a dozen times now. It's starting to show.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/7090447-the-red-pyramid"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/1-the-red-pyramid.jpg" /></a> <a href="https://www.goodreads.com/book/show/9067850-the-throne-of-fire"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/2-the-throne-of-fire.jpg" /></a> <a href="https://www.goodreads.com/book/show/12893742-the-serpent-s-shadow"><img src="http://blog.jverkamp.com/2015/10/23/the-kane-chronicles/3-the-serpents-shadow.jpg" /></a></p>
@@ -188,27 +773,4 @@
 <p>Three explosions.</p>
 <p>Three packages.</p>
 <p>It had to be a coincidence.</p>
-<p>Didn't it?</p>]]></content></entry><entry><title>San Mateo Clouds</title><link href="http://blog.jverkamp.com/2015/09/24/san-mateo-clouds" /><id>urn:uuid:27400fc2-efed-6f19-8dca-dcd76f9d887b</id><updated>2015-09-24T00:00:00Z</updated><summary type="html"><![CDATA[<p>Took an after lunch walk around San Mateo. Pretty pretty clouds.</p>
-<div><div class="flickr-gallery" data-set-id="72157658635978079" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157658635978079">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Took an after lunch walk around San Mateo. Pretty pretty clouds.</p>
-<div><div class="flickr-gallery" data-set-id="72157658635978079" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157658635978079">View on Flickr</a></p></div>]]></content></entry><entry><title>Elantris</title><link href="http://blog.jverkamp.com/2015/09/18/elantris" /><id>urn:uuid:82dbdf77-b085-bb90-6691-c7f4377e417f</id><updated>2015-09-18T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/68427.Elantris"><img src="http://blog.jverkamp.com/2015/09/18/elantris/elantris.jpg" /></a> <a href="https://www.goodreads.com/book/show/13578175-the-emperor-s-soul"><img src="http://blog.jverkamp.com/2015/09/18/elantris/the-emperors-soul.jpg" /></a></p>
-<p>I know I said last post that my next series would be The <a href="https://www.goodreads.com/series/47749-newsflesh">Newsflesh Trilogy</a>, and that's still the case, but in the mean time, I have a <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> review for <a href="https://www.goodreads.com/book/show/68427.Elantris">Elantris</a> (and <a href="https://www.goodreads.com/book/show/13578175-the-emperor-s-soul">The Emperor's Soul</a>) by <a href="https://www.goodreads.com/author/show/38550.Brandon_Sanderson">Brandon Sanderson</a>.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/68427.Elantris"><img src="http://blog.jverkamp.com/2015/09/18/elantris/elantris.jpg" /></a> <a href="https://www.goodreads.com/book/show/13578175-the-emperor-s-soul"><img src="http://blog.jverkamp.com/2015/09/18/elantris/the-emperors-soul.jpg" /></a></p>
-<p>I know I said last post that my next series would be The <a href="https://www.goodreads.com/series/47749-newsflesh">Newsflesh Trilogy</a>, and that's still the case, but in the mean time, I have a <a href="http://blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> review for <a href="https://www.goodreads.com/book/show/68427.Elantris">Elantris</a> (and <a href="https://www.goodreads.com/book/show/13578175-the-emperor-s-soul">The Emperor's Soul</a>) by <a href="https://www.goodreads.com/author/show/38550.Brandon_Sanderson">Brandon Sanderson</a>.</p>
-<!--more-->
-<p>Since there are only two and they're not particularly directly related to one another, here are the individual reviews:</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/68427.Elantris"><img src="http://blog.jverkamp.com/2015/09/18/elantris/elantris.jpg" /></a></p>
-<p>I have yet to find a Sanderson novel that I don't particularly like and Elantris is no exception.</p>
-<p>Basically, Elantris focuses around the titular city; once a place of wonder and magic which. Ten years ago, all that ended and now it's populated by essentially zombies: those without heartbeats who cannot die and cannot heal. We follow a few different story lines--a princess from another land engaged to the prince who gets Elantrisified in the very beginning of the story; an attempted religious coup from multiple fronts; and the politics of a kingdom/city trying to heal after massive upheaval.</p>
-<p>This is his earliest work and in some ways it shows. He actually commented recently on the <a href="http://www.writingexcuses.com/">Writing Excuses</a> podcast that he co-hosts that he's learned a lot about pacing since writing Elantris. Towards the end, I definitely noticed it. In the last 10% or so of the novel, everything comes to a head all at once. I think it could have been even strong had some of the storylines come to fruition earlier.</p>
-<p>I did like a lot of the characters. Sarene reminds me strongly of Shallan from The Way of Kings (perhaps because it's the most recent other Sanderson novel I've read), but I think I actually like her more. Raoden seems almost too good to be true, but keeps just enough human trivialities (especially when interacting with Sarene), that I still like him. I particularly grew to like Hrathen. It's always interesting to see how fantasy novels interact with religion.</p>
-<p>More than anything, I wish this novel had a sequel. Well, it sort of does in [book: The Emperor's Soul|13578175], although that it in a completely different part of the world. It looks like there is a true sequel in the works though (<a href="http://brandonsanderson.com/faq-will-there-be-a-sequel-to-elantris/">FAQ</a>). Awesome.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/13578175-the-emperor-s-soul"><img src="http://blog.jverkamp.com/2015/09/18/elantris/the-emperors-soul.jpg" /></a></p>
-<p>If I hadn't been told, at first I wouldn't realize that The Emperor's Soul takes place in a far away corner of the same world as Elantris. But as the story wears on, and the details of the magic system are revealed, it becomes more obvious that the worlds are one and the same. I really do love how Sanderson does magic systems. I've never seen anything quite like it, especially not at the same scale. Every system seems new, yet there's a shared core to all of them. I love it.</p>
-<p>Other than that, I did like the character of Shai. There's something about an artist who works entirely to know that she did it, rather than for public acclaim that I enjoy. Sneaky and subtle. Excellent. I could see a few of the twists coming (that she wouldn't escape until the last moment; the changes she made), but that didn't make it any less enjoyable.</p>
-<p>One thing I'd love to see if/when that Elantris sequel comes out? A meeting between the worlds. How would a Forger interact with an Elantrian? What about a Bloodsealer? I want to know more about them.</p>
-<p>"You can't always write what you know--not exactly what you know. You can, however, write what you see." -- Brandon Sanderson</p>
-<hr />
-<p>With that, I have only <a href="https://www.goodreads.com/book/show/1268479.Warbreaker">Warbreaker</a> left among Sanderson's <a href="http://coppermind.net/wiki/Cosmere">Cosmere</a> novels<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> and a few of the non-Cosmere ones.  Dang, he's prolific.</p>
-<p>Next up (for real this time): the <a href="https://www.goodreads.com/series/47749-newsflesh">Newsflesh Trilogy</a>.</p>]]></content></entry></feed>
+<p>Didn't it?</p>]]></content></entry></feed>
