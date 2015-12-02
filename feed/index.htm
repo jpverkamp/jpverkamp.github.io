@@ -1,5 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-11-29T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Spin Saga</title><link href="http://blog.jverkamp.com/2015/11/29/spin-saga" /><id>urn:uuid:7915d2dd-c892-c86c-ddbf-677b73870c5b</id><updated>2015-11-29T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/910863.Spin"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/1-spin.jpg" /></a> <a href="https://www.goodreads.com/book/show/116410.Axis"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/2-axis.jpg" /></a> <a href="https://www.goodreads.com/book/show/9359796-vortex"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/3-vortex.jpg" /></a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-12-01T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:f148b655-ada3-c720-0c01-ca384ab68088</id><entry><title>Iterating the GitHub API (For users sans MFA)</title><link href="http://blog.jverkamp.com/2015/12/01/iterating-the-github-api" /><id>urn:uuid:0bd52a91-eb2f-62af-b7a6-425164f823a7</id><updated>2015-12-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today I found myself auditing an organization's users to see which have <a href="https://en.wikipedia.org/wiki/multifactor_authentication">multifactor authentication</a> enabled<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go... and now I have a clean way of iterating across paginated GitHub API responses.</p>
+]]></summary><content type="html"><![CDATA[<p>Today I found myself auditing an organization's users to see which have <a href="https://en.wikipedia.org/wiki/multifactor_authentication">multifactor authentication</a> enabled<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go... and now I have a clean way of iterating across paginated GitHub API responses.</p>
+<!--more-->
+<p>First, the full script:</p>
+<pre class="python"><code>#!/usr/bin/env python3
+
+import requests
+import os
+
+try:
+    token = os.environ['GITHUB_TOKEN']
+except:
+    print('$GITHUB_TOKEN must be set with proper permission')
+    sys.exit(0)
+
+headers = {'Authorization': 'token {}'.format(token)}
+
+def api_iterator(endpoint):
+    url = 'https://api.github.com' + endpoint
+
+    while True:
+        response = requests.get(url, headers = headers)
+        yield from response.json()
+
+        if 'next' in response.links:
+            url = response.links['next']['url']
+        else:
+            return</code></pre>
+<p>The core of this script once again leans against the excellent <a href="http://docs.python-requests.org/en/latest/">Requests</a> library for Python. It makes making simple requests and parsing the <a href="http://www.w3.org/wiki/LinkHeader">HTTP Link Header</a> trivial. Also, <code>yield from</code> is pretty cool.</p>
+<p>Basically, we use these instructions to <a href="https://help.github.com/articles/creating-an-access-token-for-command-line-use/">create a GitHub access token</a>. You'll need at least the organization rights, I don't have an exact list. Unfortunately, it doesn't look like there is a way to do this with a username, password, and MFA token. I tried a few variations but it kept claiming that I wasn't an owner of the organization. So it goes.</p>
+<p>Now, if we wanted to use this for my original goal of finding users without MFA, you need the <code>/orgs/:organization/members</code> endpoint, with a specific filter:</p>
+<pre class="python"><code>endpoint = '/orgs/{}/members?filter=2fa_disabled'.format(organization)
+for user in api_iterator(endpoint):
+    print(user['login'])</code></pre>
+<p>Alternatively, you can use it just as easily to get all of your repositories (similar to what I did for my post on <a href="http://blog.jverkamp.com/2015/09/08/backing-up-github-repositories">backing up GitHub repositories</a>):</p>
+<pre class="python"><code>for repo in api_iterator('/user/repos'):
+    print(repo['url'])</code></pre>
+<p>Cool. Hope it's helpful!</p>
+<p>The full source for the MFA version is also available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/missing-mfa.py">missing-mfa.py</a></p>]]></content></entry><entry><title>Spin Saga</title><link href="http://blog.jverkamp.com/2015/11/29/spin-saga" /><id>urn:uuid:7915d2dd-c892-c86c-ddbf-677b73870c5b</id><updated>2015-11-29T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/910863.Spin"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/1-spin.jpg" /></a> <a href="https://www.goodreads.com/book/show/116410.Axis"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/2-axis.jpg" /></a> <a href="https://www.goodreads.com/book/show/9359796-vortex"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/3-vortex.jpg" /></a></p>
 <p>Back to a nice bit of science fiction: the <a href="https://www.goodreads.com/series/52279-spin-saga">Spin Saga</a> by <a href="https://www.goodreads.com/author/show/27276.Robert_Charles_Wilson">Robert Charles Wilson</a>.</p>
 <p>It's an interesting trilogy, starting with big idea science fiction reflecting on the personal level of the characters (check out the individual review for Spin for a bit more detail). The second is quite a bit weaker, not quite as 'big' as the first book. The third is pretty solid again, although it's structurally odd.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/910863.Spin"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/1-spin.jpg" /></a> <a href="https://www.goodreads.com/book/show/116410.Axis"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/2-axis.jpg" /></a> <a href="https://www.goodreads.com/book/show/9359796-vortex"><img src="http://blog.jverkamp.com/2015/11/29/spin-saga/3-vortex.jpg" /></a></p>
@@ -744,52 +782,4 @@ $ python3 takuzu.py --method hybrid sample_8x8.takuzu
 Solved in 0.67 seconds</code></pre>
 <p>Hah! That's more like it!</p>
 <p>For now, that's it<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>. If you'd like to see how I structured the code (it's big enough to spread into multiple files), how I parsed command line parameters, or how I dynamically load the various solvers, you can see the entire code on GitHub: <a href="https://github.com/jpverkamp/takuzu">jpverkamp/takuzu</a>.</p>
-<p>I like puzzles. Perhaps I'll try <a href="https://en.wikipedia.org/wiki/Suduko">Suduko</a> next. Or maybe <a href="https://en.wikipedia.org/wiki/Hashiwokakero">Hashi puzzles</a><span class="footnote"><sup><a href="#footnote-6">[6]</a></sup></span>. Onwards!<span class="footnote"><sup><a href="#footnote-7">[7]</a></sup></span></p>]]></content></entry><entry><title>Oven sheet omelette</title><link href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omelette" /><id>urn:uuid:36c66318-9491-65aa-3cab-e1762b4bcf49</id><updated>2015-10-27T00:00:00Z</updated><summary type="html"><![CDATA[<p>Cooked something worth blogging about, if only because it's so easy.</p>
-<p><strong>Ingredients</strong></p>
-<ul>
-        <li>Ground beef (cooked and seasoned)</li>
-    <li>3 small potatoes</li>
-        <li>A dozen eggs</li>
-        <li>An onion</li>
-        <li>Cheese</li>
-</ul>
-<p><strong>Recipe</strong></p>
-<ol>
-    <li>Preheat oven to 425℉</li>
-        <li>Slice the potatoes thinly (I used a food processor)</li>
-        <li>Pre-cook the potatoes for 5 minutes in the microwave</li>
-    <li>Spray a deep oven sheet</li>
-    <li>Put down a layer of potatoes and onions, then the beef</li>
-    <li>Pour eggs over the whole thing</li>
-    <li>Bake for 10 minutes</li>
-    <li>Slice and server</li>
-</ol>
-<p>In progress, we have everything ready to go in the oven:</p>
-<p><a href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omelette/1-ready-to-cook.jpg" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/10/27/oven-sheet-omelette/1-ready-to-cook.jpg" /></a></p>
-]]></summary><content type="html"><![CDATA[<p>Cooked something worth blogging about, if only because it's so easy.</p>
-<p><strong>Ingredients</strong></p>
-<ul>
-        <li>Ground beef (cooked and seasoned)</li>
-    <li>3 small potatoes</li>
-        <li>A dozen eggs</li>
-        <li>An onion</li>
-        <li>Cheese</li>
-</ul>
-<p><strong>Recipe</strong></p>
-<ol>
-    <li>Preheat oven to 425℉</li>
-        <li>Slice the potatoes thinly (I used a food processor)</li>
-        <li>Pre-cook the potatoes for 5 minutes in the microwave</li>
-    <li>Spray a deep oven sheet</li>
-    <li>Put down a layer of potatoes and onions, then the beef</li>
-    <li>Pour eggs over the whole thing</li>
-    <li>Bake for 10 minutes</li>
-    <li>Slice and server</li>
-</ol>
-<p>In progress, we have everything ready to go in the oven:</p>
-<p><a href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omelette/1-ready-to-cook.jpg" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/10/27/oven-sheet-omelette/1-ready-to-cook.jpg" /></a></p>
-<!--more-->
-<p>(Keen-eyed observers will note I may have forgotten the onions...)</p>
-<p>And done / partially eaten:</p>
-<p><a href="http://blog.jverkamp.com/2015/10/27/oven-sheet-omelette/2-finished-dig-in.jpg" data-toggle="lightbox"><img src="http://blog.jverkamp.com/2015/10/27/oven-sheet-omelette/2-finished-dig-in.jpg" /></a></p>
-<p>It's really easy with only a couple minutes of prep and 15 minutes of waiting time. Nice for when you have only limited supplies and want a breakfasty dish.</p>]]></content></entry></feed>
+<p>I like puzzles. Perhaps I'll try <a href="https://en.wikipedia.org/wiki/Suduko">Suduko</a> next. Or maybe <a href="https://en.wikipedia.org/wiki/Hashiwokakero">Hashi puzzles</a><span class="footnote"><sup><a href="#footnote-6">[6]</a></sup></span>. Onwards!<span class="footnote"><sup><a href="#footnote-7">[7]</a></sup></span></p>]]></content></entry></feed>

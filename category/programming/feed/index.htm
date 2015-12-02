@@ -1,5 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-10-30T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Finding EC2 instances by tag</title><link href="http://blog.jverkamp.com/2015/10/30/finding-ec2-instances-by-tag" /><id>urn:uuid:dcd71490-1abf-0503-d116-70fb4eeb29cd</id><updated>2015-10-30T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another script similar to my previous post about <a href="http://blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="http://blog.jverkamp.com" /><link rel="self" href="http://blog.jverkamp.com/feed/" /><updated>2015-12-01T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:bdbdd0f8-f9c2-fda3-168c-52092e959085</id><entry><title>Iterating the GitHub API (For users sans MFA)</title><link href="http://blog.jverkamp.com/2015/12/01/iterating-the-github-api" /><id>urn:uuid:0bd52a91-eb2f-62af-b7a6-425164f823a7</id><updated>2015-12-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today I found myself auditing an organization's users to see which have <a href="https://en.wikipedia.org/wiki/multifactor_authentication">multifactor authentication</a> enabled<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go... and now I have a clean way of iterating across paginated GitHub API responses.</p>
+]]></summary><content type="html"><![CDATA[<p>Today I found myself auditing an organization's users to see which have <a href="https://en.wikipedia.org/wiki/multifactor_authentication">multifactor authentication</a> enabled<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go... and now I have a clean way of iterating across paginated GitHub API responses.</p>
+<!--more-->
+<p>First, the full script:</p>
+<pre class="python"><code>#!/usr/bin/env python3
+
+import requests
+import os
+
+try:
+    token = os.environ['GITHUB_TOKEN']
+except:
+    print('$GITHUB_TOKEN must be set with proper permission')
+    sys.exit(0)
+
+headers = {'Authorization': 'token {}'.format(token)}
+
+def api_iterator(endpoint):
+    url = 'https://api.github.com' + endpoint
+
+    while True:
+        response = requests.get(url, headers = headers)
+        yield from response.json()
+
+        if 'next' in response.links:
+            url = response.links['next']['url']
+        else:
+            return</code></pre>
+<p>The core of this script once again leans against the excellent <a href="http://docs.python-requests.org/en/latest/">Requests</a> library for Python. It makes making simple requests and parsing the <a href="http://www.w3.org/wiki/LinkHeader">HTTP Link Header</a> trivial. Also, <code>yield from</code> is pretty cool.</p>
+<p>Basically, we use these instructions to <a href="https://help.github.com/articles/creating-an-access-token-for-command-line-use/">create a GitHub access token</a>. You'll need at least the organization rights, I don't have an exact list. Unfortunately, it doesn't look like there is a way to do this with a username, password, and MFA token. I tried a few variations but it kept claiming that I wasn't an owner of the organization. So it goes.</p>
+<p>Now, if we wanted to use this for my original goal of finding users without MFA, you need the <code>/orgs/:organization/members</code> endpoint, with a specific filter:</p>
+<pre class="python"><code>endpoint = '/orgs/{}/members?filter=2fa_disabled'.format(organization)
+for user in api_iterator(endpoint):
+    print(user['login'])</code></pre>
+<p>Alternatively, you can use it just as easily to get all of your repositories (similar to what I did for my post on <a href="http://blog.jverkamp.com/2015/09/08/backing-up-github-repositories">backing up GitHub repositories</a>):</p>
+<pre class="python"><code>for repo in api_iterator('/user/repos'):
+    print(repo['url'])</code></pre>
+<p>Cool. Hope it's helpful!</p>
+<p>The full source for the MFA version is also available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/missing-mfa.py">missing-mfa.py</a></p>]]></content></entry><entry><title>Finding EC2 instances by tag</title><link href="http://blog.jverkamp.com/2015/10/30/finding-ec2-instances-by-tag" /><id>urn:uuid:dcd71490-1abf-0503-d116-70fb4eeb29cd</id><updated>2015-10-30T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another script similar to my previous post about <a href="http://blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
 ]]></summary><content type="html"><![CDATA[<p>Another script similar to my previous post about <a href="http://blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
 <!--more-->
 <pre class="python"><code>#!/usr/bin/env python3
@@ -1646,119 +1684,4 @@ class RedisList(RedisObject):
         self.rpush(val)</code></pre>
 <p>Basically, I'm mapping a lot of the default Python <code>list</code> functionality to Redis lists and vice versa<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>. It's a little odd and some things aren't as efficient as I'd like (you only get <code>O(1)</code> access to the beginning and end of the list), but so it goes. It works great, as you saw in the <code>friends</code> example above.</p>
 <p>The one interesting function is <code>as_child</code>. Since either a <code>RedisDict</code> or a <code>RedisList</code> expect a 'constructor-like' function as the data type, I need something that will correctly store a <code>RedisList</code> inside of a <code>RedisDict</code> while generating a human readable ID (with <code>:friends</code> appended in the example above). I love <a href="https://en.wikipedia.org/wiki/higher_order functions">higher order functions</a>.</p>
-<p>And... that's it. Eventually, I think I'll look into publishing this as a library to <code>pip</code> or the like. But since I've never done that before and this post is already a little on the long sice, we'll leave that for another day. All of the code is included in the post, so you can copy and paste it into your project if you'd like to try it out before I publish it. Once I have, I'll edit this post.</p>]]></content></entry><entry><title>Backing up Moves Data</title><link href="http://blog.jverkamp.com/2015/07/10/backing-up-moves-data" /><id>urn:uuid:2eed2118-1b61-a7ab-1b50-35fe8d9c2baa</id><updated>2015-07-10T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another <a href="http://blog.jverkamp.com/category/programming/by-topic/backups">backup post</a>, this time I'm going to back up my data from the <a href="https://www.moves-app.com/">Moves App</a> (step counter + GPS tracker). Theoretically, it should be possible to get this same data from the app as part of my <a href="http://blog.jverkamp.com/category/programming/by-project/ios-backup">iOS Backup</a> series, but the data there is in a strange binary format. Much easier to use their API.</p>
-]]></summary><content type="html"><![CDATA[<p>Another <a href="http://blog.jverkamp.com/category/programming/by-topic/backups">backup post</a>, this time I'm going to back up my data from the <a href="https://www.moves-app.com/">Moves App</a> (step counter + GPS tracker). Theoretically, it should be possible to get this same data from the app as part of my <a href="http://blog.jverkamp.com/category/programming/by-project/ios-backup">iOS Backup</a> series, but the data there is in a strange binary format. Much easier to use their API.</p>
-<!--more-->
-<p>The first step will be to make a few helper methods. As I often do with web scripts, I'll be using <a href="http://blog.jverkamp.com/category/programming/by-language/python">Python</a> and the excellent <a href="http://docs.python-requests.org/en/latest/">Requests</a> library. First things first, we have to get an <code>access_token</code> using an <a href="https://en.wikipedia.org/wiki/OAuth">OAuth</a> handshake. It's a little complicated since our app is designed to run from the command line, yet needs to interact with the user on initial set up, but luckily that only has to be done once:</p>
-<pre class="python"><code># Request a new access token
-
-if not 'access_token' in config:
-    url = 'https://api.moves-app.com/oauth/v1/authorize?response_type=code&client_id={client_id}&scope={scope}'.format(
-        client_id = config['client_id'],
-        scope = 'activity location'
-    )
-    print('Opening URL in browser...')
-    webbrowser.open(url)
-    code = raw_input('Please follow prompts and enter code: ')
-
-    response = requests.post('https://api.moves-app.com/oauth/v1/access_token?grant_type=authorization_code&code={code}&client_id={client_id}&client_secret={client_secret}&redirect_uri={redirect_uri}'.format(
-        code = code,
-        client_id = config['client_id'],
-        client_secret = config['client_secret'],
-        redirect_uri = 'http://localhost/',
-    ))
-    js = response.json()
-    print(js)
-
-    config['access_token'] = js['access_token']
-    config['refresh_token'] = js['refresh_token']
-    config['user_id'] = js['user_id']
-
-    with open('config.yaml', 'w') as fout:
-        yaml.safe_dump(config, fout, default_flow_style=False)</code></pre>
-<p>Basically, we have to have two values to start the handshake: <code>client_id</code> and <code>client_secret</code>. I've put those in a separate file (<code>config.yaml</code>) so that we don't have secrets in a repository. From there, we make a request to a given endpoint (see above), which opens in a browser. The user then gets an eight digit code which they enter in the app on the phone, prompting the web browser in turn to redirect with a <code>code</code> parameter. This part is a little ugly and I could make it much nicer by running a temporary single endpoint server, but since this only needs to be done once, I didn't bother.</p>
-<p>After that, we take the <code>code</code> we just got, along with the <code>client_id</code> and <code>client_secret</code> and get the initial <code>access_token</code> and a <code>refresh_token</code> we can periodically use to prove we're still the same person.</p>
-<p>Next, a little bit of framework. We'll wrap the default <code>requests</code> object to automatically provide an <code>access_token</code> to any <code>GET</code> or <code>POST</code> requests I want to make to the API, now that I've gotten one:</p>
-<pre class="python"><code>def makeMethod(f):
-    def run(url, **kwargs):
-
-        if 'access_token' in config:
-            headers = {'Authorization': 'Bearer {access_token}'.format(access_token = config['access_token'])}
-        else:
-            headers = {}
-
-        url = 'https://api.moves-app.com/api/1.1' + url.format(**kwargs)
-
-        if 'data' in kwargs:
-            return f(url, data = kwargs['data'], headers = headers)
-        else:
-            return f(url, headers = headers)
-
-    return run
-
-get = makeMethod(requests.get)
-post = makeMethod(requests.post)</code></pre>
-<p>With that, we can just always use that <code>refresh_token</code> we got above every time we run the script. This is definitely over kill, but it saves a little bit of logic telling when we have to refresh the code or not and doesn't really cost anything more than a single extra request:</p>
-<pre class="python"><code># Perform a refresh on the access token just as a matter of course
-
-response = requests.post('https://api.moves-app.com/oauth/v1/access_token', data = {
-    'grant_type': 'refresh_token',
-    'refresh_token': config['refresh_token'],
-    'client_id': config['client_id'],
-    'client_secret': config['client_secret']
-})
-js = response.json()
-
-config['access_token'] = js['access_token']
-config['refresh_token'] = js['refresh_token']
-config['user_id'] = js['user_id']
-
-with open('config.yaml', 'w') as fout:
-    yaml.safe_dump(config, fout, default_flow_style=False)</code></pre>
-<p>Next, fetch my user profile:</p>
-<pre class="python"><code># Load the user profile to see how far back data goes
-
-user_profile = get('/user/profile').json()</code></pre>
-<p>The most interesting bit of information here is <code>.profile.firstDate</code>, which tells us when we first started using Moves. We can then loop from that date forward in time, grabbing any days we are missing. Since sometimes previous days aren't completely done processing the next morning, I'll also always re-download the last week's worth of data no matter what.</p>
-<pre class="python"><code># Loop through all missing files, or force load anything less than a week ago
-
-date = datetime.datetime.strptime(user_profile['profile']['firstDate'], '%Y%m%d')
-today = datetime.datetime.now()
-oneWeekAgo = today - datetime.timedelta(days = 7)
-
-while date &lt; today:
-    dir = os.path.join('data', date.strftime('%Y'), date.strftime('%m'))
-    filename = os.path.join(dir, date.strftime('%d') + '.json')
-
-    if not date &gt; oneWeekAgo and os.path.exists(filename):
-        date += datetime.timedelta(days = 1)
-        continue
-
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-    print(filename)
-
-    response = get('/user/storyline/daily/{date}?trackPoints=true', date = date.strftime('%Y%m%d'))
-
-    if response.status_code != 200:
-        print('Bad response, stopping')
-        print(response.text)
-        sys.exit(0)
-
-    if int(response.headers['x-ratelimit-minuteremaining']) &lt; 1:
-        print('Rate limited, waiting one minute before continuing')
-        time.sleep(60)
-
-    if int(response.headers['x-ratelimit-hourremaining']) &lt; 1:
-        print('Rate limited, wait one hour and try again')
-        time.sleep(3600)
-
-    with codecs.open(filename, 'w', 'utf-8') as fout:
-        fout.write(response.text)
-
-    date += datetime.timedelta(days = 1)</code></pre>
-<p>There is a neat bit in there with the <code>x-ratelimit-minuteremaining</code> and <code>x-ratelimit-hourremaining</code>. If we're downloading the entire history for the first time, you're going to get rate limited. So in this case, we'll wait a minute or an hour until the rate limit has expired.</p>
-<p>And that's it. In the end, I end up with a pile of files, one for each day, each with exactly where I was on that day. I can use that data for all sorts of interesting analytics, like how far I walk in the average week, what my area of influence is, or even to combine with my <a href="http://blog.jverkamp.com/category/photography">photography</a> so that I can geotag my pictures. It's a lot of fun.</p>
-<p>So, yes. I am something of a digital hoarder. But on the flip side, storage space is cheap and data is interesting. Perhaps I'll get a post or two out of making pretty pretty pictures out of where all I've been!</p>
-<p>If you'd like to see / download the entire script for my Moves backup (or any of my other non-iOS backups, those are <a href="http://blog.jverkamp.com/category/programming/by-project/ios-backup">here</a>), you can do so here: <a href="https://github.com/jpverkamp/backup">jpverkamp/backup on GitHub</a></p>]]></content></entry></feed>
+<p>And... that's it. Eventually, I think I'll look into publishing this as a library to <code>pip</code> or the like. But since I've never done that before and this post is already a little on the long sice, we'll leave that for another day. All of the code is included in the post, so you can copy and paste it into your project if you'd like to try it out before I publish it. Once I have, I'll edit this post.</p>]]></content></entry></feed>
