@@ -1,5 +1,251 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-02T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Glorious Gification of HipChat Rooms</title><link href="//blog.jverkamp.com/2015/12/02/glorious-gification-of-hipchat-rooms" /><id>urn:uuid:359d720d-d37a-ff8c-6784-f0cf5a724486</id><updated>2015-12-02T00:00:00Z</updated><summary type="html"><![CDATA[<p>To counter yesterday's post on <a href="//blog.jverkamp.com/2015/12/01/iterating-the-github-api">Iterating the GitHub API</a>, how about something a little more lighthearted today: GIFs<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-07T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 7</title><link href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7" /><id>urn:uuid:43df33f1-13b4-5b4b-cbce-a7118aadaadd</id><updated>2015-12-07T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/7">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of definitions of the form <code>123 -> x</code>, <code>NOT e -> f</code>, and <code>x AND y -> z</code>, with possible operations <code>NOT</code>, <code>AND</code>, <code>OR</code>, <code>LSHIFT</code>, and <code>RSHIFT</code>, find the value of <code>a</code>. Assume all values are 16-bit integers.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/7">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of definitions of the form <code>123 -> x</code>, <code>NOT e -> f</code>, and <code>x AND y -> z</code>, with possible operations <code>NOT</code>, <code>AND</code>, <code>OR</code>, <code>LSHIFT</code>, and <code>RSHIFT</code>, find the value of <code>a</code>. Assume all values are 16-bit integers.</p>
+<!--more-->
+<p>This one is actually really cool. It's basically a full <a href="https://en.wikipedia.org/wiki/declarative_programming language">declarative programming language</a>.</p>
+<pre class="python"><code>monops = {
+    'NOT': lambda x : ~x & 0xFFFF,
+}
+
+binops = {
+    'AND': operator.and_,
+    'OR': operator.or_,
+    'LSHIFT': operator.lshift,
+    'RSHIFT': operator.rshift,
+}
+
+machine = {}
+
+for line in sys.stdin:
+    line = line.strip()
+
+    m = (
+        re.match(r'(\w+) -&gt; (\w+)', line)
+        or re.match(r'(\w+) (\w+) (\w+) -&gt; (\w+)', line)
+        or re.match(r'(\w+) (\w+) -&gt; (\w+)', line)
+    ).groups()
+
+    machine[m[-1]] = m[:-1]
+
+def evaluate(register_or_value):
+    try:
+        return int(register_or_value)
+    except:
+        return run(register_or_value)
+
+def run(register, state = {}):
+    if not register in state:
+        command = machine[register]
+
+        if len(command) == 1:
+            value, = command
+            state[register] = evaluate(value)
+
+        elif len(command) == 2:
+            monop, input = command
+            state[register] = monops[monop](evaluate(input))
+
+        elif len(command) == 3:
+            input_1, binop, input_2 = command
+            state[register] = binops[binop](evaluate(input_1), evaluate(input_2))
+
+    return state[register]
+
+print(run('a'))</code></pre>
+<p>Basically, we have two interesting functions: <code>evaluate</code> and <code>run</code>. Each of those will be applied to any parameters. <code>evaulate</code> will check first if the parameter is an integer, if so return it directly. If not, fall back to <code>run</code>, which is a <a href="https://en.wikipedia.org/wiki/memoized">memoized</a> virtual machine.</p>
+<p>If we have the values of any inputs (either because they are numeric or because we've already calculated them), it will directly calculate the value for that gate and cache it. If not, it will calculate any recursive outputs it needs (caching them as well), and then calculate it's own. Through the power of <a href="https://en.wikipedia.org/wiki/dynamic_programming">dynamic programming</a>, this will naturally resolve the order the gates need to be run in while still running in <code>O(n)</code> time to the number of gates. Very cool, in my opinion<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
+<p>The only other oddity is the definition of <code>NOT</code>. Since Python integers are not 16-bits, doing a bitwise and with <code>0xFFFF</code> (the maximum 16-bit value) will lock the result into that range.</p>
+<p><strong>Part 2:</strong> Take the value of <code>a</code> after running part 1 and assign it to <code>b</code>. Run the simulation again.</p>
+<p>Due to how I load in the instructions, this is as easy as adding a line of the form <code>14710 -> b</code> to the end of my input before running it. That will replace the previous command for <code>b</code>. You can do it in a <a href="http://www.zsh.org/"><code>zsh</code></a> one liner<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span> shells would work just as well}:</p>
+<pre class="zsh"><code>{cat input.txt; (echo "\n" &#96;cat input.txt | python part-1.py&#96; "-&gt; b")} | python3 part-1.py</code></pre>]]></content></entry><entry><title>Advent of Code: Day 6</title><link href="//blog.jverkamp.com/2015/12/06/advent-of-code-day-6" /><id>urn:uuid:4b503edf-8fe1-cc51-66e7-ad352be59fb5</id><updated>2015-12-06T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/6">Source</a></p>
+<p><strong>Part 1:</strong> Given a 1000 by 1000 grid of lights and a list of instructions of the form <code>(turn on|turn off|toggle) 5,10 through 15,20</code>, determine how many lights are on.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/6">Source</a></p>
+<p><strong>Part 1:</strong> Given a 1000 by 1000 grid of lights and a list of instructions of the form <code>(turn on|turn off|toggle) 5,10 through 15,20</code>, determine how many lights are on.</p>
+<!--more-->
+<pre class="python"><code>lights = [
+    [False for y in range(1000)]
+    for x in range(1000)
+]
+
+for line in sys.stdin:
+    mode, x1, y1, x2, y2 = re.match('(.*) (\d+),(\d+) through (\d+),(\d+)', line.strip()).groups()
+    x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
+
+    for x in range(x1, x2 + 1):
+        for y in range(y1, y2 + 1):
+            if mode == 'turn on':
+                lights[x][y] = True
+            elif mode == 'turn off':
+                lights[x][y] = False
+            else:
+                lights[x][y] = not lights[x][y]
+
+print(sum(
+    1 if lights[x][y] else 0
+    for x in range(1000)
+    for y in range(1000)
+))</code></pre>
+<p>At first, I was going to use <a href="http://pyparsing.wikispaces.com/">pyparsing</a> to parse the input, but then I decided that it was far too heavy weight for what I was doing. All I needed was regular expressions. After that, it's just a matter of creating a relatively large two dimensional array and running each instruction.</p>
+<p>This one I actually did twice. I was curious if CPU would be significantly faster than memory (it is) to the extent that it would be faster to just calculate each light as we went:</p>
+<pre class="python"><code>filters = []
+for line in sys.stdin:
+    m = re.match('(.*) (\d+),(\d+) through (\d+),(\d+)', line.strip())
+    filters.append([m.group(1)] + list(map(int, m.groups()[1:])))
+
+def is_on(x, y):
+    on = False
+    for mode, x1, y1, x2, y2 in filters:
+        if x1 &lt;= x &lt;= x2 and y1 &lt;= y &lt;= y2:
+            if mode == 'turn on':
+                on = True
+            elif mode == 'turn off':
+                on = False
+            else:
+                on = not on
+    return on
+
+print(sum(
+    1 if is_on(x, y) else 0
+    for x in range(1000)
+    for y in range(1000)
+))</code></pre>
+<p>I works at least, giving the same answer, but it's roughly an order of magnitude slower. So it goes.</p>
+<p><strong>Part 2:</strong> This time <code>turn on</code> is <code>+1</code>, <code>turn off</code> is <code>-1</code>, <code>toggle</code> is <code>+2</code> and you cannot go below zero for any single cell.</p>
+<p>The code doesn't actually change much from the first solution to the first part, we just initialize to <code>0</code> instead of <code>False</code> and tweak the updates. The only interesting one is the <code>turn off</code> case:</p>
+<pre class="python"><code>elif mode == 'turn off':
+    if lights[x][y] &gt; 0:
+        lights[x][y] -= 1</code></pre>
+<p>Since this is the only case that can be negative, it's the only one we have to special case.</p>]]></content></entry><entry><title>Advent of Code: Day 5</title><link href="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5" /><id>urn:uuid:1d7592cf-1697-7d8b-e618-55152e623f25</id><updated>2015-12-05T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/5">Source</a></p>
+<p><strong>Part 1:</strong> A 'nice' string contains at least three vowels, one double letter (such as <code>xx</code>), and none of the strings <code>ab</code>, <code>cd</code>, <code>pq</code>, or <code>xy</code>. Count nice strings.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/5">Source</a></p>
+<p><strong>Part 1:</strong> A 'nice' string contains at least three vowels, one double letter (such as <code>xx</code>), and none of the strings <code>ab</code>, <code>cd</code>, <code>pq</code>, or <code>xy</code>. Count nice strings.</p>
+<!--more-->
+<pre class="python"><code>def is_nice(word):
+    return (
+        re.search(r'.*([aeiou].*){3}', word)
+        and re.search(r'(.)\1', word)
+        and not re.search(r'(ab|cd|pq|xy)', word)
+    )
+
+nice_count = 0
+for line in sys.stdin:
+    if is_nice(line.strip()):
+        nice_count += 1
+
+print(nice_count)</code></pre>
+<p>This is a perfect application for regular expressions. In this case, <code>.*([aeiou].*){3}</code> says to match a vowel <code>[aeiou]</code> followed by any number (including zero) three times. <code>(.)\1</code> says to match any one character, then match that same character again (<code>\1</code> refers to the first matched group in parenthesis). <code>(ab|cd|pq|xy)</code> matches any one of the verboten sequences and then we negate it with <code>not</code>.</p>
+<p><strong>Part 2:</strong> A 'nice' string now contains a pair of letters appearing twice in a string (such as <code>xy</code> in <code>axybcxydef</code>) and one pattern of the form <code>xyx</code> (with the first and third letters the same).</p>
+<p>The code is the same, just change the regular expressions to two new patterns, each with a back reference:</p>
+<pre class="python"><code>re.search(r'(..).*\1', word)
+and re.search(r'(.).\1', word)</code></pre>
+<p>The first matches any two characters followed by any number (including zero) uninteresting characters, followed by that same first two characters. The second does the same, only with a single character repeated group and exactly one random character in between.</p>
+<p><a href="http://xkcd.com/208/"><img src="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5/xkcd-208.png" /></a></p>]]></content></entry><entry><title>Advent of Code: Day 4</title><link href="//blog.jverkamp.com/2015/12/04/advent-of-code-day-4" /><id>urn:uuid:216f239d-ca7c-12de-7b86-7275e8f4baab</id><updated>2015-12-04T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/4">Source</a></p>
+<p><strong>Part 1:</strong> Mine Adventcoins. Basically, find the lowest integer such that the string <code>{prefix}{integer}</code> has an <a href="https://en.wikipedia.org/wiki/md5">md5</a> hash with at least 5 leading zeros. <span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span><span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span></p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/4">Source</a></p>
+<p><strong>Part 1:</strong> Mine Adventcoins. Basically, find the lowest integer such that the string <code>{prefix}{integer}</code> has an <a href="https://en.wikipedia.org/wiki/md5">md5</a> hash with at least 5 leading zeros. <span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span><span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span></p>
+<!--more-->
+<pre class="python"><code>def naturals(i = 0):
+    while True:
+        yield i
+        i += 1
+
+def mine(prefix, length):
+    for i in naturals(1):
+        coin = '{prefix}{suffix}'.format(prefix = prefix, suffix = i).encode('utf-8')
+        hash = hashlib.md5(coin).hexdigest()
+        if all(c == '0' for c in hash[0:length]):
+            return (i, hash)
+
+print(mine(sys.argv[1], 5))</code></pre>
+<p><code>naturals</code> is code that I've used on a number of previous occasions and basically <del>stole</del> borrowed from Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=n-naturals">n-naturals</a></code>. It allows you to iterate indefinitely over the <a href="https://en.wikipedia.org/wiki/natural_numbers">natural numbers</a>. Then, just hash and look for enough leading zeros.</p>
+<p><strong>Part 2:</strong> Do the same thing, only with six leading zeros.</p>
+<p>Nothing changes; just change the <code>length</code> parameter and wait a bit longer. Moderns computers can still crunch through a whole heck of a lot of hashes (9958218 for my particular input) in next to no time at all.</p>]]></content></entry><entry><title>Advent of Code: Day 3</title><link href="//blog.jverkamp.com/2015/12/03/advent-of-code-day-3" /><id>urn:uuid:68885146-6356-7c02-ec5c-5f0fbb4bf956</id><updated>2015-12-03T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/3">Source</a></p>
+<p><strong>Part 1:</strong> Given a string of <code><>^v</code> characters which mean move west, east, north, or south respectively and starting at the origin, how many unique positions do you pass through?</p>
+<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
+location = 0+0j
+
+directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
+
+for c in sys.stdin.read():
+    location += directions.get(c, 0+0j)
+    presents[location] += 1
+
+print(len(presents))</code></pre>
+<p>There are two tricks here, both of which I've used before. First, we have use <code>collections.defaultdict</code> to implement a basic counter. That way, we can safely do <code>+= 1</code> to any element without worrying if it exists first and without initializing the (potentially infinite) grid.</p>
+<p>Second, we represent points using <a href="https://en.wikipedia.org/wiki/complex_numbers">complex numbers</a>. That has the advantage of meaning that movement is just adding two (complex) numbers together and we can directly index the <code>presents</code> dictionary with the locations.</p>
+<p>At the end, the <code>len</code> of a dictionary is the number of keys, thus exactly equal to the number of locations visited (which thankfully works correctly even with a <code>defaultdict</code>). Neat.</p>
+<p><strong>Part 2:</strong> Start with two actors, each at the origin. Apply alternating characters to first one then the other, such that <code>^v^v</code> would result in one moving north twice, the other two south.</p>
+<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
+presents[0+0j] = 2
+
+locations = [0+0j, 0+0j]
+directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
+
+for i, c in enumerate(sys.stdin.read()):
+    which = i % len(location)
+    locations[which] += directions.get(c, 0+0j)
+    presents[locations[which]] += 1
+
+print(len(presents))</code></pre>
+<p>The basic code is the same here, the only difference is that we determine <code>which</code> actor is moving using <a href="https://en.wikipedia.org/wiki/modular_arithmatic">modular arithmatic</a> (<code>%</code>). One neat thing about this is that it scales without any other changes to any number of actors merely by putting more elements in the initial <code>locations</code> array.</p>]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/3">Source</a></p>
+<p><strong>Part 1:</strong> Given a string of <code><>^v</code> characters which mean move west, east, north, or south respectively and starting at the origin, how many unique positions do you pass through?</p>
+<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
+location = 0+0j
+
+directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
+
+for c in sys.stdin.read():
+    location += directions.get(c, 0+0j)
+    presents[location] += 1
+
+print(len(presents))</code></pre>
+<p>There are two tricks here, both of which I've used before. First, we have use <code>collections.defaultdict</code> to implement a basic counter. That way, we can safely do <code>+= 1</code> to any element without worrying if it exists first and without initializing the (potentially infinite) grid.</p>
+<p>Second, we represent points using <a href="https://en.wikipedia.org/wiki/complex_numbers">complex numbers</a>. That has the advantage of meaning that movement is just adding two (complex) numbers together and we can directly index the <code>presents</code> dictionary with the locations.</p>
+<p>At the end, the <code>len</code> of a dictionary is the number of keys, thus exactly equal to the number of locations visited (which thankfully works correctly even with a <code>defaultdict</code>). Neat.</p>
+<p><strong>Part 2:</strong> Start with two actors, each at the origin. Apply alternating characters to first one then the other, such that <code>^v^v</code> would result in one moving north twice, the other two south.</p>
+<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
+presents[0+0j] = 2
+
+locations = [0+0j, 0+0j]
+directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
+
+for i, c in enumerate(sys.stdin.read()):
+    which = i % len(location)
+    locations[which] += directions.get(c, 0+0j)
+    presents[locations[which]] += 1
+
+print(len(presents))</code></pre>
+<p>The basic code is the same here, the only difference is that we determine <code>which</code> actor is moving using <a href="https://en.wikipedia.org/wiki/modular_arithmatic">modular arithmatic</a> (<code>%</code>). One neat thing about this is that it scales without any other changes to any number of actors merely by putting more elements in the initial <code>locations</code> array.</p>]]></content></entry><entry><title>Advent of Code: Day 2</title><link href="//blog.jverkamp.com/2015/12/02/advent-of-code-day-2" /><id>urn:uuid:7acbe2e4-c172-21ea-ec12-8be3477262de</id><updated>2015-12-02T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/2">Source</a></p>
+<p><strong>Part 1:</strong> A gift requires enough wrapping paper to cover the surface plus an additional amount equal to the area smallest side. Calculate the total wrapping paper needed for a list of dimensions of the form <code>2x3x4</code>.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/2">Source</a></p>
+<p><strong>Part 1:</strong> A gift requires enough wrapping paper to cover the surface plus an additional amount equal to the area smallest side. Calculate the total wrapping paper needed for a list of dimensions of the form <code>2x3x4</code>.</p>
+<!--more-->
+<pre class="python"><code>total_area = 0
+
+for line in sys.stdin:
+    l, w, h = list(sorted(map(int, line.strip().split('x'))))
+    area = 3 * l * w + 2 * w * h + 2 * h * l
+    total_area += area
+
+print(total_area)</code></pre>
+<p>The only real trick here is the use of <code>list(sorted(...))</code>. This will guarantee that <code>l</code> and <code>w</code> are the smallest dimensions and thus represent the extra area to add.</p>
+<p><strong>Part 2:</strong> Given the same input, calculate the amount of ribbon needed. You need the larger of either the shortest distance around the outside or the smallest perimeter of any one face. In addition, you need an additional amount equal to the volume in cubic feet.</p>
+<pre class="python"><code>total_ribbon = 0
+
+for line in sys.stdin:
+    l, w, h = list(sorted(map(int, line.strip().split('x'))))
+
+    total_ribbon += max(
+        2 * (l + w), # smallest distance around sides
+        4 * l,       # smallest perimeter
+    )
+
+    total_ribbon += l * w * h
+
+print(total_ribbon)</code></pre>
+<p>This one was a little stranger since the original description was unclear if you needed the larger or smaller of the first two measurements, but it was easy enough to calculate both. Turns out, they meant the larger of those two.</p>]]></content></entry><entry><title>Glorious Gification of HipChat Rooms</title><link href="//blog.jverkamp.com/2015/12/02/glorious-gification-of-hipchat-rooms" /><id>urn:uuid:359d720d-d37a-ff8c-6784-f0cf5a724486</id><updated>2015-12-02T00:00:00Z</updated><summary type="html"><![CDATA[<p>To counter yesterday's post on <a href="//blog.jverkamp.com/2015/12/01/iterating-the-github-api">Iterating the GitHub API</a>, how about something a little more lighthearted today: GIFs<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
 <p><a href="//blog.jverkamp.com/2015/12/02/glorious-gification-of-hipchat-rooms/no-regrets.gif" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/12/02/glorious-gification-of-hipchat-rooms/no-regrets.gif" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>To counter yesterday's post on <a href="//blog.jverkamp.com/2015/12/01/iterating-the-github-api">Iterating the GitHub API</a>, how about something a little more lighthearted today: GIFs<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
 <p><a href="//blog.jverkamp.com/2015/12/02/glorious-gification-of-hipchat-rooms/no-regrets.gif" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/12/02/glorious-gification-of-hipchat-rooms/no-regrets.gif" /></a></p>
@@ -76,7 +322,33 @@ for path, dirs, files in os.walk(GIF_PATH):
         if file.endswith('.gif'):
             os.path.join(path, file)</code></pre>
 <p>It's arguable which is more Pythonic (probably the latter), but I do find it interesting what impact writing piles of functional code (<a href="//blog.jverkamp.com/category/programming/by-language/racket">Racket</a>) will do to code in other languages.</p>
-<p>And, that's it. Short and sweet. Use responsibly.</p>]]></content></entry><entry><title>Iterating the GitHub API (For users sans MFA)</title><link href="//blog.jverkamp.com/2015/12/01/iterating-the-github-api" /><id>urn:uuid:796d4e1c-d1a7-f844-33e9-d5bdad0ad636</id><updated>2015-12-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today I found myself auditing an organization's users to see which have <a href="https://en.wikipedia.org/wiki/multifactor_authentication">multifactor authentication</a> enabled<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go... and now I have a clean way of iterating across paginated GitHub API responses.</p>
+<p>And, that's it. Short and sweet. Use responsibly.</p>]]></content></entry><entry><title>Advent of Code</title><link href="//blog.jverkamp.com/2015/12/01/advent-of-code" /><id>urn:uuid:5f4c0cf6-ad53-c952-fd22-723d73c08e90</id><updated>2015-12-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>I'm always on the lookout for new sources of quick<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> coding puzzles. This holiday season, <a href="http://adventofcode.com/">Advent of Code</a> scratches precisely that itch.</p>
+<blockquote>Advent of Code is a series of small programming puzzles for a variety of skill levels. They are self-contained and are just as appropriate for an expert who wants to stay sharp as they are for a beginner who is just learning to code. Each puzzle calls upon different skills and has two parts that build on a theme. -- <a href="http://adventofcode.com/about">About - Advent of Code</a></blockquote>
+<p>I've been working out each problem thus far in Python (my language of choice; along with Racket). I'm backfilling the first seven posts (along with this one), but I'll try to do the rest daily.</p>
+]]></summary><content type="html"><![CDATA[<p>I'm always on the lookout for new sources of quick<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> coding puzzles. This holiday season, <a href="http://adventofcode.com/">Advent of Code</a> scratches precisely that itch.</p>
+<blockquote>Advent of Code is a series of small programming puzzles for a variety of skill levels. They are self-contained and are just as appropriate for an expert who wants to stay sharp as they are for a beginner who is just learning to code. Each puzzle calls upon different skills and has two parts that build on a theme. -- <a href="http://adventofcode.com/about">About - Advent of Code</a></blockquote>
+<p>I've been working out each problem thus far in Python (my language of choice; along with Racket). I'm backfilling the first seven posts (along with this one), but I'll try to do the rest daily.</p>
+<!--more-->
+<p>If you'd like to see all of the solutions, here's a list:</p>
+<ul class="list-unstyled"></ul>
+<p>As with my <a href="//blog.jverkamp.com/2012/11/03/project-euler">Project Euler</a> posts<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>, I generally feel that these problems are more interesting if you take a crack at solving them yourself first. If you feel the same way, <em>stop reading</em>. This post will still be here when you're done, I promise<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>.</p>
+<p>For each post, I suggest you click through on the title to read the entire descriptions. They're amusing. I'll summarize the core of the problem here though.</p>
+<p>If you've solved the puzzles as well and posted your solutions, post a link below. I'd love to see how others approach the problems.</p>]]></content></entry><entry><title>Advent of Code: Day 1</title><link href="//blog.jverkamp.com/2015/12/01/advent-of-code-day-1" /><id>urn:uuid:8083e9c3-690d-9e5c-c890-c178ccc89c50</id><updated>2015-12-01T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/1">Source</a></p>
+<p><strong>Part 1:</strong> Given a string of <code>()</code> characters controlling a simulated elevator, where <code>(</code> means 'go up' and <code>)</code> means 'go down', what floor do you end up on?</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/1">Source</a></p>
+<p><strong>Part 1:</strong> Given a string of <code>()</code> characters controlling a simulated elevator, where <code>(</code> means 'go up' and <code>)</code> means 'go down', what floor do you end up on?</p>
+<!--more-->
+<pre class="python"><code>data = sys.stdin.read()
+print(data.count('(') - data.count(')'))</code></pre>
+<p>Basically, <code>count</code> the number of up, subtract the number of down. Nothing much more to say for this one.</p>
+<p><strong>Part 2:</strong> How far do you make it in the instructions before the current floor is negative?</p>
+<pre class="python"><code>floor = 0
+for index, char in enumerate(sys.stdin.read()):
+    floor += (1 if char == '(' else -1)
+    if floor &lt; 0:
+        print(index)
+        sys.exit(0)</code></pre>
+<p>There might be a more elegant way to do this one, but this is clean enough so far as I'm concerned.</p>]]></content></entry><entry><title>Iterating the GitHub API (For users sans MFA)</title><link href="//blog.jverkamp.com/2015/12/01/iterating-the-github-api" /><id>urn:uuid:796d4e1c-d1a7-f844-33e9-d5bdad0ad636</id><updated>2015-12-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>Today I found myself auditing an organization's users to see which have <a href="https://en.wikipedia.org/wiki/multifactor_authentication">multifactor authentication</a> enabled<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go... and now I have a clean way of iterating across paginated GitHub API responses.</p>
 ]]></summary><content type="html"><![CDATA[<p>Today I found myself auditing an organization's users to see which have <a href="https://en.wikipedia.org/wiki/multifactor_authentication">multifactor authentication</a> enabled<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go... and now I have a clean way of iterating across paginated GitHub API responses.</p>
 <!--more-->
 <p>First, the full script:</p>
@@ -114,1303 +386,4 @@ for user in api_iterator(endpoint):
 <pre class="python"><code>for repo in api_iterator('/user/repos'):
     print(repo['url'])</code></pre>
 <p>Cool. Hope it's helpful!</p>
-<p>The full source for the MFA version is also available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/missing-mfa.py">missing-mfa.py</a></p>]]></content></entry><entry><title>Finding EC2 instances by tag</title><link href="//blog.jverkamp.com/2015/10/30/finding-ec2-instances-by-tag" /><id>urn:uuid:13299f01-b369-ddce-f505-a2ca76162e84</id><updated>2015-10-30T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another script similar to my previous post about <a href="//blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
-]]></summary><content type="html"><![CDATA[<p>Another script similar to my previous post about <a href="//blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
-<!--more-->
-<pre class="python"><code>#!/usr/bin/env python3
-
-import argparse
-import boto.ec2
-import json
-import re
-import sys
-
-parser = argparse.ArgumentParser(description = 'Find out information about EC2 instances')
-parser.add_argument('--region', default = 'us-west-2', help = 'The AWS region to search')
-parser.add_argument('--limit', type = int, default = 1, help = 'How many results to report, 0 will return all')
-parser.add_argument('--output', default = 'private_ip_address', help = 'The output to fetch for each instance; json will output a json object will all of the outputs')
-parser.add_argument('filters', nargs = argparse.REMAINDER, help = 'Regular expressions to apply to each tag')
-args = parser.parse_args()
-
-ec2 = boto.ec2.connect_to_region('us-west-2')
-
-if not args.filters:
-    raise Exception('You must specify at least one instance')
-
-def include_instance(instance):
-    if instance.state != 'running':
-        return
-
-    if not args.filters:
-        return instance
-
-    for filter in args.filters:
-        for tag_key in instance.tags:
-            tag_value = instance.tags[tag_key]
-            tag = '{}={}'.format(tag_key, tag_value).lower()
-
-            if re.search(filter, tag_value):
-                return instance
-
-def filter():
-    for reservation in ec2.get_all_instances():
-        for instance in reservation.instances:
-            if include_instance(instance):
-                yield instance
-
-for i, instance in enumerate(filter(), 1):
-    if args.output == 'json':
-        print(json.dumps(instance.__dict__, default = str))
-    else:
-        print(getattr(instance, args.output))
-
-    if args.limit and i &gt;= args.limit:
-        break</code></pre>
-<p>It's original goal was to get a single IP from a group of servers with a specific tag so that I could log in and poke around:</p>
-<pre class="bash"><code>$ ssh &grave;ec2 prod-server&grave;</code></pre>
-<p>There are a few other uses though, especially when combined with other tools such as <a href="https://stedolan.github.io/jq/"><code>jq</code></a>.</p>
-<pre class="bash"><code>ec2 --limit 0 --output json | jq '.instance_type' | sort | uniq -c | sort -nr
-
-  27 "t2.micro"
-   5 "m3.medium"
-   1 "c4.xlarge"</code></pre>
-<p>That's neat.</p>
-<p>Much as <code>who-iam</code> it's a bit slow, but it still works great.</p>
-<p>If you'd like to download the script, it's available in my <a href="https://github.com/jpverkamp/dotfiles">dotfiles</a>: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/ec2">ec2</a></p>]]></content></entry><entry><title>Takuzu solver</title><link href="//blog.jverkamp.com/2015/10/29/takuzu-solver" /><id>urn:uuid:fe66da96-1c02-fc88-e42d-098d779bafdc</id><updated>2015-10-29T00:00:00Z</updated><summary type="html"><![CDATA[<p>Based on a <a href="">/r/dailyprogrammer</a> puzzle: <a href="https://www.reddit.com/r/dailyprogrammer/comments/3pwf17/20151023_challenge_237_hard_takuzu_solver/">Takuzu solver</a>.</p>
-<p>Basically, Takuzu is a logic puzzle similar to Sudoku. You are given a grid partially filled with 0s and 1s. You have to fill in the rest of the grid according to three simple rules:</p>
-<ul>
-    <li>You cannot have more than three of the same number in a line</li>
-    <li>Each column must have an equal number of 0s and 1s<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
-    <li>No two rows or no two columns can be identical</li>
-</ul>
-<p>Thus, if you have a puzzle like this:</p>
-<pre class="text"><code>0.01.1
-0....1
-..00..
-..00..
-1....0
-10.0.0</code></pre>
-<p>One valid solution (most puzzles should have only a single valid answer, but that doesn't always seem to be the case):</p>
-<pre class="text"><code>010101
-001101
-110010
-010011
-101100
-101010</code></pre>
-<p>Let's do it!</p>
-]]></summary><content type="html"><![CDATA[<p>Based on a <a href="">/r/dailyprogrammer</a> puzzle: <a href="https://www.reddit.com/r/dailyprogrammer/comments/3pwf17/20151023_challenge_237_hard_takuzu_solver/">Takuzu solver</a>.</p>
-<p>Basically, Takuzu is a logic puzzle similar to Sudoku. You are given a grid partially filled with 0s and 1s. You have to fill in the rest of the grid according to three simple rules:</p>
-<ul>
-    <li>You cannot have more than three of the same number in a line</li>
-    <li>Each column must have an equal number of 0s and 1s<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span></li>
-    <li>No two rows or no two columns can be identical</li>
-</ul>
-<p>Thus, if you have a puzzle like this:</p>
-<pre class="text"><code>0.01.1
-0....1
-..00..
-..00..
-1....0
-10.0.0</code></pre>
-<p>One valid solution (most puzzles should have only a single valid answer, but that doesn't always seem to be the case):</p>
-<pre class="text"><code>010101
-001101
-110010
-010011
-101100
-101010</code></pre>
-<p>Let's do it!</p>
-<!--more-->
-<p>First, we need some sort of structure to represent and read in a Takuzu board. I think I'm going to over-engineer a little bit here, since I think it will be helpful in the long run.</p>
-<p>My basic idea is to represent it in a way without mutation, that is to say once I've created a board, that board will never change. That will make it easier to write a backtracking solution, since when we need to back up to a previous state, we just throw away any of the derivative boards.</p>
-<p>Taking that a level further, let's represent the Takuzu board as a base board with an essentially a 'changelog' on top of it, storing any differences from the boards 'under' it. Something like this:</p>
-<pre class="text"><code>....    ..1.    ....    ..1.
-0.0. {- .... {- .... == 0.0.
-..0.    ....    ....    ..0.
-...1    ..1.    .0..    .011</code></pre>
-<p>In that diagram, the board on the far left is the first layer, then the second is the next layer up, and the third is the final layer. The fourth image is the virtual board that any user of the program would actually see.</p>
-<p>So how do we turn that into code?</p>
-<pre class="python"><code>class Takuzu(object):
-
-    def __init__(self, filename = None, parent = None):
-        '''
-        Represent a Takuzu puzzle (a grid of 0, 1, and .)
-
-        If filename is set, load from file.
-        If parent is set, extend that Takuzu puzzle.
-
-        If neither or both is set, that is an error.
-        '''
-
-        if not (filename or parent) or (filename and parent):
-            raise Exception('Set exactly one of filename and parent')
-
-        self.size = 0
-        self.tiles = collections.defaultdict(lambda : False)
-        self.parent = False
-
-        if parent:
-            self.size = parent.size
-            self.parent = parent
-
-        elif filename:
-            with open(filename, 'r') as fin:
-                for row, line in enumerate(fin):
-                    for col, char in enumerate(line.strip()):
-                        if char in '01':
-                            self.tiles[row, col] = char
-
-                        self.size = col + 1
-
-    def get(self, row = None, col = None):
-        '''
-        Access a tile in the current puzzle, return False for unset values
-
-        If the current puzzle doesn't have a value set, recur to parents.
-        If either row or col is set to None, return that entire row or column.
-        If neither is set, return nested lists containing all current values.
-        '''
-
-        # Note: We need the ugly != None to correctly deal with row or col = 0.
-        # Sometimes truthiness is annoying.
-
-        if row != None and col != None:
-            return self.tiles[row, col] or (self.parent and self.parent.get(row, col))
-        elif row != None:
-            return [self.get(row, col) for col in range(self.size)]
-        elif col != None:
-            return [self.get(row, col) for row in range(self.size)]
-        else:
-            return [
-                [self.get(row, col) for col in range(self.size)]
-                for row in range(self.size)
-            ]
-
-    def set(self, row, col, val):
-        '''
-        Create a child Takuzu object with the specific value set.
-
-        If either row or column is set to None, fill any empty elements in that entire row
-        with the given value.
-        '''
-
-        child = Takuzu(parent = self)
-
-        if row != None and col != None:
-            child.tiles[row, col] = val
-        elif row != None:
-            for col in range(self.size):
-                if not child.get(row, col):
-                    child.tiles[row, col] = val
-        elif col != None:
-            for row in range(self.size):
-                if not child.get(row, col):
-                    child.tiles[row, col] = val
-        else:
-            raise Exception('Must set at least one of row and column')
-
-        return child</code></pre>
-<p>The interesting bits here are the <code>get</code> and <code>set</code> methods. <code>get</code>, as mentioned, assumes the layered structure above. It will start on the topmost layer (the actual object the program has a reference to) and try to look up the given point. If that fails (we're using a <code>collections.defaultdict</code>, so every reference will either by <code>'0'</code>, <code>'1'</code>, or <code>False</code>), fall back to the next layer up (the <code>parent</code>) until we either find one or run out of <code>parent</code> nodes.</p>
-<p>Similarly, <code>set</code> doesn't actually change the current Takuzu object. Instead, it creates a new object with the current one as its parent, setting the new value in the child. This means that any values that were previously set are transparently available in the child, but we can at any point backtrack so long as we keep a reference to the now parent object around.</p>
-<p>In addition, I've gone ahead and built in a bit of functionality that I know we're going to need into <code>get</code> and <code>set</code>. In either case, if you only specify either the <code>row</code> or <code>col</code> and leave the other empty (<code>None</code>), then we will return that entire row or column (or <code>set</code> any empty values). That's easy enough to code and it has the advantage of making it easy to compare rows to one another (for the third requirement above).</p>
-<p>Okay, up next, we'll probably want a few more helper functions in this class in order to actually tell when we've solved one of these puzzles so the algorithms we eventually write can actually terminate:</p>
-<pre class="python"><code>class Takuzu(object):
-    ...
-
-    def __eq__(self, other):
-        '''Check if two Takuzu puzzles are equal.'''
-
-        for row in range(self.size):
-            for col in range(self.size):
-                if self.get(row, col) != other.get(row, col):
-                    return False
-
-        return True
-
-    def __str__(self):
-        '''Return a string representation the same as can be read from a file.'''
-
-        out = ''
-
-        for row in range(self.size):
-            for col in range(self.size):
-                out += str(self.get(row, col) or '.')
-            out += '\n'
-
-        return out
-
-    def is_full(self):
-        '''If all values have been filled in.'''
-
-        for row in range(self.size):
-            for col in range(self.size):
-                if not self.get(row, col):
-                    return False
-
-        return True
-
-    def is_valid(self):
-        '''Test if the current is still possibly a valid solution. If it also is_full,
-        the board is solved.'''
-
-        # Cannot have three identical numbers in a line
-        # Ignore unset pieces
-        for row in range(self.size):
-            for col in range(self.size):
-                if not self.get(row, col):
-                    continue
-
-                if self.get(row - 1, col) == self.get(row, col) == self.get(row + 1, col):
-                    return False
-
-                if self.get(row, col - 1) == self.get(row, col) == self.get(row, col + 1):
-                    return False
-
-        # All rows and columns must have no more than the maximum (size/2) number of 0s or 1s
-        for index in range(self.size):
-            if (
-                self.get(index, None).count('0') &gt; self.size / 2
-                or self.get(index, None).count('1') &gt; self.size / 2
-                or self.get(None, index).count('0') &gt; self.size / 2
-                or self.get(None, index).count('1') &gt; self.size / 2
-            ):
-                return False
-
-        # No two rows or columns can be equal (ignore rows/columns that contain unset values)
-        # all(...) on a row or column will be true iff all values are set
-        for first_index in range(self.size):
-            for second_index in range(first_index):
-                if (
-                    all(self.get(first_index, None))
-                    and all(self.get(None, first_index))
-                    and (
-                        self.get(first_index, None) == self.get(second_index, None)
-                        or self.get(None, first_index) == self.get(None, second_index)
-                    )
-                ):
-                    return False
-
-        # Whee passed all three conditions!
-        return True
-
-    def is_solved(self):
-        '''Return True iff this puzzle is solved.'''
-
-        return self.is_full() and self.is_valid()</code></pre>
-<p><code>__eq__</code> and <code>__str__</code> are 'magic' methods in Python that will define equality and converting this object to a string respectively. This will be nice to make sure we don't investigate the same board more than once later.</p>
-<p>After that, we have <code>is_full</code>, <code>is_valid</code>, and <code>is_solved</code><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>. In the first case, we're checking if a puzzle has everything filled in. That way we know if we can stop recurring one way or the other.</p>
-<p><code>is_valid</code> is actually a relatively new method. Before that, I could only check if a puzzle <code>is_solved</code>, but this way we can eliminate entire branches of the search space much earlier. For example, as soon as a backtracking solution places the third <code>0</code> in a row, it can stop looking down that path since <code>is_valid</code> will return <code>False</code>. Finally, <code>is_solved</code>. It used to have most of the <code>is_valid</code> code, but once that method existed, a puzzle <code>is_solved</code> simply if both it <code>is_full</code> and it <code>is_valid</code>. Easy enough.</p>
-<p>So how do we actually solve a puzzle with this?</p>
-<p>Let's start with the simple (relatively speaking, since we've done it before) backtracking solution. Given everything that we have in the Takuzu class, the actual solver is actually really simple:</p>
-<pre class="python"><code>def solve(takuzu):
-    '''Solve a puzzle using backtracking (also a fall back for the human solver).'''
-
-    queue = [takuzu]
-
-    while queue:
-        takuzu = queue.pop()
-
-        # Solved, we're done!
-        if takuzu.is_solved():
-            return takuzu
-
-        # If we don't have a valid solution, stop looking on this branch
-        if not takuzu.is_valid():
-            continue
-
-        # Otherwise, find one empty spot and try both possiblities
-        def enqueue():
-            for row in range(takuzu.size):
-                for col in range(takuzu.size):
-                    if not takuzu.get(row, col):
-                        for value in '01':
-                            queue.insert(takuzu.set(row, col, value), 0)
-                        return
-        enqueue()
-
-    return False</code></pre>
-<p>Basically, we keep a stack of solutions, which will allow us to perform a <a href="https://en.wikipedia.org/wiki/depth-first_search">depth-first search</a><span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>.</p>
-<p>Basically, create a branch, trying first a <code>0</code> in the first empty spot. Looking down that path, if we find a solution, we're done. If we don't try a <code>1</code> instead. That's really it. And it's actually relatively fast.</p>
-<p>Given the input:</p>
-<pre class="test"><code>0..1.0
-0.11..
-......
-......
-1..1..
-.....0</code></pre>
-<p>We can solve it easily enough:</p>
-<pre class="bash"><code>$ python3 takuzu.py --method backtracker sample_6x6.takuzu
-
-010110
-001101
-110010
-011001
-100101
-101010
-
-Solved in 0.15 seconds</code></pre>
-<p>Nice. (You can check out the <a href="https://github.com/jpverkamp/takuzu">full source</a> if you'd like to see how I'm handling the command line parameters along with a few other goodies.<span class="footnote"><sup><a href="#footnote-4">[4]</a></sup></span>)</p>
-<p>Unfortunately, as puzzles get a bit larger, that runtime isn't so great:</p>
-<pre class="bash"><code>$ python3 takuzu.py --method backtracker sample_8x8.takuzu
-
-10011010
-11001100
-01100101
-10110010
-01011001
-01001101
-10100110
-00110011
-
-Solved in 47.03 seconds</code></pre>
-<p>Yeah...</p>
-<p>We can do better.</p>
-<p>How about instead of trying to solve the puzzle like a computer (brute forcing it), let's apply some heuristics more like a human would solve the puzzle. For example, if we see a pair of 0s next to each other, we know the tile on either side of it is a 1 (likewise for a pair of 0s separated by a single space and said space):</p>
-<pre class="python"><code>def __third_of_a_kind__(takuzu):
-    '''If adding a value would make three in a row, add the other.'''
-
-    for row in range(takuzu.size):
-        for col in range(takuzu.size):
-            if takuzu.get(row, col):
-                continue
-
-            for ((offset1_row, offset1_col), (offset2_row, offset2_col)) in [
-                # Two already in a line
-                (( 0,  1), ( 0,  2)),
-                (( 0, -1), ( 0, -2)),
-                (( 1,  0), ( 2,  0)),
-                ((-1,  0), (-2,  0)),
-                # Two with a hole in between
-                (( 0,  1), ( 0, -1)),
-                (( 1,  0), (-1,  0)),
-            ]:
-
-                val1 = takuzu.get(row + offset1_row, col + offset1_col)
-                val2 = takuzu.get(row + offset2_row, col + offset2_col)
-
-                if val1 and val2 and val1 == val2:
-                    return takuzu.set(row, col, invert(val1))
-
-    return False</code></pre>
-<p>Basically, for each empty tile in the current puzzle, compare each of six pairs. Either those in the four cardinal directions or the pair on either side horizontally or vertically.</p>
-<p>Next rule, let's look for rows where we already have the necessary number of 0s and only need 1s. We can just fill those out:</p>
-<pre class="python"><code>def __fill_rows__(takuzu):
-    '''If we can figure out how many 0s and 1s we need for each and any row/col needs
-    only 0s or 1s, add them'''
-
-    # Try to fill any rows that have all of the needed 0s/1s but not the other
-    for index in range(takuzu.size):
-        for row, col in [(index, None), (None, index)]:
-            for value in '01':
-                # Have enough of 'value'
-                if takuzu.get(row, col).count(value) == takuzu.size / 2:
-                    # Not enough of the other one
-                    if takuzu.get(row, col).count(invert(value)) &lt; takuzu.size / 2:
-                        return takuzu.set(row, col, invert(value))
-
-    return False</code></pre>
-<p>It's neat how short that code is.</p>
-<p>Finally (for the moment at least), let's write a slightly more complicated method. This time, let's take a single row or column and generate all the possible ways we can fill it out. Then remove those that would either lead to a duplicate or three in a row. If we have only exactly one row left, then we're golden. That's our row:</p>
-<pre class="python"><code>def __fill_by_duplicates__(takuzu):
-    '''Fill a puzzle by checking if any rows/cols are near enough to done that only one
-    possibility is left.'''
-
-    def row_or_col(which, index):
-        if which == 'row':
-            return takuzu.get(index, None)
-        else:
-            return takuzu.get(None, index)
-
-    for major in ('row', 'col'):
-        # Completed rows/cols have no Nones (so are 'all')
-        completed = filter(all, [
-            row_or_col(major, index)
-            for index in range(takuzu.size)
-        ])
-
-        for index in range(takuzu.size):
-            current = row_or_col(major, index)
-
-            # Already a complete row/col, skip it
-            if all(current):
-                continue
-
-            # Generate all posibilities, removing any that we already see
-            possibilities = [
-                option
-                for option in permute_nones(current)
-                if (
-                    option not in completed
-                    and option.count('0') == takuzu.size / 2
-                    and option.count('1') == takuzu.size / 2
-                    and '000' not in ''.join(option)
-                    and '111' not in ''.join(option)
-                )
-            ]
-
-            # If we have exactly one, set that one
-            if len(possibilities) == 1:
-                for other_index, value in enumerate(possibilities[0]):
-                    if major == 'row':
-                        takuzu = takuzu.set(index, other_index, value)
-                    else:
-                        takuzu = takuzu.set(other_index, index, value)
-
-                return takuzu
-
-    # Never found one
-    return False</code></pre>
-<p>I'm not nearly as happy with this rule as I am with the other two. Mostly because of the difference between rows and columns, the code is a little strange. The core of it is the <code>permute_nones</code> helper, which will take a list containing some number of <code>None</code> entries and fill them each with either a <code>0</code> or <code>1</code>, generating all possibilities:</p>
-<pre class="python"><code>def permute_nones(ls):
-    '''Helper function to generate all permutations from filling in 0s and 1s into a list'''
-
-    if ls == []:
-        yield []
-    elif ls[0]:
-        for recur in permute_nones(ls[1:]):
-            yield [ls[0]] + recur
-    else:
-        for value in '01':
-            for recur in permute_nones(ls[1:]):
-                yield [value] + recur</code></pre>
-<p>And that's all of my rules from now. The basic algorithm will be to apply each of those three rules in turn (since even after one has stopped working, another may 'unblock it'). If we get to the point where none of those three rules work, fall back to the backtracker we discussed above:</p>
-<pre class="python"><code>RULES = [
-    __third_of_a_kind__,
-    __fill_rows__,
-    __fill_by_duplicates__,
-    solvers.backtracker.solve,
-]
-
-def solve(takuzu):
-    '''Solve a Takuzu puzzle much as a human would: by applying a series of logical rules.'''
-
-    while True:
-        updated = False
-
-        # If we've already solved it, return
-        if takuzu.is_solved():
-            return takuzu
-
-        # Try to apply each rule in turn; if any rule works start over
-        for rule in RULES:
-            next_takuzu = rule(takuzu)
-
-            if next_takuzu:
-                takuzu = next_takuzu
-                updated = True
-                break
-
-        # If we didn't apply any rule this iteration, done trying
-        if not updated:
-            break
-
-    return takuzu</code></pre>
-<p>Since we don't have to use the much slower (runtime <span>\(O(2^n)\)</span>) backtracking solution for the entire puzzle, this should run significantly faster:</p>
-<pre class="python"><code>$ python3 takuzu.py --method human sample_6x6.takuzu
-
-010110
-001101
-110010
-011001
-100101
-101010
-
-Solved in 0.13 seconds
-
-$ python3 takuzu.py --method human sample_8x8.takuzu
-
-10011010
-11001100
-01100101
-10110010
-01011001
-01001101
-10100110
-00110011
-
-Solved in 37.23 seconds</code></pre>
-<p>Okay. So 0.13 seconds isn't <em>that</em> much faster than 0.15 seconds, and 37.23 seconds is only a bit faster than 47.03 seconds. For easier puzzles (those where a human wouldn't have to guess), you'll get a better improvement. These were considered 'hard'.</p>
-<p>We can do better though.</p>
-<p>Right now, we fall back to a pure backtracking solution rather than the faster human rules if we ever fail to advance. What if we combined the two models? Use the human solution until you get stuck; then advance exactly one step with the backtracking model; then switch back to the human model. If that branch fails, you reset back to the backtracking step, the human steps can be skipped for this.</p>
-<p>Let's try it:</p>
-<pre class="python"><code>RULES = copy.copy(solvers.human.RULES)
-RULES.remove(solvers.backtracker.solve)
-
-def solve(takuzu):
-    '''
-    Solve a puzzle using a hybrid model.
-
-    Start with the human solver.
-    Every time you get stuck, guess at a spot.
-    Switch back to the human solver (backtracking to step 2 on failures).
-    '''
-
-    queue = [takuzu]
-
-    while queue:
-        takuzu = queue.pop()
-
-        # Solved, we're done!
-        if takuzu.is_solved():
-            return takuzu
-
-        # If we don't have a valid solution, stop looking on this branch
-        if not takuzu.is_valid():
-            continue
-
-        # Try to advance using the human rules until they all fail
-        while True:
-            updated = False
-            for rule in RULES:
-                next_takuzu = rule(takuzu)
-
-                if next_takuzu:
-                    takuzu = next_takuzu
-                    updated = True
-                    break
-
-            if not updated:
-                break
-
-        # Solved, we're done!
-        if takuzu.is_solved():
-            return takuzu
-
-        # Once they've failed, find one empty spot and try both possibilities
-        def enqueue():
-            for row in range(takuzu.size):
-                for col in range(takuzu.size):
-                    if not takuzu.get(row, col):
-                        for value in '01':
-                            queue.append(takuzu.set(row, col, value))
-                        return
-        enqueue()
-
-    return False</code></pre>
-<p>So how much does that buy us?</p>
-<pre class="python"><code>$ python3 takuzu.py --method hybrid sample_6x6.takuzu
-
-010110
-001101
-110010
-011001
-100101
-101010
-
-Solved in 0.05 seconds
-
-$ python3 takuzu.py --method hybrid sample_8x8.takuzu
-
-10011010
-11001100
-01100101
-10110010
-01011001
-01001101
-10100110
-00110011
-
-Solved in 0.67 seconds</code></pre>
-<p>Hah! That's more like it!</p>
-<p>For now, that's it<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>. If you'd like to see how I structured the code (it's big enough to spread into multiple files), how I parsed command line parameters, or how I dynamically load the various solvers, you can see the entire code on GitHub: <a href="https://github.com/jpverkamp/takuzu">jpverkamp/takuzu</a>.</p>
-<p>I like puzzles. Perhaps I'll try <a href="https://en.wikipedia.org/wiki/Suduko">Suduko</a> next. Or maybe <a href="https://en.wikipedia.org/wiki/Hashiwokakero">Hashi puzzles</a><span class="footnote"><sup><a href="#footnote-6">[6]</a></sup></span>. Onwards!<span class="footnote"><sup><a href="#footnote-7">[7]</a></sup></span></p>]]></content></entry><entry><title>Mandelbrot</title><link href="//blog.jverkamp.com/2015/09/14/mandelbrot" /><id>urn:uuid:d8877c3c-fbea-4698-0768-4d961fc1d383</id><updated>2015-09-14T00:00:00Z</updated><summary type="html"><![CDATA[<p>Perhaps the best known fractal of all: the <a href="https://en.wikipedia.org/wiki/Mandelbrot_set">Mandelbrot set</a>.</p>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" /></a></p>
-<p>Since I was already working on Python code that would render an image given a function (for a future post), I figured that I might as well render fractals with it.</p>
-]]></summary><content type="html"><![CDATA[<p>Perhaps the best known fractal of all: the <a href="https://en.wikipedia.org/wiki/Mandelbrot_set">Mandelbrot set</a>.</p>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" /></a></p>
-<p>Since I was already working on Python code that would render an image given a function (for a future post), I figured that I might as well render fractals with it.</p>
-<!--more-->
-<p>The basic idea is simple. Use <a href="https://python-pillow.github.io/">pillow</a> (the successor <a href="http://www.pythonware.com/products/pil/">PIL</a>), create an empty image of a given size. Then, call a given function for each point in that image, passing the <code>x</code> and <code>y</code> coordinates of the function as parameters. Basically, the <code><a href="http://docs.racket-lang.org/search/index.html?q=build-flomap*">build-flomap*</a></code> function I use all the time in Racket.</p>
-<p>It turns out, that's actually really straight forward:</p>
-<pre class="python"><code>def generate_image(width, height, generator):
-    '''
-    Generate an RGB image using a generator function.
-
-    width, height -- the size of the generated image
-    generator -- a function that takes (x, y) and returns (r, g, b)
-    '''
-
-    # Generate the data as a row-major list of (r, g, b)
-    data = [generator(x, y) for y in range(height) for x in range(width)]
-
-    # Pack that into a Pillow image and return it
-    img = PIL.Image.new('RGB', (width, height))
-    img.putdata(data)
-    return img</code></pre>
-<p>I like that you can have multiple <code>for</code> statements in a generator like that. It's very similiar to the different forms of Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code><span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, but I always seem to forget that I can do that in Python.</p>
-<p>One downside of this is that it's relatively slow (at least on the big multi-core machines we have now). Luckily, we can use the <code><a href="https://docs.python.org/2/library/multiprocessing.html">multiprocessing</a></code> module to speed things up:</p>
-<pre class="python"><code>def generate_image(width, height, generator, threads = 1):
-    '''
-    Generate an RGB image using a generator function.
-
-    width, height -- the size of the generated image
-    generator -- a function that takes (x, y) and returns (r, g, b)
-    threads -- if != 1, use multiprocessing to spawn this many processes
-    '''
-
-    # Generate the data as a row-major list of (r, g, b)
-    if threads == 1:
-        data = [generator(x, y) for y in range(height) for x in range(width)]
-    else:
-        pool = multiprocessing.Pool(threads)
-        data = pool.starmap(generator, [(x, y) for y in range(height) for x in range(width)])
-
-    # Pack that into a Pillow image and return it
-    img = PIL.Image.new('RGB', (width, height))
-    img.putdata(data)
-    return img</code></pre>
-<p>By using <code>multiprocessing</code> rather than <code>threading</code>, we are actually spawning multiple Python processes, so we get a true multithreaded speedup. Since this program is almost entirely CPU bound, <code>threading</code> (with Python's <a href="https://en.wikipedia.org/wiki/global_interpreter lock">global interpreter lock</a>) wouldn't actually be any faster.</p>
-<p>An aside: Using <code>starmap</code> allows us to pass multiple parameters to the function we are mapping over. This was only introduced in Python 2.6 / 3.3, so make sure you have a sufficiently new version<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>.</p>
-<p>With that, we can make some pretty pictures like I'm sure I've shown off before<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>.</p>
-<pre class="python"><code>generate_image(
-    400,
-    300,
-    lambda x, y: (
-        (x * y) % 256,
-        (x + y) % 256,
-        max(x, y) % 256
-    )
-).save('sample.png')</code></pre>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/sample.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/sample.png" /></a></p>
-<p>Yes, I realize that's not the most Pythonic code in the world. And because the body of a Python <code>lambda</code> has to be an expression, you cannot write nearly as complicated functions as you could in Racket. It's perfectly valid though. :)</p>
-<p>Okay, so we have a way to generate images, let's use it to generate Mandelbrot sets. The basic idea of the Mandelbrot set is surprisingly simple<span class="footnote"><sup><a href="#footnote-4">[4]</a></sup></span>:</p>
-<p>Given a complex number <span>\( \mathbb{C} \)</span>, the <a href="https://en.wikipedia.org/wiki/complex_number">complex</a> <a href="https://en.wikipedia.org/wiki/quadratic_polynomial">quadratic polynomial</a>:</p>
-<div>$$\mathbb{Z}_n+1 = \mathbb{Z}_n^2 + \mathbb{C}$$</div>
-<p>Either does or does not escape to infinity. If the result remains bounded as <span>\( n \to \infty \)</span>, the number is part of the Mandelbrot set. If not, it's not. Because Python has built in support for complex numbers, this code is fairly elegant:</p>
-<pre class="python"><code>def make_mandelbrot_generator(width, height, center, size, max_iterations = 256):
-        '''
-        A generator that makes generate_image compatible mandelbrot generators.
-
-        width, height -- the size of the resulting image (used for scale)
-        center -- the focus point of the image
-        size -- the size of the larger dimension
-        max_iterations -- the scale to check before exploding, used for coloring
-        '''
-
-        # Scale the size so that is the size of the larger dimension
-        if width &gt;= height:
-            size_x = size
-            size_y = size * height / width
-        else:
-            size_x = size * width / height
-            size_y = size
-
-        # Convert to a bounding box
-        min_x = center[0] - size_x / 2
-        max_x = center[0] + size_x / 2
-        min_y = center[1] - size_y / 2
-        max_y = center[1] + size_y / 2
-
-        def generator(x, y):
-            # Scale to the mandlebrot frame; convert to a complex number
-            x = (x / width) * (max_x - min_x) + min_x
-            y = (y / height) * (max_y - min_y) + min_y
-            c = x + y * 1j
-
-            # Iterate until we escape to infinity or run out of iterations
-            # For our purposes, we can consider infinity = 2
-            z = 0
-            for iteration in range(max_iterations):
-                z = z * z + c
-
-                # Size is r of polar coordinates
-                (r, phi) = cmath.polar(z)
-                if r &gt; 2:
-                    break
-
-            g = int(256 * iteration / max_iterations)
-            return (g, g, g)
-
-        return generator</code></pre>
-<p>I've chosen here to make a function that returns the actual color generator primarily so that we would have access to the <code>width</code> and <code>height</code> within the main function.</p>
-<p>Amusingly, it's been proven that if the magnitude of <span>\(\mathbb{Z}_n\)</span> crosses 2, it will go to infinity. Since <code>r</code> is the magnitude in the <a href="https://en.wikipedia.org/wiki/polar_coordinate system">polar coordinate system</a> (<code>r</code>,<code>ϕ</code>), we can use that as an escape hatch and even as a basic way to color the output.</p>
-<p>One side note: using the <code>multiprocessing</code> module, we have to be able to <code><a href="https://docs.python.org/2/library/pickle.html">pickle</a></code> any variables to the function called. Functions defined in the global scope can be pickled, but functions used directly as parameters to other functions cannot; don't ask me why.</p>
-<p>So if <code>threads</code> is not 1, this does not work:</p>
-<pre class="python"><code>generate_image(
-    400,
-    300,
-    make_mandelbrot_generator(400, 300, (-0.5, 0), 3),
-    threads = 4
-)</code></pre>
-<p>But this does:</p>
-<pre class="python"><code>generator = make_mandelbrot_generator(400, 300, (-0.5, 0), 3),
-generate_image(400, 300, generator, threads = 4)</code></pre>
-<p>Weird.</p>
-<p>Anyways, what do we get when we try it out?</p>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_grayscale.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_grayscale.png" /></a></p>
-<p>Beautiful<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span>!</p>
-<p>We need some color. Let's introduce one more parameter to the <code>make_mandelbrot_generator</code> function: <code>coloring</code>. Basically, a function that takes in a number in the range <code>[0, 1]</code> (which we're already computing; that is <code>iteration / max_iterations</code>) and return an RGB color. That way, we can have some more interesting colorations.</p>
-<p>For example, the grayscale coloring function from earlier:</p>
-<pre class="python"><code>def grayscale(v):
-    '''Simple grayscale value.'''
-
-    g = int(256 * v)
-    return (g, g, g)</code></pre>
-<p>Or how about instead, we render something in blue and red. Start at black, then fade up the blue channel, crossfade to red in the next third, and fade back to black in the last:</p>
-<pre class="python"><code>def hot_and_cold(v):
-    '''Scale from black to blue to red and back to black.'''
-
-    r = g = b = 0
-
-    if v &lt; 1/3:
-        v = 3 * v
-        b = int(256 * v)
-    elif v &lt; 2/3:
-        v = 3 * (v - 1/3)
-        r = int(256 * v)
-        b = int(256 * (1 - v))
-    else:
-        v = 3 * (v - 2/3)
-        r = int(256 * (1 - v))
-
-    return (r, g, b)</code></pre>
-<p>Let's render that one instead:</p>
-<pre class="python"><code>generator = make_mandelbrot_generator(400, 300, (-0.5, 0), 3),
-generate_image(400, 300, generator, threads = 4, coloring = hot_and_cold)</code></pre>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_default_400x300_hot-and-cold.png" /></a></p>
-<p>Excellent. We have a simple Mandelbrot generator. It's not exactly what I set out to do for this post (really only the <code>generate_image</code> function is), but I think it's pretty cool.</p>
-<p>As a bonus round, I made something of a basic testing framework:</p>
-<pre class="python"><code>THREAD_COUNT = max(1, multiprocessing.cpu_count() - 1)
-
-SIZES = [
-    (400, 300),
-    (1920, 1080)
-]
-
-COLORINGS = [
-    ('grayscale', grayscale),
-    ('hot-and-cold', hot_and_cold),
-]
-
-IMAGES = [
-    ('default', (-0.5, 0), 3),
-    # http://www.nahee.com/Derbyshire/manguide.html
-    ('seahorse-valley', (-0.75, 0.1), 0.05),
-    ('triple-spiral-valley', (0.088, 0.654), 0.25),
-    ('quad-spiral-valley', (0.274, 0.482), 0.005),
-    ('double-scepter-valley', (-0.1, 0.8383), 0.005),
-    ('mini-mandelbrot', (-1.75, 0), 0.1),
-
-]
-
-for width, height in SIZES:
-    for image_name, center, size in IMAGES:
-        for coloring_name, coloring in COLORINGS:
-            filename = os.path.join('{width}x{height}', 'mandelbrot_{name}_{width}x{height}_{coloring}.png')
-            filename = filename.format(
-                name = image_name,
-                width = width,
-                height = height,
-                coloring = coloring_name,
-            )
-            generator = make_mandelbrot_generator(width, height, center, size, coloring = coloring)
-
-            start = time.time()
-            img = generate_image(
-                width,
-                height,
-                generator,
-                threads = THREAD_COUNT
-            )
-            end = time.time()
-
-            if not os.path.exists(os.path.dirname(filename)):
-                os.makedirs(os.path.dirname(filename))
-            img.save(filename)
-
-            print('{} generated in {} seconds with {} threads'.format(
-                filename,
-                end - start,
-                THREAD_COUNT
-            ))</code></pre>
-<p><code>multiprocessing.cpu_count() - 1</code> means that I leave one processor for other work (I was having issues with my computer freazing, <code>multiprocessing</code> is good at that). Other than that, generate a bunch of images and shove them into directories by size.</p>
-<p>Here are a few examples from <a href="http://www.nahee.com/Derbyshire/manguide.html">nahee.com</a>:</p>
-<h3>Seahorse Valley<h3>
-<a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_400x300_hot-and-cold.png" /></a>
-
-<h3>Double Scepter Valley</h3>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_double-scepter-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_double-scepter-valley_400x300_hot-and-cold.png" /></a></p>
-<h3>Triple Spiral Valley</h3>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_triple-spiral-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_triple-spiral-valley_400x300_hot-and-cold.png" /></a></p>
-<h3>Quad Spiral Valley</h3>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_quad-spiral-valley_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_quad-spiral-valley_400x300_hot-and-cold.png" /></a></p>
-<h3>Mini Mandelbrot</h3>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_mini-mandelbrot_400x300_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_mini-mandelbrot_400x300_hot-and-cold.png" /></a></p>
-<p>Or how about one nice large one (right click, save as):</p>
-<p><a href="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_1920x1080_hot-and-cold.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/09/14/mandelbrot/mandelbrot_seahorse-valley_1920x1080_hot-and-cold.png" /></a></p>
-<p>So much detail!</p>
-<p>Enjoy!</p>]]></content></entry><entry><title>Backing up GitHub repositories</title><link href="//blog.jverkamp.com/2015/09/08/backing-up-github-repositories" /><id>urn:uuid:c6a900da-205c-de5e-71d0-63a457575412</id><updated>2015-09-08T00:00:00Z</updated><summary type="html"><![CDATA[<p>The newest chapter in my quest to collect entirely too much data / back up All The Things!: GitHub.</p>
-<p>Basically, I want to back up all of my own personal GitHub repositories along with any from organizations that I am involved with. Strictly speaking, this is a little strange, since it's unlikely that GitHub is going anywhere soon and, if it does, we are likely to have fair warning. But still, it's nice to have a local copy just in case GitHub is down.</p>
-]]></summary><content type="html"><![CDATA[<p>The newest chapter in my quest to collect entirely too much data / back up All The Things!: GitHub.</p>
-<p>Basically, I want to back up all of my own personal GitHub repositories along with any from organizations that I am involved with. Strictly speaking, this is a little strange, since it's unlikely that GitHub is going anywhere soon and, if it does, we are likely to have fair warning. But still, it's nice to have a local copy just in case GitHub is down.</p>
-<!--more-->
-<p>The code is actually really straight forward. Most of the heavy lifting is being done by the <a href="https://github.com/copitux/python-github3">pygithub3</a> library. One caveat: it's a little strange to install. In my case, I had to first install <code>pygithub</code> and then <code>pygithub3</code> in order to satisfy a missing dependency (<a href="https://github.com/copitux/python-github3/issues/41">previously reported</a>).</p>
-<p>After that, you can authenticate to GitHub, get a list of repositories, and download them all:</p>
-<pre class="python"><code>#!/usr/bin/env python3
-
-import pygithub3
-import os
-
-# Load a list of repos we don't want to download / update
-ignored = set()
-if os.path.exists('ignore.txt'):
-    with open('ignore.txt', 'r') as fin:
-        for line in fin:
-            ignored.add(line.strip())
-
-# Connect to github (if you have MFA, your password must be a token)
-gh = pygithub3.Github(os.environ['GITHUB_USERNAME'], os.environ['GITHUB_PASSWORD'])
-
-# Loop over repos for the specified user, this will include their organization's repos as well
-for repo in gh.get_user().get_repos():
-
-    remote_path = repo.ssh_url
-    size = repo.size
-    owner = repo.owner.login
-    name = repo.name
-    name_with_owner = '{owner}/{name}'.format(owner = owner, name = name)
-    print(name_with_owner)
-
-    # Check if the repo is in the ignore list
-    if name in ignored or name_with_owner in ignored:
-        print('... skipping')
-        continue
-
-    # Build up a list of commands that will be run for the given repo
-    local_path = os.path.join('repos', owner, name)
-    cmds = ['mkdir -p repos/{owner}; cd repos/{owner}'.format(owner = owner)]
-
-    # Already exists, update it
-    if os.path.exists(local_path):
-        print('... updating')
-        cmds += [
-            'cd {name}'.format(name = name),
-            'git pull --rebase --prune',                 # Update to the most recent master
-            'git submodule update --init --recursive',   # Update submodules
-        ]
-    # Doesn't exist yet, clone it
-    else:
-        print('... cloning')
-        cmds += [
-            'git clone {url}'.format(url = remote_path), # Download a new clean copy using repo name as directory
-            'cd {name}'.format(name = name),
-            'git submodule update --init --recursive',   # Download and update submodules
-        ]
-
-    # Run each command specified above, bailing out if any failed (&&)
-    cmds = ' && '.join(cmds)
-    os.system(cmds)
-    print()</code></pre>
-<p>Basically, we're going to run a sequence of commands depending on if the repo was previously checked out or not. If it hasn't been (this is the first time), we want to run:</p>
-<ul>
-    <li><code>git clone {url}</code></li>
-    <li><code>cd {name}</code></li>
-    <li><code>git submodule update --init --recursive</code></li>
-</ul>
-<p>This will get the initial version and any submodules. I'm not sure that I'm going to keep the submodule code around, but in interest of keeping everything in a runnable state even if GitHub were to vanish tomorrow, it seemed a good idea.</p>
-<p>Alternatively, if we want to update a previously cloned repo:</p>
-<ul>
-    <li><code>cd {name}</code></li>
-    <li><code>git pull --rebase --prune</code></li>
-    <li><code>git submodule update --init --recursive</code></li>
-</ul>
-<p>This is much the same, it just pulls any new code first.</p>
-<p>And that's it. It took a little while to pull all of my repositories down (I have about 15 GB all told, counting various private repositories from work and my university days (which I still help to maintain)), but that's only necessary the first time. After that, it's much quicker.</p>]]></content></entry><entry><title>Adjacency Matrix Generator</title><link href="//blog.jverkamp.com/2015/08/24/adjacency-matrix-generator" /><id>urn:uuid:2aeccbbb-89e9-717c-c891-ffbcfc532caa</id><updated>2015-08-24T00:00:00Z</updated><summary type="html"><![CDATA[<p>Been a while since I've actually tackled one of the <a href="//blog.jverkamp.com/category/programming/by-source/daily-programmer">Daily Programmer</a> challenges, so let's try one out. From <a href="https://www.reddit.com/r/dailyprogrammer/comments/3h0uki/20150814_challenge_227_hard_adjacency_matrix/)">a week and a half ago</a>, we are challeneged to make an adjacency matrix generator, turning a graphical representation of a graph into an <a href="https://en.wikipedia.org/wiki/adjacency_matrix">adjacency matrix</a>.</p>
-<p>Input:</p>
-<pre class="text"><code>a-----b
-|\   / \
-| \ /   \
-|  /     e
-| / \   /
-|/   \ /
-c-----d</code></pre>
-<p>Output:</p>
-<pre class="text"><code>01110
-10101
-11010
-10101
-01010</code></pre>
-]]></summary><content type="html"><![CDATA[<p>Been a while since I've actually tackled one of the <a href="//blog.jverkamp.com/category/programming/by-source/daily-programmer">Daily Programmer</a> challenges, so let's try one out. From <a href="https://www.reddit.com/r/dailyprogrammer/comments/3h0uki/20150814_challenge_227_hard_adjacency_matrix/)">a week and a half ago</a>, we are challeneged to make an adjacency matrix generator, turning a graphical representation of a graph into an <a href="https://en.wikipedia.org/wiki/adjacency_matrix">adjacency matrix</a>.</p>
-<p>Input:</p>
-<pre class="text"><code>a-----b
-|\   / \
-| \ /   \
-|  /     e
-| / \   /
-|/   \ /
-c-----d</code></pre>
-<p>Output:</p>
-<pre class="text"><code>01110
-10101
-11010
-10101
-01010</code></pre>
-<!--more-->
-<p>Specifically, we're working under a few conditions:</p>
-<ul>
-    <li>Nodes<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> will be represented by a lowercase letter <code>a</code> to <code>z</code> (there will never be more than 26 nodes)</li>
-    <li>Edges are either horizontally, vertically, or diagonally at 45 degrees and will be represented by <code>|-/\</code></li>
-    <li>All edges will have a node at each end</li>
-    <li>Any two nodes have at most one edge between them</li>
-    <li>If edges need to bend, a virtual node marked by a <code>#</code> will be inserted (see examples later)</li>
-    <li>Edges can overlap; there will always be at least one directed edge adjacent to each node</li>
-</ul>
-<p>My general idea for a solution takes place in three parts:</p>
-<ol>
-    <li>Load the grid into a quickly accessible form</li>
-    <li>From each node, try each of the 8 cardinal directions looking for an edge; on an edge follow it until you hit either:
-        <ul>
-            <li>Another node: record the edge</li>
-            <li>A virtual node: recursively check that edge instead</li>
-        </ul>
-    </li>
-    <li>Print out the edges found above</li>
-</ol>
-<p>Let's do it. First, read in the edges:</p>
-<pre class="python"><code>from collections import defaultdict as ddict
-
-# Points will be stored as (row, col) tuples
-# The grid is a mapping of points to the character in that location
-# Nodes nodes store their point for fast iteration
-# The final solution will be a mapping of nodes to a set of other nodes adjacent to them
-grid = ddict(lambda : ' ')
-nodes = {}
-adjacency = ddict(set)
-
-# Read the rest of the grid
-for row, line in enumerate(sys.stdin):
-    for col, char in enumerate(line):
-
-        pt = (row, col)
-        grid[pt] = char
-
-        if is_node(char):
-            nodes[char] = (row, col)</code></pre>
-<p>Straight forward. I love <code>defaultdict</code>, since it means we don't have to worry about looking for points off the edge of the grid. If it's out of bounds, it will just return empty space.</p>
-<p>Next, the 'seeking' function, that will follow an edge until a node (either real or virtual):</p>
-<pre class="python"><code># List of possible edges, ordered row, col, edge type
-possible_edges = (
-    (-1, -1, '\\'), (-1, 0, '|'), (-1, 1, '/'),
-    ( 0, -1, '-'),                ( 0, 1, '-'),
-    ( 1, -1, '/'),  ( 1, 0, '|'), ( 1, 1, '\\')
-)
-
-def neighbors(src_pt, previous_deltas = None):
-    '''Given a point, yield any neighboring nodes'''
-
-    src = grid[src_pt]
-    row, col = src_pt
-
-    for row_delta, col_delta, edge_type in possible_edges:
-
-        dst_pt = (row + row_delta, col + col_delta)
-        dst = grid[dst_pt]
-
-        # Don't go back the way we came
-        if (-row_delta, -col_delta) == previous_deltas:
-            continue
-
-        # A valid leaving edge, follow it until a node or a #
-        elif dst == edge_type:
-            for i in naturals(2):
-                dst_pt = (row + i * row_delta, col + i * col_delta)
-                dst = grid[dst_pt]
-
-                # Found the target node, add
-                if is_node(dst):
-                    yield dst
-                    break
-
-                # Found a connector, continue on the other exit point
-                elif dst == '#':
-                    yield from neighbors(dst_pt, (row_delta, col_delta))
-                    break</code></pre>
-<p>Basically, we have eight <code>possible_edges</code>, each of which has a delta along the row and column, along with the character that has to start and end it (the rest could be under something else, we don't really care, since we're making the assumption that the input is well formed).</p>
-<p>I did use a couple of helper functions here. They should be fairly obvious:</p>
-<pre class="python"><code>def is_node(c):
-    return c in 'abcdefghijklmnopqrstuvwxyz'
-
-def is_edge(c):
-    return c in '|-/\\'
-
-def naturals(i = 0):
-    while True:
-        yield i
-            i += 1</code></pre>
-<p>That includes one trick I've picked up from my <a href="//blog.jverkamp.com/category/programming/by-language/racket">Racket</a> posts. <code>naturals</code> is an infinite list (a generator) of all natural numbers, starting at the given point. It's useful in this case since we don't know how far we're going to run along the edge, just that it will end eventually.</p>
-<p>Finally, we need functions to iterate over all of the nodes as starting points and then to print out the results:</p>
-<pre class="python"><code># Start at each node and expand all edges
-# Note: This will find each edge twice, so it goes
-for (src, pt) in nodes.items():
-    for dst in neighbors(pt):
-        adjacency[src].add(dst)
-        adjacency[dst].add(src)
-
-# Print an adjacency matrix in sorted node order
-for src in sorted(nodes):
-    for dst in sorted(nodes):
-        if dst in adjacency[src]:
-            sys.stdout.write('1')
-        else:
-            sys.stdout.write('0')
-    sys.stdout.write('\n')</code></pre>
-<p>As noted, this will find each edge twice, but so it goes. To account for that, we would have to use up a bit more memory storing the state of where we've been. As it is, we have a mostly functional solution, which I like.</p>
-<p>And that's it. Let's see a few of the test cases from the <a href="https://www.reddit.com/r/dailyprogrammer/comments/3h0uki/20150814_challenge_227_hard_adjacency_matrix/)">original post</a>:</p>
-<pre class="bash"><code>$ cat 1.matrix; python3 matrix-reader.py &lt; 1.matrix
-
-7
-a-----b
-|\   / \
-| \ /   \
-|  /     e
-| / \   /
-|/   \ /
-c-----d
-
-01110
-10101
-11010
-10101
-01010
-
-$ cat 3.matrix; python3 matrix-reader.py &lt; 3.matrix
-
-7
-a  b--c
-|    /
-|   /
-d  e--f
- \    |
-  \   |
-g--h--#
-
-00010000
-00100000
-01001000
-10000001
-00100100
-00001001
-00000001
-00010110
-
-9
-   #--#
-   | /        #
-   |a--------/-\-#
-  #--\-c----d   /
-   \  \|     \ / \
-   |\  b      #   #
-   | #  \        /
-   |/    #------#
-   #
-
-0111
-1011
-1101
-1110</code></pre>
-<p>Shiny!</p>
-<p>I wonder how hard it would be to program the inverse: take an adjacency matrix as input and generate one of these graphical matrices as output? Even better, generate an 'optimal' graphic, with the smallest possible area.</p>
-<p>We'll see.</p>
-<p>The full code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/matrix-reader.py">matrix-reader.py</a></p>]]></content></entry><entry><title>Setting up Postfix and OpenDKIM</title><link href="//blog.jverkamp.com/2015/08/10/setting-up-postfix-and-opendkim" /><id>urn:uuid:8e144030-210a-49c1-9d9c-6624fadd545a</id><updated>2015-08-10T00:00:00Z</updated><summary type="html"><![CDATA[<p>Last week, I was presented with a fairly interesting challenge: add DKIM (via <a href="http://www.opendkim.org/">OpenDKIM</a>) support to our mail servers (running <a href="http://www.postfix.org/">Postfix</a>). Given that I've never actually worked on a mail server before, it sounded fun. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>
-]]></summary><content type="html"><![CDATA[<p>Last week, I was presented with a fairly interesting challenge: add DKIM (via <a href="http://www.opendkim.org/">OpenDKIM</a>) support to our mail servers (running <a href="http://www.postfix.org/">Postfix</a>). Given that I've never actually worked on a mail server before, it sounded fun. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>
-<!--more-->
-<p>First, a bit of background on what exactly DKIM is:</p>
-<blockquote>
-    DomainKeys Identified Mail (DKIM) is an email validation system designed to detect email spoofing by providing a mechanism to allow receiving mail exchangers to check that incoming mail from a domain is authorized by that domain's administrators and that the email (including attachments) has not been modified during transport. A digital signature included with the message can be validated by the recipient using the signer's public key published in the DNS.
-    -- Wikipedia: <a href="https://en.wikipedia.org/wiki/DKIM">DKIM</a>
-</blockquote>
-<p>Sounds nice. So what in the world does that mean?</p>
-<h2>A bit of background</h2>
-<p>Starting in the details, we have <a href="https://en.wikipedia.org/wiki/public_key cryptography">public key cryptography</a>. The basic idea of public key cryptography is that you have some sort of algorithm with two keys: one of which can be used to encrypt things and can be made public and another separate piece of information which can be used to decrypt things and should remain private. That way, you can publish your public key, well, publically. Then anyone that wants to send you a message can do so, knowing that only you (since only you possess the private key) can read it.</p>
-<p>If we take this a step further, we can swap the roles of the public and private key<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Instead of encrypting with the public key, we will use the private key, requiring the <em>public</em> key for decryption. This sounds mad, since the public key is, by definition public. So what's the point of a message that only you can write but anyone can read?</p>
-<p>Well, that's exactly the point: <em>only you</em> can write it. This is what's called a digital signature. Since only your private key could have encoded the message and since only you have the private key, this allows anyone to read your message and be safe in the knowledge that you wrote it.</p>
-<p>This is exactly what DKIM does.</p>
-<p>By creating an public/private key pair, publishing the public key to a DNS record, and using the private key to sign messages, you are allowing any receiver to verify that <em>you</em> were person who sent them. Don't get me wrong, there are still a few problems with this approach (we'll get to them later), but it's a cool idea.</p>
-<h2>Implementation</h2>
-<p>So how do you actually implement it in practice?</p>
-<p>Given that I don't have any particular previous experience with mail servers, the answer involves a lot of Google. Here are the steps that worked for me.</p>
-<h4>1 - Have a previously configured server correctly delivering mail via <a href="http://www.postfix.org/">Postfix</a></h4>
-<h4>2 - Install <a href="http://www.opendkim.org/">OpenDKIM</a></h4>
-<pre class="bash"><code>sudo apt-get install -y opendkim opendkim-tools</code></pre>
-<h4>3 - Generate a new keypair</h4>
-<pre class="bash"><code>sudo opendkim-genkey -s mail -d example.com</code></pre>
-<p>The <code>-s</code> argument specifies a selector, which allows us to have multiple keypairs specified on the same domain (if we wanted to), while the <code>-d</code> is the domain we are signing for. In this case, we are generating a record for <code>mail._domainkey.example.com</code>.</p>
-<p>This will generate two files. The first is <code>mail.private</code>, which we will move to <code>/etc/opendkim/keys/example.com.private</code> (to match the <code>KeyFile</code> later). Also, we need to make sure that the file has correctly narrow Unix permissions, or OpenDKIM will refuse to use it (for our own safety):</p>
-<pre class="bash"><code>sudo chmod 0400 /etc/opendkim/keys/example.com.private
-sudo chown opendkim:opendkim /etc/opendkim/keys/example.com.private
-sudo adduser postfix opendkim</code></pre>
-<p>The second file is <code>mail.txt</code>, which is a DNS record for the above domain. Set it up so this returns successfully:</p>
-<pre class="bash"><code>$ dig mail._domainkey.example.com TXT
-
-...
-;; ANSWER SECTION:
-mail._domainkey.example.com. 599	IN TXT "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC5N3lnvvrYgPCRSoqn+awTpE+iGYcKBPpo8HHbcFfCIIV10Hwo4PhCoGZSaKVHOjDm4yefKXhQjM7iKzEPuBatE7O47hAx1CJpNuIdLxhILSbEmbMxJrJAG0HZVn8z6EAoOHZNaPHmK2h4UUrjOG8zA5BHfzJf7tGwI+K619fFUwIDAQAB" ; ----- DKIM key mail for example.com
-...</code></pre>
-<p>That's (almost) all we have to do to configure the public half of the key pair. (We still have to use the same selector later in the <code>KeyFile</code>, but that's it.)</p>
-<h4>4 - Create an OpenDKIM configuration file (<code>/etc/opendkim.conf</code>)</h4>
-<pre class="bash"><code>Canonicalization        relaxed/relaxed
-ExternalIgnoreList      refile:/etc/opendkim/TrustedHosts
-InternalHosts           refile:/etc/opendkim/TrustedHosts
-KeyTable                refile:/etc/opendkim/KeyTable
-LogWhy                  Yes
-MinimumKeyBits          1024
-Mode                    sv
-PidFile                 /var/run/opendkim/opendkim.pid
-SigningTable            refile:/etc/opendkim/SigningTable
-Socket                  inet:8891@localhost
-Syslog                  Yes
-SyslogSuccess           Yes
-UMask                   022
-UserID                  opendkim:opendkim</code></pre>
-<p>What in the world do those all mean? Well, (based somewhat on documentation and somewhat on expirimentation):</p>
-<ul>
-    <li><code>Canonicalization</code> - controls whether further mail servers can edit the message contents with destroying the signature. <code>relaxed</code> allows more modification, <code>simple</code> is more strict. <code>relaxed</code> seems to be the more common option.</li>
-    <li><code>ExternalIgnoreList</code> - hosts that we trust to send us mail; do not validate their DKIM signatures (if present). Specifying <code>refile</code> means that we can use wildcards.</li>
-    <li><code>InternalHosts</code> - hosts that will relay mail through us; if we see an unsigned message coming from one of them, sign it before forwarding it along (This is important! I'll get to why in a bit)</li>
-    <li><code>KeyTable</code> - a list of private keys we can use to sign messages (included later)</li>
-    <li><code>LogWhy</code> - log errors to <code>/var/log/mail.log</code> (useful for debugging)</li>
-    <li><code>MinimumKeyBits</code> - flag an error if we try to specify a private key shorter (less secure) than this</li>
-    <li><code>Mode</code> - various options, <code>sv</code> is fairly common and means <code>s</code>ign outgoing messages and <code>v</code>erify incoming ones</li>
-    <li><code>PidFile</code> - where to store the <a href="https://en.wikipedia.org/wiki/PID_file">PID file</a></li>
-    <li><code>SigningTable</code> - specify which key from the <code>KeyTable</code> should be used for a given message</li>
-    <li><code>Socket</code> - how Postfix and OpenDKIM communicate</li>
-    <li><code>Syslog</code>, <code>SyslogSuccess</code> - log to <a href="https://en.wikipedia.org/wiki/syslog">syslog</a> as well as <code>mail.log</code>; log successes as well as failures</li>
-    <li><code>UMask</code> - allows other Linux users (such as Postfix's) to talk to OpenDKIM</li>
-    <li><code>UserID</code> - the user that OpenDKIM runs as</li>
-</ul>
-<p>Fairly straight forward.</p>
-<h4>5 - Next, another copy of the socket definition in <code>/etc/default/opendkim</code> (I'm actually not sure why this one is necessary)</h4>
-<pre class="bash"><code>SOCKET="inet:8891@localhost"</code></pre>
-<p>Next, specify our keys in <code>/etc/opendkim/KeyTable</code>:</p>
-<pre class="bash"><code>example.com example.com:mail:/etc/opendkim/keys/example.com.private</code></pre>
-<p>The first entry is a name for the key. It can be anything and doesn't necessary have to match the domain, just so long as the corresponding entry in <code>SigningTable</code> matches. After that, you have the domain where your public key is hosted, the selector on that domain, and where the private key is locally located. So in the above example, <code>example.com:mail</code> corresponds to a key at <code>mail._domainkey.example.com</code>.</p>
-<p>And what emails to sign in <code>/etc/opendkim/SigningTable</code>:</p>
-<pre class="bash"><code>*@example.com example.com
-*@*.example.com example.com
-*@*.example.org example.com</code></pre>
-<p>This one is a bit more complicated, since for my particular case, I had emails coming from two different domains, along with subdomains in both cases (the first field). They can (and in this case) all use the same key, since the second entry matches the value specified in <code>KeyTable</code>.</p>
-<p>Note again: Since we're using wildcards here, we have to specify <code>refile</code> up above in <code>opendkim.conf</code>.</p>
-<h4>6 - Next, <code>/etc/opendkim/TrustedHosts</code></h4>
-<p>This file will be used to specify both incoming message we trust and outgoing message we will sign (although it doesn't have to do both).</p>
-<pre class="bash"><code>127.0.0.1
-10.77.0.0/16
-example.com
-*.example.com
-*.example.org
-*.*.example.org</code></pre>
-<p>Entries here can be either IP addresses, <a href="https://en.wikipedia.org/wiki/CIDR">CIDR</a> style IP ranges, or hostnames (including wildcards, since this is a <code>refile</code>), all of which I use above. This actually took a bit to figure out, since originally I was signing email directly from the box (successfully), but when I attempted to actually send a signed email from the product, it didn't work (since the frontends relay mail to the mail servers).</p>
-<h4>7 - Okay, that's enough to configure OpenDKIM. Next, we need to tell Postfix to talk to it</h4>
-<p>This one is relatively straight forward as well. Just add a few lines to the bottom of <code>/etc/postfix/main.cf</code>:</p>
-<pre class="bash"><code># DKIM
-milter_default_action = accept
-milter_protocol = 2
-smtpd_milters = inet:localhost:8891
-non_smtpd_milters = inet:localhost:8891</code></pre>
-<p>Essentially, milter is a protocol Postfix uses for plugins. We want to configure all mail traffic (both from smptd and not) to go to OpenDKIM, via the port we specified (twice) earlier. Shiny.</p>
-<h4>8 - Finally, restart both OpenDKIM and Postfix, so they can take advantage of their new settings</h4>
-<pre class="bash"><code>sudo service opendkim restart
-sudo service postfix restart</code></pre>
-<p>This should only take a few seconds.</p>
-<p>And that's it. We can send a test email:</p>
-<pre class="bash"><code>echo "test email" | mail -s &lt;code&gt;hostname&lt;/code&gt; me@example.com</code></pre>
-<p>That will send an email with the <code>hostname</code> of the current machine to the specified address, useful if you're working with multiple different machines and need to know which are up to date.</p>
-<p>Check the message headers and you should see a block that looks like this:</p>
-<pre class="bash"><code>DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=example.com; s=mail;
-        t=1439063676; bh=RnRlt9pNo9HfghopMAD1V157IZOFVrE6piv9xdXYFNs=;
-        h=To:Subject:Reply-To:From:Date;
-        b=LekoRRQgOX97WUHP/ELtl/yhMzZsiCPr8kqaYUpZER5sYZ1dyAwgOKKvuI3mL3IMo
-         4Y90NDGv+CHm2ZmAaGmFOgGnDPsDxLE+ptleVBP/cQny9grftwA8Emc3MKS6aJ/w5P
-         E1bh2wFE8LiRTl/wcof6JL0MyeoR8R63FCKMgnA8=</code></pre>
-<p>Bam.</p>
-<h2>A few caveats</h2>
-<p>So, what is DKIM actually used for?</p>
-<p>The original claim is that it's an <em>email validation system designed to detect email spoofing</em>. Which is all well and good, but there's one big problem: adaptation.</p>
-<p>Numbers are a little hard to come by, but one site that I found is builtWith trends: <a href="https://trends.builtwith.com/mx/DKIM">DKIM Usage Statistics</a>. Their reported coverage notes:</p>
-<ul>
-    <li>Quantcast Top 10k - 14 of 10,000</li>
-    <li>Quantcast Top 100k - 104 of 100,000</li>
-    <li>Quantcast Top Million - 585 of 865,105</li>
-    <li>Entire Internet - 24,064 of 328,844,222</li>
-</ul>
-<p>That's less than 0.1% in any category. Not so great.</p>
-<p>This is a problem, not because it means that mail servers aren't using it, but rather because there is little reason for mail <em>clients</em> to support it. It's easy enough to verify a DKIM signature if present, but they're so rarely present, that most will not go through that effort.</p>
-<p>Furthmore, the header does not sign the message headers and (unless you are using SMTP over TLS), it is trivial to remove. If the DKIM header is not present, the message is trivial to modify with the recipient none the wiser. This could be offset--for some business models--by requiring messages to contain a DKIM header and rejecting those that don't.</p>
-<p>Still, it's an interesting technology and there's no particular harm (other than a small amount of extra CPU effort to do the signing) in implementing it.</p>]]></content></entry><entry><title>Finding AWS IAM users by access key</title><link href="//blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key" /><id>urn:uuid:f736fe54-3577-7969-4613-87c0b20fea7c</id><updated>2015-07-22T00:00:00Z</updated><summary type="html"><![CDATA[<p>Every once in a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, I find myself with an <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html">AWS access key</a> and need to figure out who in the world it belongs to. Unfortunately, so far as I've been able to find, there's no way to directly do this in either the <a href="https://aws.amazon.com/console/">AWS console</a> or with the <a href="https://aws.amazon.com/cli/">AWS api</a>.</p>
-]]></summary><content type="html"><![CDATA[<p>Every once in a while<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>, I find myself with an <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSGettingStartedGuide/AWSCredentials.html">AWS access key</a> and need to figure out who in the world it belongs to. Unfortunately, so far as I've been able to find, there's no way to directly do this in either the <a href="https://aws.amazon.com/console/">AWS console</a> or with the <a href="https://aws.amazon.com/cli/">AWS api</a>.</p>
-<!--more-->
-<p>Luckily, <a href="https://aws.amazon.com/cli/">boto</a>:</p>
-<pre class="python"><code>#!/usr/bin/env python3
-
-import boto.iam.connection
-import pprint
-import sys
-
-if len(sys.argv) == 1:
-    print('Usage: who-iam [access-key ...]')
-    sys.exit(0)
-
-conn = boto.iam.connection.IAMConnection()
-users = conn.get_all_users()
-
-for user in users['list_users_response']['list_users_result']['users']:
-    keys = conn.get_all_access_keys(user['user_name'])
-    for key in keys['list_access_keys_response']['list_access_keys_result']['access_key_metadata']:
-        for target in sys.argv[1:]:
-            if key['access_key_id'] == target:
-                print(key['access_key_id'], user['user_name'])</code></pre>
-<p>Check it out (keys changed on the off chance that actually matters):</p>
-<pre class="bash"><code>$ who-iam AKIAIOSWISKB6EXAMPLE AKIAIOSGWISN7EXAMPLE
-AKIAIOSWISKB6EXAMPLE luke
-AKIAIOSGWISN7EXAMPLE han</code></pre>
-<p>It's rather slow (since it has to make <code>O(n)</code> requests and doesn't short circuit), but this should be something you do rarely enough that it doesn't matter.</p>
-<p>If you'd like to download the script, it's available in my <a href="https://github.com/jpverkamp/dotfiles">dotfiles</a>: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/who-iam">who-iam</a></p>]]></content></entry><entry><title>Configuring Websockets behind an AWS ELB</title><link href="//blog.jverkamp.com/2015/07/20/configuring-websockets-behind-an-aws-elb" /><id>urn:uuid:1c3c0a4c-eda7-cfb7-4a45-22f27c2bb334</id><updated>2015-07-20T00:00:00Z</updated><summary type="html"><![CDATA[<p>Recently at work, we were trying to get an application that uses <a href="https://en.wikipedia.org/wiki/websockets">websockets</a> working on an <a href="https://aws.amazon.com/">AWS</a> instance behind an <a href="https://aws.amazon.com/elasticloadbalancing/">ELB (load balancer)</a> and <a href="http://nginx.org/">nginx</a> on the instance.</p>
-<p>If you're either not using a secure connection or handling the cryptography on the instance (either in nginx or Flask), it works right out of the box. But if you want the ELB to handle TLS termination it doesn't work nearly as well... Luckily, after a bit of fiddling, I got it working.</p>
-]]></summary><content type="html"><![CDATA[<p>Recently at work, we were trying to get an application that uses <a href="https://en.wikipedia.org/wiki/websockets">websockets</a> working on an <a href="https://aws.amazon.com/">AWS</a> instance behind an <a href="https://aws.amazon.com/elasticloadbalancing/">ELB (load balancer)</a> and <a href="http://nginx.org/">nginx</a> on the instance.</p>
-<p>If you're either not using a secure connection or handling the cryptography on the instance (either in nginx or Flask), it works right out of the box. But if you want the ELB to handle TLS termination it doesn't work nearly as well... Luckily, after a bit of fiddling, I got it working.</p>
-<!--more-->
-<p>First, we have a basic application. For my purposes, I wrote a quick Websocket chat app: <a href="https://github.com/jpverkamp/ws-chat">ws-chat</a>. The particular implementation details aren't as important. We'll start with the nginx config file:</p>
-<pre class="nginx"><code>upstream webserver {
-    server 127.0.0.1:8000;
-}
-
-upstream wsserver {
-    server 127.0.0.1:9000;
-}
-
-server {
-    listen 80 proxy_protocol;
-
-    location / {
-        if ($http_x_forwarded_proto = "http") {
-            return 301 https://$host$request_uri;
-        }
-
-        proxy_pass http://webserver;
-    }
-
-    location /ws/ {
-        proxy_pass http://wsserver;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}</code></pre>
-<p>Straight forward enough. We have two backend services: a <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/web-server.py">web server</a> running on port 8000 (a simple Flask server that just servers a single <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/templates/index.html">HTML page</a>) and the <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/ws-server.py">websocket backend</a> running on port 9000. Alternatively, these could be the same codebase. The important parts are that you allow the Websocket <code>upgrade</code> header to pass through to establish the connection and that you tell nginx to listen using the <code>proxy_protocol</code>, an extra header that passes through extra information:</p>
-<pre class="text"><code>PROXY_STRING + single space + INET_PROTOCOL + single space + CLIENT_IP + single space + PROXY_IP + single space + CLIENT_PORT + single space + PROXY_PORT + "\r\n"</code></pre>
-<p>This seems like it wouldn't be necessary, except that without <code>proxy_protocol</code> AWS ELBs seem to strip something important to the connection.</p>
-<p>Next, we need to configure the load balancer. One complication here is that telling the load balancer to forward HTTPS traffic to HTTP will not work for the websockets. Instead, you have to configure it to forward TCP (SSL) to TCP. This will still work for HTTP/HTTPS traffic (as HTTP is just a specific protocol over TCP and HTTPS is just HTTP with a TLS layer), but it will also allow the non-HTTP websocket traffic to pass through successfully. Something like this:</p>
-<p><a href="//blog.jverkamp.com/2015/07/20/configuring-websockets-behind-an-aws-elb/configure-elb.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/07/20/configuring-websockets-behind-an-aws-elb/configure-elb.png" /></a></p>
-<p>(Don't forget to set the certificate :))</p>
-<p>Finally, you have to configure the ELB also to speak proxy protocol. This part is slightly more annoying, since (at least now), there's no way to configure this through the AWS console. You have to use the <a href="https://aws.amazon.com/cli/">AWS CLI</a>.</p>
-<p>First, create the new policy (assuming you have an environment variable <code>ELB_NAME</code> defined):</p>
-<pre class="bash"><code>aws elb create-load-balancer-policy \
-    --load-balancer-name $ELB_NAME \
-    --policy-name $ELB_NAME-proxy-protocol \
-    --policy-type-name ProxyProtocolPolicyType \\
-    --policy-attributes AttributeName=ProxyProtocol,AttributeValue=True</code></pre>
-<p>Then, attach it to the load balancer. You will have to run this once for each port that the instance is listening on:</p>
-<pre class="bash"><code>aws elb set-load-balancer-policies-for-backend-server \
-    --load-balancer-name $ELB_NAME \
-    --instance-port 80 \
-    --policy-names $ELB_NAME-proxy-protocol</code></pre>
-<p>Make sure that you're using <code>https://</code> for the web traffic and <code>wss://</code> for the websocket and you're golden. Encrypted websockets behind an AWS ELB. Now if only they would expose the proxy protocol options in the console...</p>]]></content></entry></feed>
+<p>The full source for the MFA version is also available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/missing-mfa.py">missing-mfa.py</a></p>]]></content></entry></feed>
