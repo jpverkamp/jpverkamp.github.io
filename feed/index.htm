@@ -1,5 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-07T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Free² HTTPS blog hosting via GitHub and CloudFlare</title><link href="//blog.jverkamp.com/2015/12/07/free-https-blog-hosting-via-github-and-cloudflare" /><id>urn:uuid:e034b0e0-08d4-330c-6f0a-b7af6af134cd</id><updated>2015-12-07T00:00:00Z</updated><summary type="html"><![CDATA[<p>The eagle-eyed among you<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> may have noticed something a bit different since last night:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-08T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 8</title><link href="//blog.jverkamp.com/2015/12/08/advent-of-code-day-8" /><id>urn:uuid:843d447d-6189-6d67-4c59-7ce85e2a5d3c</id><updated>2015-12-08T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/8">Source</a></p>
+<p><strong>Part 1:</strong> Given an escaped string of the form <code>"\xa8br\x8bjr\""</code>, convert it to the escaped form: <code>br js</code>. Calculate the total difference of lengths between the former (<code>16</code>) and the latter (<code>5</code>).</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/8">Source</a></p>
+<p><strong>Part 1:</strong> Given an escaped string of the form <code>"\xa8br\x8bjr\""</code>, convert it to the escaped form: <code>br js</code>. Calculate the total difference of lengths between the former (<code>16</code>) and the latter (<code>5</code>).</p>
+<!--more-->
+<pre class="python"><code>memory_count = 0
+raw_count = 0
+
+for line in sys.stdin:
+    raw = line.strip()
+    parsed = ast.literal_eval(raw) # This is probably cheating
+
+    raw_count += len(raw)
+    memory_count += len(parsed)
+
+print(raw_count - memory_count)</code></pre>
+<p>For a basic solution, we can cheat and use the <code>ast</code> module. It can interpret any Python literal, which includes escaped strings. Free!</p>
+<p>If we actually want to do it ourselves, it's straight forward enough to use regular expressions instead:</p>
+<pre class="python"><code>memory_count = 0
+raw_count = 0
+
+patterns = [
+    (r'\\"', '"'),
+    (r'\\\\', r'\\'),
+    (r'\\x(\d\d)', chr),
+    (r'^"(.*)"$', r'\1'),
+]
+
+for line in sys.stdin:
+    parsed = raw = line.strip()
+    for src, dst in patterns:
+        parsed = re.sub(src, dst, parsed)
+
+    print(raw, parsed)
+
+    raw_count += len(raw)
+    memory_count += len(parsed)
+
+print(raw_count - memory_count)</code></pre>
+<p>One interesting aspect is <code>chr</code>. That will convert a number such as <code>\x65</code> into the corresponding character <code>A</code>. It doesn't really matter since we just want the count, but it's kind of elegant.</p>
+<p>There is a subtle bug in this, bonus points to anyone that can figure it out. But for the moment, it works great on the given test cases.</p>
+<p><strong>Part 2:</strong> Do the opposite. Add another level of encoding such that <code>"\xa8br\x8bjr\""</code> would become <code>\"\\xa8br\\x8bjr\\\"\"</code>.</p>
+<pre class="python"><code>raw_count = 0
+encoded_count = 0
+
+for line in sys.stdin:
+    raw = line.strip()
+    encoded = re.sub(r'(["\\])', r'\\\1', raw)
+
+    raw_count += len(raw)
+    encoded_count += len(encoded) + 2 # Quotes are not included
+
+print(encoded_count - raw_count)</code></pre>
+<p>This time since we don't have different behavior for the different escaped characters, we can use a single regular expression.</p>
+<p>Not quite as interesting as <a href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7">Day 7</a>, but still neat.</p>]]></content></entry><entry><title>Free² HTTPS blog hosting via GitHub and CloudFlare</title><link href="//blog.jverkamp.com/2015/12/07/free-https-blog-hosting-via-github-and-cloudflare" /><id>urn:uuid:e034b0e0-08d4-330c-6f0a-b7af6af134cd</id><updated>2015-12-07T00:00:00Z</updated><summary type="html"><![CDATA[<p>The eagle-eyed among you<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> may have noticed something a bit different since last night:</p>
 <p><a href="//blog.jverkamp.com/2015/12/07/free-https-blog-hosting-via-github-and-cloudflare/https.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2015/12/07/free-https-blog-hosting-via-github-and-cloudflare/https.png" /></a></p>
 <p>That's right, I'm finally using HTTPS!</p>
 ]]></summary><content type="html"><![CDATA[<p>The eagle-eyed among you<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> may have noticed something a bit different since last night:</p>
@@ -219,34 +273,9 @@ print(mine(sys.argv[1], 5))</code></pre>
 <p><strong>Part 2:</strong> Do the same thing, only with six leading zeros.</p>
 <p>Nothing changes; just change the <code>length</code> parameter and wait a bit longer. Moderns computers can still crunch through a whole heck of a lot of hashes (9958218 for my particular input) in next to no time at all.</p>]]></content></entry><entry><title>Advent of Code: Day 3</title><link href="//blog.jverkamp.com/2015/12/03/advent-of-code-day-3" /><id>urn:uuid:68885146-6356-7c02-ec5c-5f0fbb4bf956</id><updated>2015-12-03T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/3">Source</a></p>
 <p><strong>Part 1:</strong> Given a string of <code><>^v</code> characters which mean move west, east, north, or south respectively and starting at the origin, how many unique positions do you pass through?</p>
-<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
-location = 0+0j
-
-directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
-
-for c in sys.stdin.read():
-    location += directions.get(c, 0+0j)
-    presents[location] += 1
-
-print(len(presents))</code></pre>
-<p>There are two tricks here, both of which I've used before. First, we have use <code>collections.defaultdict</code> to implement a basic counter. That way, we can safely do <code>+= 1</code> to any element without worrying if it exists first and without initializing the (potentially infinite) grid.</p>
-<p>Second, we represent points using <a href="https://en.wikipedia.org/wiki/complex_numbers">complex numbers</a>. That has the advantage of meaning that movement is just adding two (complex) numbers together and we can directly index the <code>presents</code> dictionary with the locations.</p>
-<p>At the end, the <code>len</code> of a dictionary is the number of keys, thus exactly equal to the number of locations visited (which thankfully works correctly even with a <code>defaultdict</code>). Neat.</p>
-<p><strong>Part 2:</strong> Start with two actors, each at the origin. Apply alternating characters to first one then the other, such that <code>^v^v</code> would result in one moving north twice, the other two south.</p>
-<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
-presents[0+0j] = 2
-
-locations = [0+0j, 0+0j]
-directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
-
-for i, c in enumerate(sys.stdin.read()):
-    which = i % len(location)
-    locations[which] += directions.get(c, 0+0j)
-    presents[locations[which]] += 1
-
-print(len(presents))</code></pre>
-<p>The basic code is the same here, the only difference is that we determine <code>which</code> actor is moving using <a href="https://en.wikipedia.org/wiki/modular_arithmatic">modular arithmatic</a> (<code>%</code>). One neat thing about this is that it scales without any other changes to any number of actors merely by putting more elements in the initial <code>locations</code> array.</p>]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/3">Source</a></p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/3">Source</a></p>
 <p><strong>Part 1:</strong> Given a string of <code><>^v</code> characters which mean move west, east, north, or south respectively and starting at the origin, how many unique positions do you pass through?</p>
+<!--more-->
 <pre class="python"><code>presents = collections.defaultdict(lambda : 0)
 location = 0+0j
 
@@ -378,15 +407,4 @@ for path, dirs, files in os.walk(GIF_PATH):
         if file.endswith('.gif'):
             os.path.join(path, file)</code></pre>
 <p>It's arguable which is more Pythonic (probably the latter), but I do find it interesting what impact writing piles of functional code (<a href="//blog.jverkamp.com/category/programming/by-language/racket">Racket</a>) will do to code in other languages.</p>
-<p>And, that's it. Short and sweet. Use responsibly.</p>]]></content></entry><entry><title>Advent of Code</title><link href="//blog.jverkamp.com/2015/12/01/advent-of-code" /><id>urn:uuid:5f4c0cf6-ad53-c952-fd22-723d73c08e90</id><updated>2015-12-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>I'm always on the lookout for new sources of quick<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> coding puzzles. This holiday season, <a href="http://adventofcode.com/">Advent of Code</a> scratches precisely that itch.</p>
-<blockquote>Advent of Code is a series of small programming puzzles for a variety of skill levels. They are self-contained and are just as appropriate for an expert who wants to stay sharp as they are for a beginner who is just learning to code. Each puzzle calls upon different skills and has two parts that build on a theme. -- <a href="http://adventofcode.com/about">About - Advent of Code</a></blockquote>
-<p>I've been working out each problem thus far in Python (my language of choice; along with Racket). I'm backfilling the first seven posts (along with this one), but I'll try to do the rest daily.</p>
-]]></summary><content type="html"><![CDATA[<p>I'm always on the lookout for new sources of quick<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> coding puzzles. This holiday season, <a href="http://adventofcode.com/">Advent of Code</a> scratches precisely that itch.</p>
-<blockquote>Advent of Code is a series of small programming puzzles for a variety of skill levels. They are self-contained and are just as appropriate for an expert who wants to stay sharp as they are for a beginner who is just learning to code. Each puzzle calls upon different skills and has two parts that build on a theme. -- <a href="http://adventofcode.com/about">About - Advent of Code</a></blockquote>
-<p>I've been working out each problem thus far in Python (my language of choice; along with Racket). I'm backfilling the first seven posts (along with this one), but I'll try to do the rest daily.</p>
-<!--more-->
-<p>If you'd like to see all of the solutions, here's a list:</p>
-<ul class="list-unstyled"><li class="post-listing"><h3>Dec 2015</h3><a href="//blog.jverkamp.com/2015/12/01/advent-of-code">Advent of Code</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/01/advent-of-code-day-1">Advent of Code: Day 1</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/02/advent-of-code-day-2">Advent of Code: Day 2</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/03/advent-of-code-day-3">Advent of Code: Day 3</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/04/advent-of-code-day-4">Advent of Code: Day 4</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5">Advent of Code: Day 5</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/06/advent-of-code-day-6">Advent of Code: Day 6</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7">Advent of Code: Day 7</a></li></ul>
-<p>As with my <a href="//blog.jverkamp.com/2012/11/03/project-euler">Project Euler</a> posts<span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>, I generally feel that these problems are more interesting if you take a crack at solving them yourself first. If you feel the same way, <em>stop reading</em>. This post will still be here when you're done, I promise<span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span>.</p>
-<p>For each post, I suggest you click through on the title to read the entire descriptions. They're amusing. I'll summarize the core of the problem here though.</p>
-<p>If you've solved the puzzles as well and posted your solutions, post a link below. I'd love to see how others approach the problems.</p>]]></content></entry></feed>
+<p>And, that's it. Short and sweet. Use responsibly.</p>]]></content></entry></feed>
