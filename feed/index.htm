@@ -1,5 +1,150 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-10T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 10</title><link href="//blog.jverkamp.com/2015/12/10/advent-of-code-day-10" /><id>urn:uuid:f36a3b14-d73a-1afd-d434-17fee29644cf</id><updated>2015-12-10T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/10">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-11T00:05:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>CSV to JSON</title><link href="//blog.jverkamp.com/2015/12/11/csv-to-json" /><id>urn:uuid:a19dc458-070c-e75e-8fdf-ee6884430831</id><updated>2015-12-11T00:05:00Z</updated><summary type="html"><![CDATA[<p>Today at work, I had to process a bunch of CSV data. Realizing that I don't have any particularly nice tools to work with streaming CSV data (although I did write about <a href="//blog.jverkamp.com/2012/10/04/querying-csv-files-with-sql">querying CSV files with SQL</a>), I decided to write one:</p>
+<pre class="bash"><code>$ cat users.csv
+
+"user_id","name","email","password"
+"1","Luke Skywalker","luke@rebel-alliance.io","$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq"
+"2","Han Solo","han@rebel-alliance.io","$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92"
+
+$ cat users.csv | csv2json | jq '.'
+
+{
+  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
+  "name": "Luke Skywalker",
+  "user_id": "1",
+  "email": "luke@rebel-alliance.io"
+}
+{
+  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
+  "name": "Han Solo",
+  "user_id": "2",
+  "email": "han@rebel-alliance.io"
+}</code></pre>
+]]></summary><content type="html"><![CDATA[<p>Today at work, I had to process a bunch of CSV data. Realizing that I don't have any particularly nice tools to work with streaming CSV data (although I did write about <a href="//blog.jverkamp.com/2012/10/04/querying-csv-files-with-sql">querying CSV files with SQL</a>), I decided to write one:</p>
+<pre class="bash"><code>$ cat users.csv
+
+"user_id","name","email","password"
+"1","Luke Skywalker","luke@rebel-alliance.io","$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq"
+"2","Han Solo","han@rebel-alliance.io","$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92"
+
+$ cat users.csv | csv2json | jq '.'
+
+{
+  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
+  "name": "Luke Skywalker",
+  "user_id": "1",
+  "email": "luke@rebel-alliance.io"
+}
+{
+  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
+  "name": "Han Solo",
+  "user_id": "2",
+  "email": "han@rebel-alliance.io"
+}</code></pre>
+<!--more-->
+<p>Luckily, Python has nice CSV and JSON libraries built in:</p>
+<pre class="python"><code># If --parse is set, try to parse each entry as json
+def parse(thing):
+    try:
+        return json.loads(thing)
+    except:
+        return thing
+
+# Assume that headers are the first row
+reader = csv.reader(sys.stdin)
+headers = None
+for row in reader:
+    if not headers:
+        headers = row
+        continue
+
+    if '--parse' in sys.argv:
+        row = [parse(thing) for thing in row]
+
+    # Recombine the headers with each row (no one said this was saving space)
+    row = dict(zip(headers, row))
+    print(json.dumps(row, default = str))</code></pre>
+<p>Basically, assume that the first row of the CSV data is headers (converting to a JSON dict doesn't make much sense if it isn't) and then combine that with each additional row to write out a dictionary. In addition, I put a bit of code in there to assume that you might be storing JSON in your CSV fields. If so, you can <code>--parse</code> the data automagically:</p>
+<pre class="bash"><code>$ cat users-with-preferences.csv | csv2json --parse | jq '.'
+
+{
+  "preferences": {
+    "force-user": true
+  },
+  "name": "Luke Skywalker",
+  "user_id": 1,
+  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
+  "email": "luke@rebel-alliance.io"
+}
+{
+  "preferences": {
+    "ship": "Millennium Falcon"
+  },
+  "name": "Han Solo",
+  "user_id": 2,
+  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
+  "email": "han@rebel-alliance.io"
+}</code></pre>
+<p>Note that the <code>user_id</code>s are actually numbers, the <code>preferences</code> field has been unpacked, and Luke's <code>force-user</code> status is a boolean. It's neat how you get all of that more or less for free.</p>
+<p>Also, have I mentioned how nice <a href="https://stedolan.github.io/jq/">jq</a> is for working with JSON?</p>
+<p>And that's it. The full source is part of my dotfiles now: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/csv2json">github:jpverkamp/dotfiles</a> (although all that's missing above is the <a href="https://en.wikipedia.org/wiki/shebang">shebang</a> and the imports). Enjoy!</p>]]></content></entry><entry><title>Advent of Code: Day 11</title><link href="//blog.jverkamp.com/2015/12/11/advent-of-code-day-11" /><id>urn:uuid:3ef4590d-8e71-7616-0cda-b3673c191da9</id><updated>2015-12-11T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/11">Source</a></p>
+<p><strong>Part 1:</strong> Find the next string in <a href="https://en.wikipedia.org/wiki/Lexicographical_order">Lexicographical_order</a> that matches these rules:</p>
+<ol>
+  <li>Must contain three neighboring, ascending letters (<code>ghi</code>)</li>
+  <li>Must not contain any of the letters <code>i</code>, <code>o</code>, or <code>l</code></li>
+  <li>Must contain two distinct pairs of letters</li>
+</ol>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/11">Source</a></p>
+<p><strong>Part 1:</strong> Find the next string in <a href="https://en.wikipedia.org/wiki/Lexicographical_order">Lexicographical_order</a> that matches these rules:</p>
+<ol>
+  <li>Must contain three neighboring, ascending letters (<code>ghi</code>)</li>
+  <li>Must not contain any of the letters <code>i</code>, <code>o</code>, or <code>l</code></li>
+  <li>Must contain two distinct pairs of letters</li>
+</ol>
+<!--more-->
+<p>This is pretty similar to <a href="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5">Advent of Code: Day 5</a>, although it cannot <em>quite</em> be done with purely regular expressions.</p>
+<pre class="python"><code>def is_valid(password):
+    numeric = list(map(ord, password))
+
+    return (
+        # Include an increasing subsequence
+        any(
+            numeric[i] + 2 == numeric[i + 1] + 1 == numeric[i + 2]
+            for i in range(len(password) - 2)
+        )
+        # May not contain i, o, or l
+        and not any(c in password for c in 'iol')
+        # Must have at least two different pairs
+        and len(set(re.findall(r'(.)\1', password))) &gt;= 2
+    )
+
+def increment(password):
+    numeric = list(map(ord, password))
+    index = -1
+
+    while True:
+        numeric[index] += 1
+        if numeric[index] &lt;= ord('z'):
+            break
+        else:
+            numeric[index] = ord('a')
+            index -= 1
+
+    return ''.join(map(chr, numeric))
+
+def next_valid(password):
+    while True:
+        password = increment(password)
+        if is_valid(password):
+            return password
+
+print(next_valid(sys.argv[1]))</code></pre>
+<p>Basically, there are two interesting problems: finding out if a string <code>is_valid</code> and <code>increment</code>ing one to the next value.</p>
+<p>For the first, we check each of the three cases in order. We can tell if there is an ascending sequence by first converting to numeric values (<code>ord</code> will return the <a href="https://en.wikipedia.org/wiki/unicode_codepoint">unicode codepoint</a> for a character) the comparing three adjacent values. The second test just checks if <code>any</code> character is <code>in</code> the string. The last actually does use regular expressions again to find all pairs of letters; then, by converting them into a set removes duplicates and counts unique values.</p>
+<p>For the second problem (<code>increment</code>), we use the numeric form again and start at the end of the string. We'll increment each character working back towards the front of the string, stopping as soon as we don't have to carry. Then, we convert the password back into a string using the inverse of <code>ord</code>: <code>chr</code>.</p>
+<p>And, that's it. It's certainly not the most efficient code, but it still takes only a few seconds.</p>
+<p><strong>Part 2:</strong> Find the next string matching the same rules after the one you found in part 1.</p>
+<p>Just run the same program again on the first one's input.</p>]]></content></entry><entry><title>Advent of Code: Day 10</title><link href="//blog.jverkamp.com/2015/12/10/advent-of-code-day-10" /><id>urn:uuid:f36a3b14-d73a-1afd-d434-17fee29644cf</id><updated>2015-12-10T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/10">Source</a></p>
 <p><strong>Part 1:</strong> Repeat a <a href="https://en.wikipedia.org/wiki/Look-and-say_sequence">Look-and-say sequence</a> 40 times. Return the length.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/10">Source</a></p>
 <p><strong>Part 1:</strong> Repeat a <a href="https://en.wikipedia.org/wiki/Look-and-say_sequence">Look-and-say sequence</a> 40 times. Return the length.</p>
@@ -338,48 +483,4 @@ print(sum(
 <p>Overall, worth the read. McClellan goes on my list of authors to watch.</p>
 <p>Next up, I'm going to step away from my <a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> for a moment, since I have a book club meeting coming up and instead read <a href="https://www.goodreads.com/book/show/15819028-the-golem-and-the-jinni">The Golem and the Jinni</a> by <a href="https://www.goodreads.com/author/show/6466778.Helene_Wecker">Helene Wecker</a> and <a href="https://www.goodreads.com/book/show/7163862-zoo-city">Zoo City</a> by <a href="https://www.goodreads.com/author/show/426034.Lauren_Beukes">Lauren Beukes</a>.</p>
 <p>After that, I should be back on track for my final (planned) series of the year: <a href="https://www.goodreads.com/series/40853-necroscope">Necroscope</a> (15 books!).</p>
-<p>Onwards!</p>]]></content></entry><entry><title>Advent of Code: Day 5</title><link href="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5" /><id>urn:uuid:1d7592cf-1697-7d8b-e618-55152e623f25</id><updated>2015-12-05T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/5">Source</a></p>
-<p><strong>Part 1:</strong> A 'nice' string contains at least three vowels, one double letter (such as <code>xx</code>), and none of the strings <code>ab</code>, <code>cd</code>, <code>pq</code>, or <code>xy</code>. Count nice strings.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/5">Source</a></p>
-<p><strong>Part 1:</strong> A 'nice' string contains at least three vowels, one double letter (such as <code>xx</code>), and none of the strings <code>ab</code>, <code>cd</code>, <code>pq</code>, or <code>xy</code>. Count nice strings.</p>
-<!--more-->
-<pre class="python"><code>def is_nice(word):
-    return (
-        re.search(r'.*([aeiou].*){3}', word)
-        and re.search(r'(.)\1', word)
-        and not re.search(r'(ab|cd|pq|xy)', word)
-    )
-
-nice_count = 0
-for line in sys.stdin:
-    if is_nice(line.strip()):
-        nice_count += 1
-
-print(nice_count)</code></pre>
-<p>This is a perfect application for regular expressions. In this case, <code>.*([aeiou].*){3}</code> says to match a vowel <code>[aeiou]</code> followed by any number (including zero) three times. <code>(.)\1</code> says to match any one character, then match that same character again (<code>\1</code> refers to the first matched group in parenthesis). <code>(ab|cd|pq|xy)</code> matches any one of the verboten sequences and then we negate it with <code>not</code>.</p>
-<p><strong>Part 2:</strong> A 'nice' string now contains a pair of letters appearing twice in a string (such as <code>xy</code> in <code>axybcxydef</code>) and one pattern of the form <code>xyx</code> (with the first and third letters the same).</p>
-<p>The code is the same, just change the regular expressions to two new patterns, each with a back reference:</p>
-<pre class="python"><code>re.search(r'(..).*\1', word)
-and re.search(r'(.).\1', word)</code></pre>
-<p>The first matches any two characters followed by any number (including zero) uninteresting characters, followed by that same first two characters. The second does the same, only with a single character repeated group and exactly one random character in between.</p>
-<p><a href="http://xkcd.com/208/"><img src="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5/xkcd-208.png" /></a></p>]]></content></entry><entry><title>Advent of Code: Day 4</title><link href="//blog.jverkamp.com/2015/12/04/advent-of-code-day-4" /><id>urn:uuid:216f239d-ca7c-12de-7b86-7275e8f4baab</id><updated>2015-12-04T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/4">Source</a></p>
-<p><strong>Part 1:</strong> Mine Adventcoins. Basically, find the lowest integer such that the string <code>{prefix}{integer}</code> has an <a href="https://en.wikipedia.org/wiki/md5">md5</a> hash with at least 5 leading zeros. <span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span><span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span></p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/4">Source</a></p>
-<p><strong>Part 1:</strong> Mine Adventcoins. Basically, find the lowest integer such that the string <code>{prefix}{integer}</code> has an <a href="https://en.wikipedia.org/wiki/md5">md5</a> hash with at least 5 leading zeros. <span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span><span class="footnote"><sup><a href="#footnote-3">[3]</a></sup></span></p>
-<!--more-->
-<pre class="python"><code>def naturals(i = 0):
-    while True:
-        yield i
-        i += 1
-
-def mine(prefix, length):
-    for i in naturals(1):
-        coin = '{prefix}{suffix}'.format(prefix = prefix, suffix = i).encode('utf-8')
-        hash = hashlib.md5(coin).hexdigest()
-        if all(c == '0' for c in hash[0:length]):
-            return (i, hash)
-
-print(mine(sys.argv[1], 5))</code></pre>
-<p><code>naturals</code> is code that I've used on a number of previous occasions and basically <del>stole</del> borrowed from Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=n-naturals">n-naturals</a></code>. It allows you to iterate indefinitely over the <a href="https://en.wikipedia.org/wiki/natural_numbers">natural numbers</a>. Then, just hash and look for enough leading zeros.</p>
-<p><strong>Part 2:</strong> Do the same thing, only with six leading zeros.</p>
-<p>Nothing changes; just change the <code>length</code> parameter and wait a bit longer. Moderns computers can still crunch through a whole heck of a lot of hashes (9958218 for my particular input) in next to no time at all.</p>]]></content></entry></feed>
+<p>Onwards!</p>]]></content></entry></feed>

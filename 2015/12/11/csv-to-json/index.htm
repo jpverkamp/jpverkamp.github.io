@@ -4,7 +4,7 @@
         
         
 
-        <title>Advent of Code: Day 10 | jverkamp.com | John-Paul Verkamp</title>
+        <title>CSV to JSON | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
         <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
@@ -72,47 +72,84 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Advent of Code: Day 10</h1>
+                        <h1 class="entry-title">CSV to JSON</h1>
 
                         <div class="entry-meta">
-                                <span class="posted-on"><time class="entry-date" datetime="2015-12-10"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">10</span></time></span>
-                                <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming/by-source/advent-of-code">Advent of Code</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li></ul></span>
+                                <span class="posted-on"><time class="entry-date" datetime="2015-12-11"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">11</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming/by-topic/file-formats/csv">CSV</a></li><li><a href="//blog.jverkamp.com/category/programming/by-topic/file-formats/json">JSON</a></li><li><a href="//blog.jverkamp.com/category/programming/libraries">Libraries</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p><a href="http://adventofcode.com/day/10">Source</a></p>
-<p><strong>Part 1:</strong> Repeat a <a href="https://en.wikipedia.org/wiki/Look-and-say_sequence">Look-and-say sequence</a> 40 times. Return the length.</p>
+                        <p>Today at work, I had to process a bunch of CSV data. Realizing that I don't have any particularly nice tools to work with streaming CSV data (although I did write about <a href="//blog.jverkamp.com/2012/10/04/querying-csv-files-with-sql">querying CSV files with SQL</a>), I decided to write one:</p>
+<pre class="bash"><code>$ cat users.csv
+
+"user_id","name","email","password"
+"1","Luke Skywalker","luke@rebel-alliance.io","$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq"
+"2","Han Solo","han@rebel-alliance.io","$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92"
+
+$ cat users.csv | csv2json | jq '.'
+
+{
+  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
+  "name": "Luke Skywalker",
+  "user_id": "1",
+  "email": "luke@rebel-alliance.io"
+}
+{
+  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
+  "name": "Han Solo",
+  "user_id": "2",
+  "email": "han@rebel-alliance.io"
+}</code></pre>
 <!--more-->
-<pre class="python"><code>def look_and_say(seq):
-    result = ''
-    index = 0
-    count = 0
-    buffer = None
+<p>Luckily, Python has nice CSV and JSON libraries built in:</p>
+<pre class="python"><code># If --parse is set, try to parse each entry as json
+def parse(thing):
+    try:
+        return json.loads(thing)
+    except:
+        return thing
 
-    for c in seq:
-        if c == buffer:
-            count += 1
-        else:
-            if buffer:
-                result += '{}{}'.format(count, buffer)
-            count = 1
-            buffer = c
+# Assume that headers are the first row
+reader = csv.reader(sys.stdin)
+headers = None
+for row in reader:
+    if not headers:
+        headers = row
+        continue
 
-    result += '{}{}'.format(count, buffer)
-    return result
+    if '--parse' in sys.argv:
+        row = [parse(thing) for thing in row]
 
-def repeat(f, n, seq):
-    for i in range(n):
-        seq = f(seq)
-    return seq
+    # Recombine the headers with each row (no one said this was saving space)
+    row = dict(zip(headers, row))
+    print(json.dumps(row, default = str))</code></pre>
+<p>Basically, assume that the first row of the CSV data is headers (converting to a JSON dict doesn't make much sense if it isn't) and then combine that with each additional row to write out a dictionary. In addition, I put a bit of code in there to assume that you might be storing JSON in your CSV fields. If so, you can <code>--parse</code> the data automagically:</p>
+<pre class="bash"><code>$ cat users-with-preferences.csv | csv2json --parse | jq '.'
 
-print(len(repeat(look_and_say, int(sys.argv[2]), sys.argv[1])))</code></pre>
-<p>I've already gone into far more detail on <a href="//blog.jverkamp.com/2014/09/15/look-and-say">Look and Say</a> sequences before. But this time, we're doing it iteratively in Python! Basically, we just maintain a bit of state for which character we are currently counting. When we change, output; otherwise, incrememnt the change.</p>
-<p>There are some interesting tricks you could do with regular expressions, but I doubt you can find something faster or much more elegant than this.</p>
-<p><strong>Part 2:</strong> Repeat 50 times.</p>
-<p>There's nothing particular interesting about this one. I've already accounted for this by passing in the second paramter on the command line.</p>
+{
+  "preferences": {
+    "force-user": true
+  },
+  "name": "Luke Skywalker",
+  "user_id": 1,
+  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
+  "email": "luke@rebel-alliance.io"
+}
+{
+  "preferences": {
+    "ship": "Millennium Falcon"
+  },
+  "name": "Han Solo",
+  "user_id": 2,
+  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
+  "email": "han@rebel-alliance.io"
+}</code></pre>
+<p>Note that the <code>user_id</code>s are actually numbers, the <code>preferences</code> field has been unpacked, and Luke's <code>force-user</code> status is a boolean. It's neat how you get all of that more or less for free.</p>
+<p>Also, have I mentioned how nice <a href="https://stedolan.github.io/jq/">jq</a> is for working with JSON?</p>
+<p>And that's it. The full source is part of my dotfiles now: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/csv2json">github:jpverkamp/dotfiles</a> (although all that's missing above is the <a href="https://en.wikipedia.org/wiki/shebang">shebang</a> and the imports). Enjoy!</p>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>
@@ -121,8 +158,8 @@ print(len(repeat(look_and_say, int(sys.argv[2]), sys.argv[1])))</code></pre>
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "Advent of Code: Day 10";
-var disqus_url = "http://blog.jverkamp.com/2015/12/10/advent-of-code-day-10/";
+var disqus_title = "CSV to JSON";
+var disqus_url = "http://blog.jverkamp.com/2015/12/11/csv-to-json/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -135,7 +172,7 @@ var disqus_url = "http://blog.jverkamp.com/2015/12/10/advent-of-code-day-10/";
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/09/the-golem-and-the-jinni">← The Golem and the Jinni</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li><li><a href="//blog.jverkamp.com/2015/12/11/advent-of-code-day-11">Advent of Code: Day 11 →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/09/advent-of-code-day-9">← Advent of Code: Day 9</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/2015/12/11/advent-of-code-day-11">Advent of Code: Day 11 →</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/11/advent-of-code-day-11">← Advent of Code: Day 11</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/11/advent-of-code-day-11">← Advent of Code: Day 11</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="//blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="//blog.jverkamp.com/rss.png" /></a><br />
