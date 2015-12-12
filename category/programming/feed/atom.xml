@@ -1,5 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-11T00:05:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>CSV to JSON</title><link href="//blog.jverkamp.com/2015/12/11/csv-to-json" /><id>urn:uuid:a19dc458-070c-e75e-8fdf-ee6884430831</id><updated>2015-12-11T00:05:00Z</updated><summary type="html"><![CDATA[<p>Today at work, I had to process a bunch of CSV data. Realizing that I don't have any particularly nice tools to work with streaming CSV data (although I did write about <a href="//blog.jverkamp.com/2012/10/04/querying-csv-files-with-sql">querying CSV files with SQL</a>), I decided to write one:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-12T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 12</title><link href="//blog.jverkamp.com/2015/12/12/advent-of-code-day-12" /><id>urn:uuid:7064b41b-df01-5a75-1da9-ab651b846820</id><updated>2015-12-12T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/12">Source</a></p>
+<p><strong>Part 1:</strong> Sum all integer values in a <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> object.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/12">Source</a></p>
+<p><strong>Part 1:</strong> Sum all integer values in a <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> object.</p>
+<!--more-->
+<pre class="python"><code>def js_sum(js):
+    if isinstance(js, dict):
+        return sum(map(js_sum, js.values()))
+    elif isinstance(js, list):
+        return sum(map(js_sum, js))
+    elif isinstance(js, int):
+        return js
+    else:
+        return 0
+
+print(js_sum(json.load(sys.stdin)))</code></pre>
+<p>Due to the nature of JSON, this is very much a recursive problem. There's really not much else to say. If you have a complex data structure (<code>dict</code> or <code>list</code>), recur into it. Otherwise, if it's a number add it, if not don't.</p>
+<p><strong>Part 2:</strong> Do not recur into any <code>dict</code> that contains the value <code>"red"</code>.</p>
+<p>Given the structure we already had, the tweak for this is straight forward (if not terribly efficient):</p>
+<pre class="python"><code>def js_sum(js):
+    if isinstance(js, dict) and not 'red' in js.values():
+        return sum(map(js_sum, js.values()))
+    elif isinstance(js, list):
+        return sum(map(js_sum, js))
+    elif isinstance(js, int):
+        return js
+    else:
+        return 0
+
+print(js_sum(json.load(sys.stdin)))</code></pre>]]></content></entry><entry><title>CSV to JSON</title><link href="//blog.jverkamp.com/2015/12/11/csv-to-json" /><id>urn:uuid:a19dc458-070c-e75e-8fdf-ee6884430831</id><updated>2015-12-11T00:05:00Z</updated><summary type="html"><![CDATA[<p>Today at work, I had to process a bunch of CSV data. Realizing that I don't have any particularly nice tools to work with streaming CSV data (although I did write about <a href="//blog.jverkamp.com/2012/10/04/querying-csv-files-with-sql">querying CSV files with SQL</a>), I decided to write one:</p>
 <pre class="bash"><code>$ cat users.csv
 
 "user_id","name","email","password"
@@ -460,35 +489,4 @@ def mine(prefix, length):
 print(mine(sys.argv[1], 5))</code></pre>
 <p><code>naturals</code> is code that I've used on a number of previous occasions and basically <del>stole</del> borrowed from Racket's <code><a href="http://docs.racket-lang.org/search/index.html?q=n-naturals">n-naturals</a></code>. It allows you to iterate indefinitely over the <a href="https://en.wikipedia.org/wiki/natural_numbers">natural numbers</a>. Then, just hash and look for enough leading zeros.</p>
 <p><strong>Part 2:</strong> Do the same thing, only with six leading zeros.</p>
-<p>Nothing changes; just change the <code>length</code> parameter and wait a bit longer. Moderns computers can still crunch through a whole heck of a lot of hashes (9958218 for my particular input) in next to no time at all.</p>]]></content></entry><entry><title>Advent of Code: Day 3</title><link href="//blog.jverkamp.com/2015/12/03/advent-of-code-day-3" /><id>urn:uuid:68885146-6356-7c02-ec5c-5f0fbb4bf956</id><updated>2015-12-03T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/3">Source</a></p>
-<p><strong>Part 1:</strong> Given a string of <code><>^v</code> characters which mean move west, east, north, or south respectively and starting at the origin, how many unique positions do you pass through?</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/3">Source</a></p>
-<p><strong>Part 1:</strong> Given a string of <code><>^v</code> characters which mean move west, east, north, or south respectively and starting at the origin, how many unique positions do you pass through?</p>
-<!--more-->
-<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
-location = 0+0j
-
-directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
-
-for c in sys.stdin.read():
-    location += directions.get(c, 0+0j)
-    presents[location] += 1
-
-print(len(presents))</code></pre>
-<p>There are two tricks here, both of which I've used before. First, we have use <code>collections.defaultdict</code> to implement a basic counter. That way, we can safely do <code>+= 1</code> to any element without worrying if it exists first and without initializing the (potentially infinite) grid.</p>
-<p>Second, we represent points using <a href="https://en.wikipedia.org/wiki/complex_numbers">complex numbers</a>. That has the advantage of meaning that movement is just adding two (complex) numbers together and we can directly index the <code>presents</code> dictionary with the locations.</p>
-<p>At the end, the <code>len</code> of a dictionary is the number of keys, thus exactly equal to the number of locations visited (which thankfully works correctly even with a <code>defaultdict</code>). Neat.</p>
-<p><strong>Part 2:</strong> Start with two actors, each at the origin. Apply alternating characters to first one then the other, such that <code>^v^v</code> would result in one moving north twice, the other two south.</p>
-<pre class="python"><code>presents = collections.defaultdict(lambda : 0)
-presents[0+0j] = 2
-
-locations = [0+0j, 0+0j]
-directions = {'&lt;': -1+0j, '&gt;':  1+0j, '^':  0+1j, 'v':  0-1j}
-
-for i, c in enumerate(sys.stdin.read()):
-    which = i % len(location)
-    locations[which] += directions.get(c, 0+0j)
-    presents[locations[which]] += 1
-
-print(len(presents))</code></pre>
-<p>The basic code is the same here, the only difference is that we determine <code>which</code> actor is moving using <a href="https://en.wikipedia.org/wiki/modular_arithmatic">modular arithmatic</a> (<code>%</code>). One neat thing about this is that it scales without any other changes to any number of actors merely by putting more elements in the initial <code>locations</code> array.</p>]]></content></entry></feed>
+<p>Nothing changes; just change the <code>length</code> parameter and wait a bit longer. Moderns computers can still crunch through a whole heck of a lot of hashes (9958218 for my particular input) in next to no time at all.</p>]]></content></entry></feed>
