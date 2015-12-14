@@ -1,5 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-12T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 12</title><link href="//blog.jverkamp.com/2015/12/12/advent-of-code-day-12" /><id>urn:uuid:7064b41b-df01-5a75-1da9-ab651b846820</id><updated>2015-12-12T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/12">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-13T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 13</title><link href="//blog.jverkamp.com/2015/12/13/advent-of-code-day-13" /><id>urn:uuid:3ba54996-2c7e-6568-0680-2a19a63ad1c0</id><updated>2015-12-13T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/13">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of seating preferences of the form <code>Alice would gain 54 happiness units by sitting next to Bob.</code> find the seating arrangement which maximizes total happiness.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/13">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of seating preferences of the form <code>Alice would gain 54 happiness units by sitting next to Bob.</code> find the seating arrangement which maximizes total happiness.</p>
+<!--more-->
+<pre class="python"><code>happiness = collections.defaultdict(lambda : collections.defaultdict(lambda : 0))
+for line in sys.stdin:
+    self, gain_lose, amount, other = re.match(
+        r'(\w+) would (gain|lose) (\d+) happiness units by sitting next to (\w+).',
+        line
+    ).groups()
+
+    amount = int(amount)
+    if gain_lose == 'lose':
+        amount *= -1
+
+    happiness[self][other] = amount
+
+best_score, best_ordering = max(
+    (
+        sum(
+            happiness[a][b] + happiness[b][a]
+            for a, b in zip(ordering, ordering[1:] + (ordering[0],))
+        ),
+        ordering
+    )
+    for ordering in itertools.permutations(happiness.keys())
+)
+
+print(best_ordering)
+print(best_score)</code></pre>
+<p>I think I may have over functional'ed this one. <img alt="smile" class="emoji" src="/emoji/smile.svg" /> Basically, we parse everything first into a nested dictionary of happiness scores. Since we always have to add both directions in, it doesn't matter which is which in the indicies so long as it's consistent.</p>
+<p>After that, we'll use the same trick as in <a href="//blog.jverkamp.com/2015/12/09/advent-of-code-day-9">Advent of Code: Day 9</a>: calculate pairs of scores and orderings and find the largest one. To specifically calculate the total score, we add the happiness in both directions for every pair of neighbors once again using <code>zip</code>. The only difference is that we add <code>(ordering[0],)</code> back onto the end so that we don't lose the first/last pairing of teh list.</p>
+<p><strong>Part 2:</strong> Add one more person <code>me</code>, who has a mutual happiness score of ±0 with every other person.</p>
+<p>There's not actually terribly much different here, since the <code>happiness</code> structure already contains a default of 0 for any missing user. Because of that, we can just change this line:</p>
+<pre class="python"><code>for ordering in itertools.permutations(happiness.keys())</code></pre>
+<p>to this:</p>
+<pre class="python"><code>for ordering in itertools.permutations(list(happiness.keys()) + ['me'])</code></pre>
+<p>It takes a bit longer since the number of permutations grows rather quickly, but still not more than a few seconds total runtime.</p>
+<p>Shiny.</p>]]></content></entry><entry><title>Advent of Code: Day 12</title><link href="//blog.jverkamp.com/2015/12/12/advent-of-code-day-12" /><id>urn:uuid:7064b41b-df01-5a75-1da9-ab651b846820</id><updated>2015-12-12T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/12">Source</a></p>
 <p><strong>Part 1:</strong> Sum all integer values in a <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> object.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/12">Source</a></p>
 <p><strong>Part 1:</strong> Sum all integer values in a <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> object.</p>
@@ -366,64 +405,4 @@ print(encoded_count - raw_count)</code></pre>
 <p>In order to ease this transaction, I changed my config file so that all internal links to my own blog now use a relative protocol: <code>//blog.jverkamp.com</code></p>
 <p>And... that's it.</p>
 <p>I only had one hiccup transferring my DNS entries to CloudFlare (it missed email records on a subdomain), but other than that it was rather easy to set up.</p>
-<p>If you haven't given it a try, check it out! Between CloudFlare and now Let's Encrypt, there's really no good reason you shouldn't be encrypting just about everything.</p>]]></content></entry><entry><title>Advent of Code: Day 7</title><link href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7" /><id>urn:uuid:43df33f1-13b4-5b4b-cbce-a7118aadaadd</id><updated>2015-12-07T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/7">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of definitions of the form <code>123 -> x</code>, <code>NOT e -> f</code>, and <code>x AND y -> z</code>, with possible operations <code>NOT</code>, <code>AND</code>, <code>OR</code>, <code>LSHIFT</code>, and <code>RSHIFT</code>, find the value of <code>a</code>. Assume all values are 16-bit integers.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/7">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of definitions of the form <code>123 -> x</code>, <code>NOT e -> f</code>, and <code>x AND y -> z</code>, with possible operations <code>NOT</code>, <code>AND</code>, <code>OR</code>, <code>LSHIFT</code>, and <code>RSHIFT</code>, find the value of <code>a</code>. Assume all values are 16-bit integers.</p>
-<!--more-->
-<p>This one is actually really cool. It's basically a full <a href="https://en.wikipedia.org/wiki/declarative_programming language">declarative programming language</a>.</p>
-<pre class="python"><code>monops = {
-    'NOT': lambda x : ~x & 0xFFFF,
-}
-
-binops = {
-    'AND': operator.and_,
-    'OR': operator.or_,
-    'LSHIFT': operator.lshift,
-    'RSHIFT': operator.rshift,
-}
-
-machine = {}
-
-for line in sys.stdin:
-    line = line.strip()
-
-    m = (
-        re.match(r'(\w+) -&gt; (\w+)', line)
-        or re.match(r'(\w+) (\w+) (\w+) -&gt; (\w+)', line)
-        or re.match(r'(\w+) (\w+) -&gt; (\w+)', line)
-    ).groups()
-
-    machine[m[-1]] = m[:-1]
-
-def evaluate(register_or_value):
-    try:
-        return int(register_or_value)
-    except:
-        return run(register_or_value)
-
-def run(register, state = {}):
-    if not register in state:
-        command = machine[register]
-
-        if len(command) == 1:
-            value, = command
-            state[register] = evaluate(value)
-
-        elif len(command) == 2:
-            monop, input = command
-            state[register] = monops[monop](evaluate(input))
-
-        elif len(command) == 3:
-            input_1, binop, input_2 = command
-            state[register] = binops[binop](evaluate(input_1), evaluate(input_2))
-
-    return state[register]
-
-print(run('a'))</code></pre>
-<p>Basically, we have two interesting functions: <code>evaluate</code> and <code>run</code>. Each of those will be applied to any parameters. <code>evaulate</code> will check first if the parameter is an integer, if so return it directly. If not, fall back to <code>run</code>, which is a <a href="https://en.wikipedia.org/wiki/memoized">memoized</a> virtual machine.</p>
-<p>If we have the values of any inputs (either because they are numeric or because we've already calculated them), it will directly calculate the value for that gate and cache it. If not, it will calculate any recursive outputs it needs (caching them as well), and then calculate it's own. Through the power of <a href="https://en.wikipedia.org/wiki/dynamic_programming">dynamic programming</a>, this will naturally resolve the order the gates need to be run in while still running in <code>O(n)</code> time to the number of gates. Very cool, in my opinion<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
-<p>The only other oddity is the definition of <code>NOT</code>. Since Python integers are not 16-bits, doing a bitwise and with <code>0xFFFF</code> (the maximum 16-bit value) will lock the result into that range.</p>
-<p><strong>Part 2:</strong> Take the value of <code>a</code> after running part 1 and assign it to <code>b</code>. Run the simulation again.</p>
-<p>Due to how I load in the instructions, this is as easy as adding a line of the form <code>14710 -> b</code> to the end of my input before running it. That will replace the previous command for <code>b</code>. You can do it in a <a href="http://www.zsh.org/"><code>zsh</code></a> one liner<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span> shells would work just as well}:</p>
-<pre class="zsh"><code>{cat input.txt; (echo "\n" &#96;cat input.txt | python part-1.py&#96; "-&gt; b")} | python3 part-1.py</code></pre>]]></content></entry></feed>
+<p>If you haven't given it a try, check it out! Between CloudFlare and now Let's Encrypt, there's really no good reason you shouldn't be encrypting just about everything.</p>]]></content></entry></feed>
