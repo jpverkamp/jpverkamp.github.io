@@ -1,5 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-13T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 13</title><link href="//blog.jverkamp.com/2015/12/13/advent-of-code-day-13" /><id>urn:uuid:3ba54996-2c7e-6568-0680-2a19a63ad1c0</id><updated>2015-12-13T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/13">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-14T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 14</title><link href="//blog.jverkamp.com/2015/12/14/advent-of-code-day-14" /><id>urn:uuid:842a50a1-1a7f-6edb-ecb9-efaf989b031f</id><updated>2015-12-14T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/14">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of running patterns of the form <code>Comet can fly 14 km/s for 10 seconds, but then must rest for 127 seconds.</code>, determine who will be in the lead after <code>2503</code> seconds.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/14">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of running patterns of the form <code>Comet can fly 14 km/s for 10 seconds, but then must rest for 127 seconds.</code>, determine who will be in the lead after <code>2503</code> seconds.</p>
+<!--more-->
+<pre class="python"><code>simulation_time = int(sys.argv[1])
+data = {}
+
+for line in sys.stdin:
+    name, speed, time, rest = re.match(
+        r'(\w+) can fly (\d+) km/s for (\d+) seconds, but then must rest for (\d+) seconds.',
+        line
+    ).groups()
+
+    data[name] = {
+        'speed': int(speed),
+        'running_time': int(time),
+        'resting_time': int(rest),
+        'distance': 0,
+        'resting': False,
+        'timer': int(time),
+    }
+
+for tick in range(1, simulation_time + 1):
+    for key in data:
+        if data[key]['timer'] == 0:
+            data[key]['resting'] = not data[key]['resting']
+            data[key]['timer'] = (
+                data[key]['resting_time']
+                if data[key]['resting']
+                else data[key]['running_time']
+            )
+
+        if not data[key]['resting']:
+            data[key]['distance'] += data[key]['speed']
+
+        data[key]['timer'] -= 1
+
+print(max(
+    (data[key]['distance'], key)
+    for key in data
+))</code></pre>
+<p>Originally, I was going to use a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> for this one. That would have let me put each next event (switching from running to resting or vice versa) in the queue and always pull off the next one to happen. Unfortunately, that made the code path right around stopping a bit complicated, since if one was running at the moment the race ends, they only update partially.</p>
+<p>Instead, we just have a simulation that once per second will update the state (when <code>data[key]['timer'] == 0</code>), the distance (when )<code>not data[key]['resting']</code>), and the <code>timer</code>. Relatively straight forward. The one remaining amusing part is the ordering of the two <code>if</code> statements. If they're in the other order, you have an off-by-one problem where you should be running but have already changed state to <code>resting</code>.</p>
+<p><strong>Part 2:</strong> Run the same simulation, but after each round award one point to whoever is in first place (one to each in the case of ties). Determine who has the highest score.</p>
+<p>For the most part, the code doesn't change. Basically, we're going to add one more field to each entry in <code>data</code>:</p>
+<pre class="python"><code>data[name] = {
+    ...
+    'score': 0,
+}</code></pre>
+<p>Then we can use the same code that we had earlier to find the highest distance. Unfortunately, we cannot just increment that one because of ties; instead we have to loop:</p>
+<pre class="python"><code>for tick in range(1, simulation_time + 1):
+  ...
+
+  max_distance, max_name = max((data[key]['distance'], key) for key in data)
+
+  for key in data:
+      if data[key]['distance'] == max_distance:
+          data[key]['score'] += 1</code></pre>
+<p>Then at the end, we print out the maximum <code>score</code> rather than <code>distance</code>.</p>]]></content></entry><entry><title>Advent of Code: Day 13</title><link href="//blog.jverkamp.com/2015/12/13/advent-of-code-day-13" /><id>urn:uuid:3ba54996-2c7e-6568-0680-2a19a63ad1c0</id><updated>2015-12-13T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/13">Source</a></p>
 <p><strong>Part 1:</strong> Given a list of seating preferences of the form <code>Alice would gain 54 happiness units by sitting next to Bob.</code> find the seating arrangement which maximizes total happiness.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/13">Source</a></p>
 <p><strong>Part 1:</strong> Given a list of seating preferences of the form <code>Alice would gain 54 happiness units by sitting next to Bob.</code> find the seating arrangement which maximizes total happiness.</p>
@@ -31,7 +90,7 @@ best_score, best_ordering = max(
 print(best_ordering)
 print(best_score)</code></pre>
 <p>I think I may have over functional'ed this one. <img alt="smile" class="emoji" src="/emoji/smile.svg" /> Basically, we parse everything first into a nested dictionary of happiness scores. Since we always have to add both directions in, it doesn't matter which is which in the indicies so long as it's consistent.</p>
-<p>After that, we'll use the same trick as in <a href="//blog.jverkamp.com/2015/12/09/advent-of-code-day-9">Advent of Code: Day 9</a>: calculate pairs of scores and orderings and find the largest one. To specifically calculate the total score, we add the happiness in both directions for every pair of neighbors once again using <code>zip</code>. The only difference is that we add <code>(ordering[0],)</code> back onto the end so that we don't lose the first/last pairing of teh list.</p>
+<p>After that, we'll use the same trick as in <a href="//blog.jverkamp.com/2015/12/09/advent-of-code-day-9">Advent of Code: Day 9</a>: calculate pairs of scores and orderings and find the largest one. To specifically calculate the total score, we add the happiness in both directions for every pair of neighbors once again using <code>zip</code>. The only difference is that we add <code>(ordering[0],)</code> back onto the end so that we don't lose the first/last pairing of the list.</p>
 <p><strong>Part 2:</strong> Add one more person <code>me</code>, who has a mutual happiness score of ±0 with every other person.</p>
 <p>There's not actually terribly much different here, since the <code>happiness</code> structure already contains a default of 0 for any missing user. Because of that, we can just change this line:</p>
 <pre class="python"><code>for ordering in itertools.permutations(happiness.keys())</code></pre>
@@ -484,28 +543,4 @@ print(sum(
 <pre class="python"><code>elif mode == 'turn off':
     if lights[x][y] &gt; 0:
         lights[x][y] -= 1</code></pre>
-<p>Since this is the only case that can be negative, it's the only one we have to special case.</p>]]></content></entry><entry><title>Advent of Code: Day 5</title><link href="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5" /><id>urn:uuid:1d7592cf-1697-7d8b-e618-55152e623f25</id><updated>2015-12-05T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/5">Source</a></p>
-<p><strong>Part 1:</strong> A 'nice' string contains at least three vowels, one double letter (such as <code>xx</code>), and none of the strings <code>ab</code>, <code>cd</code>, <code>pq</code>, or <code>xy</code>. Count nice strings.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/5">Source</a></p>
-<p><strong>Part 1:</strong> A 'nice' string contains at least three vowels, one double letter (such as <code>xx</code>), and none of the strings <code>ab</code>, <code>cd</code>, <code>pq</code>, or <code>xy</code>. Count nice strings.</p>
-<!--more-->
-<pre class="python"><code>def is_nice(word):
-    return (
-        re.search(r'.*([aeiou].*){3}', word)
-        and re.search(r'(.)\1', word)
-        and not re.search(r'(ab|cd|pq|xy)', word)
-    )
-
-nice_count = 0
-for line in sys.stdin:
-    if is_nice(line.strip()):
-        nice_count += 1
-
-print(nice_count)</code></pre>
-<p>This is a perfect application for regular expressions. In this case, <code>.*([aeiou].*){3}</code> says to match a vowel <code>[aeiou]</code> followed by any number (including zero) three times. <code>(.)\1</code> says to match any one character, then match that same character again (<code>\1</code> refers to the first matched group in parenthesis). <code>(ab|cd|pq|xy)</code> matches any one of the verboten sequences and then we negate it with <code>not</code>.</p>
-<p><strong>Part 2:</strong> A 'nice' string now contains a pair of letters appearing twice in a string (such as <code>xy</code> in <code>axybcxydef</code>) and one pattern of the form <code>xyx</code> (with the first and third letters the same).</p>
-<p>The code is the same, just change the regular expressions to two new patterns, each with a back reference:</p>
-<pre class="python"><code>re.search(r'(..).*\1', word)
-and re.search(r'(.).\1', word)</code></pre>
-<p>The first matches any two characters followed by any number (including zero) uninteresting characters, followed by that same first two characters. The second does the same, only with a single character repeated group and exactly one random character in between.</p>
-<p><a href="http://xkcd.com/208/"><img src="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5/xkcd-208.png" /></a></p>]]></content></entry></feed>
+<p>Since this is the only case that can be negative, it's the only one we have to special case.</p>]]></content></entry></feed>
