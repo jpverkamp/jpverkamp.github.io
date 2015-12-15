@@ -1,5 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-14T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 14</title><link href="//blog.jverkamp.com/2015/12/14/advent-of-code-day-14" /><id>urn:uuid:842a50a1-1a7f-6edb-ecb9-efaf989b031f</id><updated>2015-12-14T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/14">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-15T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 15</title><link href="//blog.jverkamp.com/2015/12/15/advent-of-code-day-15" /><id>urn:uuid:cc3ed765-8159-4ad1-c41d-de1fae535ee2</id><updated>2015-12-15T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
+<p><strong>Part 1:</strong> Input is a list of ingredients of the form:</p>
+<pre class="text"><code>Frosting: capacity 4, durability -2, flavor 0, texture 0, calories 5
+Candy: capacity 0, durability 5, flavor -1, texture 0, calories 8</code></pre>
+<p>A receipt score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
+<p>For example, 4 Frosting and 2 Candy above, would have a score of of <code>-2 * 4 + 5 * 2 = 2</code> for durability and <code>0 * 4 + -1 * 2 = -2</code> (and thus ignored as we only accept positive scores) for a total thus far of 2.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
+<p><strong>Part 1:</strong> Input is a list of ingredients of the form:</p>
+<pre class="text"><code>Frosting: capacity 4, durability -2, flavor 0, texture 0, calories 5
+Candy: capacity 0, durability 5, flavor -1, texture 0, calories 8</code></pre>
+<p>A receipt score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
+<p>For example, 4 Frosting and 2 Candy above, would have a score of of <code>-2 * 4 + 5 * 2 = 2</code> for durability and <code>0 * 4 + -1 * 2 = -2</code> (and thus ignored as we only accept positive scores) for a total thus far of 2.</p>
+<!--more-->
+<p>The code is getting a bit longer, but a brute force solution still works great:</p>
+<pre class="python"><code>try:
+    TOTAL_QUANTITY = int(sys.argv[1])
+except:
+    print('Usage: cat input.txt | ./part-1.py [TOTAL_QUANTITY]')
+    sys.exit(0)
+
+ingredients = collections.defaultdict(lambda : collections.defaultdict(lambda : 0))
+properties = set()
+
+for line in sys.stdin:
+    item, pairs = line.split(':')
+    for pair in pairs.split(','):
+        property, amount = pair.strip().split(' ')
+        ingredients[item.lower()][property] = int(amount)
+        properties.add(property)
+
+items = list(sorted(ingredients.keys()))
+properties.remove('calories')
+
+def calculate_score(quantities):
+    score = 1
+
+    for property in properties:
+        property_score = sum(
+            quantities[item] * ingredients[item][property]
+            for item in quantities
+        )
+
+        if property_score &gt; 0:
+            score *= property_score
+
+    return score
+
+def splits(amount, count):
+    if count &lt;= 1:
+        yield [amount]
+    else:
+        for i in range(amount + 1):
+            for subsplit in splits(amount - i, count - 1):
+                yield [i] + subsplit
+
+best_score = 0
+best_quantities = None
+
+for split in splits(TOTAL_QUANTITY, len(items)):
+    quantities = dict(zip(items, split))
+    score = calculate_score(quantities)
+
+    if score &gt; best_score:
+        best_score = score
+        best_quantities = quantities
+
+print(best_score)
+print(best_quantities)]</code></pre>
+<p>Essentially, there are four parts. First, we load all of the ingredients and their scores into memory. Then, <code>calculate_score</code> will take the logic described in the problem and return a score for any given quantities. Third, <code>splits</code> is a generator that will return all possible ways to divide <code>amount</code> items into <code>count</code> buckets:</p>
+<pre class="python"><code>print(list(splits(5, 3)))
+[[0, 0, 5],
+ [0, 1, 4],
+ [0, 2, 3],
+ [0, 3, 2],
+ [0, 4, 1],
+ [0, 5, 0],
+ [1, 0, 4],
+ [1, 1, 3],
+ [1, 2, 2],
+ [1, 3, 1],
+ [1, 4, 0],
+ [2, 0, 3],
+ [2, 1, 2],
+ [2, 2, 1],
+ [2, 3, 0],
+ [3, 0, 2],
+ [3, 1, 1],
+ [3, 2, 0],
+ [4, 0, 1],
+ [4, 1, 0],
+ [5, 0, 0]]</code></pre>
+<p>Finally, we use all of those pieces to iterate over all of the possible scores. <code>dict(zip(items, split))</code> is a quick way to take two lists (of keys and values) and combine them into a dictionary.</p>
+<p>I also tried to work out a solution using a <a href="https://en.wikipedia.org/wiki/genetic_algorithm">genetic algorithm</a>: <a href="https://github.com/jpverkamp/advent-of-code/blob/master/day-15/part-1-genetic.py">part-1-genetic.py</a>. It does work (in that it finds a pretty good solution), but the solution isn't optimal and it takes just as long as just brute forcing the problem. It's interesting though.</p>
+<p><strong>Part 2:</strong> Do the same thing, only throw out any solutions that do not have a sum calorie count of exactly 500.</p>
+<p>The tweak for this part is actually fairly elegant:</p>
+<pre class="python"><code>def calculate_score(quantities):
+    ...
+
+    calorie_count = sum(
+        quantities[item] * ingredients[item]['calories']
+        for item in quantities
+    )
+    if calorie_count != TOTAL_CALORIES:
+        return float("-inf")
+
+    ...</code></pre>
+<p>Since we're looking for the largest score, returning a score that is infinitely low will skip over any invalid solutions. Other than that (and a new <code>try</code> block at the top), everything remains the same.</p>
+<p>This was an interesting problem. Not quite as elegant a solution as I'd like, but it's still well within my self imposed (originally from Project Euler) 1 minute limit.</p>]]></content></entry><entry><title>Advent of Code: Day 14</title><link href="//blog.jverkamp.com/2015/12/14/advent-of-code-day-14" /><id>urn:uuid:842a50a1-1a7f-6edb-ecb9-efaf989b031f</id><updated>2015-12-14T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/14">Source</a></p>
 <p><strong>Part 1:</strong> Given a list of running patterns of the form <code>Comet can fly 14 km/s for 10 seconds, but then must rest for 127 seconds.</code>, determine who will be in the lead after <code>2503</code> seconds.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/14">Source</a></p>
 <p><strong>Part 1:</strong> Given a list of running patterns of the form <code>Comet can fly 14 km/s for 10 seconds, but then must rest for 127 seconds.</code>, determine who will be in the lead after <code>2503</code> seconds.</p>
@@ -391,58 +498,4 @@ else:
 <p><strong>Part 2:</strong> Find the longest route.</p>
 <p>Just change <code>min</code> to <code>max</code>.</p>
 <p>This wouldn't work if there wasn't a connection listed between every possible station (there is in my given input, since 8 stations will have <code>8*7/2 = 28</code> connections). That's solveable though. Just use <code>float("-inf")</code> for the default distance, so that any routes with invalid stations will have an infinitely small distance.</p>
-<p>This was a pretty cool problem again!</p>]]></content></entry><entry><title>Advent of Code: Day 8</title><link href="//blog.jverkamp.com/2015/12/08/advent-of-code-day-8" /><id>urn:uuid:843d447d-6189-6d67-4c59-7ce85e2a5d3c</id><updated>2015-12-08T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/8">Source</a></p>
-<p><strong>Part 1:</strong> Given an escaped string of the form <code>"\xa8br\x8bjr\""</code>, convert it to the escaped form: <code>br js</code>. Calculate the total difference of lengths between the former (<code>16</code>) and the latter (<code>5</code>).</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/8">Source</a></p>
-<p><strong>Part 1:</strong> Given an escaped string of the form <code>"\xa8br\x8bjr\""</code>, convert it to the escaped form: <code>br js</code>. Calculate the total difference of lengths between the former (<code>16</code>) and the latter (<code>5</code>).</p>
-<!--more-->
-<pre class="python"><code>memory_count = 0
-raw_count = 0
-
-for line in sys.stdin:
-    raw = line.strip()
-    parsed = ast.literal_eval(raw) # This is probably cheating
-
-    raw_count += len(raw)
-    memory_count += len(parsed)
-
-print(raw_count - memory_count)</code></pre>
-<p>For a basic solution, we can cheat and use the <code>ast</code> module. It can interpret any Python literal, which includes escaped strings. Free!</p>
-<p>If we actually want to do it ourselves, it's straight forward enough to use regular expressions instead:</p>
-<pre class="python"><code>memory_count = 0
-raw_count = 0
-
-patterns = [
-    (r'\\"', '"'),
-    (r'\\\\', r'\\'),
-    (r'\\x(\d\d)', chr),
-    (r'^"(.*)"$', r'\1'),
-]
-
-for line in sys.stdin:
-    parsed = raw = line.strip()
-    for src, dst in patterns:
-        parsed = re.sub(src, dst, parsed)
-
-    print(raw, parsed)
-
-    raw_count += len(raw)
-    memory_count += len(parsed)
-
-print(raw_count - memory_count)</code></pre>
-<p>One interesting aspect is <code>chr</code>. That will convert a number such as <code>\x65</code> into the corresponding character <code>A</code>. It doesn't really matter since we just want the count, but it's kind of elegant.</p>
-<p>There is a subtle bug in this, bonus points to anyone that can figure it out. But for the moment, it works great on the given test cases.</p>
-<p><strong>Part 2:</strong> Do the opposite. Add another level of encoding such that <code>"\xa8br\x8bjr\""</code> would become <code>\"\\xa8br\\x8bjr\\\"\"</code>.</p>
-<pre class="python"><code>raw_count = 0
-encoded_count = 0
-
-for line in sys.stdin:
-    raw = line.strip()
-    encoded = re.sub(r'(["\\])', r'\\\1', raw)
-
-    raw_count += len(raw)
-    encoded_count += len(encoded) + 2 # Quotes are not included
-
-print(encoded_count - raw_count)</code></pre>
-<p>This time since we don't have different behavior for the different escaped characters, we can use a single regular expression.</p>
-<p>Not quite as interesting as <a href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7">Day 7</a>, but still neat.</p>]]></content></entry></feed>
+<p>This was a pretty cool problem again!</p>]]></content></entry></feed>
