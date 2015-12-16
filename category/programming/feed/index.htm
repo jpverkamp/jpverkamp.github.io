@@ -1,15 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-15T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 15</title><link href="//blog.jverkamp.com/2015/12/15/advent-of-code-day-15" /><id>urn:uuid:cc3ed765-8159-4ad1-c41d-de1fae535ee2</id><updated>2015-12-15T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-16T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 16</title><link href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16" /><id>urn:uuid:03ff5f24-7cd0-f74f-d7bd-db34d25cf913</id><updated>2015-12-16T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of target values of the form:</p>
+<pre class="text"><code>children: 3
+cats: 7
+samoyeds: 2</code></pre>
+<p>And a list of 'Aunt Sues', each with known values:</p>
+<pre class="text"><code>Sue 1: children: 1, cars: 8, vizslas: 7
+Sue 2: akitas: 10, perfumes: 10, children: 5
+Sue 3: cars: 5, pomeranians: 4, vizslas: 1</code></pre>
+<p>Determine which Sue has no unset but matching values.</p>
+<p>For example, Sue 1 is invalid because <code>children</code> is 1 versus 3 and Sue 2 because <code>children</code> is 5 versus 3. Given only the values above, Sue 3 would be valid since there are no contradictions.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of target values of the form:</p>
+<pre class="text"><code>children: 3
+cats: 7
+samoyeds: 2</code></pre>
+<p>And a list of 'Aunt Sues', each with known values:</p>
+<pre class="text"><code>Sue 1: children: 1, cars: 8, vizslas: 7
+Sue 2: akitas: 10, perfumes: 10, children: 5
+Sue 3: cars: 5, pomeranians: 4, vizslas: 1</code></pre>
+<p>Determine which Sue has no unset but matching values.</p>
+<p>For example, Sue 1 is invalid because <code>children</code> is 1 versus 3 and Sue 2 because <code>children</code> is 5 versus 3. Given only the values above, Sue 3 would be valid since there are no contradictions.</p>
+<!--more-->
+<p>I think understanding this problem took longer than solving it. Originally, I thought that missing values should be treated as <code>float('inf')</code>, but they should just be ignored entirely:</p>
+<pre class="python"><code>targets = {}
+sues = collections.defaultdict(dict)
+
+loading_targets = True
+for line in sys.stdin:
+    line = line.strip()
+
+    if not line:
+        loading_targets = False
+
+    elif loading_targets:
+        key, val = line.split(': ')
+        targets[key] = int(val)
+
+    else:
+        sue, things = line.strip().split(': ', 1)
+        for thing in things.split(', '):
+            key, val = thing.split(': ')
+            sues[sue][key] = int(val)
+
+for sue in sues:
+    valid = True
+
+    for key in targets:
+        if key in sues[sue] and sues[sue][key] != targets[key]:
+            valid = False
+            break
+
+    if valid:
+        print(sue)</code></pre>
+<p>The longer half is correctly parsing and loading the data. For my case, I put both inputs in the same stream, separated by an empty line (similar to <a href="https://en.wikipedia.org/wiki/HTTP">HTTP</a> and other protocols actually).</p>
+<p>After that, it was just a matter of checking each Sue for the first existent but non-matching value.</p>
+<p><strong>Part 2:</strong> Repeat the same algorithm, however assume that a Sue must have strictly more <code>cats</code> and <code>trees</code> than listed and strictly less <code>pomeranians</code> and <code>goldfish</code>.</p>
+<p>For this, I introduced another <code>defaultdict</code> which contains the <code>comparators</code> to use for any given value:</p>
+<pre class="python"><code>comparators = collections.defaultdict(lambda : operator.eq)
+comparators['cats'] = comparators['trees'] = operator.gt
+comparators['pomeranians'] = comparators['goldfish'] = operator.lt</code></pre>
+<p>After that, we can change the <code>for sue in sues</code> loop to take the comparator into account:</p>
+<pre class="python"><code>for sue in sues:
+    valid = True
+
+    for key in targets:
+        if key in sues[sue] and not comparators[key](sues[sue][key], targets[key]):
+                valid = False
+                break
+
+    if valid:
+        print(sue)</code></pre>
+<p>Neat.</p>]]></content></entry><entry><title>Advent of Code: Day 15</title><link href="//blog.jverkamp.com/2015/12/15/advent-of-code-day-15" /><id>urn:uuid:cc3ed765-8159-4ad1-c41d-de1fae535ee2</id><updated>2015-12-15T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
 <p><strong>Part 1:</strong> Input is a list of ingredients of the form:</p>
 <pre class="text"><code>Frosting: capacity 4, durability -2, flavor 0, texture 0, calories 5
 Candy: capacity 0, durability 5, flavor -1, texture 0, calories 8</code></pre>
-<p>A receipt score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
+<p>A recipe score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
 <p>For example, 4 Frosting and 2 Candy above, would have a score of of <code>-2 * 4 + 5 * 2 = 2</code> for durability and <code>0 * 4 + -1 * 2 = -2</code> (and thus ignored as we only accept positive scores) for a total thus far of 2.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
 <p><strong>Part 1:</strong> Input is a list of ingredients of the form:</p>
 <pre class="text"><code>Frosting: capacity 4, durability -2, flavor 0, texture 0, calories 5
 Candy: capacity 0, durability 5, flavor -1, texture 0, calories 8</code></pre>
-<p>A receipt score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
+<p>A recipe score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
 <p>For example, 4 Frosting and 2 Candy above, would have a score of of <code>-2 * 4 + 5 * 2 = 2</code> for durability and <code>0 * 4 + -1 * 2 = -2</code> (and thus ignored as we only accept positive scores) for a total thus far of 2.</p>
 <!--more-->
 <p>The code is getting a bit longer, but a brute force solution still works great:</p>
@@ -532,64 +604,4 @@ for line in sys.stdin:
 
 print(encoded_count - raw_count)</code></pre>
 <p>This time since we don't have different behavior for the different escaped characters, we can use a single regular expression.</p>
-<p>Not quite as interesting as <a href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7">Day 7</a>, but still neat.</p>]]></content></entry><entry><title>Advent of Code: Day 7</title><link href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7" /><id>urn:uuid:43df33f1-13b4-5b4b-cbce-a7118aadaadd</id><updated>2015-12-07T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/7">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of definitions of the form <code>123 -> x</code>, <code>NOT e -> f</code>, and <code>x AND y -> z</code>, with possible operations <code>NOT</code>, <code>AND</code>, <code>OR</code>, <code>LSHIFT</code>, and <code>RSHIFT</code>, find the value of <code>a</code>. Assume all values are 16-bit integers.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/7">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of definitions of the form <code>123 -> x</code>, <code>NOT e -> f</code>, and <code>x AND y -> z</code>, with possible operations <code>NOT</code>, <code>AND</code>, <code>OR</code>, <code>LSHIFT</code>, and <code>RSHIFT</code>, find the value of <code>a</code>. Assume all values are 16-bit integers.</p>
-<!--more-->
-<p>This one is actually really cool. It's basically a full <a href="https://en.wikipedia.org/wiki/declarative_programming language">declarative programming language</a>.</p>
-<pre class="python"><code>monops = {
-    'NOT': lambda x : ~x & 0xFFFF,
-}
-
-binops = {
-    'AND': operator.and_,
-    'OR': operator.or_,
-    'LSHIFT': operator.lshift,
-    'RSHIFT': operator.rshift,
-}
-
-machine = {}
-
-for line in sys.stdin:
-    line = line.strip()
-
-    m = (
-        re.match(r'(\w+) -&gt; (\w+)', line)
-        or re.match(r'(\w+) (\w+) (\w+) -&gt; (\w+)', line)
-        or re.match(r'(\w+) (\w+) -&gt; (\w+)', line)
-    ).groups()
-
-    machine[m[-1]] = m[:-1]
-
-def evaluate(register_or_value):
-    try:
-        return int(register_or_value)
-    except:
-        return run(register_or_value)
-
-def run(register, state = {}):
-    if not register in state:
-        command = machine[register]
-
-        if len(command) == 1:
-            value, = command
-            state[register] = evaluate(value)
-
-        elif len(command) == 2:
-            monop, input = command
-            state[register] = monops[monop](evaluate(input))
-
-        elif len(command) == 3:
-            input_1, binop, input_2 = command
-            state[register] = binops[binop](evaluate(input_1), evaluate(input_2))
-
-    return state[register]
-
-print(run('a'))</code></pre>
-<p>Basically, we have two interesting functions: <code>evaluate</code> and <code>run</code>. Each of those will be applied to any parameters. <code>evaulate</code> will check first if the parameter is an integer, if so return it directly. If not, fall back to <code>run</code>, which is a <a href="https://en.wikipedia.org/wiki/memoized">memoized</a> virtual machine.</p>
-<p>If we have the values of any inputs (either because they are numeric or because we've already calculated them), it will directly calculate the value for that gate and cache it. If not, it will calculate any recursive outputs it needs (caching them as well), and then calculate it's own. Through the power of <a href="https://en.wikipedia.org/wiki/dynamic_programming">dynamic programming</a>, this will naturally resolve the order the gates need to be run in while still running in <code>O(n)</code> time to the number of gates. Very cool, in my opinion<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
-<p>The only other oddity is the definition of <code>NOT</code>. Since Python integers are not 16-bits, doing a bitwise and with <code>0xFFFF</code> (the maximum 16-bit value) will lock the result into that range.</p>
-<p><strong>Part 2:</strong> Take the value of <code>a</code> after running part 1 and assign it to <code>b</code>. Run the simulation again.</p>
-<p>Due to how I load in the instructions, this is as easy as adding a line of the form <code>14710 -> b</code> to the end of my input before running it. That will replace the previous command for <code>b</code>. You can do it in a <a href="http://www.zsh.org/"><code>zsh</code></a> one liner<span class="footnote"><sup><a href="#footnote-5">[5]</a></sup></span> shells would work just as well}:</p>
-<pre class="zsh"><code>{cat input.txt; (echo "\n" &#96;cat input.txt | python part-1.py&#96; "-&gt; b")} | python3 part-1.py</code></pre>]]></content></entry></feed>
+<p>Not quite as interesting as <a href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7">Day 7</a>, but still neat.</p>]]></content></entry></feed>

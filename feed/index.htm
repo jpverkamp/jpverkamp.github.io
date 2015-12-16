@@ -1,15 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-15T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 15</title><link href="//blog.jverkamp.com/2015/12/15/advent-of-code-day-15" /><id>urn:uuid:cc3ed765-8159-4ad1-c41d-de1fae535ee2</id><updated>2015-12-15T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-16T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 16</title><link href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16" /><id>urn:uuid:03ff5f24-7cd0-f74f-d7bd-db34d25cf913</id><updated>2015-12-16T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of target values of the form:</p>
+<pre class="text"><code>children: 3
+cats: 7
+samoyeds: 2</code></pre>
+<p>And a list of 'Aunt Sues', each with known values:</p>
+<pre class="text"><code>Sue 1: children: 1, cars: 8, vizslas: 7
+Sue 2: akitas: 10, perfumes: 10, children: 5
+Sue 3: cars: 5, pomeranians: 4, vizslas: 1</code></pre>
+<p>Determine which Sue has no unset but matching values.</p>
+<p>For example, Sue 1 is invalid because <code>children</code> is 1 versus 3 and Sue 2 because <code>children</code> is 5 versus 3. Given only the values above, Sue 3 would be valid since there are no contradictions.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of target values of the form:</p>
+<pre class="text"><code>children: 3
+cats: 7
+samoyeds: 2</code></pre>
+<p>And a list of 'Aunt Sues', each with known values:</p>
+<pre class="text"><code>Sue 1: children: 1, cars: 8, vizslas: 7
+Sue 2: akitas: 10, perfumes: 10, children: 5
+Sue 3: cars: 5, pomeranians: 4, vizslas: 1</code></pre>
+<p>Determine which Sue has no unset but matching values.</p>
+<p>For example, Sue 1 is invalid because <code>children</code> is 1 versus 3 and Sue 2 because <code>children</code> is 5 versus 3. Given only the values above, Sue 3 would be valid since there are no contradictions.</p>
+<!--more-->
+<p>I think understanding this problem took longer than solving it. Originally, I thought that missing values should be treated as <code>float('inf')</code>, but they should just be ignored entirely:</p>
+<pre class="python"><code>targets = {}
+sues = collections.defaultdict(dict)
+
+loading_targets = True
+for line in sys.stdin:
+    line = line.strip()
+
+    if not line:
+        loading_targets = False
+
+    elif loading_targets:
+        key, val = line.split(': ')
+        targets[key] = int(val)
+
+    else:
+        sue, things = line.strip().split(': ', 1)
+        for thing in things.split(', '):
+            key, val = thing.split(': ')
+            sues[sue][key] = int(val)
+
+for sue in sues:
+    valid = True
+
+    for key in targets:
+        if key in sues[sue] and sues[sue][key] != targets[key]:
+            valid = False
+            break
+
+    if valid:
+        print(sue)</code></pre>
+<p>The longer half is correctly parsing and loading the data. For my case, I put both inputs in the same stream, separated by an empty line (similar to <a href="https://en.wikipedia.org/wiki/HTTP">HTTP</a> and other protocols actually).</p>
+<p>After that, it was just a matter of checking each Sue for the first existent but non-matching value.</p>
+<p><strong>Part 2:</strong> Repeat the same algorithm, however assume that a Sue must have strictly more <code>cats</code> and <code>trees</code> than listed and strictly less <code>pomeranians</code> and <code>goldfish</code>.</p>
+<p>For this, I introduced another <code>defaultdict</code> which contains the <code>comparators</code> to use for any given value:</p>
+<pre class="python"><code>comparators = collections.defaultdict(lambda : operator.eq)
+comparators['cats'] = comparators['trees'] = operator.gt
+comparators['pomeranians'] = comparators['goldfish'] = operator.lt</code></pre>
+<p>After that, we can change the <code>for sue in sues</code> loop to take the comparator into account:</p>
+<pre class="python"><code>for sue in sues:
+    valid = True
+
+    for key in targets:
+        if key in sues[sue] and not comparators[key](sues[sue][key], targets[key]):
+                valid = False
+                break
+
+    if valid:
+        print(sue)</code></pre>
+<p>Neat.</p>]]></content></entry><entry><title>Advent of Code: Day 15</title><link href="//blog.jverkamp.com/2015/12/15/advent-of-code-day-15" /><id>urn:uuid:cc3ed765-8159-4ad1-c41d-de1fae535ee2</id><updated>2015-12-15T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
 <p><strong>Part 1:</strong> Input is a list of ingredients of the form:</p>
 <pre class="text"><code>Frosting: capacity 4, durability -2, flavor 0, texture 0, calories 5
 Candy: capacity 0, durability 5, flavor -1, texture 0, calories 8</code></pre>
-<p>A receipt score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
+<p>A recipe score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
 <p>For example, 4 Frosting and 2 Candy above, would have a score of of <code>-2 * 4 + 5 * 2 = 2</code> for durability and <code>0 * 4 + -1 * 2 = -2</code> (and thus ignored as we only accept positive scores) for a total thus far of 2.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/15">Source</a></p>
 <p><strong>Part 1:</strong> Input is a list of ingredients of the form:</p>
 <pre class="text"><code>Frosting: capacity 4, durability -2, flavor 0, texture 0, calories 5
 Candy: capacity 0, durability 5, flavor -1, texture 0, calories 8</code></pre>
-<p>A receipt score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
+<p>A recipe score is a product of the positive quantity scores (ignoring calories), where each quantity score is the product of the quantity and that product for each product.</p>
 <p>For example, 4 Frosting and 2 Candy above, would have a score of of <code>-2 * 4 + 5 * 2 = 2</code> for durability and <code>0 * 4 + -1 * 2 = -2</code> (and thus ignored as we only accept positive scores) for a total thus far of 2.</p>
 <!--more-->
 <p>The code is getting a bit longer, but a brute force solution still works great:</p>
@@ -430,72 +502,4 @@ print(len(repeat(look_and_say, int(sys.argv[2]), sys.argv[1])))</code></pre>
 <p>Overall, this is one of the best books I've read this year. I'm glad my book club choose it, otherwise it might have been a while before I got around to it.</p>
 <p>Side note: It looks like there may be <a href="https://www.goodreads.com/book/show/27234491-the-iron-season">a sequel</a> in the works? Tentative release date in 2018 though... So it goes.</p>
 <hr />
-<p>One more book club offshoot before I get back to my original reading list: <a href="https://www.goodreads.com/book/show/7163862-zoo-city">Zoo City</a> by <a href="https://www.goodreads.com/author/show/426034.Lauren_Beukes">Lauren Beukes</a>. If it's anywhere near as good as The Golem and the Jinni, I cannot wait.</p>]]></content></entry><entry><title>Advent of Code: Day 9</title><link href="//blog.jverkamp.com/2015/12/09/advent-of-code-day-9" /><id>urn:uuid:3e5f9ba8-905e-0cbb-f48a-bb215e562fe1</id><updated>2015-12-09T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/9">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of distances between cities of the form <code>London to Dublin = 464</code>, calculate the shortest route that visits each city exactly once.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/9">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of distances between cities of the form <code>London to Dublin = 464</code>, calculate the shortest route that visits each city exactly once.</p>
-<!--more-->
-<pre class="python"><code>routes = collections.defaultdict(
-  lambda : collections.defaultdict(
-    lambda : float("inf")
-  )
-)
-
-for line in sys.stdin:
-    src, dst, dist = re.match(r'(\w+) to (\w+) = (\d+)', line).groups()
-    dist = int(dist)
-
-    routes[src][dst] = dist
-    routes[dst][src] = dist
-
-best_length, best_ordering = min(
-    (sum(
-      routes[src][dst]
-      for src, dst in zip(ordering, ordering[1:])
-    ), ordering)
-    for ordering in itertools.permutations(routes.keys())
-)
-
-print(best_length)</code></pre>
-<p>There are a few neat tricks here that I've used. First <code>routes</code> is defined as nested <code>defaultdict</code>, with an eventual default value of <code>float("inf")</code>. This solves two problems:</p>
-<ol>
-  <li>We don't have to explicitly check if a station exists before adding a route to it:
-
-  <pre class="python"><code>routes[src][dst] = dist</code></pre>
-
-  rather than
-
-  <pre class="python"><code>if src in routes:
-  routes[src][dst] = dist
-else:
-  routes[src] = {dst: dist}</code></pre>
-  </li>
-  <li>Any missing routes will have an infinite distance, which will work correctly with <code>+</code> and <code>min</code>.</li>
-</ol>
-<p>We add each distance to both <code>routes[src][dst]</code> and <code>routes[dst][src]</code> so that we don't have to worry about ordering when we calculate full routes. The other way to do this would be to sort <code>src</code> and <code>dst</code> so that <code>src < dst</code> is always true. I think this way is a little cleaner.</p>
-<p>Next, we use a bunch of tools to calculate the shortest route.</p>
-<p>First, <code>itertools.permutations</code> will give us every possible ordering:</p>
-<pre class="python"><code>&gt;&gt;&gt; pprint.pprint(list(itertools.permutations(routes.keys())))
-[('London', 'Belfast', 'Dublin'),
- ('London', 'Dublin', 'Belfast'),
- ('Belfast', 'London', 'Dublin'),
- ('Belfast', 'Dublin', 'London'),
- ('Dublin', 'London', 'Belfast'),
- ('Dublin', 'Belfast', 'London')]</code></pre>
-<p>Next, <code>zip</code> over <code>ordering</code> and <code>ordering[1:]</code> will give us the pairs of stations (since <code>zip</code> after exhausting its shortest argument):</p>
-<pre class="python"><code>&gt;&gt;&gt; ordering = ('Dublin', 'Belfast', 'London')
-&gt;&gt;&gt; pprint.pprint(list(zip(ordering, ordering[1:])))
-[('Dublin', 'Belfast'), ('Belfast', 'London')]</code></pre>
-<p>Next, we can get the distance for each pairing and <code>sum</code> them all up. This is where <code>float("inf")</code> really comes in handy (although in this smaller example, we don't need it):</p>
-<pre class="python"><code>&gt;&gt;&gt; orderings = (routes[src][dst] for src, dst in zip(ordering, ordering[1:]))
-&gt;&gt;&gt; pprint.pprint(list(orderings))
-[141, 518]
-&gt;&gt;&gt; pprint.pprint(sum(orderings))
-659</code></pre>
-<p>That, we wrap up in a tuple of <code>(distance, ordering)</code> so that they are sortable. Then, apply <code>min</code> to that to find the route with the minimum distance and unpack the tuple again.</p>
-<p>And that's it. Minimum distance.</p>
-<p>It's certainly a brute force solution in that it will try every possible route to find the shortest one. There are probably a few dynamic programming tricks that could cut that down a bit. On the other hand, the input is relatively short (28 connections between 8 stations for a total of 40320 orderings), so just do them all.</p>
-<p><strong>Part 2:</strong> Find the longest route.</p>
-<p>Just change <code>min</code> to <code>max</code>.</p>
-<p>This wouldn't work if there wasn't a connection listed between every possible station (there is in my given input, since 8 stations will have <code>8*7/2 = 28</code> connections). That's solveable though. Just use <code>float("-inf")</code> for the default distance, so that any routes with invalid stations will have an infinitely small distance.</p>
-<p>This was a pretty cool problem again!</p>]]></content></entry></feed>
+<p>One more book club offshoot before I get back to my original reading list: <a href="https://www.goodreads.com/book/show/7163862-zoo-city">Zoo City</a> by <a href="https://www.goodreads.com/author/show/426034.Lauren_Beukes">Lauren Beukes</a>. If it's anywhere near as good as The Golem and the Jinni, I cannot wait.</p>]]></content></entry></feed>
