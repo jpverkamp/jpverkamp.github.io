@@ -1,5 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-16T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 16</title><link href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16" /><id>urn:uuid:03ff5f24-7cd0-f74f-d7bd-db34d25cf913</id><updated>2015-12-16T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-17T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 17</title><link href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17" /><id>urn:uuid:4af56322-37f0-f74b-baf8-a837b63f521f</id><updated>2015-12-17T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/17">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of containers of varying sizes and a total volume to contain, determine how many different combinations of containers match exactly the given volume.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/17">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of containers of varying sizes and a total volume to contain, determine how many different combinations of containers match exactly the given volume.</p>
+<!--more-->
+<pre class="python"><code>containers = list(map(int, sys.stdin.readlines()))
+quantity = int(sys.argv[1])
+
+def fills(quantity, containers):
+    if quantity == 0:
+        yield []
+    else:
+        for index, container in enumerate(containers):
+            if container &lt;= quantity:
+                for sub_fill in fills(quantity - container, containers[index+1:]):
+                    yield [container] + sub_fill
+
+print(len(list(fills(quantity, containers))))</code></pre>
+<p>Basically, <code>fills</code> will recursively build a generator for a given amount and containers remaining. For each step, it will try each of the containers and recursively determine any solutions that use that container.</p>
+<p>On interesting aspect is the recursive call uses <code>containers[index+1:]</code>. That will guarantee that the containers used are always in the same order as the input list, rather than including all possible orderings for any set of containers.</p>
+<p><strong>Part 2:</strong> How many of these combinations use the minimum number of containers?</p>
+<p>The <code>fills</code> function still does what we need; we just need to <code>filter</code> it so that it only includes orderings that are the proper minimum length:</p>
+<pre class="python"><code>smallest_fill = min(map(len, fills(quantity, containers)))
+
+print(len(list(filter(
+    lambda fill : len(fill) == smallest_fill,
+    fills(quantity, containers)
+))))</code></pre>]]></content></entry><entry><title>Advent of Code: Day 16</title><link href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16" /><id>urn:uuid:03ff5f24-7cd0-f74f-d7bd-db34d25cf913</id><updated>2015-12-16T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
 <p><strong>Part 1:</strong> Given a list of target values of the form:</p>
 <pre class="text"><code>children: 3
 cats: 7
@@ -550,58 +577,4 @@ else:
 <p><strong>Part 2:</strong> Find the longest route.</p>
 <p>Just change <code>min</code> to <code>max</code>.</p>
 <p>This wouldn't work if there wasn't a connection listed between every possible station (there is in my given input, since 8 stations will have <code>8*7/2 = 28</code> connections). That's solveable though. Just use <code>float("-inf")</code> for the default distance, so that any routes with invalid stations will have an infinitely small distance.</p>
-<p>This was a pretty cool problem again!</p>]]></content></entry><entry><title>Advent of Code: Day 8</title><link href="//blog.jverkamp.com/2015/12/08/advent-of-code-day-8" /><id>urn:uuid:843d447d-6189-6d67-4c59-7ce85e2a5d3c</id><updated>2015-12-08T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/8">Source</a></p>
-<p><strong>Part 1:</strong> Given an escaped string of the form <code>"\xa8br\x8bjr\""</code>, convert it to the escaped form: <code>br js</code>. Calculate the total difference of lengths between the former (<code>16</code>) and the latter (<code>5</code>).</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/8">Source</a></p>
-<p><strong>Part 1:</strong> Given an escaped string of the form <code>"\xa8br\x8bjr\""</code>, convert it to the escaped form: <code>br js</code>. Calculate the total difference of lengths between the former (<code>16</code>) and the latter (<code>5</code>).</p>
-<!--more-->
-<pre class="python"><code>memory_count = 0
-raw_count = 0
-
-for line in sys.stdin:
-    raw = line.strip()
-    parsed = ast.literal_eval(raw) # This is probably cheating
-
-    raw_count += len(raw)
-    memory_count += len(parsed)
-
-print(raw_count - memory_count)</code></pre>
-<p>For a basic solution, we can cheat and use the <code>ast</code> module. It can interpret any Python literal, which includes escaped strings. Free!</p>
-<p>If we actually want to do it ourselves, it's straight forward enough to use regular expressions instead:</p>
-<pre class="python"><code>memory_count = 0
-raw_count = 0
-
-patterns = [
-    (r'\\"', '"'),
-    (r'\\\\', r'\\'),
-    (r'\\x(\d\d)', chr),
-    (r'^"(.*)"$', r'\1'),
-]
-
-for line in sys.stdin:
-    parsed = raw = line.strip()
-    for src, dst in patterns:
-        parsed = re.sub(src, dst, parsed)
-
-    print(raw, parsed)
-
-    raw_count += len(raw)
-    memory_count += len(parsed)
-
-print(raw_count - memory_count)</code></pre>
-<p>One interesting aspect is <code>chr</code>. That will convert a number such as <code>\x65</code> into the corresponding character <code>A</code>. It doesn't really matter since we just want the count, but it's kind of elegant.</p>
-<p>There is a subtle bug in this, bonus points to anyone that can figure it out. But for the moment, it works great on the given test cases.</p>
-<p><strong>Part 2:</strong> Do the opposite. Add another level of encoding such that <code>"\xa8br\x8bjr\""</code> would become <code>\"\\xa8br\\x8bjr\\\"\"</code>.</p>
-<pre class="python"><code>raw_count = 0
-encoded_count = 0
-
-for line in sys.stdin:
-    raw = line.strip()
-    encoded = re.sub(r'(["\\])', r'\\\1', raw)
-
-    raw_count += len(raw)
-    encoded_count += len(encoded) + 2 # Quotes are not included
-
-print(encoded_count - raw_count)</code></pre>
-<p>This time since we don't have different behavior for the different escaped characters, we can use a single regular expression.</p>
-<p>Not quite as interesting as <a href="//blog.jverkamp.com/2015/12/07/advent-of-code-day-7">Day 7</a>, but still neat.</p>]]></content></entry></feed>
+<p>This was a pretty cool problem again!</p>]]></content></entry></feed>

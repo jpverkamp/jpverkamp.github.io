@@ -4,7 +4,7 @@
         
         
 
-        <title>Advent of Code: Day 16 | jverkamp.com | John-Paul Verkamp</title>
+        <title>Advent of Code: Day 17 | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
         <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
@@ -72,78 +72,42 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Advent of Code: Day 16</h1>
+                        <h1 class="entry-title">Advent of Code: Day 17</h1>
 
                         <div class="entry-meta">
-                                <span class="posted-on"><time class="entry-date" datetime="2015-12-16"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">16</span></time></span>
+                                <span class="posted-on"><time class="entry-date" datetime="2015-12-17"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">17</span></time></span>
                                 <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming/by-source/advent-of-code">Advent of Code</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p><a href="http://adventofcode.com/day/16">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of target values of the form:</p>
-<pre class="text"><code>children: 3
-cats: 7
-samoyeds: 2</code></pre>
-<p>And a list of 'Aunt Sues', each with known values:</p>
-<pre class="text"><code>Sue 1: children: 1, cars: 8, vizslas: 7
-Sue 2: akitas: 10, perfumes: 10, children: 5
-Sue 3: cars: 5, pomeranians: 4, vizslas: 1</code></pre>
-<p>Determine which Sue has no unset but matching values.</p>
-<p>For example, Sue 1 is invalid because <code>children</code> is 1 versus 3 and Sue 2 because <code>children</code> is 5 versus 3. Given only the values above, Sue 3 would be valid since there are no contradictions.</p>
+                        <p><a href="http://adventofcode.com/day/17">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of containers of varying sizes and a total volume to contain, determine how many different combinations of containers match exactly the given volume.</p>
 <!--more-->
-<p>I think understanding this problem took longer than solving it. Originally, I thought that missing values should be treated as <code>float('inf')</code>, but they should just be ignored entirely:</p>
-<pre class="python"><code>targets = {}
-sues = collections.defaultdict(dict)
+<pre class="python"><code>containers = list(map(int, sys.stdin.readlines()))
+quantity = int(sys.argv[1])
 
-loading_targets = True
-for line in sys.stdin:
-    line = line.strip()
-
-    if not line:
-        loading_targets = False
-
-    elif loading_targets:
-        key, val = line.split(': ')
-        targets[key] = int(val)
-
+def fills(quantity, containers):
+    if quantity == 0:
+        yield []
     else:
-        sue, things = line.strip().split(': ', 1)
-        for thing in things.split(', '):
-            key, val = thing.split(': ')
-            sues[sue][key] = int(val)
+        for index, container in enumerate(containers):
+            if container &lt;= quantity:
+                for sub_fill in fills(quantity - container, containers[index+1:]):
+                    yield [container] + sub_fill
 
-for sue in sues:
-    valid = True
+print(len(list(fills(quantity, containers))))</code></pre>
+<p>Basically, <code>fills</code> will recursively build a generator for a given amount and containers remaining. For each step, it will try each of the containers and recursively determine any solutions that use that container.</p>
+<p>On interesting aspect is the recursive call uses <code>containers[index+1:]</code>. That will guarantee that the containers used are always in the same order as the input list, rather than including all possible orderings for any set of containers.</p>
+<p><strong>Part 2:</strong> How many of these combinations use the minimum number of containers?</p>
+<p>The <code>fills</code> function still does what we need; we just need to <code>filter</code> it so that it only includes orderings that are the proper minimum length:</p>
+<pre class="python"><code>smallest_fill = min(map(len, fills(quantity, containers)))
 
-    for key in targets:
-        if key in sues[sue] and sues[sue][key] != targets[key]:
-            valid = False
-            break
-
-    if valid:
-        print(sue)</code></pre>
-<p>The longer half is correctly parsing and loading the data. For my case, I put both inputs in the same stream, separated by an empty line (similar to <a href="https://en.wikipedia.org/wiki/HTTP">HTTP</a> and other protocols actually).</p>
-<p>After that, it was just a matter of checking each Sue for the first existent but non-matching value.</p>
-<p><strong>Part 2:</strong> Repeat the same algorithm, however assume that a Sue must have strictly more <code>cats</code> and <code>trees</code> than listed and strictly less <code>pomeranians</code> and <code>goldfish</code>.</p>
-<p>For this, I introduced another <code>defaultdict</code> which contains the <code>comparators</code> to use for any given value:</p>
-<pre class="python"><code>comparators = collections.defaultdict(lambda : operator.eq)
-comparators['cats'] = comparators['trees'] = operator.gt
-comparators['pomeranians'] = comparators['goldfish'] = operator.lt</code></pre>
-<p>After that, we can change the <code>for sue in sues</code> loop to take the comparator into account:</p>
-<pre class="python"><code>for sue in sues:
-    valid = True
-
-    for key in targets:
-        if key in sues[sue] and not comparators[key](sues[sue][key], targets[key]):
-                valid = False
-                break
-
-    if valid:
-        print(sue)</code></pre>
-<p>Neat.</p>
+print(len(list(filter(
+    lambda fill : len(fill) == smallest_fill,
+    fills(quantity, containers)
+))))</code></pre>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>
@@ -152,8 +116,8 @@ comparators['pomeranians'] = comparators['goldfish'] = operator.lt</code></pre>
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "Advent of Code: Day 16";
-var disqus_url = "http://blog.jverkamp.com/2015/12/16/advent-of-code-day-16/";
+var disqus_title = "Advent of Code: Day 17";
+var disqus_url = "http://blog.jverkamp.com/2015/12/17/advent-of-code-day-17/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -166,7 +130,7 @@ var disqus_url = "http://blog.jverkamp.com/2015/12/16/advent-of-code-day-16/";
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/15/advent-of-code-day-15">← Advent of Code: Day 15</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li><li><a href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17">Advent of Code: Day 17 →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/15/advent-of-code-day-15">← Advent of Code: Day 15</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17">Advent of Code: Day 17 →</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16">← Advent of Code: Day 16</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16">← Advent of Code: Day 16</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="//blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="//blog.jverkamp.com/rss.png" /></a><br />
