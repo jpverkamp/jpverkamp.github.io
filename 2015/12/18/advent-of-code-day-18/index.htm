@@ -4,7 +4,7 @@
         
         
 
-        <title>Advent of Code: Day 17 | jverkamp.com | John-Paul Verkamp</title>
+        <title>Advent of Code: Day 18 | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
         <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
@@ -72,52 +72,114 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Advent of Code: Day 17</h1>
+                        <h1 class="entry-title">Advent of Code: Day 18</h1>
 
                         <div class="entry-meta">
-                                <span class="posted-on"><time class="entry-date" datetime="2015-12-17"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">17</span></time></span>
+                                <span class="posted-on"><time class="entry-date" datetime="2015-12-18"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">18</span></time></span>
                                 <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming/by-source/advent-of-code">Advent of Code</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p><a href="http://adventofcode.com/day/17">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of containers of varying sizes and a total volume to contain, determine how many different combinations of containers match exactly the given volume.</p>
+                        <p><a href="http://adventofcode.com/day/18">Source</a></p>
+<p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
 <!--more-->
-<pre class="python"><code>containers = list(map(int, sys.stdin.readlines()))
-quantity = int(sys.argv[1])
+<pre class="python"><code>class Grid(object):
+    def __init__(self, str):
+        self.data = [
+            [(char == '#') for char in line]
+            for line in str.split()
+        ]
+        self.width = len(self.data)
+        self.height = len(self.data[0])
 
-def fills(quantity, containers):
-    if quantity == 0:
-        yield []
-    else:
-        for index, container in enumerate(containers):
-            if container &lt;= quantity:
-                for sub_fill in fills(quantity - container, containers[index+1:]):
-                    yield [container] + sub_fill
+    def __getitem__(self, pt):
+        row, col = pt
+        if 0 &lt;= row &lt; self.height and 0 &lt;= col &lt; self.width:
+            return self.data[row][col]
+        else:
+            return False
 
-print(len(list(fills(quantity, containers))))</code></pre>
-<p>Basically, <code>fills</code> will recursively build a generator for a given amount and containers remaining. For each step, it will try each of the containers and recursively determine any solutions that use that container.</p>
-<p>On interesting aspect is the recursive call uses <code>containers[index+1:]</code>. That will guarantee that the containers used are always in the same order as the input list, rather than including all possible orderings for any set of containers.</p>
-<p><strong>Part 2:</strong> How many of these combinations use the minimum number of containers?</p>
-<p>The <code>fills</code> function still does what we need; we just need to <code>filter</code> it so that it only includes orderings that are the proper minimum length:</p>
-<pre class="python"><code>smallest_fill = min(map(len, fills(quantity, containers)))
+    def neighbors(self, row, col):
+        return sum(
+            (1 if self[row + row_delta, col + col_delta] else 0)
+            for row_delta in range(-1, 2)
+            for col_delta in range(-1, 2)
+        ) - (1 if self[row, col] else 0)
 
-print(len(list(filter(
-    lambda fill : len(fill) == smallest_fill,
-    fills(quantity, containers)
-))))</code></pre>
+    def step(self):
+        new_data = copy.deepcopy(self.data)
+
+        for row in range(self.height):
+            for col in range(self.width):
+                if self[row, col]:
+                    new_data[row][col] = (2 &lt;= self.neighbors(row, col) &lt;= 3)
+                else:
+                    new_data[row][col] = (self.neighbors(row, col) == 3)
+
+        self.data = new_data
+
+    def __repr__(self):
+        return '\n'.join(
+            ''.join(
+                '#' if self[row, col] else '.'
+                for col in range(self.width)
+            )
+            for row in range(self.height)
+        )
+
+    def __len__(self):
+        return sum(
+            1 if self[row, col] else 0
+            for row in range(self.height)
+            for col in range(self.width)
+        )
+
+if __name__ == '__main__':
+    grid = Grid(sys.stdin.read())
+
+    for i in range(int(sys.argv[1])):
+        grid.step()
+
+    print(grid)
+    print(len(grid))</code></pre>
+<p>I don't use actually use <a href="https://en.wikipedia.org/wiki/object_oriented programming">object oriented programming</a> that much, but this problem just called for it. It let me abstract away the counting of accessing of elements while dealing with edge cases. Also, it will be even more helpful in part 2<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
+<p>The three interesting bits are the <code>__getitem__</code>, <code>neighbors</code>, and <code>step</code> functions. The first is interesting, since it actually takes a tuple as as argument, but looks like it takes two parameters: <code>grid[row, col]</code> is actually equivalent to <code>grid[(row, col)]</code>, since it's actually the <code>,</code> that makes a tuple, not the parenthesis.</p>
+<p>Next, <code>neighbors</code> will count up the positive neighboring elements using <code>__getitem__</code>. We subtract the one at the end if the node is enabled to account for the fact that we counted the node as its own neighbor.</p>
+<p>With all of that, <code>step</code> becomes much easier. We just have to loop and using the <code>neighbors</code> function. Shiny.</p>
+<p><strong>Part 2:</strong> Repeat, but this time the four lights in the corners will be stuck on.</p>
+<p>This is another reason why I wanted to write this in an object oriented style (in highsight):</p>
+<pre class="python"><code>part1 = imp.load_source('part1', 'part-1.py')
+
+class FixedCornerGrid(part1.Grid):
+    def __getitem__(self, pt):
+        row, col = pt
+        if (row in (0, self.width - 1) and col in (0, self.height - 1)):
+            return True
+        else:
+            return part1.Grid.__getitem__(self, pt)
+
+if __name__ == '__main__':
+    grid = FixedCornerGrid(sys.stdin.read())
+
+    for i in range(int(sys.argv[1])):
+        grid.step()
+
+    print(grid)
+    print(len(grid))</code></pre>
+<p>The weirdness comes from the fact that I for some reason decided to use dashes in my filenames. Otherwise, I could just have done <code>import part1</code>. But other than that, we only have to slightly tweak the <code>__getitem__</code> behavior for the four corners. Other than that, we just directly reuse all of the code from the original <code>Grid</code> class.</p>
+<p>I actually really like how this turned out. It brings a slightly new twist to a problem I've solved a half dozen or more times before.</p>
                 </div>
                 <div class="entry-footnotes">
-                        <div id="footnotes"><ol></ol></div>
+                        <div id="footnotes"><ol><li><a name="footnote-1"></a>Spoilers</li></ol></div>
                 </div>
 
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "Advent of Code: Day 17";
-var disqus_url = "http://blog.jverkamp.com/2015/12/17/advent-of-code-day-17/";
+var disqus_title = "Advent of Code: Day 18";
+var disqus_url = "http://blog.jverkamp.com/2015/12/18/advent-of-code-day-18/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -130,7 +192,7 @@ var disqus_url = "http://blog.jverkamp.com/2015/12/17/advent-of-code-day-17/";
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16">← Advent of Code: Day 16</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li><li><a href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18">Advent of Code: Day 18 →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16">← Advent of Code: Day 16</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18">Advent of Code: Day 18 →</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17">← Advent of Code: Day 17</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17">← Advent of Code: Day 17</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="//blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="//blog.jverkamp.com/rss.png" /></a><br />

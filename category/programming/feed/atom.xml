@@ -1,5 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-17T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 17</title><link href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17" /><id>urn:uuid:4af56322-37f0-f74b-baf8-a837b63f521f</id><updated>2015-12-17T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/17">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-18T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 18</title><link href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18" /><id>urn:uuid:51c1619c-25fa-1ae9-d84b-101769bddbc2</id><updated>2015-12-18T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
+<p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
+<p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
+<!--more-->
+<pre class="python"><code>class Grid(object):
+    def __init__(self, str):
+        self.data = [
+            [(char == '#') for char in line]
+            for line in str.split()
+        ]
+        self.width = len(self.data)
+        self.height = len(self.data[0])
+
+    def __getitem__(self, pt):
+        row, col = pt
+        if 0 &lt;= row &lt; self.height and 0 &lt;= col &lt; self.width:
+            return self.data[row][col]
+        else:
+            return False
+
+    def neighbors(self, row, col):
+        return sum(
+            (1 if self[row + row_delta, col + col_delta] else 0)
+            for row_delta in range(-1, 2)
+            for col_delta in range(-1, 2)
+        ) - (1 if self[row, col] else 0)
+
+    def step(self):
+        new_data = copy.deepcopy(self.data)
+
+        for row in range(self.height):
+            for col in range(self.width):
+                if self[row, col]:
+                    new_data[row][col] = (2 &lt;= self.neighbors(row, col) &lt;= 3)
+                else:
+                    new_data[row][col] = (self.neighbors(row, col) == 3)
+
+        self.data = new_data
+
+    def __repr__(self):
+        return '\n'.join(
+            ''.join(
+                '#' if self[row, col] else '.'
+                for col in range(self.width)
+            )
+            for row in range(self.height)
+        )
+
+    def __len__(self):
+        return sum(
+            1 if self[row, col] else 0
+            for row in range(self.height)
+            for col in range(self.width)
+        )
+
+if __name__ == '__main__':
+    grid = Grid(sys.stdin.read())
+
+    for i in range(int(sys.argv[1])):
+        grid.step()
+
+    print(grid)
+    print(len(grid))</code></pre>
+<p>I don't use actually use <a href="https://en.wikipedia.org/wiki/object_oriented programming">object oriented programming</a> that much, but this problem just called for it. It let me abstract away the counting of accessing of elements while dealing with edge cases. Also, it will be even more helpful in part 2<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
+<p>The three interesting bits are the <code>__getitem__</code>, <code>neighbors</code>, and <code>step</code> functions. The first is interesting, since it actually takes a tuple as as argument, but looks like it takes two parameters: <code>grid[row, col]</code> is actually equivalent to <code>grid[(row, col)]</code>, since it's actually the <code>,</code> that makes a tuple, not the parenthesis.</p>
+<p>Next, <code>neighbors</code> will count up the positive neighboring elements using <code>__getitem__</code>. We subtract the one at the end if the node is enabled to account for the fact that we counted the node as its own neighbor.</p>
+<p>With all of that, <code>step</code> becomes much easier. We just have to loop and using the <code>neighbors</code> function. Shiny.</p>
+<p><strong>Part 2:</strong> Repeat, but this time the four lights in the corners will be stuck on.</p>
+<p>This is another reason why I wanted to write this in an object oriented style (in highsight):</p>
+<pre class="python"><code>part1 = imp.load_source('part1', 'part-1.py')
+
+class FixedCornerGrid(part1.Grid):
+    def __getitem__(self, pt):
+        row, col = pt
+        if (row in (0, self.width - 1) and col in (0, self.height - 1)):
+            return True
+        else:
+            return part1.Grid.__getitem__(self, pt)
+
+if __name__ == '__main__':
+    grid = FixedCornerGrid(sys.stdin.read())
+
+    for i in range(int(sys.argv[1])):
+        grid.step()
+
+    print(grid)
+    print(len(grid))</code></pre>
+<p>The weirdness comes from the fact that I for some reason decided to use dashes in my filenames. Otherwise, I could just have done <code>import part1</code>. But other than that, we only have to slightly tweak the <code>__getitem__</code> behavior for the four corners. Other than that, we just directly reuse all of the code from the original <code>Grid</code> class.</p>
+<p>I actually really like how this turned out. It brings a slightly new twist to a problem I've solved a half dozen or more times before.</p>]]></content></entry><entry><title>Advent of Code: Day 17</title><link href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17" /><id>urn:uuid:4af56322-37f0-f74b-baf8-a837b63f521f</id><updated>2015-12-17T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/17">Source</a></p>
 <p><strong>Part 1:</strong> Given a list of containers of varying sizes and a total volume to contain, determine how many different combinations of containers match exactly the given volume.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/17">Source</a></p>
 <p><strong>Part 1:</strong> Given a list of containers of varying sizes and a total volume to contain, determine how many different combinations of containers match exactly the given volume.</p>
@@ -509,72 +598,4 @@ print(len(repeat(look_and_say, int(sys.argv[2]), sys.argv[1])))</code></pre>
 <p>I've already gone into far more detail on <a href="//blog.jverkamp.com/2014/09/15/look-and-say">Look and Say</a> sequences before. But this time, we're doing it iteratively in Python! Basically, we just maintain a bit of state for which character we are currently counting. When we change, output; otherwise, incrememnt the change.</p>
 <p>There are some interesting tricks you could do with regular expressions, but I doubt you can find something faster or much more elegant than this.</p>
 <p><strong>Part 2:</strong> Repeat 50 times.</p>
-<p>There's nothing particular interesting about this one. I've already accounted for this by passing in the second paramter on the command line.</p>]]></content></entry><entry><title>Advent of Code: Day 9</title><link href="//blog.jverkamp.com/2015/12/09/advent-of-code-day-9" /><id>urn:uuid:3e5f9ba8-905e-0cbb-f48a-bb215e562fe1</id><updated>2015-12-09T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/9">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of distances between cities of the form <code>London to Dublin = 464</code>, calculate the shortest route that visits each city exactly once.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/9">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of distances between cities of the form <code>London to Dublin = 464</code>, calculate the shortest route that visits each city exactly once.</p>
-<!--more-->
-<pre class="python"><code>routes = collections.defaultdict(
-  lambda : collections.defaultdict(
-    lambda : float("inf")
-  )
-)
-
-for line in sys.stdin:
-    src, dst, dist = re.match(r'(\w+) to (\w+) = (\d+)', line).groups()
-    dist = int(dist)
-
-    routes[src][dst] = dist
-    routes[dst][src] = dist
-
-best_length, best_ordering = min(
-    (sum(
-      routes[src][dst]
-      for src, dst in zip(ordering, ordering[1:])
-    ), ordering)
-    for ordering in itertools.permutations(routes.keys())
-)
-
-print(best_length)</code></pre>
-<p>There are a few neat tricks here that I've used. First <code>routes</code> is defined as nested <code>defaultdict</code>, with an eventual default value of <code>float("inf")</code>. This solves two problems:</p>
-<ol>
-  <li>We don't have to explicitly check if a station exists before adding a route to it:
-
-  <pre class="python"><code>routes[src][dst] = dist</code></pre>
-
-  rather than
-
-  <pre class="python"><code>if src in routes:
-  routes[src][dst] = dist
-else:
-  routes[src] = {dst: dist}</code></pre>
-  </li>
-  <li>Any missing routes will have an infinite distance, which will work correctly with <code>+</code> and <code>min</code>.</li>
-</ol>
-<p>We add each distance to both <code>routes[src][dst]</code> and <code>routes[dst][src]</code> so that we don't have to worry about ordering when we calculate full routes. The other way to do this would be to sort <code>src</code> and <code>dst</code> so that <code>src < dst</code> is always true. I think this way is a little cleaner.</p>
-<p>Next, we use a bunch of tools to calculate the shortest route.</p>
-<p>First, <code>itertools.permutations</code> will give us every possible ordering:</p>
-<pre class="python"><code>&gt;&gt;&gt; pprint.pprint(list(itertools.permutations(routes.keys())))
-[('London', 'Belfast', 'Dublin'),
- ('London', 'Dublin', 'Belfast'),
- ('Belfast', 'London', 'Dublin'),
- ('Belfast', 'Dublin', 'London'),
- ('Dublin', 'London', 'Belfast'),
- ('Dublin', 'Belfast', 'London')]</code></pre>
-<p>Next, <code>zip</code> over <code>ordering</code> and <code>ordering[1:]</code> will give us the pairs of stations (since <code>zip</code> after exhausting its shortest argument):</p>
-<pre class="python"><code>&gt;&gt;&gt; ordering = ('Dublin', 'Belfast', 'London')
-&gt;&gt;&gt; pprint.pprint(list(zip(ordering, ordering[1:])))
-[('Dublin', 'Belfast'), ('Belfast', 'London')]</code></pre>
-<p>Next, we can get the distance for each pairing and <code>sum</code> them all up. This is where <code>float("inf")</code> really comes in handy (although in this smaller example, we don't need it):</p>
-<pre class="python"><code>&gt;&gt;&gt; orderings = (routes[src][dst] for src, dst in zip(ordering, ordering[1:]))
-&gt;&gt;&gt; pprint.pprint(list(orderings))
-[141, 518]
-&gt;&gt;&gt; pprint.pprint(sum(orderings))
-659</code></pre>
-<p>That, we wrap up in a tuple of <code>(distance, ordering)</code> so that they are sortable. Then, apply <code>min</code> to that to find the route with the minimum distance and unpack the tuple again.</p>
-<p>And that's it. Minimum distance.</p>
-<p>It's certainly a brute force solution in that it will try every possible route to find the shortest one. There are probably a few dynamic programming tricks that could cut that down a bit. On the other hand, the input is relatively short (28 connections between 8 stations for a total of 40320 orderings), so just do them all.</p>
-<p><strong>Part 2:</strong> Find the longest route.</p>
-<p>Just change <code>min</code> to <code>max</code>.</p>
-<p>This wouldn't work if there wasn't a connection listed between every possible station (there is in my given input, since 8 stations will have <code>8*7/2 = 28</code> connections). That's solveable though. Just use <code>float("-inf")</code> for the default distance, so that any routes with invalid stations will have an infinitely small distance.</p>
-<p>This was a pretty cool problem again!</p>]]></content></entry></feed>
+<p>There's nothing particular interesting about this one. I've already accounted for this by passing in the second paramter on the command line.</p>]]></content></entry></feed>
