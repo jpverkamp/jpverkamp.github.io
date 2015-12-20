@@ -1,5 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-18T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 18</title><link href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18" /><id>urn:uuid:51c1619c-25fa-1ae9-d84b-101769bddbc2</id><updated>2015-12-18T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-19T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 19</title><link href="//blog.jverkamp.com/2015/12/19/advent-of-code-day-19" /><id>urn:uuid:d3f72e70-8cbc-74c9-b51b-9829eebd4f72</id><updated>2015-12-19T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
+<!--more-->
+<pre class="python"><code>transitions = collections.defaultdict(set)
+
+reading_transitions = True
+for line in sys.stdin:
+    line = line.strip()
+
+    if not line:
+        reading_transitions = False
+    elif reading_transitions:
+        src, dst = line.split(' =&gt; ')
+        transitions[src].add(dst)
+    else:
+        target = line
+
+def expand_iter(input):
+    for src in transitions:
+        for dst in transitions[src]:
+            for match in re.finditer(src, input):
+                yield input[:match.start()] + dst + input[match.end():]
+
+expansions = set(expand_iter(target))
+
+print(len(expansions))</code></pre>
+<p>The basic idea here is to iterate over each possible (non-overlapping) replacement and <code>yield</code> the results. Then we convert that to a <code>set</code> to remove duplicates and return the sizes. Shiny.</p>
+<p>I bet I can guess where the second half is going.</p>
+<p><strong>Part 2:</strong> This time, take the target as output and determine how many steps it would take to get from <code>e</code> to the target.</p>
+<p>This one is actually more of a rewrite (since I'm inverting the <code>transition</code> map):</p>
+<pre class="python"><code>transitions = {}
+
+reading_transitions = True
+for line in sys.stdin:
+    line = line.strip()
+
+    if not line:
+        reading_transitions = False
+    elif reading_transitions:
+        src, dst = line.split(' =&gt; ')
+        transitions[dst] = src
+    else:
+        target = line
+
+def build_iter(input):
+    for dst in transitions:
+        src = transitions[dst]
+        for match in re.finditer(dst, input):
+            yield input[:match.start()] + src + input[match.end():]
+
+q = queue.PriorityQueue()
+q.put((len(target), 0, target))
+
+while True:
+    length, iterations, current = q.get()
+
+    if current == 'e':
+        break
+
+    for precursor in build_iter(current):
+        q.put((len(precursor), iterations + 1, precursor))
+
+print(iterations)</code></pre>
+<p>Two basic insights here: Since each transition output is unique, we don't have multiple possibilities and we want to solve the problem as quickly as possible. Given that, we will use a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> indexing on the length of the current chemical. That way, we'll try the solutions that are already as far along as possible.</p>
+<p>For my input, that worked very quickly. For slightly different inputs, the <a href="https://en.wikipedia.org/wiki/greedy_solution">greedy solution</a> doesn't find a result and it has to backtrack, leading to a <em>far</em> longer runtime. I'm not sure what would solve those quickly. I may play with this one a bit longer.</p>
+<p>Also, technically this solution isn't strictly correct. It finds the first solution, rather than strictly speaking the shortest one. That could be fixed continuing to iterate on the priority queue until we've exhausted any branches with fewer iterations than the known best. That takes rather a while though. That's one advantage of a contest styles--you can check your input. O:)</p>]]></content></entry><entry><title>Advent of Code: Day 18</title><link href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18" /><id>urn:uuid:51c1619c-25fa-1ae9-d84b-101769bddbc2</id><updated>2015-12-18T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
 <p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
 <p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
@@ -566,36 +633,4 @@ print(next_valid(sys.argv[1]))</code></pre>
 <p>For the second problem (<code>increment</code>), we use the numeric form again and start at the end of the string. We'll increment each character working back towards the front of the string, stopping as soon as we don't have to carry. Then, we convert the password back into a string using the inverse of <code>ord</code>: <code>chr</code>.</p>
 <p>And, that's it. It's certainly not the most efficient code, but it still takes only a few seconds.</p>
 <p><strong>Part 2:</strong> Find the next string matching the same rules after the one you found in part 1.</p>
-<p>Just run the same program again on the first one's input.</p>]]></content></entry><entry><title>Advent of Code: Day 10</title><link href="//blog.jverkamp.com/2015/12/10/advent-of-code-day-10" /><id>urn:uuid:f36a3b14-d73a-1afd-d434-17fee29644cf</id><updated>2015-12-10T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/10">Source</a></p>
-<p><strong>Part 1:</strong> Repeat a <a href="https://en.wikipedia.org/wiki/Look-and-say_sequence">Look-and-say sequence</a> 40 times. Return the length.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/10">Source</a></p>
-<p><strong>Part 1:</strong> Repeat a <a href="https://en.wikipedia.org/wiki/Look-and-say_sequence">Look-and-say sequence</a> 40 times. Return the length.</p>
-<!--more-->
-<pre class="python"><code>def look_and_say(seq):
-    result = ''
-    index = 0
-    count = 0
-    buffer = None
-
-    for c in seq:
-        if c == buffer:
-            count += 1
-        else:
-            if buffer:
-                result += '{}{}'.format(count, buffer)
-            count = 1
-            buffer = c
-
-    result += '{}{}'.format(count, buffer)
-    return result
-
-def repeat(f, n, seq):
-    for i in range(n):
-        seq = f(seq)
-    return seq
-
-print(len(repeat(look_and_say, int(sys.argv[2]), sys.argv[1])))</code></pre>
-<p>I've already gone into far more detail on <a href="//blog.jverkamp.com/2014/09/15/look-and-say">Look and Say</a> sequences before. But this time, we're doing it iteratively in Python! Basically, we just maintain a bit of state for which character we are currently counting. When we change, output; otherwise, incrememnt the change.</p>
-<p>There are some interesting tricks you could do with regular expressions, but I doubt you can find something faster or much more elegant than this.</p>
-<p><strong>Part 2:</strong> Repeat 50 times.</p>
-<p>There's nothing particular interesting about this one. I've already accounted for this by passing in the second paramter on the command line.</p>]]></content></entry></feed>
+<p>Just run the same program again on the first one's input.</p>]]></content></entry></feed>

@@ -1,5 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-18T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 18</title><link href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18" /><id>urn:uuid:51c1619c-25fa-1ae9-d84b-101769bddbc2</id><updated>2015-12-18T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-19T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 19</title><link href="//blog.jverkamp.com/2015/12/19/advent-of-code-day-19" /><id>urn:uuid:d3f72e70-8cbc-74c9-b51b-9829eebd4f72</id><updated>2015-12-19T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
+<!--more-->
+<pre class="python"><code>transitions = collections.defaultdict(set)
+
+reading_transitions = True
+for line in sys.stdin:
+    line = line.strip()
+
+    if not line:
+        reading_transitions = False
+    elif reading_transitions:
+        src, dst = line.split(' =&gt; ')
+        transitions[src].add(dst)
+    else:
+        target = line
+
+def expand_iter(input):
+    for src in transitions:
+        for dst in transitions[src]:
+            for match in re.finditer(src, input):
+                yield input[:match.start()] + dst + input[match.end():]
+
+expansions = set(expand_iter(target))
+
+print(len(expansions))</code></pre>
+<p>The basic idea here is to iterate over each possible (non-overlapping) replacement and <code>yield</code> the results. Then we convert that to a <code>set</code> to remove duplicates and return the sizes. Shiny.</p>
+<p>I bet I can guess where the second half is going.</p>
+<p><strong>Part 2:</strong> This time, take the target as output and determine how many steps it would take to get from <code>e</code> to the target.</p>
+<p>This one is actually more of a rewrite (since I'm inverting the <code>transition</code> map):</p>
+<pre class="python"><code>transitions = {}
+
+reading_transitions = True
+for line in sys.stdin:
+    line = line.strip()
+
+    if not line:
+        reading_transitions = False
+    elif reading_transitions:
+        src, dst = line.split(' =&gt; ')
+        transitions[dst] = src
+    else:
+        target = line
+
+def build_iter(input):
+    for dst in transitions:
+        src = transitions[dst]
+        for match in re.finditer(dst, input):
+            yield input[:match.start()] + src + input[match.end():]
+
+q = queue.PriorityQueue()
+q.put((len(target), 0, target))
+
+while True:
+    length, iterations, current = q.get()
+
+    if current == 'e':
+        break
+
+    for precursor in build_iter(current):
+        q.put((len(precursor), iterations + 1, precursor))
+
+print(iterations)</code></pre>
+<p>Two basic insights here: Since each transition output is unique, we don't have multiple possibilities and we want to solve the problem as quickly as possible. Given that, we will use a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> indexing on the length of the current chemical. That way, we'll try the solutions that are already as far along as possible.</p>
+<p>For my input, that worked very quickly. For slightly different inputs, the <a href="https://en.wikipedia.org/wiki/greedy_solution">greedy solution</a> doesn't find a result and it has to backtrack, leading to a <em>far</em> longer runtime. I'm not sure what would solve those quickly. I may play with this one a bit longer.</p>
+<p>Also, technically this solution isn't strictly correct. It finds the first solution, rather than strictly speaking the shortest one. That could be fixed continuing to iterate on the priority queue until we've exhausted any branches with fewer iterations than the known best. That takes rather a while though. That's one advantage of a contest styles--you can check your input. O:)</p>]]></content></entry><entry><title>Advent of Code: Day 18</title><link href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18" /><id>urn:uuid:51c1619c-25fa-1ae9-d84b-101769bddbc2</id><updated>2015-12-18T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
 <p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/18">Source</a></p>
 <p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
@@ -518,61 +585,4 @@ for row in reader:
 }</code></pre>
 <p>Note that the <code>user_id</code>s are actually numbers, the <code>preferences</code> field has been unpacked, and Luke's <code>force-user</code> status is a boolean. It's neat how you get all of that more or less for free.</p>
 <p>Also, have I mentioned how nice <a href="https://stedolan.github.io/jq/">jq</a> is for working with JSON?</p>
-<p>And that's it. The full source is part of my dotfiles now: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/csv2json">github:jpverkamp/dotfiles</a> (although all that's missing above is the <a href="https://en.wikipedia.org/wiki/shebang">shebang</a> and the imports). Enjoy!</p>]]></content></entry><entry><title>Advent of Code: Day 11</title><link href="//blog.jverkamp.com/2015/12/11/advent-of-code-day-11" /><id>urn:uuid:3ef4590d-8e71-7616-0cda-b3673c191da9</id><updated>2015-12-11T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/11">Source</a></p>
-<p><strong>Part 1:</strong> Find the next string in <a href="https://en.wikipedia.org/wiki/Lexicographical_order">Lexicographical_order</a> that matches these rules:</p>
-<ol>
-  <li>Must contain three neighboring, ascending letters (<code>ghi</code>)</li>
-  <li>Must not contain any of the letters <code>i</code>, <code>o</code>, or <code>l</code></li>
-  <li>Must contain two distinct pairs of letters</li>
-</ol>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/11">Source</a></p>
-<p><strong>Part 1:</strong> Find the next string in <a href="https://en.wikipedia.org/wiki/Lexicographical_order">Lexicographical_order</a> that matches these rules:</p>
-<ol>
-  <li>Must contain three neighboring, ascending letters (<code>ghi</code>)</li>
-  <li>Must not contain any of the letters <code>i</code>, <code>o</code>, or <code>l</code></li>
-  <li>Must contain two distinct pairs of letters</li>
-</ol>
-<!--more-->
-<p>This is pretty similar to <a href="//blog.jverkamp.com/2015/12/05/advent-of-code-day-5">Advent of Code: Day 5</a>, although it cannot <em>quite</em> be done with purely regular expressions.</p>
-<pre class="python"><code>def is_valid(password):
-    numeric = list(map(ord, password))
-
-    return (
-        # Include an increasing subsequence
-        any(
-            numeric[i] + 2 == numeric[i + 1] + 1 == numeric[i + 2]
-            for i in range(len(password) - 2)
-        )
-        # May not contain i, o, or l
-        and not any(c in password for c in 'iol')
-        # Must have at least two different pairs
-        and len(set(re.findall(r'(.)\1', password))) &gt;= 2
-    )
-
-def increment(password):
-    numeric = list(map(ord, password))
-    index = -1
-
-    while True:
-        numeric[index] += 1
-        if numeric[index] &lt;= ord('z'):
-            break
-        else:
-            numeric[index] = ord('a')
-            index -= 1
-
-    return ''.join(map(chr, numeric))
-
-def next_valid(password):
-    while True:
-        password = increment(password)
-        if is_valid(password):
-            return password
-
-print(next_valid(sys.argv[1]))</code></pre>
-<p>Basically, there are two interesting problems: finding out if a string <code>is_valid</code> and <code>increment</code>ing one to the next value.</p>
-<p>For the first, we check each of the three cases in order. We can tell if there is an ascending sequence by first converting to numeric values (<code>ord</code> will return the <a href="https://en.wikipedia.org/wiki/unicode_codepoint">unicode codepoint</a> for a character) the comparing three adjacent values. The second test just checks if <code>any</code> character is <code>in</code> the string. The last actually does use regular expressions again to find all pairs of letters; then, by converting them into a set removes duplicates and counts unique values.</p>
-<p>For the second problem (<code>increment</code>), we use the numeric form again and start at the end of the string. We'll increment each character working back towards the front of the string, stopping as soon as we don't have to carry. Then, we convert the password back into a string using the inverse of <code>ord</code>: <code>chr</code>.</p>
-<p>And, that's it. It's certainly not the most efficient code, but it still takes only a few seconds.</p>
-<p><strong>Part 2:</strong> Find the next string matching the same rules after the one you found in part 1.</p>
-<p>Just run the same program again on the first one's input.</p>]]></content></entry></feed>
+<p>And that's it. The full source is part of my dotfiles now: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/csv2json">github:jpverkamp/dotfiles</a> (although all that's missing above is the <a href="https://en.wikipedia.org/wiki/shebang">shebang</a> and the imports). Enjoy!</p>]]></content></entry></feed>

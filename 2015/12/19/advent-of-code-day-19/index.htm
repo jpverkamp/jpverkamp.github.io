@@ -4,7 +4,7 @@
         
         
 
-        <title>Advent of Code: Day 18 | jverkamp.com | John-Paul Verkamp</title>
+        <title>Advent of Code: Day 19 | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
         <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
@@ -72,114 +72,92 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Advent of Code: Day 18</h1>
+                        <h1 class="entry-title">Advent of Code: Day 19</h1>
 
                         <div class="entry-meta">
-                                <span class="posted-on"><time class="entry-date" datetime="2015-12-18"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">18</span></time></span>
+                                <span class="posted-on"><time class="entry-date" datetime="2015-12-19"><span class="year">2015</span> <span class="month">Dec</span> <span class="day">19</span></time></span>
                                 <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming/by-source/advent-of-code">Advent of Code</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p><a href="http://adventofcode.com/day/18">Source</a></p>
-<p><strong>Part 1:</strong> Simulate <a href="https://en.wikipedia.org/wiki/Conway's_Game of Life">Conway's Game of Life</a>. Count how many lights are on after 100 iterations.</p>
+                        <p><a href="http://adventofcode.com/day/19">Source</a></p>
+<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
 <!--more-->
-<pre class="python"><code>class Grid(object):
-    def __init__(self, str):
-        self.data = [
-            [(char == '#') for char in line]
-            for line in str.split()
-        ]
-        self.width = len(self.data)
-        self.height = len(self.data[0])
+<pre class="python"><code>transitions = collections.defaultdict(set)
 
-    def __getitem__(self, pt):
-        row, col = pt
-        if 0 &lt;= row &lt; self.height and 0 &lt;= col &lt; self.width:
-            return self.data[row][col]
-        else:
-            return False
+reading_transitions = True
+for line in sys.stdin:
+    line = line.strip()
 
-    def neighbors(self, row, col):
-        return sum(
-            (1 if self[row + row_delta, col + col_delta] else 0)
-            for row_delta in range(-1, 2)
-            for col_delta in range(-1, 2)
-        ) - (1 if self[row, col] else 0)
+    if not line:
+        reading_transitions = False
+    elif reading_transitions:
+        src, dst = line.split(' =&gt; ')
+        transitions[src].add(dst)
+    else:
+        target = line
 
-    def step(self):
-        new_data = copy.deepcopy(self.data)
+def expand_iter(input):
+    for src in transitions:
+        for dst in transitions[src]:
+            for match in re.finditer(src, input):
+                yield input[:match.start()] + dst + input[match.end():]
 
-        for row in range(self.height):
-            for col in range(self.width):
-                if self[row, col]:
-                    new_data[row][col] = (2 &lt;= self.neighbors(row, col) &lt;= 3)
-                else:
-                    new_data[row][col] = (self.neighbors(row, col) == 3)
+expansions = set(expand_iter(target))
 
-        self.data = new_data
+print(len(expansions))</code></pre>
+<p>The basic idea here is to iterate over each possible (non-overlapping) replacement and <code>yield</code> the results. Then we convert that to a <code>set</code> to remove duplicates and return the sizes. Shiny.</p>
+<p>I bet I can guess where the second half is going.</p>
+<p><strong>Part 2:</strong> This time, take the target as output and determine how many steps it would take to get from <code>e</code> to the target.</p>
+<p>This one is actually more of a rewrite (since I'm inverting the <code>transition</code> map):</p>
+<pre class="python"><code>transitions = {}
 
-    def __repr__(self):
-        return '\n'.join(
-            ''.join(
-                '#' if self[row, col] else '.'
-                for col in range(self.width)
-            )
-            for row in range(self.height)
-        )
+reading_transitions = True
+for line in sys.stdin:
+    line = line.strip()
 
-    def __len__(self):
-        return sum(
-            1 if self[row, col] else 0
-            for row in range(self.height)
-            for col in range(self.width)
-        )
+    if not line:
+        reading_transitions = False
+    elif reading_transitions:
+        src, dst = line.split(' =&gt; ')
+        transitions[dst] = src
+    else:
+        target = line
 
-if __name__ == '__main__':
-    grid = Grid(sys.stdin.read())
+def build_iter(input):
+    for dst in transitions:
+        src = transitions[dst]
+        for match in re.finditer(dst, input):
+            yield input[:match.start()] + src + input[match.end():]
 
-    for i in range(int(sys.argv[1])):
-        grid.step()
+q = queue.PriorityQueue()
+q.put((len(target), 0, target))
 
-    print(grid)
-    print(len(grid))</code></pre>
-<p>I don't use actually use <a href="https://en.wikipedia.org/wiki/object_oriented programming">object oriented programming</a> that much, but this problem just called for it. It let me abstract away the counting of accessing of elements while dealing with edge cases. Also, it will be even more helpful in part 2<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>.</p>
-<p>The three interesting bits are the <code>__getitem__</code>, <code>neighbors</code>, and <code>step</code> functions. The first is interesting, since it actually takes a tuple as as argument, but looks like it takes two parameters: <code>grid[row, col]</code> is actually equivalent to <code>grid[(row, col)]</code>, since it's actually the <code>,</code> that makes a tuple, not the parenthesis.</p>
-<p>Next, <code>neighbors</code> will count up the positive neighboring elements using <code>__getitem__</code>. We subtract the one at the end if the node is enabled to account for the fact that we counted the node as its own neighbor.</p>
-<p>With all of that, <code>step</code> becomes much easier. We just have to loop and using the <code>neighbors</code> function. Shiny.</p>
-<p><strong>Part 2:</strong> Repeat, but this time the four lights in the corners will be stuck on.</p>
-<p>This is another reason why I wanted to write this in an object oriented style (in highsight):</p>
-<pre class="python"><code>part1 = imp.load_source('part1', 'part-1.py')
+while True:
+    length, iterations, current = q.get()
 
-class FixedCornerGrid(part1.Grid):
-    def __getitem__(self, pt):
-        row, col = pt
-        if (row in (0, self.width - 1) and col in (0, self.height - 1)):
-            return True
-        else:
-            return part1.Grid.__getitem__(self, pt)
+    if current == 'e':
+        break
 
-if __name__ == '__main__':
-    grid = FixedCornerGrid(sys.stdin.read())
+    for precursor in build_iter(current):
+        q.put((len(precursor), iterations + 1, precursor))
 
-    for i in range(int(sys.argv[1])):
-        grid.step()
-
-    print(grid)
-    print(len(grid))</code></pre>
-<p>The weirdness comes from the fact that I for some reason decided to use dashes in my filenames. Otherwise, I could just have done <code>import part1</code>. But other than that, we only have to slightly tweak the <code>__getitem__</code> behavior for the four corners. Other than that, we just directly reuse all of the code from the original <code>Grid</code> class.</p>
-<p>I actually really like how this turned out. It brings a slightly new twist to a problem I've solved a half dozen or more times before.</p>
+print(iterations)</code></pre>
+<p>Two basic insights here: Since each transition output is unique, we don't have multiple possibilities and we want to solve the problem as quickly as possible. Given that, we will use a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> indexing on the length of the current chemical. That way, we'll try the solutions that are already as far along as possible.</p>
+<p>For my input, that worked very quickly. For slightly different inputs, the <a href="https://en.wikipedia.org/wiki/greedy_solution">greedy solution</a> doesn't find a result and it has to backtrack, leading to a <em>far</em> longer runtime. I'm not sure what would solve those quickly. I may play with this one a bit longer.</p>
+<p>Also, technically this solution isn't strictly correct. It finds the first solution, rather than strictly speaking the shortest one. That could be fixed continuing to iterate on the priority queue until we've exhausted any branches with fewer iterations than the known best. That takes rather a while though. That's one advantage of a contest styles--you can check your input. O:)</p>
                 </div>
                 <div class="entry-footnotes">
-                        <div id="footnotes"><ol><li><a name="footnote-1"></a>Spoilers</li></ol></div>
+                        <div id="footnotes"><ol></ol></div>
                 </div>
 
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "Advent of Code: Day 18";
-var disqus_url = "http://blog.jverkamp.com/2015/12/18/advent-of-code-day-18/";
+var disqus_title = "Advent of Code: Day 19";
+var disqus_url = "http://blog.jverkamp.com/2015/12/19/advent-of-code-day-19/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -192,7 +170,7 @@ var disqus_url = "http://blog.jverkamp.com/2015/12/18/advent-of-code-day-18/";
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17">← Advent of Code: Day 17</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li><li><a href="//blog.jverkamp.com/2015/12/19/advent-of-code-day-19">Advent of Code: Day 19 →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/17/advent-of-code-day-17">← Advent of Code: Day 17</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/2015/12/19/advent-of-code-day-19">Advent of Code: Day 19 →</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18">← Advent of Code: Day 18</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2015/12/18/advent-of-code-day-18">← Advent of Code: Day 18</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="//blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="//blog.jverkamp.com/rss.png" /></a><br />
