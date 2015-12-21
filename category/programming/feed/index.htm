@@ -1,5 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-20T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 20</title><link href="//blog.jverkamp.com/2015/12/20/advent-of-code-day-20" /><id>urn:uuid:afd29395-b082-d1af-1e24-dc1d0df19418</id><updated>2015-12-20T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/20">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-21T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 21</title><link href="//blog.jverkamp.com/2015/12/21/advent-of-code-day-21" /><id>urn:uuid:2a910be6-afd8-d4dc-e437-c5c47fc1ed7a</id><updated>2015-12-21T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/21">Source</a></p>
+<p><strong>Part 1:</strong> Given a shop full of weapons (buy exactly one), armor (buy zero or one), and rings (buy 0, 1, or 2), determine the set of items that will defeat a given enemy for the minimum cost (see the <a href="http://adventofcode.com/day/21">original writeup</a> for more details).</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/21">Source</a></p>
+<p><strong>Part 1:</strong> Given a shop full of weapons (buy exactly one), armor (buy zero or one), and rings (buy 0, 1, or 2), determine the set of items that will defeat a given enemy for the minimum cost (see the <a href="http://adventofcode.com/day/21">original writeup</a> for more details).</p>
+<!--more-->
+<p>First, a bit of code to parse the shop:</p>
+<pre class="python"><code>shop = {}
+category = None
+
+with open('shop.txt', 'r') as fin:
+    for line in fin:
+        line = line.strip()
+        if not line:
+            continue
+
+        if ':' in line:
+            category = line.split(':')[0]
+            shop[category] = []
+            continue
+
+        name, cost, damage, armor = line.rsplit(maxsplit = 3)
+
+        shop[category].append({
+            'Name': name,
+            'Cost': int(cost),
+            'Damage': int(damage),
+            'Armor': int(armor),
+        })
+
+# Allow for no armor or rings
+shop['Armor'].append({'Name': None, 'Cost': 0, 'Damage': 0, 'Armor': 0})
+shop['Rings'].append({'Name': None, 'Cost': 0, 'Damage': 0, 'Armor': 0})</code></pre>
+<p>Using that, we can write some code to generate all possible players:</p>
+<pre class="python"><code>def all_players():
+    for weapon in shop['Weapons']:
+        for armor in shop['Armor']:
+            for left_ring in shop['Rings']:
+                for right_ring in shop['Rings']:
+                    # Cannot have two of the same ring unless they're both None
+                    if left_ring and right_ring and left_ring == right_ring:
+                        continue
+
+                    items = [weapon, armor, left_ring, right_ring]
+
+                    player = {
+                        'Hit Points': 100,
+                        'Items': [item['Name'] for item in items if item['Name']],
+                        'Damage': sum(item['Damage'] for item in items),
+                        'Armor': sum(item['Armor'] for item in items),
+                        'Cost': sum(item['Cost'] for item in items),
+                    }
+
+                    yield player</code></pre>
+<p>Additionally, we can read our opponent's stats from <code>stdin</code>:</p>
+<pre class="python"><code>enemy = {}
+for line in sys.stdin:
+    key, val = line.strip().split(':')
+    enemy[key] = int(val)
+
+def get_enemy():
+    return copy.copy(enemy)</code></pre>
+<p>It's important to return a new copy each time; otherwise you end up badly beating up the same guy over and over again.</p>
+<p>Finally, fight:</p>
+<pre class="python"><code>def player_wins(player, enemy):
+    while True:
+        enemy['Hit Points'] -= max(1, player['Damage'] - enemy['Armor'])
+        if enemy['Hit Points'] &lt;= 0:
+            return True
+
+        player['Hit Points'] -= max(1, enemy['Damage'] - player['Armor'])
+        if player['Hit Points'] &lt;= 0:
+            return False</code></pre>
+<p>With all of this in a separate file called <code>lib.py</code> (I should probably refactor some of the previous days this way), we can solve the actual problem in about a half dozen lines:</p>
+<pre class="python"><code>import lib
+
+best_player = {'Cost': float("inf")}
+for player in lib.all_players():
+    if lib.player_wins(player, lib.get_enemy()):
+        if player['Cost'] &lt; best_player['Cost']:
+            best_player = player
+
+print(best_player['Cost'])</code></pre>
+<p>A brute force solution feels a bit ugly. We could instead have iterated over the solutions from the cheapest up until we found one that worked, or even done a <a href="https://en.wikipedia.org/wiki/binary_search">binary search</a> by cost, but what's the point? There are only 1260 possible inventories. That's nothing to a computer.</p>
+<p><strong>Part 2:</strong> Invert the problem. Find the most expensive set of items you can buy and still lose.</p>
+<p>This is why I factored out all of the library code. I know that something like this would be part 2. :)</p>
+<pre class="python"><code>import lib
+
+best_player = {'Cost': float("-inf")}
+for player in lib.all_players():
+    if not lib.player_wins(player, lib.get_enemy()):
+        if player['Cost'] &gt; best_player['Cost']:
+            best_player = player
+
+print(best_player['Cost'])</code></pre>
+<p>In case you were curious, my winner for part 1 had a longsword, chainmail, and a Ring of Damage +2. Part 2 had a Dagger, Leather Armor, and Rings of Damage +3 and Defense +3. It's interesting that the cheaper option actually had a more expensive weapon and armor, but the pair of rings more than made up for it.</p>]]></content></entry><entry><title>Advent of Code: Day 20</title><link href="//blog.jverkamp.com/2015/12/20/advent-of-code-day-20" /><id>urn:uuid:afd29395-b082-d1af-1e24-dc1d0df19418</id><updated>2015-12-20T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/20">Source</a></p>
 <p><strong>Part 1:</strong> <em>P(n)</em> is defined such that for each number <em>i</em>, add <em>10i</em> to any number divisible by <em>i</em>. Find the first value <em>n</em> such that <em>P(n)</em> is at least a given target number.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/20">Source</a></p>
 <p><strong>Part 1:</strong> <em>P(n)</em> is defined such that for each number <em>i</em>, add <em>10i</em> to any number divisible by <em>i</em>. Find the first value <em>n</em> such that <em>P(n)</em> is at least a given target number.</p>
@@ -518,92 +612,4 @@ print(js_sum(json.load(sys.stdin)))</code></pre>
     else:
         return 0
 
-print(js_sum(json.load(sys.stdin)))</code></pre>]]></content></entry><entry><title>CSV to JSON</title><link href="//blog.jverkamp.com/2015/12/11/csv-to-json" /><id>urn:uuid:a19dc458-070c-e75e-8fdf-ee6884430831</id><updated>2015-12-11T00:05:00Z</updated><summary type="html"><![CDATA[<p>Today at work, I had to process a bunch of CSV data. Realizing that I don't have any particularly nice tools to work with streaming CSV data (although I did write about <a href="//blog.jverkamp.com/2012/10/04/querying-csv-files-with-sql">querying CSV files with SQL</a>), I decided to write one:</p>
-<pre class="bash"><code>$ cat users.csv
-
-"user_id","name","email","password"
-"1","Luke Skywalker","luke@rebel-alliance.io","$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq"
-"2","Han Solo","han@rebel-alliance.io","$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92"
-
-$ cat users.csv | csv2json | jq '.'
-
-{
-  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
-  "name": "Luke Skywalker",
-  "user_id": "1",
-  "email": "luke@rebel-alliance.io"
-}
-{
-  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
-  "name": "Han Solo",
-  "user_id": "2",
-  "email": "han@rebel-alliance.io"
-}</code></pre>
-]]></summary><content type="html"><![CDATA[<p>Today at work, I had to process a bunch of CSV data. Realizing that I don't have any particularly nice tools to work with streaming CSV data (although I did write about <a href="//blog.jverkamp.com/2012/10/04/querying-csv-files-with-sql">querying CSV files with SQL</a>), I decided to write one:</p>
-<pre class="bash"><code>$ cat users.csv
-
-"user_id","name","email","password"
-"1","Luke Skywalker","luke@rebel-alliance.io","$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq"
-"2","Han Solo","han@rebel-alliance.io","$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92"
-
-$ cat users.csv | csv2json | jq '.'
-
-{
-  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
-  "name": "Luke Skywalker",
-  "user_id": "1",
-  "email": "luke@rebel-alliance.io"
-}
-{
-  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
-  "name": "Han Solo",
-  "user_id": "2",
-  "email": "han@rebel-alliance.io"
-}</code></pre>
-<!--more-->
-<p>Luckily, Python has nice CSV and JSON libraries built in:</p>
-<pre class="python"><code># If --parse is set, try to parse each entry as json
-def parse(thing):
-    try:
-        return json.loads(thing)
-    except:
-        return thing
-
-# Assume that headers are the first row
-reader = csv.reader(sys.stdin)
-headers = None
-for row in reader:
-    if not headers:
-        headers = row
-        continue
-
-    if '--parse' in sys.argv:
-        row = [parse(thing) for thing in row]
-
-    # Recombine the headers with each row (no one said this was saving space)
-    row = dict(zip(headers, row))
-    print(json.dumps(row, default = str))</code></pre>
-<p>Basically, assume that the first row of the CSV data is headers (converting to a JSON dict doesn't make much sense if it isn't) and then combine that with each additional row to write out a dictionary. In addition, I put a bit of code in there to assume that you might be storing JSON in your CSV fields. If so, you can <code>--parse</code> the data automagically:</p>
-<pre class="bash"><code>$ cat users-with-preferences.csv | csv2json --parse | jq '.'
-
-{
-  "preferences": {
-    "force-user": true
-  },
-  "name": "Luke Skywalker",
-  "user_id": 1,
-  "password": "$2b$12$XQ1zDvl5PLS6g.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq",
-  "email": "luke@rebel-alliance.io"
-}
-{
-  "preferences": {
-    "ship": "Millennium Falcon"
-  },
-  "name": "Han Solo",
-  "user_id": 2,
-  "password": "$2b$12$eKJGP.tt9u77PeXgMMFmlOyFWSuRZBUZLvmzuLlrum3vWPoRYgr92",
-  "email": "han@rebel-alliance.io"
-}</code></pre>
-<p>Note that the <code>user_id</code>s are actually numbers, the <code>preferences</code> field has been unpacked, and Luke's <code>force-user</code> status is a boolean. It's neat how you get all of that more or less for free.</p>
-<p>Also, have I mentioned how nice <a href="https://stedolan.github.io/jq/">jq</a> is for working with JSON?</p>
-<p>And that's it. The full source is part of my dotfiles now: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/csv2json">github:jpverkamp/dotfiles</a> (although all that's missing above is the <a href="https://en.wikipedia.org/wiki/shebang">shebang</a> and the imports). Enjoy!</p>]]></content></entry></feed>
+print(js_sum(json.load(sys.stdin)))</code></pre>]]></content></entry></feed>
