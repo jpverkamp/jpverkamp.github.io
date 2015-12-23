@@ -1,5 +1,309 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-21T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 21</title><link href="//blog.jverkamp.com/2015/12/21/advent-of-code-day-21" /><id>urn:uuid:2a910be6-afd8-d4dc-e437-c5c47fc1ed7a</id><updated>2015-12-21T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/21">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-22T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 22</title><link href="//blog.jverkamp.com/2015/12/22/advent-of-code-day-22" /><id>urn:uuid:9cebad4b-f376-fc86-db80-6136e90ab202</id><updated>2015-12-22T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/22">Source</a></p>
+<p><strong>Part 1:</strong> Simulate an RPG mage battle; finding the winning solution using the least mana. See the <a href="http://adventofcode.com/day/22">original writeup</a> for more details.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/22">Source</a></p>
+<p><strong>Part 1:</strong> Simulate an RPG mage battle; finding the winning solution using the least mana. See the <a href="http://adventofcode.com/day/22">original writeup</a> for more details.</p>
+<!--more-->
+<p>First, let's create some simple abstractions for the players:</p>
+<pre class="python"><code>class Entity(dict):
+    '''Represent a damagable entity such as the player or a boss'''
+
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            self[key] = val
+
+    def __getitem__(self, key):
+        try:
+            return dict.__getitem__(self, key)
+        except:
+            return 0
+
+    def damage(self, points):
+        '''Apply damage to this entity; minimum damage is always 1'''
+
+        self['Hit Points'] -= max(1, points - self['Armor'])
+
+    def tick_active_spells(self, target):
+        '''Apply all active spells to the target, remove any that have expired.'''
+
+        if self['Active Spells']:
+            for spell in list(self['Active Spells']):
+                self['History'].append(str(spell))
+                spell.tick(self, target)
+                spell.Duration -= 1
+                if spell.Duration &lt;= 0:
+                    self['History'].append('{} fades'.format(spell.__class__.__name__))
+                    spell.fade(self, target)
+                    self['Active Spells'].remove(spell)</code></pre>
+<p>Basically, we have an extended <code>dict</code> that will default values to 0, includes a method for applying <code>damage</code> while taking armor into account, and applying an active spells to a given player. That will make more sense once you see the way spells are defined:</p>
+<pre class="python"><code>class Spell(dict):
+    '''
+    Create a spell. Spells have &lt;code&gt;Cost&lt;/code&gt; mana and last &lt;code&gt;Duration&lt;/code&gt; turns.
+
+    cast() is called when a spell is first cast
+    tick() is called each turn (for Duration &gt; 0)
+    fade() is called when a spell runs out of duration
+    '''
+
+    Cost = float("inf")
+    Duration = 0
+
+    def __init__(self):
+        self['Duration'] = self.__class__.Duration
+
+    def cast(self, caster, target):
+        pass
+
+    def tick(self, caster, target):
+        pass
+
+    def fade(self, caster, target):
+        pass
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, self.Duration)
+
+    def __eq__(self, other):
+        return self.__class__.__name__ == other.__class__.__name__
+
+    def __hash__(self):
+        return hash(self.__class__.__name__)
+
+class MagicMissle(Spell):
+    Cost = 53
+
+    def cast(self, caster, target):
+        target.damage(4)
+
+class Drain(Spell):
+    Cost = 73
+
+    def cast(self, caster, target):
+        target.damage(2)
+        caster['Hit Points'] += 2
+
+class Shield(Spell):
+    Cost = 113
+    Duration = 6
+
+    def cast(self, caster, target):
+        caster['Armor'] += 7
+
+    def fade(self, caster, target):
+        caster['Armor'] -= 7
+
+class Poison(Spell):
+    Cost = 173
+    Duration = 6
+
+    def tick(self, caster, target):
+        target.damage(3)
+
+class Recharge(Spell):
+    Cost = 229
+    Duration = 5
+
+    def tick(self, caster, target):
+        caster['Mana Points'] += 101
+
+spells = [MagicMissle, Drain, Shield, Poison, Recharge]</code></pre>
+<p>As noted in the comment for the <code>Spell</code> class, there are two interesting fields (<code>Cost</code> is the mana cost and <code>Duration</code> is how long an ongoing spell will last) and three functions that can be overridden. <code>cast</code> will be called when the spell is first cast, <code>tick</code> will be called each turn it runs for ongoing spells, and <code>fade</code> will be called when an ongoing spell runs out of time. That will let us encode the five spells in the <a href="http://adventofcode.com/day/22">problem statement</a>.</p>
+<p>Finally, we can load the player and boss:</p>
+<pre class="python"><code>boss = lib.Entity()
+for line in sys.stdin:
+    key, val = line.strip().split(': ')
+    boss[key] = int(val)
+
+player = lib.Entity(**{
+    'Hit Points': 50,
+    'Mana Points': 500,
+    'Active Spells': [],
+    'History': [],
+})</code></pre>
+<p>Now we have everything to solve the problem. My first take at a solution using a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> based on the mana spent. That means that as soon as we find a solution where <code>boss['Hit Points'] <= 0</code>, we have the minimal solution:</p>
+<pre class="python"><code>queue_breaker = 0
+
+states = queue.PriorityQueue()
+states.put((0, queue_breaker, player, boss))
+
+best_player = {'Mana Spent': float('inf')}
+
+# This will be used to break ties in the queue since Entities are not orderable
+queue_breaker += 1
+
+while not states.empty():
+    score, _, player, boss = states.get()
+
+    # If we win, because of the priority queue, this is the best solution
+    if boss['Hit Points'] &lt;= 0:
+        return player
+
+    # Player died, no point in continuing on this track
+    if player['Hit Points'] &lt;= 0:
+        continue
+
+    # --- Player's turn ---
+    player = copy.deepcopy(player)
+    boss = copy.deepcopy(boss)
+    player['History'].append('&gt;&gt; Player Turn &lt;&lt;')
+    player.tick_active_spells(boss)
+
+    # Branch (see the copy below) to applying each possible spell for the player's turn
+    for potential_spell in lib.spells:
+        if player['Mana Points'] &lt; potential_spell.Cost:
+            continue
+
+        spell = potential_spell()
+        if spell in player['Active Spells']:
+            continue
+
+        current_player = copy.deepcopy(player)
+        current_boss = copy.deepcopy(boss)
+
+        # Cast the player's new spell
+        current_player['Mana Points'] -= potential_spell.Cost
+        current_player['Mana Spent'] += potential_spell.Cost
+        spell.cast(current_player, current_boss)
+
+        if spell['Duration']:
+            current_player['Active Spells'].append(spell)
+
+        current_player['History'].append(str(spell))
+
+        # --- Boss's turn ---
+        current_player['History'].append('&gt;&gt; Boss Turn &lt;&lt;')
+        current_player.tick_active_spells(current_boss)
+        current_player.damage(current_boss['Damage'])
+
+        # Store the altered copies back in the queue
+        states.put((current_player['Mana Spent'], queue_breaker, current_player, current_boss))
+        queue_breaker += 1</code></pre>
+<p>Most of the code is spent getting the order of events exactly correct. It's a bit weird, but it does work in the end (I think I rewrote exactly this code a dozen times and it finally worked...). The only problem with this solution: the search space is <em>huge</em>. I let it run for rather a while and it simulated literally millions of states still without finding a final solution. I need to cut that down.</p>
+<p>My next trial was to tweak the scoring algorithm. By doing this, we lose the ability to return immediately once we have a solution, but we gain the ability to find <em>a</em> solution quickly and then throw out any solutions that would be worse than that one. We only have to make a few tweaks to the above code:</p>
+<pre class="python"><code>best_player = {'Mana Spent': float('inf')}
+
+while not states.empty():
+    score, _, player, boss = states.get()
+
+    # If we win, because of the priority queue, this is the best solution
+    if boss['Hit Points'] &lt;= 0:
+        if early_exit:
+            return player
+        elif player['Mana Spent'] &lt; best_player['Mana Spent']:
+            print('New best mana spent:', player['Mana Spent'])
+            best_player = player
+            continue
+
+    ...
+
+    # Store the altered copies back in the queue
+    score = scoring_function(current_player, current_boss)
+    states.put((score, queue_breaker, current_player, current_boss))
+    queue_breaker += 1
+
+return best_player</code></pre>
+<p>Interestingly, this converges very quickly (a few seconds) on my correct solution, then spends a (long) while making sure it's correct. In earlier (incorrect) simulations, it would find a few increasingly good solutions before finally ending up at a steady state.</p>
+<p>This runs much more quickly, but guaranteeing that we have a correct solution is still difficult. Instead, let's try a quick <a href="https://en.wikipedia.org/wiki/Monte_Carlo simulation">Monte Carlo simulation</a>:</p>
+<pre class="python"><code>def random_spells():
+    while True:
+        yield random.choice(lib.spells)
+
+class GameOverException(Exception):
+    def __init__(self, player_won, reason):
+        self.player_won = player_won
+        self.reason = reason
+
+def check_game_over(player, boss):
+    if boss['Hit Points'] &lt;= 0:
+        raise GameOverException(True, 'boss died')
+
+    if player['Hit Points'] &lt;= 0:
+        raise GameOverException(False, 'player died')
+
+def fight(player, boss, spell_iterator):
+    while True:
+        check_game_over(player, boss)
+
+        # --- Player turn ---
+        player.tick_active_spells(boss)
+        check_game_over(player, boss)
+
+        for i, potential_spell in enumerate(spell_iterator):
+            if i &gt;= 10:
+                raise GameOverException(False, 'failed to cast 10 spells')
+
+            if potential_spell.Cost &gt; player['Mana Points']:
+                continue
+
+            spell = potential_spell()
+            if spell in player['Active Spells']:
+                continue
+
+            player['History'].append('Player casts {}'.format(potential_spell.__name__))
+            player['Mana Points'] -= potential_spell.Cost
+            player['Mana Spent'] += potential_spell.Cost
+
+            spell.cast(player, boss)
+            check_game_over(player, boss)
+
+            if spell.Duration:
+                player['Active Spells'].append(spell)
+
+            break
+
+        # --- Boss turn ---
+        player.tick_active_spells(boss)
+        check_game_over(player, boss)
+
+        player.damage(boss['Damage'])
+        check_game_over(player, boss)
+
+def monte_carlo(player, boss, timeout = TIME_TO_RUN):
+    start = time.time()
+    best_player = {'Mana Spent': float('inf')}
+    simulations = 0
+    wins = 0
+
+    while True:
+        if time.time() - start &gt; TIME_TO_RUN:
+            break
+
+        simulations += 1
+        current_boss = copy.deepcopy(boss)
+        current_player = copy.deepcopy(player)
+
+        try:
+            fight(current_player, current_boss, random_spells())
+        except GameOverException as game_over:
+            if game_over.player_won:
+                wins += 1
+                if current_player['Mana Spent'] &lt; best_player['Mana Spent']:
+                    print('New best:', current_player['Mana Spent'])
+                    best_player = current_player
+
+    return simulations, wins, best_player</code></pre>
+<p>Basically, just fire off random spells (trying up to 10 times in a given round to account for running low on mana and no duplicates) until one player wins (I'm using a <a href="https://en.wikipedia.org/wiki/try_catch">try catch</a> block to handle that so that I can check for winners more cleanly than in the first solution). If it's the player, see if we spent less mana than any solution we've found thus far. Rinse and repeat. Running it for a minute, it seems to find the best solution after roughly 2-3 minutes of running on my laptop. So not great, but at least an alternative.</p>
+<p><strong>Part 2:</strong> On each of the player's turns (not on the boss's turns), the player loses 1 HP. Find the winning combination of spells that uses the least mana.</p>
+<p>Based on the way that I structured the code, this is actually as easy as adding a new spell with unlimited <code>Duration</code>:</p>
+<pre class="python"><code>class HardMode(Spell):
+    Duration = float('inf')
+
+    def tick(self, caster, target):
+        self.toggle = not getattr(self, 'toggle', False)
+        if self.toggle:
+            caster.damage(1)</code></pre>
+<p>There's a bit of weirdness there to make sure that it only runs half as often as most spells (since we don't have half hit points), but this works perfectly. We then start the player with this as an active spell:</p>
+<pre class="python"><code>player = lib.Entity(**{
+    'Hit Points': 50,
+    'Mana Points': 500,
+    'Active Spells': [lib.HardMode()],
+    'History': [],
+})</code></pre>
+<p>And that's it. The rest of the simulation is identical. Since <code>HardMode</code> isn't in the <code>lib.spells</code> list, it won't get cast by either solution. Even if we wanted to we couldn't because of the limitation of only one of each ongoing spell at a time.</p>
+<p>This actually makes the problem a bit harder computationally. There were already not <em>that</em> many combinations of spells that would win in the first case and there are even fewer this time around. I ran the Monte Carlo simulation several times for five minutes each without it randomly stumbling on a valid ordering that works for this case. I could probably have tweaked the generation algorithm to be a bit smarter, but it wasn't necessary. The priority queue solution with the boss HP weighting found the solution quickly enough.</p>
+<p>Since the code for this one is a bit more complicated, feel free to check it out on GitHub to see the whole picture: <a href="https://github.com/jpverkamp/advent-of-code/tree/master/day-22">GitHub:jpverkamp/advent-of-code</a>. I've been (and will continue to) uploading my solutions there, but previously I've just directly included the entire code in order in the posts.</p>
+<p>That all being said, I honestly think this was my least favorite problem of them thus far. It was interesting in that it actually mattered what algorithm you chose to solve it (I imagine that a recursive solution with memoization could be even faster), but the implementation details were just way too fiddly. As mentioned earlier, I wrote out more or less exactly the same algorithms a dozen times before I finally had one that actually returned the correct answer (for the most part, they were finding solutions that were too low). So it goes.</p>
+<p>I look forward to the final three problems!</p>]]></content></entry><entry><title>Advent of Code: Day 21</title><link href="//blog.jverkamp.com/2015/12/21/advent-of-code-day-21" /><id>urn:uuid:2a910be6-afd8-d4dc-e437-c5c47fc1ed7a</id><updated>2015-12-21T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/21">Source</a></p>
 <p><strong>Part 1:</strong> Given a shop full of weapons (buy exactly one), armor (buy zero or one), and rings (buy 0, 1, or 2), determine the set of items that will defeat a given enemy for the minimum cost (see the <a href="http://adventofcode.com/day/21">original writeup</a> for more details).</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/21">Source</a></p>
 <p><strong>Part 1:</strong> Given a shop full of weapons (buy exactly one), armor (buy zero or one), and rings (buy 0, 1, or 2), determine the set of items that will defeat a given enemy for the minimum cost (see the <a href="http://adventofcode.com/day/21">original writeup</a> for more details).</p>
@@ -583,33 +887,4 @@ print(best_score)</code></pre>
 <p>to this:</p>
 <pre class="python"><code>for ordering in itertools.permutations(list(happiness.keys()) + ['me'])</code></pre>
 <p>It takes a bit longer since the number of permutations grows rather quickly, but still not more than a few seconds total runtime.</p>
-<p>Shiny.</p>]]></content></entry><entry><title>Advent of Code: Day 12</title><link href="//blog.jverkamp.com/2015/12/12/advent-of-code-day-12" /><id>urn:uuid:7064b41b-df01-5a75-1da9-ab651b846820</id><updated>2015-12-12T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/12">Source</a></p>
-<p><strong>Part 1:</strong> Sum all integer values in a <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> object.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/12">Source</a></p>
-<p><strong>Part 1:</strong> Sum all integer values in a <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> object.</p>
-<!--more-->
-<pre class="python"><code>def js_sum(js):
-    if isinstance(js, dict):
-        return sum(map(js_sum, js.values()))
-    elif isinstance(js, list):
-        return sum(map(js_sum, js))
-    elif isinstance(js, int):
-        return js
-    else:
-        return 0
-
-print(js_sum(json.load(sys.stdin)))</code></pre>
-<p>Due to the nature of JSON, this is very much a recursive problem. There's really not much else to say. If you have a complex data structure (<code>dict</code> or <code>list</code>), recur into it. Otherwise, if it's a number add it, if not don't.</p>
-<p><strong>Part 2:</strong> Do not recur into any <code>dict</code> that contains the value <code>"red"</code>.</p>
-<p>Given the structure we already had, the tweak for this is straight forward (if not terribly efficient):</p>
-<pre class="python"><code>def js_sum(js):
-    if isinstance(js, dict) and not 'red' in js.values():
-        return sum(map(js_sum, js.values()))
-    elif isinstance(js, list):
-        return sum(map(js_sum, js))
-    elif isinstance(js, int):
-        return js
-    else:
-        return 0
-
-print(js_sum(json.load(sys.stdin)))</code></pre>]]></content></entry></feed>
+<p>Shiny.</p>]]></content></entry></feed>
