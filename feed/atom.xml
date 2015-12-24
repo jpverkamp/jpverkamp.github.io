@@ -1,5 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-23T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 23</title><link href="//blog.jverkamp.com/2015/12/23/advent-of-code-day-23" /><id>urn:uuid:2b737957-97d1-2db7-c18a-ef2b4bee221f</id><updated>2015-12-23T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/23">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-24T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Advent of Code: Day 24</title><link href="//blog.jverkamp.com/2015/12/24/advent-of-code-day-24" /><id>urn:uuid:2035cd03-489e-dfec-f613-117529fa491f</id><updated>2015-12-24T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/24">Source</a></p>
+<p><strong>Part 1:</strong> Split a list of integers into three groups of equal sum. Find the grouping such that the smallest group has the least items, breaking ties by the smallest product for that group.</p>
+]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/24">Source</a></p>
+<p><strong>Part 1:</strong> Split a list of integers into three groups of equal sum. Find the grouping such that the smallest group has the least items, breaking ties by the smallest product for that group.</p>
+<!--more-->
+<p>My initial solution to this was to solve the <a href="https://en.wikipedia.org/wiki/subset_sum">subset sum</a> problem (or at least a slightly modified version thereof):</p>
+<pre class="python"><code>def subsets_summing_to(target, items, cache = {}):
+    if target == 0:
+        yield set()
+    else:
+        for i, item in enumerate(items):
+            if item &lt;= target:
+                for recur in subsets_summing_to(target - item, items - {item}):
+                    yield {item} | recur</code></pre>
+<p>It's elegant code, and you can use that to generate the three groups fairly easily:</p>
+<pre class="python"><code>packages = {int(line.strip()) for line in sys.stdin}
+weight_per_package = sum(packages) // 3
+
+for group1 in subsets_summing_to(weight_per_package, package):
+    for group2 in subsets_summing_to(weight_per_package, package - group1):
+        group3 = packages - group1 - group2
+        ...</code></pre>
+<p>And then while I let that run, I made a realization. If I generate the first group to be the smallest (by generating all groups of size 1, size 2, size 3, etc), then it doesn't actually matter what the other groups are. Furthermore, if I structure my iteration carefully so that I always return the smallest items first, I will get a minimal product<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span>. Combining these two jumps, I get:</p>
+<pre class="python"><code>def subset_sum_of_n(target, items, count):
+    if target == 0 and count == 0:
+        yield set()
+    elif count == 0:
+        return
+    else:
+        for i, item in enumerate(sorted(items)):
+            if item &lt;= target:
+                for recur in subset_sum_of_n(target - item, items - {item}, count - 1):
+                    yield {item} | recur
+
+def calculate_quantum_entanglement(group):
+    product = 1
+    for item in group:
+        product *= item
+    return product
+
+def split_into(packages, n_groups):
+    weight_per_section = sum(packages) / int(sys.argv[1])
+
+    for n in range(1, len(packages)):
+        for group in subset_sum_of_n(weight_per_section, packages, n):
+            return (len(group), calculate_quantum_entanglement(group), group)
+
+if __name__ == '__main__':
+    packages = {int(line.strip()) for line in sys.stdin}
+    n_groups = int(sys.argv[1])
+
+    print(split_into(packages, n_groups))</code></pre>
+<p>I'm greatly amused that it doesn't matter at all what any of the other groups are.</p>
+<p><strong>Part 2:</strong> Split into four groups.</p>
+<p>I already solved this with the <code>n_groups</code> parameter above.</p>
+<p>Amusingly, because this solution (at least with my input) only has 4 items in the minimal group, it runs about 60 times faster than the first part. It still doesn't matter at all what the other groups are.</p>]]></content></entry><entry><title>Advent of Code: Day 23</title><link href="//blog.jverkamp.com/2015/12/23/advent-of-code-day-23" /><id>urn:uuid:2b737957-97d1-2db7-c18a-ef2b4bee221f</id><updated>2015-12-23T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/23">Source</a></p>
 <p><strong>Part 1:</strong> Create a simple virtual machine with two registers (<code>a</code> and <code>b</code>, non-negative integers) and six instructions:</p>
 <ul>
     <li><code>hlf (a|b)</code> - divide the given register by half, round down</li>
@@ -865,63 +920,4 @@ print(best_quantities)]</code></pre>
 
     ...</code></pre>
 <p>Since we're looking for the largest score, returning a score that is infinitely low will skip over any invalid solutions. Other than that (and a new <code>try</code> block at the top), everything remains the same.</p>
-<p>This was an interesting problem. Not quite as elegant a solution as I'd like, but it's still well within my self imposed (originally from Project Euler) 1 minute limit.</p>]]></content></entry><entry><title>Advent of Code: Day 14</title><link href="//blog.jverkamp.com/2015/12/14/advent-of-code-day-14" /><id>urn:uuid:842a50a1-1a7f-6edb-ecb9-efaf989b031f</id><updated>2015-12-14T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/14">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of running patterns of the form <code>Comet can fly 14 km/s for 10 seconds, but then must rest for 127 seconds.</code>, determine who will be in the lead after <code>2503</code> seconds.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/14">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of running patterns of the form <code>Comet can fly 14 km/s for 10 seconds, but then must rest for 127 seconds.</code>, determine who will be in the lead after <code>2503</code> seconds.</p>
-<!--more-->
-<pre class="python"><code>simulation_time = int(sys.argv[1])
-data = {}
-
-for line in sys.stdin:
-    name, speed, time, rest = re.match(
-        r'(\w+) can fly (\d+) km/s for (\d+) seconds, but then must rest for (\d+) seconds.',
-        line
-    ).groups()
-
-    data[name] = {
-        'speed': int(speed),
-        'running_time': int(time),
-        'resting_time': int(rest),
-        'distance': 0,
-        'resting': False,
-        'timer': int(time),
-    }
-
-for tick in range(1, simulation_time + 1):
-    for key in data:
-        if data[key]['timer'] == 0:
-            data[key]['resting'] = not data[key]['resting']
-            data[key]['timer'] = (
-                data[key]['resting_time']
-                if data[key]['resting']
-                else data[key]['running_time']
-            )
-
-        if not data[key]['resting']:
-            data[key]['distance'] += data[key]['speed']
-
-        data[key]['timer'] -= 1
-
-print(max(
-    (data[key]['distance'], key)
-    for key in data
-))</code></pre>
-<p>Originally, I was going to use a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> for this one. That would have let me put each next event (switching from running to resting or vice versa) in the queue and always pull off the next one to happen. Unfortunately, that made the code path right around stopping a bit complicated, since if one was running at the moment the race ends, they only update partially.</p>
-<p>Instead, we just have a simulation that once per second will update the state (when <code>data[key]['timer'] == 0</code>), the distance (when )<code>not data[key]['resting']</code>), and the <code>timer</code>. Relatively straight forward. The one remaining amusing part is the ordering of the two <code>if</code> statements. If they're in the other order, you have an off-by-one problem where you should be running but have already changed state to <code>resting</code>.</p>
-<p><strong>Part 2:</strong> Run the same simulation, but after each round award one point to whoever is in first place (one to each in the case of ties). Determine who has the highest score.</p>
-<p>For the most part, the code doesn't change. Basically, we're going to add one more field to each entry in <code>data</code>:</p>
-<pre class="python"><code>data[name] = {
-    ...
-    'score': 0,
-}</code></pre>
-<p>Then we can use the same code that we had earlier to find the highest distance. Unfortunately, we cannot just increment that one because of ties; instead we have to loop:</p>
-<pre class="python"><code>for tick in range(1, simulation_time + 1):
-  ...
-
-  max_distance, max_name = max((data[key]['distance'], key) for key in data)
-
-  for key in data:
-      if data[key]['distance'] == max_distance:
-          data[key]['score'] += 1</code></pre>
-<p>Then at the end, we print out the maximum <code>score</code> rather than <code>distance</code>.</p>]]></content></entry></feed>
+<p>This was an interesting problem. Not quite as elegant a solution as I'd like, but it's still well within my self imposed (originally from Project Euler) 1 minute limit.</p>]]></content></entry></feed>
