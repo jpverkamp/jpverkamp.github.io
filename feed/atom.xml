@@ -1,5 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-01-01T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>2016 Reading List</title><link href="//blog.jverkamp.com/2016/01/01/2016-reading-list" /><id>urn:uuid:84512a8b-25fc-f25d-17ed-0184a6e249e9</id><updated>2016-01-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>I enjoyed keeping public track of my <a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, so here's the same thing for 2016:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-12-02T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Inlining plaintext attachments in Gmail</title><link href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail" /><id>urn:uuid:bc0d7956-f462-18f3-a332-a274b8c65941</id><updated>2016-12-02T00:00:00Z</updated><summary type="html"><![CDATA[<p>When you send a text message to a Gmail email address (at least from an iPhone using AT&T), you get something like this:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" /></a></p>
+<p>It's vaguely annoying to have to click through every single time just to see what the message is, especially when various extensions (such as <a href="https://github.com/gorhill/uMatrix">uMatrix</a>) break overlay rendering or when you have multiple attachments.</p>
+<p>Much better would be to just display the plaintext attachments inline:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>When you send a text message to a Gmail email address (at least from an iPhone using AT&T), you get something like this:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" /></a></p>
+<p>It's vaguely annoying to have to click through every single time just to see what the message is, especially when various extensions (such as <a href="https://github.com/gorhill/uMatrix">uMatrix</a>) break overlay rendering or when you have multiple attachments.</p>
+<p>Much better would be to just display the plaintext attachments inline:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" /></a></p>
+<!--more-->
+<p>Let's do it!</p>
+<p>Essentially, I'm going to write a Javascript userscript, compatible with <a href="https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/">Greasemonkey</a> or <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en">Tampermonkey</a> for Chrome. Either allows you to insert small bits of Javascript into web pages to modify their behavior.</p>
+<p>After digging around a bit in the structure of Gmail's message pages, here's roughly what I ended up with:</p>
+<pre class="javascript"><code>var checkForPlaintexts = function(evt) {
+    jQuery('span[download_url]').each(function(i, el) {
+        var parts = el.getAttribute('download_url').split(':');
+        if (!parts || parts[0] != 'text/plain') return;
+        var url = parts[3];
+
+        var newElement = jQuery('&lt;pre id="GPTI_' + i + '"&gt;&lt;/pre&gt;');
+        newElement.text('Loading: ' + url);
+
+        jQuery(el).replaceWith(newElement);
+        jQuery.ajax({
+            url: url,
+            success: function(data) {
+                newElement.text(data);
+            }
+        });
+    });
+};</code></pre>
+<p>Basically, we're going to look for a <code>span</code> containing a <code>download_url</code> attribute. For the moment at least, that's always present with attachments and not otherwise. If you take that <code>download_url</code> element, you get something like this:</p>
+<p><code>text/plain:text_0.txt:https://mail.google.com/mail/u/0/?ui=...</code>`</p>
+<p>The first part is a <a href="https://en.wikipedia.org/wiki/MIME_type">MIME type</a>--of which, we're only interested in plaintext. The last section is a URL under gmail which, when visited, contains the contents of the attachment.</p>
+<p>Now that I have that (via jQuery<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>), I build a new <code>pre</code> element with the text content and shove it in place.</p>
+<p>Voila.</p>
+<p>All I have to do next is make sure that it's called when I either load the page or when I navigate from the Inbox (et al) to a message:</p>
+<pre class="javascript"><code>jQuery(window).bind('hashchange', checkForPlaintexts);
+jQuery(checkForPlaintexts);</code></pre>
+<p>Unfortunately, this has some issues as well. It works if the message has already been viewed once, but not on the first load. Basically, I'm running into timing issues.</p>
+<p>My original solution to this was to put in a quick delay and call it a day. Unfortunately, when using satellite internet... even that didn't work. So instead, I built a system that will delay the initial call and then--if it fails--try a few more times with increasing timeouts between then.</p>
+<p>Something like this:</p>
+<pre class="javascript"><code>var delayedEvent = function(f, timeout, retries) {
+    timeout = timeout || 0;
+    retries = retries || 0;
+
+    return function(evt) {
+        setTimeout(f, timeout, evt, retries, timeout * 2);
+    }
+};
+
+var checkForPlaintexts = function(evt, retries, delay) {
+    retries = retries || 0;
+    var foundOne = false;
+
+    jQuery('span[download_url]').each(function(i, el) {
+        foundOne = true;
+
+        ...
+    });
+
+    if (!foundOne && retries) {
+        setTimeout(checkForPlaintexts, delay, evt, retries - 1, delay * 2);
+    }
+};
+
+jQuery(window).bind('hashchange', delayedEvent(checkForPlaintexts, 125, 3));
+jQuery(delayedEvent(checkForPlaintexts, 125, 3));</code></pre>
+<p>So far, this has worked perfectly. Sometimes it takes a bit to fetch the ajax call in the background. That's why I put in the <code>Loading...</code> notification to tell the user it was working.</p>
+<p>It's been a little while since I last wrote a userscript (pre-Chrome, to give you an idea). I forgot how much fun it can be to mess with websites a bit like that. I may write up a few more.</p>
+<p>If you'd like to see the entire source (includes some debug messaging and the userscript header comments), you can do so on GitHub: <a href="https://github.com/jpverkamp/userscripts/blob/master/gmail-plaintext-inline.user.js">gmail-plaintext-inline.user.js</a></p>
+<p>If you want to install it directly (and have Greasemonkey/Tampermonkey installed), you can directly from GitHub as well: <a href="https://github.com/jpverkamp/userscripts/raw/master/gmail-plaintext-inline.user.js">install gmail-plaintext-inline.user.js</a>.</p>
+<p>As a side note, 'optional' parameters in Javascript are weird...</p>]]></content></entry><entry><title>2016 Reading List</title><link href="//blog.jverkamp.com/2016/01/01/2016-reading-list" /><id>urn:uuid:84512a8b-25fc-f25d-17ed-0184a6e249e9</id><updated>2016-01-01T00:00:00Z</updated><summary type="html"><![CDATA[<p>I enjoyed keeping public track of my <a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, so here's the same thing for 2016:</p>
 <p><a href="https://www.goodreads.com/book/show/186074.The_Name_of_the_Wind" title="The Name of the Wind"><img alt="The Name of the Wind" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-name-of-the-wind.jpg" /></a> <a href="https://www.goodreads.com/book/show/47613.Mister_Monday" title="Mister Monday"><img alt="Mister Monday" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/mister-monday.jpg" /></a> <a href="https://www.goodreads.com/book/show/89187.Revelation_Space" title="Revelation Space"><img alt="Revelation Space" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/revelation-space.jpg" /></a> <a href="https://www.goodreads.com/book/show/16280689-staked" title="Staked"><img alt="Staked" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/staked.jpg" /></a> <a href="https://www.goodreads.com/book/show/24876258-the-aeronaut-s-windlass" title="The Aeronaut's Windlass"><img alt="The Aeronaut's Windlass" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-aeronaut-s-windlass.jpg" /></a> <a href="https://www.goodreads.com/book/show/8868764-white-sand" title="White Sand"><img alt="White Sand" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/white-sand.png" /></a> <a href="https://www.goodreads.com/book/show/13642710-nexus" title="Nexus"><img alt="Nexus" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/nexus.jpg" /></a> <a href="https://www.goodreads.com/book/show/1268479.Warbreaker" title="Warbreaker"><img alt="Warbreaker" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/warbreaker.jpg" /></a> <a href="https://www.goodreads.com/book/show/17333324-ancillary-justice" title="Ancillary Justice"><img alt="Ancillary Justice" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/ancillary-justice.jpg" /></a> <a href="https://www.goodreads.com/book/show/68428.The_Final_Empire" title="The Final Empire"><img alt="The Final Empire" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-final-empire.jpg" /></a> <a href="https://www.goodreads.com/book/show/19161852-the-fifth-season" title="The Fifth Season"><img alt="The Fifth Season" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-fifth-season.jpg" /></a> <a href="https://www.goodreads.com/book/show/15730101-the-call-of-cthulhu" title="The Call of Cthulhu"><img alt="The Call of Cthulhu" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-call-of-cthulhu.jpg" /></a> <a href="https://www.goodreads.com/book/show/20518872-the-three-body-problem" title="The Three-Body Problem"><img alt="The Three-Body Problem" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-three-body-problem.jpg" /></a> <a href="https://www.goodreads.com/book/show/13452375-legion" title="Legion"><img alt="Legion" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/legion.jpg" /></a> <a href="https://www.goodreads.com/book/show/71811.Moon_Called" title="Moon Called"><img alt="Moon Called" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/moon-called.jpg" /></a> <a href="https://www.goodreads.com/book/show/15839976-red-rising" title="Red Rising"><img alt="Red Rising" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/red-rising.jpg" /></a> <a href="https://www.goodreads.com/book/show/9278806-the-aether-of-night" title="The Aether of Night"><img alt="The Aether of Night" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-aether-of-night.png" /></a> <a href="https://www.goodreads.com/book/show/23197269-aurora" title="Aurora"><img alt="Aurora" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/aurora.jpg" /></a> <a href="https://www.goodreads.com/book/show/17182126-steelheart" title="Steelheart"><img alt="Steelheart" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/steelheart.jpg" /></a> <a href="https://www.goodreads.com/book/show/23129410-welcome-to-night-vale" title="Welcome to Night Vale"><img alt="Welcome to Night Vale" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/welcome-to-night-vale.jpg" /></a></p>
 ]]></summary><content type="html"><![CDATA[<p>I enjoyed keeping public track of my <a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, so here's the same thing for 2016:</p>
 <p><a href="https://www.goodreads.com/book/show/186074.The_Name_of_the_Wind" title="The Name of the Wind"><img alt="The Name of the Wind" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-name-of-the-wind.jpg" /></a> <a href="https://www.goodreads.com/book/show/47613.Mister_Monday" title="Mister Monday"><img alt="Mister Monday" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/mister-monday.jpg" /></a> <a href="https://www.goodreads.com/book/show/89187.Revelation_Space" title="Revelation Space"><img alt="Revelation Space" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/revelation-space.jpg" /></a> <a href="https://www.goodreads.com/book/show/16280689-staked" title="Staked"><img alt="Staked" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/staked.jpg" /></a> <a href="https://www.goodreads.com/book/show/24876258-the-aeronaut-s-windlass" title="The Aeronaut's Windlass"><img alt="The Aeronaut's Windlass" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-aeronaut-s-windlass.jpg" /></a> <a href="https://www.goodreads.com/book/show/8868764-white-sand" title="White Sand"><img alt="White Sand" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/white-sand.png" /></a> <a href="https://www.goodreads.com/book/show/13642710-nexus" title="Nexus"><img alt="Nexus" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/nexus.jpg" /></a> <a href="https://www.goodreads.com/book/show/1268479.Warbreaker" title="Warbreaker"><img alt="Warbreaker" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/warbreaker.jpg" /></a> <a href="https://www.goodreads.com/book/show/17333324-ancillary-justice" title="Ancillary Justice"><img alt="Ancillary Justice" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/ancillary-justice.jpg" /></a> <a href="https://www.goodreads.com/book/show/68428.The_Final_Empire" title="The Final Empire"><img alt="The Final Empire" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-final-empire.jpg" /></a> <a href="https://www.goodreads.com/book/show/19161852-the-fifth-season" title="The Fifth Season"><img alt="The Fifth Season" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-fifth-season.jpg" /></a> <a href="https://www.goodreads.com/book/show/15730101-the-call-of-cthulhu" title="The Call of Cthulhu"><img alt="The Call of Cthulhu" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-call-of-cthulhu.jpg" /></a> <a href="https://www.goodreads.com/book/show/20518872-the-three-body-problem" title="The Three-Body Problem"><img alt="The Three-Body Problem" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-three-body-problem.jpg" /></a> <a href="https://www.goodreads.com/book/show/13452375-legion" title="Legion"><img alt="Legion" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/legion.jpg" /></a> <a href="https://www.goodreads.com/book/show/71811.Moon_Called" title="Moon Called"><img alt="Moon Called" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/moon-called.jpg" /></a> <a href="https://www.goodreads.com/book/show/15839976-red-rising" title="Red Rising"><img alt="Red Rising" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/red-rising.jpg" /></a> <a href="https://www.goodreads.com/book/show/9278806-the-aether-of-night" title="The Aether of Night"><img alt="The Aether of Night" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/the-aether-of-night.png" /></a> <a href="https://www.goodreads.com/book/show/23197269-aurora" title="Aurora"><img alt="Aurora" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/aurora.jpg" /></a> <a href="https://www.goodreads.com/book/show/17182126-steelheart" title="Steelheart"><img alt="Steelheart" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/steelheart.jpg" /></a> <a href="https://www.goodreads.com/book/show/23129410-welcome-to-night-vale" title="Welcome to Night Vale"><img alt="Welcome to Night Vale" src="//blog.jverkamp.com/2016/01/01/2016-reading-list/welcome-to-night-vale.jpg" /></a></p>
@@ -662,71 +735,4 @@ for i in range(1, target):
 for i in range(len(presents)):
     if presents[i] &gt;= target:
         print(i)
-        sys.exit(0)</code></pre>]]></content></entry><entry><title>Advent of Code: Day 19</title><link href="//blog.jverkamp.com/2015/12/19/advent-of-code-day-19" /><id>urn:uuid:d3f72e70-8cbc-74c9-b51b-9829eebd4f72</id><updated>2015-12-19T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
-<!--more-->
-<pre class="python"><code>transitions = collections.defaultdict(set)
-
-reading_transitions = True
-for line in sys.stdin:
-    line = line.strip()
-
-    if not line:
-        reading_transitions = False
-    elif reading_transitions:
-        src, dst = line.split(' =&gt; ')
-        transitions[src].add(dst)
-    else:
-        target = line
-
-def expand_iter(input):
-    for src in transitions:
-        for dst in transitions[src]:
-            for match in re.finditer(src, input):
-                yield input[:match.start()] + dst + input[match.end():]
-
-expansions = set(expand_iter(target))
-
-print(len(expansions))</code></pre>
-<p>The basic idea here is to iterate over each possible (non-overlapping) replacement and <code>yield</code> the results. Then we convert that to a <code>set</code> to remove duplicates and return the sizes. Shiny.</p>
-<p>I bet I can guess where the second half is going.</p>
-<p><strong>Part 2:</strong> This time, take the target as output and determine how many steps it would take to get from <code>e</code> to the target.</p>
-<p>This one is actually more of a rewrite (since I'm inverting the <code>transition</code> map):</p>
-<pre class="python"><code>transitions = {}
-
-reading_transitions = True
-for line in sys.stdin:
-    line = line.strip()
-
-    if not line:
-        reading_transitions = False
-    elif reading_transitions:
-        src, dst = line.split(' =&gt; ')
-        transitions[dst] = src
-    else:
-        target = line
-
-def build_iter(input):
-    for dst in transitions:
-        src = transitions[dst]
-        for match in re.finditer(dst, input):
-            yield input[:match.start()] + src + input[match.end():]
-
-q = queue.PriorityQueue()
-q.put((len(target), 0, target))
-
-while True:
-    length, iterations, current = q.get()
-
-    if current == 'e':
-        break
-
-    for precursor in build_iter(current):
-        q.put((len(precursor), iterations + 1, precursor))
-
-print(iterations)</code></pre>
-<p>Two basic insights here: Since each transition output is unique, we don't have multiple possibilities and we want to solve the problem as quickly as possible. Given that, we will use a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> indexing on the length of the current chemical. That way, we'll try the solutions that are already as far along as possible.</p>
-<p>For my input, that worked very quickly. For slightly different inputs, the <a href="https://en.wikipedia.org/wiki/greedy_solution">greedy solution</a> doesn't find a result and it has to backtrack, leading to a <em>far</em> longer runtime. I'm not sure what would solve those quickly. I may play with this one a bit longer.</p>
-<p>Also, technically this solution isn't strictly correct. It finds the first solution, rather than strictly speaking the shortest one. That could be fixed continuing to iterate on the priority queue until we've exhausted any branches with fewer iterations than the known best. That takes rather a while though. That's one advantage of a contest styles--you can check your input. O:)</p>]]></content></entry></feed>
+        sys.exit(0)</code></pre>]]></content></entry></feed>

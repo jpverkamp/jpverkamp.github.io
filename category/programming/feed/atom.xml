@@ -1,5 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2015-12-25T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Advent of Code: Day 25</title><link href="//blog.jverkamp.com/2015/12/25/advent-of-code-day-25" /><id>urn:uuid:76fab82b-01da-119f-da63-b163c5d488e0</id><updated>2015-12-25T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/25">Source</a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-12-02T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Inlining plaintext attachments in Gmail</title><link href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail" /><id>urn:uuid:bc0d7956-f462-18f3-a332-a274b8c65941</id><updated>2016-12-02T00:00:00Z</updated><summary type="html"><![CDATA[<p>When you send a text message to a Gmail email address (at least from an iPhone using AT&T), you get something like this:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" /></a></p>
+<p>It's vaguely annoying to have to click through every single time just to see what the message is, especially when various extensions (such as <a href="https://github.com/gorhill/uMatrix">uMatrix</a>) break overlay rendering or when you have multiple attachments.</p>
+<p>Much better would be to just display the plaintext attachments inline:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" /></a></p>
+]]></summary><content type="html"><![CDATA[<p>When you send a text message to a Gmail email address (at least from an iPhone using AT&T), you get something like this:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-before.png" /></a></p>
+<p>It's vaguely annoying to have to click through every single time just to see what the message is, especially when various extensions (such as <a href="https://github.com/gorhill/uMatrix">uMatrix</a>) break overlay rendering or when you have multiple attachments.</p>
+<p>Much better would be to just display the plaintext attachments inline:</p>
+<p><a href="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/12/02/inlining-plaintext-attachments-in-gmail/gpti-after.png" /></a></p>
+<!--more-->
+<p>Let's do it!</p>
+<p>Essentially, I'm going to write a Javascript userscript, compatible with <a href="https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/">Greasemonkey</a> or <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en">Tampermonkey</a> for Chrome. Either allows you to insert small bits of Javascript into web pages to modify their behavior.</p>
+<p>After digging around a bit in the structure of Gmail's message pages, here's roughly what I ended up with:</p>
+<pre class="javascript"><code>var checkForPlaintexts = function(evt) {
+    jQuery('span[download_url]').each(function(i, el) {
+        var parts = el.getAttribute('download_url').split(':');
+        if (!parts || parts[0] != 'text/plain') return;
+        var url = parts[3];
+
+        var newElement = jQuery('&lt;pre id="GPTI_' + i + '"&gt;&lt;/pre&gt;');
+        newElement.text('Loading: ' + url);
+
+        jQuery(el).replaceWith(newElement);
+        jQuery.ajax({
+            url: url,
+            success: function(data) {
+                newElement.text(data);
+            }
+        });
+    });
+};</code></pre>
+<p>Basically, we're going to look for a <code>span</code> containing a <code>download_url</code> attribute. For the moment at least, that's always present with attachments and not otherwise. If you take that <code>download_url</code> element, you get something like this:</p>
+<p><code>text/plain:text_0.txt:https://mail.google.com/mail/u/0/?ui=...</code>`</p>
+<p>The first part is a <a href="https://en.wikipedia.org/wiki/MIME_type">MIME type</a>--of which, we're only interested in plaintext. The last section is a URL under gmail which, when visited, contains the contents of the attachment.</p>
+<p>Now that I have that (via jQuery<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span><span class="footnote"><sup><a href="#footnote-2">[2]</a></sup></span>), I build a new <code>pre</code> element with the text content and shove it in place.</p>
+<p>Voila.</p>
+<p>All I have to do next is make sure that it's called when I either load the page or when I navigate from the Inbox (et al) to a message:</p>
+<pre class="javascript"><code>jQuery(window).bind('hashchange', checkForPlaintexts);
+jQuery(checkForPlaintexts);</code></pre>
+<p>Unfortunately, this has some issues as well. It works if the message has already been viewed once, but not on the first load. Basically, I'm running into timing issues.</p>
+<p>My original solution to this was to put in a quick delay and call it a day. Unfortunately, when using satellite internet... even that didn't work. So instead, I built a system that will delay the initial call and then--if it fails--try a few more times with increasing timeouts between then.</p>
+<p>Something like this:</p>
+<pre class="javascript"><code>var delayedEvent = function(f, timeout, retries) {
+    timeout = timeout || 0;
+    retries = retries || 0;
+
+    return function(evt) {
+        setTimeout(f, timeout, evt, retries, timeout * 2);
+    }
+};
+
+var checkForPlaintexts = function(evt, retries, delay) {
+    retries = retries || 0;
+    var foundOne = false;
+
+    jQuery('span[download_url]').each(function(i, el) {
+        foundOne = true;
+
+        ...
+    });
+
+    if (!foundOne && retries) {
+        setTimeout(checkForPlaintexts, delay, evt, retries - 1, delay * 2);
+    }
+};
+
+jQuery(window).bind('hashchange', delayedEvent(checkForPlaintexts, 125, 3));
+jQuery(delayedEvent(checkForPlaintexts, 125, 3));</code></pre>
+<p>So far, this has worked perfectly. Sometimes it takes a bit to fetch the ajax call in the background. That's why I put in the <code>Loading...</code> notification to tell the user it was working.</p>
+<p>It's been a little while since I last wrote a userscript (pre-Chrome, to give you an idea). I forgot how much fun it can be to mess with websites a bit like that. I may write up a few more.</p>
+<p>If you'd like to see the entire source (includes some debug messaging and the userscript header comments), you can do so on GitHub: <a href="https://github.com/jpverkamp/userscripts/blob/master/gmail-plaintext-inline.user.js">gmail-plaintext-inline.user.js</a></p>
+<p>If you want to install it directly (and have Greasemonkey/Tampermonkey installed), you can directly from GitHub as well: <a href="https://github.com/jpverkamp/userscripts/raw/master/gmail-plaintext-inline.user.js">install gmail-plaintext-inline.user.js</a>.</p>
+<p>As a side note, 'optional' parameters in Javascript are weird...</p>]]></content></entry><entry><title>Advent of Code: Day 25</title><link href="//blog.jverkamp.com/2015/12/25/advent-of-code-day-25" /><id>urn:uuid:76fab82b-01da-119f-da63-b163c5d488e0</id><updated>2015-12-25T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/25">Source</a></p>
 <p><strong>Part 1:</strong> Take the relation:</p>
 <div>$$F(n) = \left\{\begin{matrix}
 20151225 & \textrm{if}\ n = 1 \\
@@ -776,76 +849,4 @@ print(len(list(fills(quantity, containers))))</code></pre>
 print(len(list(filter(
     lambda fill : len(fill) == smallest_fill,
     fills(quantity, containers)
-))))</code></pre>]]></content></entry><entry><title>Advent of Code: Day 16</title><link href="//blog.jverkamp.com/2015/12/16/advent-of-code-day-16" /><id>urn:uuid:03ff5f24-7cd0-f74f-d7bd-db34d25cf913</id><updated>2015-12-16T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of target values of the form:</p>
-<pre class="text"><code>children: 3
-cats: 7
-samoyeds: 2</code></pre>
-<p>And a list of 'Aunt Sues', each with known values:</p>
-<pre class="text"><code>Sue 1: children: 1, cars: 8, vizslas: 7
-Sue 2: akitas: 10, perfumes: 10, children: 5
-Sue 3: cars: 5, pomeranians: 4, vizslas: 1</code></pre>
-<p>Determine which Sue has no unset but matching values.</p>
-<p>For example, Sue 1 is invalid because <code>children</code> is 1 versus 3 and Sue 2 because <code>children</code> is 5 versus 3. Given only the values above, Sue 3 would be valid since there are no contradictions.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/16">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of target values of the form:</p>
-<pre class="text"><code>children: 3
-cats: 7
-samoyeds: 2</code></pre>
-<p>And a list of 'Aunt Sues', each with known values:</p>
-<pre class="text"><code>Sue 1: children: 1, cars: 8, vizslas: 7
-Sue 2: akitas: 10, perfumes: 10, children: 5
-Sue 3: cars: 5, pomeranians: 4, vizslas: 1</code></pre>
-<p>Determine which Sue has no unset but matching values.</p>
-<p>For example, Sue 1 is invalid because <code>children</code> is 1 versus 3 and Sue 2 because <code>children</code> is 5 versus 3. Given only the values above, Sue 3 would be valid since there are no contradictions.</p>
-<!--more-->
-<p>I think understanding this problem took longer than solving it. Originally, I thought that missing values should be treated as <code>float('inf')</code>, but they should just be ignored entirely:</p>
-<pre class="python"><code>targets = {}
-sues = collections.defaultdict(dict)
-
-loading_targets = True
-for line in sys.stdin:
-    line = line.strip()
-
-    if not line:
-        loading_targets = False
-
-    elif loading_targets:
-        key, val = line.split(': ')
-        targets[key] = int(val)
-
-    else:
-        sue, things = line.strip().split(': ', 1)
-        for thing in things.split(', '):
-            key, val = thing.split(': ')
-            sues[sue][key] = int(val)
-
-for sue in sues:
-    valid = True
-
-    for key in targets:
-        if key in sues[sue] and sues[sue][key] != targets[key]:
-            valid = False
-            break
-
-    if valid:
-        print(sue)</code></pre>
-<p>The longer half is correctly parsing and loading the data. For my case, I put both inputs in the same stream, separated by an empty line (similar to <a href="https://en.wikipedia.org/wiki/HTTP">HTTP</a> and other protocols actually).</p>
-<p>After that, it was just a matter of checking each Sue for the first existent but non-matching value.</p>
-<p><strong>Part 2:</strong> Repeat the same algorithm, however assume that a Sue must have strictly more <code>cats</code> and <code>trees</code> than listed and strictly less <code>pomeranians</code> and <code>goldfish</code>.</p>
-<p>For this, I introduced another <code>defaultdict</code> which contains the <code>comparators</code> to use for any given value:</p>
-<pre class="python"><code>comparators = collections.defaultdict(lambda : operator.eq)
-comparators['cats'] = comparators['trees'] = operator.gt
-comparators['pomeranians'] = comparators['goldfish'] = operator.lt</code></pre>
-<p>After that, we can change the <code>for sue in sues</code> loop to take the comparator into account:</p>
-<pre class="python"><code>for sue in sues:
-    valid = True
-
-    for key in targets:
-        if key in sues[sue] and not comparators[key](sues[sue][key], targets[key]):
-                valid = False
-                break
-
-    if valid:
-        print(sue)</code></pre>
-<p>Neat.</p>]]></content></entry></feed>
+))))</code></pre>]]></content></entry></feed>
