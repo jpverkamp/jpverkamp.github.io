@@ -4,7 +4,7 @@
         
         
 
-        <title>Unicode | jverkamp.com | John-Paul Verkamp</title>
+        <title>Command line unicode search | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
         <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
@@ -72,19 +72,17 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Unicode</h1>
+                        <h1 class="entry-title">Command line unicode search</h1>
 
                         <div class="entry-meta">
-                                
-                                
+                                <span class="posted-on"><time class="entry-date" datetime="2016-12-06"><span class="year">2016</span> <span class="month">Dec</span> <span class="day">6</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming/by-topic/command-line">Command line</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li><li><a href="//blog.jverkamp.com/category/programming/by-topic/unicode">Unicode</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <ul class="list-inline"><li>[↑ <a href="..">By Topic</a>]</li></ul>
-<h2>Posts</h2>
-<ul class="list-unstyled"><li class="post-preview"><header><h2 class="entry-title"><a href="//blog.jverkamp.com/2016/12/06/command-line-unicode-search">Command line unicode search</a></h2><div class="entry-meta"><time class="entry-date" datetime="2016-12-06"><span class="year">2016</span> <span class="month">Dec</span> <span class="day">6</span></time></div></header><div class="preview"><p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
+                        <p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
 <pre class="bash"><code>$ uni delta
 ⍋	apl functional symbol delta stile
 ⍙	apl functional symbol delta underbar
@@ -105,21 +103,124 @@
 𝞭	mathematical sans-serif bold italic small delta
 𝝳	mathematical sans-serif bold small delta
 ᵟ	modifier letter small delta</code></pre>
-<a href="//blog.jverkamp.com/2016/12/06/command-line-unicode-search">read more...</a></div><hr /></li><li class="post-preview"><header><h2 class="entry-title"><a href="//blog.jverkamp.com/2014/05/30/braille-unicode-pixelation">Braille unicode pixelation</a></h2><div class="entry-meta"><time class="entry-date" datetime="2014-05-30"><span class="year">2014</span> <span class="month">May</span> <span class="day">30</span></time></div></header><div class="preview"><p>What would you do if you were on a machine that had no higher level graphics, but you still wanted to display images?</p>
-<a href="//blog.jverkamp.com/2014/05/30/braille-unicode-pixelation">read more...</a></div><hr /></li><li class="post-preview"><header><h2 class="entry-title"><a href="//blog.jverkamp.com/2013/01/17/decoding-escaped-unicode-characters">Decoding escaped Unicode strings</a></h2><div class="entry-meta"><time class="entry-date" datetime="2013-01-17"><span class="year">2013</span> <span class="month">Jan</span> <span class="day">17</span></time></div></header><div class="preview"><p>In one of my current research projects involving large amounts of <a href="https://twitter.com/" title="Twitter">Twitter</a> data from a variety of countries, I came across an interesting problem. The Twitter stream is encoded as a series of <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> objects--each of which has been written out using <a href="https://en.wikipedia.org/wiki/ASCII">ASCII</a> characters. But not all of the Tweets (or even a majority in this case) can be represented with only ASCII. So what happens?</p>
-<p>Well, it turns out that they encode the data as JSON strings with <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a> <a href="https://en.wikipedia.org/wiki/escape_characters">escape characters</a>. So if we had the Russian hashtag #победазанами (victory is ours), that would be encoded as such:</p>
-<pre class="python"><code>"#\u043f\u043e\u0431\u0435\u0434\u0430\u0437\u0430\u043d\u0430\u043c\u0438"</code></pre>
-<a href="//blog.jverkamp.com/2013/01/17/decoding-escaped-unicode-characters">read more...</a></div><hr /></li></ul>
+<!--more-->
+<p>The basic idea is to take Python's <code>unicodedata</code> module and use that to get the names of characters, then to find those that best match user input. Of course one problem with that is that as of version 8 of the Unicode specification there are up to 263,994 characters defined in 262 different blocks. That's a bit much.</p>
+<p>So instead, I'm going to select a handpicked list of blocks that I think might be vaguely interesting (see <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/uni#L284">here</a>) as a default and add the ability to select any other block as a command line switch:</p>
+<pre class="bash"><code>$ uni --block currency euro
+€	euro sign
+₠	euro-currency sign</code></pre>
+<p>So, how do I do it? First, let's assume I have a list of unicode blocks defined as such (available from the Unicode Consortium: <a href="ftp://ftp.unicode.org/Public/8.0.0/ucd/Blocks.txt">Blocks.txt</a>):</p>
+<pre class="text"><code>0000..007F; Basic Latin
+0080..00FF; Latin-1 Supplement
+0100..017F; Latin Extended-A
+0180..024F; Latin Extended-B
+0250..02AF; IPA Extensions
+...</code></pre>
+<p>First, we'll want to either determine which block(s) we'll be looking at:</p>
+<pre class="python"><code># Determine which unicode blocks we'll be searching through
+blocks = []
+
+if args.block:
+    for line in all_blocks.split('\n'):
+        if fuzz.token_set_ratio(args.block, line.split('; ')[-1]) &gt; 100 * args.block_threshold:
+            blocks.append(line)
+else:
+    blocks = default_blocks.split('\n')
+
+if not blocks:
+    sys.stderr.write('No blocks found\n')
+    sys.exit(-1)</code></pre>
+<p><code>args</code> contains the parsed command line parameters, I'll get to that later. <code>fuzz</code> is from the <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> Python library for fuzzy string matching. Basically, if the <code>--block</code> parameter was specified, we'll search for any that match closely enough, otherwise we'll use the default blocks.</p>
+<p>Next, we'll look through and build a list of all possible matching characters within those blocks. Given the formats above, we can get the lower and upper bounds with <code>int</code>, specifying base 16 and then use <code>unicodedata</code> to get the character name. Again, we'll apply a fuzzy match to the character names.</p>
+<pre class="python"><code># Search through all of those blocks, whee
+results = []
+
+for block in blocks:
+    bounds, name = block.split('; ')
+    lower_bound, upper_bound = bounds.split('..')
+
+    lower_bound = int(lower_bound, 16)
+    upper_bound = int(upper_bound, 16)
+
+    for codepoint in range(lower_bound, upper_bound + 1):
+        try:
+            character = chr(codepoint)
+            name = unicodedata.name(character, None).lower()
+            score = fuzz.token_set_ratio(args.name, name)
+
+            if score &gt; 100 * args.name_threshold:
+                results.append((score, name, character))
+        except:
+            pass
+
+if not results:
+    sys.stderr.write('No characters found\n')
+    sys.exit(-1)</code></pre>
+<p>And after that, we have a few tweaks for output. We can print all of the results (default) or just a limited number and we can print just the character or also the name:</p>
+<pre class="python"><code># Only print out the requested number of results
+for count, (score, name, character) in enumerate(sorted(results)):
+    if args.count and count &gt;= args.count:
+        break
+
+    if args.quiet:
+        print(character)
+    else:
+        print(character, name, sep = '\t')</code></pre>
+<p>I guess now would be a good time to go back to how we got the <code>args</code> object in the first place:</p>
+<pre class="python"><code>parser = argparse.ArgumentParser('Search unicode characters')
+parser.add_argument('name', nargs = '+', help = ...)
+parser.add_argument('--block', '-b', help = ...)
+parser.add_argument('--block-threshold', default = 0.9, help = ...)
+parser.add_argument('--name-threshold', default = 0.9, help = ...)
+parser.add_argument('--count', default = 0, type = int, help = ...)
+parser.add_argument('--quiet', '-q', default = False, action = 'store_true', help = ...)
+args = parser.parse_args()</code></pre>
+<p><code>argparse</code> is a most excellent library. It allows you to declaratively specify what your command line parameters will be and then will parse it into an object with one field for each variable (fixing the names so that <code>--block-threshold</code> becomes <code>args.block_threshold</code>).</p>
+<p>And that's it. You can use it to look up all sorts of interesting things:</p>
+<pre class="python"><code>uni --count 10 --block runic runic
+
+ᛮ	runic arlaug symbol
+ᛰ	runic belgthor symbol
+᛭	runic cross punctuation
+ᚪ	runic letter ac a
+ᚫ	runic letter aesc
+ᛉ	runic letter algiz eolhx
+ᚨ	runic letter ansuz a
+ᛒ	runic letter berkanan beorc bjarkan b
+ᛍ	runic letter c
+ᛣ	runic letter calc</code></pre>
+<p>(That will display better if you're using a font that includes Unicode range <code>16A0..16FF; Runic</code>.)</p>
+<p>For the most part, I'll use it in this mode and then select characters to copy and paste. But you could also combine it with <a href="https://github.com/garybernhardt/selecta">selecta</a> and <code>pbcopy</code> (on OSX) to get something entirely more interesting:</p>
+<pre class="bash"><code>$ uni --block runic runic | selecta | cut -f 1 | tr -d '\n' | pbcopy</code></pre>
+<p><code>uni</code> will display a list of characters, <code>selecta</code> will let you search for one, <code>cut</code> will get just the character, <code>tr</code> will remove the newline, and <code>pbcopy</code> will send it to the clipboard. You could even shove it into a Bash/ZSH alias:</p>
+<pre class="bash"><code>pbuni() {
+    uni $@ | selecta | cut -f 1 | tr -d '\n' | pbcopy
+}</code></pre>
+<p>Very cool.</p>
+<p>This is in my dotfiles, so you can find the full source here: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/uni">uni</a>. Enjoy!</p>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>
                 </div>
 
-                
+                <div id="disqus_thread"></div>
+<script type="text/javascript">
+var disqus_shortname = "jverkamp";
+var disqus_title = "Command line unicode search";
+var disqus_url = "http://blog.jverkamp.com/2016/12/06/command-line-unicode-search/";
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
         </article>
 
         <footer class="container" role="contentinfo">
-                
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search">← Command line emoji search</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search">← Command line emoji search</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="//blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="//blog.jverkamp.com/rss.png" /></a><br />

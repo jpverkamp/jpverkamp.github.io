@@ -1,5 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-12-04T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Command line emoji search</title><link href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search" /><id>urn:uuid:cee40f17-a913-9d9b-f483-521c0bea600a</id><updated>2016-12-04T00:00:00Z</updated><summary type="html"><![CDATA[<p>Sometimes, I find myself wanting to communicate in <a href="https://en.wikipedia.org/wiki/emoji">emoji</a>.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-12-06T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Command line unicode search</title><link href="//blog.jverkamp.com/2016/12/06/command-line-unicode-search" /><id>urn:uuid:2a36cc6a-f2a3-47cd-be7a-0eb5d72d0e62</id><updated>2016-12-06T00:00:00Z</updated><summary type="html"><![CDATA[<p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
+<pre class="bash"><code>$ uni delta
+⍋	apl functional symbol delta stile
+⍙	apl functional symbol delta underbar
+⍍	apl functional symbol quad delta
+≜	delta equal to
+Δ	greek capital letter delta
+δ	greek small letter delta
+ẟ	latin small letter delta
+ƍ	latin small letter turned delta
+𝚫	mathematical bold capital delta
+𝜟	mathematical bold italic capital delta
+𝜹	mathematical bold italic small delta
+𝛅	mathematical bold small delta
+𝛥	mathematical italic capital delta
+𝛿	mathematical italic small delta
+𝝙	mathematical sans-serif bold capital delta
+𝞓	mathematical sans-serif bold italic capital delta
+𝞭	mathematical sans-serif bold italic small delta
+𝝳	mathematical sans-serif bold small delta
+ᵟ	modifier letter small delta</code></pre>
+]]></summary><content type="html"><![CDATA[<p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
+<pre class="bash"><code>$ uni delta
+⍋	apl functional symbol delta stile
+⍙	apl functional symbol delta underbar
+⍍	apl functional symbol quad delta
+≜	delta equal to
+Δ	greek capital letter delta
+δ	greek small letter delta
+ẟ	latin small letter delta
+ƍ	latin small letter turned delta
+𝚫	mathematical bold capital delta
+𝜟	mathematical bold italic capital delta
+𝜹	mathematical bold italic small delta
+𝛅	mathematical bold small delta
+𝛥	mathematical italic capital delta
+𝛿	mathematical italic small delta
+𝝙	mathematical sans-serif bold capital delta
+𝞓	mathematical sans-serif bold italic capital delta
+𝞭	mathematical sans-serif bold italic small delta
+𝝳	mathematical sans-serif bold small delta
+ᵟ	modifier letter small delta</code></pre>
+<!--more-->
+<p>The basic idea is to take Python's <code>unicodedata</code> module and use that to get the names of characters, then to find those that best match user input. Of course one problem with that is that as of version 8 of the Unicode specification there are up to 263,994 characters defined in 262 different blocks. That's a bit much.</p>
+<p>So instead, I'm going to select a handpicked list of blocks that I think might be vaguely interesting (see <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/uni#L284">here</a>) as a default and add the ability to select any other block as a command line switch:</p>
+<pre class="bash"><code>$ uni --block currency euro
+€	euro sign
+₠	euro-currency sign</code></pre>
+<p>So, how do I do it? First, let's assume I have a list of unicode blocks defined as such (available from the Unicode Consortium: <a href="ftp://ftp.unicode.org/Public/8.0.0/ucd/Blocks.txt">Blocks.txt</a>):</p>
+<pre class="text"><code>0000..007F; Basic Latin
+0080..00FF; Latin-1 Supplement
+0100..017F; Latin Extended-A
+0180..024F; Latin Extended-B
+0250..02AF; IPA Extensions
+...</code></pre>
+<p>First, we'll want to either determine which block(s) we'll be looking at:</p>
+<pre class="python"><code># Determine which unicode blocks we'll be searching through
+blocks = []
+
+if args.block:
+    for line in all_blocks.split('\n'):
+        if fuzz.token_set_ratio(args.block, line.split('; ')[-1]) &gt; 100 * args.block_threshold:
+            blocks.append(line)
+else:
+    blocks = default_blocks.split('\n')
+
+if not blocks:
+    sys.stderr.write('No blocks found\n')
+    sys.exit(-1)</code></pre>
+<p><code>args</code> contains the parsed command line parameters, I'll get to that later. <code>fuzz</code> is from the <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> Python library for fuzzy string matching. Basically, if the <code>--block</code> parameter was specified, we'll search for any that match closely enough, otherwise we'll use the default blocks.</p>
+<p>Next, we'll look through and build a list of all possible matching characters within those blocks. Given the formats above, we can get the lower and upper bounds with <code>int</code>, specifying base 16 and then use <code>unicodedata</code> to get the character name. Again, we'll apply a fuzzy match to the character names.</p>
+<pre class="python"><code># Search through all of those blocks, whee
+results = []
+
+for block in blocks:
+    bounds, name = block.split('; ')
+    lower_bound, upper_bound = bounds.split('..')
+
+    lower_bound = int(lower_bound, 16)
+    upper_bound = int(upper_bound, 16)
+
+    for codepoint in range(lower_bound, upper_bound + 1):
+        try:
+            character = chr(codepoint)
+            name = unicodedata.name(character, None).lower()
+            score = fuzz.token_set_ratio(args.name, name)
+
+            if score &gt; 100 * args.name_threshold:
+                results.append((score, name, character))
+        except:
+            pass
+
+if not results:
+    sys.stderr.write('No characters found\n')
+    sys.exit(-1)</code></pre>
+<p>And after that, we have a few tweaks for output. We can print all of the results (default) or just a limited number and we can print just the character or also the name:</p>
+<pre class="python"><code># Only print out the requested number of results
+for count, (score, name, character) in enumerate(sorted(results)):
+    if args.count and count &gt;= args.count:
+        break
+
+    if args.quiet:
+        print(character)
+    else:
+        print(character, name, sep = '\t')</code></pre>
+<p>I guess now would be a good time to go back to how we got the <code>args</code> object in the first place:</p>
+<pre class="python"><code>parser = argparse.ArgumentParser('Search unicode characters')
+parser.add_argument('name', nargs = '+', help = ...)
+parser.add_argument('--block', '-b', help = ...)
+parser.add_argument('--block-threshold', default = 0.9, help = ...)
+parser.add_argument('--name-threshold', default = 0.9, help = ...)
+parser.add_argument('--count', default = 0, type = int, help = ...)
+parser.add_argument('--quiet', '-q', default = False, action = 'store_true', help = ...)
+args = parser.parse_args()</code></pre>
+<p><code>argparse</code> is a most excellent library. It allows you to declaratively specify what your command line parameters will be and then will parse it into an object with one field for each variable (fixing the names so that <code>--block-threshold</code> becomes <code>args.block_threshold</code>).</p>
+<p>And that's it. You can use it to look up all sorts of interesting things:</p>
+<pre class="python"><code>uni --count 10 --block runic runic
+
+ᛮ	runic arlaug symbol
+ᛰ	runic belgthor symbol
+᛭	runic cross punctuation
+ᚪ	runic letter ac a
+ᚫ	runic letter aesc
+ᛉ	runic letter algiz eolhx
+ᚨ	runic letter ansuz a
+ᛒ	runic letter berkanan beorc bjarkan b
+ᛍ	runic letter c
+ᛣ	runic letter calc</code></pre>
+<p>(That will display better if you're using a font that includes Unicode range <code>16A0..16FF; Runic</code>.)</p>
+<p>For the most part, I'll use it in this mode and then select characters to copy and paste. But you could also combine it with <a href="https://github.com/garybernhardt/selecta">selecta</a> and <code>pbcopy</code> (on OSX) to get something entirely more interesting:</p>
+<pre class="bash"><code>$ uni --block runic runic | selecta | cut -f 1 | tr -d '\n' | pbcopy</code></pre>
+<p><code>uni</code> will display a list of characters, <code>selecta</code> will let you search for one, <code>cut</code> will get just the character, <code>tr</code> will remove the newline, and <code>pbcopy</code> will send it to the clipboard. You could even shove it into a Bash/ZSH alias:</p>
+<pre class="bash"><code>pbuni() {
+    uni $@ | selecta | cut -f 1 | tr -d '\n' | pbcopy
+}</code></pre>
+<p>Very cool.</p>
+<p>This is in my dotfiles, so you can find the full source here: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/uni">uni</a>. Enjoy!</p>]]></content></entry><entry><title>Command line emoji search</title><link href="//blog.jverkamp.com/2016/12/04/command-line-emoji-search" /><id>urn:uuid:cee40f17-a913-9d9b-f483-521c0bea600a</id><updated>2016-12-04T00:00:00Z</updated><summary type="html"><![CDATA[<p>Sometimes, I find myself wanting to communicate in <a href="https://en.wikipedia.org/wiki/emoji">emoji</a>.</p>
 <p><img alt="chicken" class="emoji" src="/emoji/chicken.svg" /></p>
 <p>How about this:</p>
 <pre class="bash"><code>$ emoji chicken
@@ -683,98 +819,4 @@ def monte_carlo(player, boss, timeout = TIME_TO_RUN):
 <p>This actually makes the problem a bit harder computationally. There were already not <em>that</em> many combinations of spells that would win in the first case and there are even fewer this time around. I ran the Monte Carlo simulation several times for five minutes each without it randomly stumbling on a valid ordering that works for this case. I could probably have tweaked the generation algorithm to be a bit smarter, but it wasn't necessary. The priority queue solution with the boss HP weighting found the solution quickly enough.</p>
 <p>Since the code for this one is a bit more complicated, feel free to check it out on GitHub to see the whole picture: <a href="https://github.com/jpverkamp/advent-of-code/tree/master/day-22">GitHub:jpverkamp/advent-of-code</a>. I've been (and will continue to) uploading my solutions there, but previously I've just directly included the entire code in order in the posts.</p>
 <p>That all being said, I honestly think this was my least favorite problem of them thus far. It was interesting in that it actually mattered what algorithm you chose to solve it (I imagine that a recursive solution with memoization could be even faster), but the implementation details were just way too fiddly. As mentioned earlier, I wrote out more or less exactly the same algorithms a dozen times before I finally had one that actually returned the correct answer (for the most part, they were finding solutions that were too low). So it goes.</p>
-<p>I look forward to the final three problems!</p>]]></content></entry><entry><title>Advent of Code: Day 21</title><link href="//blog.jverkamp.com/2015/12/21/advent-of-code-day-21" /><id>urn:uuid:2a910be6-afd8-d4dc-e437-c5c47fc1ed7a</id><updated>2015-12-21T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/21">Source</a></p>
-<p><strong>Part 1:</strong> Given a shop full of weapons (buy exactly one), armor (buy zero or one), and rings (buy 0, 1, or 2), determine the set of items that will defeat a given enemy for the minimum cost (see the <a href="http://adventofcode.com/day/21">original writeup</a> for more details).</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/21">Source</a></p>
-<p><strong>Part 1:</strong> Given a shop full of weapons (buy exactly one), armor (buy zero or one), and rings (buy 0, 1, or 2), determine the set of items that will defeat a given enemy for the minimum cost (see the <a href="http://adventofcode.com/day/21">original writeup</a> for more details).</p>
-<!--more-->
-<p>First, a bit of code to parse the shop:</p>
-<pre class="python"><code>shop = {}
-category = None
-
-with open('shop.txt', 'r') as fin:
-    for line in fin:
-        line = line.strip()
-        if not line:
-            continue
-
-        if ':' in line:
-            category = line.split(':')[0]
-            shop[category] = []
-            continue
-
-        name, cost, damage, armor = line.rsplit(maxsplit = 3)
-
-        shop[category].append({
-            'Name': name,
-            'Cost': int(cost),
-            'Damage': int(damage),
-            'Armor': int(armor),
-        })
-
-# Allow for no armor or rings
-shop['Armor'].append({'Name': None, 'Cost': 0, 'Damage': 0, 'Armor': 0})
-shop['Rings'].append({'Name': None, 'Cost': 0, 'Damage': 0, 'Armor': 0})</code></pre>
-<p>Using that, we can write some code to generate all possible players:</p>
-<pre class="python"><code>def all_players():
-    for weapon in shop['Weapons']:
-        for armor in shop['Armor']:
-            for left_ring in shop['Rings']:
-                for right_ring in shop['Rings']:
-                    # Cannot have two of the same ring unless they're both None
-                    if left_ring and right_ring and left_ring == right_ring:
-                        continue
-
-                    items = [weapon, armor, left_ring, right_ring]
-
-                    player = {
-                        'Hit Points': 100,
-                        'Items': [item['Name'] for item in items if item['Name']],
-                        'Damage': sum(item['Damage'] for item in items),
-                        'Armor': sum(item['Armor'] for item in items),
-                        'Cost': sum(item['Cost'] for item in items),
-                    }
-
-                    yield player</code></pre>
-<p>Additionally, we can read our opponent's stats from <code>stdin</code>:</p>
-<pre class="python"><code>enemy = {}
-for line in sys.stdin:
-    key, val = line.strip().split(':')
-    enemy[key] = int(val)
-
-def get_enemy():
-    return copy.copy(enemy)</code></pre>
-<p>It's important to return a new copy each time; otherwise you end up badly beating up the same guy over and over again.</p>
-<p>Finally, fight:</p>
-<pre class="python"><code>def player_wins(player, enemy):
-    while True:
-        enemy['Hit Points'] -= max(1, player['Damage'] - enemy['Armor'])
-        if enemy['Hit Points'] &lt;= 0:
-            return True
-
-        player['Hit Points'] -= max(1, enemy['Damage'] - player['Armor'])
-        if player['Hit Points'] &lt;= 0:
-            return False</code></pre>
-<p>With all of this in a separate file called <code>lib.py</code> (I should probably refactor some of the previous days this way), we can solve the actual problem in about a half dozen lines:</p>
-<pre class="python"><code>import lib
-
-best_player = {'Cost': float("inf")}
-for player in lib.all_players():
-    if lib.player_wins(player, lib.get_enemy()):
-        if player['Cost'] &lt; best_player['Cost']:
-            best_player = player
-
-print(best_player['Cost'])</code></pre>
-<p>A brute force solution feels a bit ugly. We could instead have iterated over the solutions from the cheapest up until we found one that worked, or even done a <a href="https://en.wikipedia.org/wiki/binary_search">binary search</a> by cost, but what's the point? There are only 1260 possible inventories. That's nothing to a computer.</p>
-<p><strong>Part 2:</strong> Invert the problem. Find the most expensive set of items you can buy and still lose.</p>
-<p>This is why I factored out all of the library code. I know that something like this would be part 2. :)</p>
-<pre class="python"><code>import lib
-
-best_player = {'Cost': float("-inf")}
-for player in lib.all_players():
-    if not lib.player_wins(player, lib.get_enemy()):
-        if player['Cost'] &gt; best_player['Cost']:
-            best_player = player
-
-print(best_player['Cost'])</code></pre>
-<p>In case you were curious, my winner for part 1 had a longsword, chainmail, and a Ring of Damage +2. Part 2 had a Dagger, Leather Armor, and Rings of Damage +3 and Defense +3. It's interesting that the cheaper option actually had a more expensive weapon and armor, but the pair of rings more than made up for it.</p>]]></content></entry></feed>
+<p>I look forward to the final three problems!</p>]]></content></entry></feed>
