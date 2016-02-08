@@ -1,5 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-01-06T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Command line unicode search</title><link href="//blog.jverkamp.com/2016/01/06/command-line-unicode-search" /><id>urn:uuid:842e94d5-f91e-d1f9-c793-73043fa69212</id><updated>2016-01-06T00:00:00Z</updated><summary type="html"><![CDATA[<p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/01/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-02-08T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:e246205b-1f33-c07a-2aa5-10021f3fe725</id><entry><title>Duplicating AeroSnap on OSX with Hammerspoon</title><link href="//blog.jverkamp.com/2016/02/08/duplicating-aerosnap-on-osx-with-hammerspoon" /><id>urn:uuid:09374126-32e6-69a9-1a73-8141f97dec1a</id><updated>2016-02-08T00:00:00Z</updated><summary type="html"><![CDATA[<p>Relatively recently, I switched my last Windows machine over to OSX. For the most part, it's been great. One bit of functionality that I've been missing though is AeroSnap. Specifically the ability to use a keyboard shortcut to move windows to the left/right half of a monitor.</p>
+]]></summary><content type="html"><![CDATA[<p>Relatively recently, I switched my last Windows machine over to OSX. For the most part, it's been great. One bit of functionality that I've been missing though is AeroSnap. Specifically the ability to use a keyboard shortcut to move windows to the left/right half of a monitor.</p>
+<!--more-->
+<p>For a while, <a href="https://www.boastr.net/">BetterTouchTool</a> provided that functionality for me, among it's many (many) other options. Unfortunately (for me, it's a good move for them), the author(s) of BetterTouchTool are now moving to a paid model. Since I use only a tiny fraction of the functionality, I decided to see if there were other options.</p>
+<p>The first thing that I stumbled across was <a href="https://github.com/fikovnik/ShiftIt">ShiftIt</a>. It actually has exactly the functionality that I wanted and was configurable enough that I could tweak the keybindings to what my fingers already expected them to be. If you don't particularly want to tweak the functionality and just want AeroSnapesqe functionality, this is probably a good enough option.</p>
+<p>Me though? I love to tweak things.</p>
+<p>With unusually precient timing, Lifehacker posted an article about <a href="http://www.hammerspoon.org/">Hammerspoon</a>: <a href="http://lifehacker.com/hammerspoon-is-powerful-free-automation-tool-for-os-x-1757351485">Hammerspoon Is Powerful, Free Automation Tool for OS X</a></p>
+<p>Interesting.</p>
+<p>After a bit of digging, I found that their <a href="http://www.hammerspoon.org/go/">Getting Started</a> document actually has an example that does exactly what I want to do: <a href="http://www.hammerspoon.org/go/#winresize">Window sizing</a> Shiny!</p>
+<p>A bit of tweaking and this is what I ended up with:</p>
+<h3><code>.hammerspoon/init.lua</code></h3>
+<p>Base code, handles reloading, locking, and loading modules</p>
+<pre class="lua"><code>-- Reload hammerspoon configs
+hs.hotkey.bind({"cmd", "ctrl"}, "R", function()
+    hs.reload()
+end)
+hs.alert.show("Config loaded")
+
+-- Lock
+hs.hotkey.bind({"cmd", "ctrl"}, 'L', function()
+    os.execute("open '/System/Library/Frameworks/ScreenSaver.framework/Versions/A/Resources/ScreenSaverEngine.app'")
+end)
+
+require('aerosnap')</code></pre>
+<p>The first is another example from their documentation of bind a keyboard shortcut to reloading the Hammerspoon documentation. The second is another keyboard shortcut I missed from Windows: the ability to lock the screen without logging out (the normal lock functionality disables networking and thus things like remote login).</p>
+<h3><code>.hammerspoon/aerosnap/init.lua</code></h3>
+<pre class="lua"><code>-- Aerosnap helper functions to get and set current window parameters
+function aerosnap_get_parameters()
+    local window = hs.window.focusedWindow()
+    local frame = window:frame()
+    local screen = window:screen()
+    local bounds = screen:frame()
+
+    return window, frame, bounds
+end
+
+-- Aerosnap help to move a window to a specified position
+function aerosnap_move_window(x, y, w, h)
+    local window, frame, bounds = aerosnap_get_parameters()
+
+    frame.x = x
+    frame.y = y
+    frame.w = w
+    frame.h = h
+
+    window:setFrame(frame)
+end
+
+-- Save the current window's position so we can restore it
+function aerosnap_save_window()
+    local window, frame, bounds = aerosnap_get_parameters()
+    saved_window_sizes = saved_window_sizes or {}
+    saved_window_sizes[window:id()] = {x = frame.x, y = frame.y, w = frame.w, h = frame.h}
+end
+
+-- Aerosnap move window to the left half
+hs.hotkey.bind({"cmd", "ctrl"}, "Left", function()
+    local window, frame, bounds = aerosnap_get_parameters()
+    aerosnap_save_window()
+    aerosnap_move_window(bounds.x, bounds.y, bounds.w / 2, bounds.h)
+end)
+
+-- Aerosnap move window to the right half
+hs.hotkey.bind({"cmd", "ctrl"}, "Right", function()
+    local window, frame, bounds = aerosnap_get_parameters()
+    aerosnap_save_window()
+    aerosnap_move_window(bounds.x + bounds.w / 2, bounds.y, bounds.w / 2, bounds.h)
+end)
+
+-- Aerosnap maximize current window, saving size to restore
+hs.hotkey.bind({"cmd", "ctrl"}, "Up", function()
+    local window, frame, bounds = aerosnap_get_parameters()
+    aerosnap_save_window()
+    aerosnap_move_window(bounds.x, bounds.y, bounds.w, bounds.h)
+end)
+
+-- Restore the last saved window configuration for a window (basically, a one level undo)
+hs.hotkey.bind({"cmd", "ctrl"}, "Down", function()
+    local window, frame, bounds = aerosnap_get_parameters()
+
+    old_bounds = saved_window_sizes[window:id()]
+    if old_bounds ~= nil then
+        aerosnap_move_window(old_bounds.x, old_bounds.y, old_bounds.w, old_bounds.h)
+        saved_window_sizes[window:id()] = nil
+    end
+end)</code></pre>
+<p>Basically, I took the same functionality that they had in the demo and factored out the functionality that gets the current window / sets the new sizes. The other interesting bit is the <code>aerosnap_save_window</code> function, which allows you to restore the size of a window you had just maximized. This does have something of a memory leak (in that it never clears up closed windows), but the amount should be small enough that it doesn't overly matter.</p>
+<p>And that's it. My full configs are available in my dotfiles (if I make any further tweaks or add more functionality): <a href="https://github.com/jpverkamp/dotfiles/tree/master/hammerspoon">hammerspoon configs</a></p>
+<p>I'm looking forward to seeing what else I can do with Hammerspoon. You can get fairly extensive: <a href="https://github.com/tstirrat/hammerspoon-config">example Hammerspoon config</a>.</p>
+<p>Also, if you want an alternative to Hammerspoon with what looks like a more modular approach, check out <a href="https://github.com/sdegutis/mjolnir">Mjolnir</a>. It appears that Hammerspoon is a fork of Mjolnir, so their configs are rather similar.</p>]]></content></entry><entry><title>Command line unicode search</title><link href="//blog.jverkamp.com/2016/01/06/command-line-unicode-search" /><id>urn:uuid:842e94d5-f91e-d1f9-c793-73043fa69212</id><updated>2016-01-06T00:00:00Z</updated><summary type="html"><![CDATA[<p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/01/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
 <pre class="bash"><code>$ uni delta
 ⍋	apl functional symbol delta stile
 ⍙	apl functional symbol delta underbar
@@ -874,71 +963,4 @@ for i in range(1, target):
 for i in range(len(presents)):
     if presents[i] &gt;= target:
         print(i)
-        sys.exit(0)</code></pre>]]></content></entry><entry><title>Advent of Code: Day 19</title><link href="//blog.jverkamp.com/2015/12/19/advent-of-code-day-19" /><id>urn:uuid:d3f72e70-8cbc-74c9-b51b-9829eebd4f72</id><updated>2015-12-19T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="http://adventofcode.com/day/19">Source</a></p>
-<p><strong>Part 1:</strong> Given a list of list of string replacements and an input string, determine how many unique output strings are possible after one step.</p>
-<!--more-->
-<pre class="python"><code>transitions = collections.defaultdict(set)
-
-reading_transitions = True
-for line in sys.stdin:
-    line = line.strip()
-
-    if not line:
-        reading_transitions = False
-    elif reading_transitions:
-        src, dst = line.split(' =&gt; ')
-        transitions[src].add(dst)
-    else:
-        target = line
-
-def expand_iter(input):
-    for src in transitions:
-        for dst in transitions[src]:
-            for match in re.finditer(src, input):
-                yield input[:match.start()] + dst + input[match.end():]
-
-expansions = set(expand_iter(target))
-
-print(len(expansions))</code></pre>
-<p>The basic idea here is to iterate over each possible (non-overlapping) replacement and <code>yield</code> the results. Then we convert that to a <code>set</code> to remove duplicates and return the sizes. Shiny.</p>
-<p>I bet I can guess where the second half is going.</p>
-<p><strong>Part 2:</strong> This time, take the target as output and determine how many steps it would take to get from <code>e</code> to the target.</p>
-<p>This one is actually more of a rewrite (since I'm inverting the <code>transition</code> map):</p>
-<pre class="python"><code>transitions = {}
-
-reading_transitions = True
-for line in sys.stdin:
-    line = line.strip()
-
-    if not line:
-        reading_transitions = False
-    elif reading_transitions:
-        src, dst = line.split(' =&gt; ')
-        transitions[dst] = src
-    else:
-        target = line
-
-def build_iter(input):
-    for dst in transitions:
-        src = transitions[dst]
-        for match in re.finditer(dst, input):
-            yield input[:match.start()] + src + input[match.end():]
-
-q = queue.PriorityQueue()
-q.put((len(target), 0, target))
-
-while True:
-    length, iterations, current = q.get()
-
-    if current == 'e':
-        break
-
-    for precursor in build_iter(current):
-        q.put((len(precursor), iterations + 1, precursor))
-
-print(iterations)</code></pre>
-<p>Two basic insights here: Since each transition output is unique, we don't have multiple possibilities and we want to solve the problem as quickly as possible. Given that, we will use a <a href="https://en.wikipedia.org/wiki/priority_queue">priority queue</a> indexing on the length of the current chemical. That way, we'll try the solutions that are already as far along as possible.</p>
-<p>For my input, that worked very quickly. For slightly different inputs, the <a href="https://en.wikipedia.org/wiki/greedy_solution">greedy solution</a> doesn't find a result and it has to backtrack, leading to a <em>far</em> longer runtime. I'm not sure what would solve those quickly. I may play with this one a bit longer.</p>
-<p>Also, technically this solution isn't strictly correct. It finds the first solution, rather than strictly speaking the shortest one. That could be fixed continuing to iterate on the priority queue until we've exhausted any branches with fewer iterations than the known best. That takes rather a while though. That's one advantage of a contest styles--you can check your input. O:)</p>]]></content></entry></feed>
+        sys.exit(0)</code></pre>]]></content></entry></feed>
