@@ -1,5 +1,116 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-02-26T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Revelation Space</title><link href="//blog.jverkamp.com/2016/02/26/revelation-space" /><id>urn:uuid:34c5562d-c723-55d5-c4bd-518966d2bcfb</id><updated>2016-02-26T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/89187.Revelation_Space"><img src="//blog.jverkamp.com/2016/02/26/revelation-space/1-revelation-space.jpg" /></a> <a href="https://www.goodreads.com/book/show/89185.Chasm_City"><img src="//blog.jverkamp.com/2016/02/26/revelation-space/2-chasm-city.jpg" /></a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-02-26T00:05:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Audiobooks to Podcasts</title><link href="//blog.jverkamp.com/2016/02/26/audiobooks-to-podcasts" /><id>urn:uuid:cfe78150-139b-aa1d-01bd-c73e7e91fd17</id><updated>2016-02-26T00:05:00Z</updated><summary type="html"><![CDATA[<p>I've recently started to listen to audiobooks again (<a href="//blog.jverkamp.com/2016/02/10/the-aeronauts-windlass">The Aeronaut's Windlass</a>). If you buy books through Audible or some other setup that has their own app, it's a straight forward enough process. On the other hand, if you have them on CD and want to play them on a mobile device... It's a little more interesting.</p>
+<p>I tried a few different apps that purport to do exactly what I wanted: import an audiobook as a folder full of MP3s and play them, but none that quite meet what I wanted. Since I also listen to a lot of podcasts and have more than one podcast app that I really like (I've used and liked both <a href="http://www.downcastapp.com/">Downcast</a> and <a href="http://www.shiftyjelly.com/pocketcasts">Pocket Casts</a>), I decided to see if I couldn't use one of those as an audiobook player.</p>
+]]></summary><content type="html"><![CDATA[<p>I've recently started to listen to audiobooks again (<a href="//blog.jverkamp.com/2016/02/10/the-aeronauts-windlass">The Aeronaut's Windlass</a>). If you buy books through Audible or some other setup that has their own app, it's a straight forward enough process. On the other hand, if you have them on CD and want to play them on a mobile device... It's a little more interesting.</p>
+<p>I tried a few different apps that purport to do exactly what I wanted: import an audiobook as a folder full of MP3s and play them, but none that quite meet what I wanted. Since I also listen to a lot of podcasts and have more than one podcast app that I really like (I've used and liked both <a href="http://www.downcastapp.com/">Downcast</a> and <a href="http://www.shiftyjelly.com/pocketcasts">Pocket Casts</a>), I decided to see if I couldn't use one of those as an audiobook player.</p>
+<!--more-->
+<p>My basic set up is one that I've used before. I'll use <a href="https://docs.docker.com/compose/">docker-compose</a> to run a web server running <a href="http://flask.pocoo.org/">flask</a> behind an <a href="https://www.nginx.com/resources/wiki/">nginx reverse proxy</a> (for performance reasons and to serve static files).</p>
+<p>Basically, I want a server that when I hit it will give a list of all books in a folder. If I click any of those, it will generate an RSS feed that I can then give to my podcasting application. That in turn can make requests for any of the MP3 files that make up the book, which should be served back to the app. Simple as pie, no? Well, mostly.</p>
+<p>Creating a list of books is easy:</p>
+<pre class="python"><code>@app.route('/')
+def index():
+    result = '&lt;ul&gt;'
+
+    for path in sorted(os.listdir('books')):
+        config_path = os.path.join('books', path, 'book.yml')
+        print(config_path)
+
+        if not os.path.exists(config_path):
+            continue
+
+        with open(config_path, 'r') as fin:
+            config = yaml.load(fin)
+
+        result += '&lt;li&gt;&lt;a href="feed/{path}.xml"&gt;{title} by {author}&lt;/a&gt;&lt;/li&gt;'.format(
+            path = path,
+            title = config['title'],
+            author = config['author']
+        )
+
+    result += '&lt;/ul&gt;'
+    return result</code></pre>
+<p>Note: Each book is a subdirectory of the folder <code>books</code>. Each book must also contain at least one file named <code>book.yml</code> which defines the <code>title</code> and <code>author</code> of the book, along with any number of MP3 files (we'll see that in a moment).</p>
+<p>All this script does is generate an HTML unordered list (<code>ul</code>) of links to individual RSS feeds. We generate those in turn with:</p>
+<pre class="python"><code>@app.route('/feed/&lt;feed&gt;.xml')
+def get_feed(feed):
+    config_path = os.path.join('books', feed, 'book.yml')
+
+    with open(config_path, 'r') as fin:
+        config = yaml.load(fin)
+
+    fg = feedgen.feed.FeedGenerator()
+    fg.load_extension('podcast')
+
+    host_url = flask.request.scheme + '://' + flask.request.host
+
+    feed_link = host_url + '/feed/{feed}.xml'.format(feed = feed)
+
+    fg.id = feed_link
+    fg.title(config['title'])
+    fg.description('{title} by {author}'.format(title = config['title'], author = config['author']))
+    fg.author(name = config['author'])
+    fg.link(href = feed_link, rel = 'alternate')
+
+    fg.podcast.itunes_category('Arts')
+
+    for file in sorted(os.listdir(os.path.join('books', feed))):
+        if not file.endswith('.mp3'):
+            continue
+
+        name = file.rsplit('.', 1)[0]
+
+        feed_entry_link = host_url + '/feed/{feed}/{file}'.format(feed = feed, file = file)
+
+        fe = fg.add_entry()
+
+        fe.id(feed_entry_link)
+        fe.title(name)
+        fe.description('{title} by {author} - {chapter}'.format(
+            title = config['title'],
+            author = config['author'],
+            chapter = name,
+        ))
+        fe.enclosure(feed_entry_link, 0, 'audio/mpeg')
+
+    return fg.rss_str(pretty = True)</code></pre>
+<p>Here, I basically just read in the <code>book.yml</code> file and any MP3s in the directory and generate a feed. As I did previously in my post on <a href="//blog.jverkamp.com/2015/05/11/generating-youtube-user-rss-feeds">Generating YouTube user RSS feeds</a>, I'm using the <a href="https://lkiesow.github.io/python-feedgen/">feedgen</a> package to generate the RSS feeds. This time I'm using their built in <code>podcast</code> extension. Nice.</p>
+<p>After that, we just need to serve the MP3s. Originally I was going to serve this with flask as well, but since I'm already going to use nginx as a performance / caching layer, we can use that to serve static files. Something like this for an nginx configuration:</p>
+<pre class="nginx"><code>server {
+    root /var/www/;
+
+    location / {
+        try_files $uri @server;
+    }
+
+    location @server {
+        proxy_set_header Host $host;
+        proxy_pass http://server:5000;
+    }
+}</code></pre>
+<p>Essentially, it will <code>try_files</code> to see if there's a static file at the path requested first. If that fails, it will fall back to the <code>@server</code> reverse proxy, which just feeds traffic to the flask server.</p>
+<p>To get everything working together, we'll use docker-compose:</p>
+<pre class="yaml"><code>server:
+    build: server
+    # environment: {DEBUG: True}
+    ports:
+        - 5000
+    volumes:
+        - ./books:/app/books
+
+nginx:
+    image: nginx
+    links:
+        - server
+    ports:
+        - 80:80
+    volumes:
+        - ./books:/var/www/feed/
+        - ./nginx:/etc/nginx/conf.d/</code></pre>
+<p>Since I'm mounting the <code>./books</code> directory as a volume into both containers, the <code>nginx</code> container can use it to server static files while the <code>server</code> container can use it to list files.</p>
+<p>And that's about it. I have mine running with <a href="http://nginx.org/en/docs/http/ngx_http_auth_basic_module.html">nginx HTTP authentication </a>, which means that I have to use <a href="http://www.downcastapp.com/">Downcast</a> (it's the only one I've used that seems to support it), but other than that it works great. It does require that you have your own server running to initially get the files onto the podcast app, but if you download them, almost all of the apps will let you turn off the server.</p>
+<p>The combination of flask and docker is nice. Flask let's you quickly and easily write simple web applications. Docker makes deployment and dependency management a snap.</p>
+<p>If you'd like to see the entire codebase, it's on GitHub: <a href="https://github.com/jpverkamp/podbook">podbook</a>. There are a few bits that I didn't include in the writeup above.</p>
+<p>Any questions? Let me know below.</p>]]></content></entry><entry><title>Revelation Space</title><link href="//blog.jverkamp.com/2016/02/26/revelation-space" /><id>urn:uuid:34c5562d-c723-55d5-c4bd-518966d2bcfb</id><updated>2016-02-26T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/89187.Revelation_Space"><img src="//blog.jverkamp.com/2016/02/26/revelation-space/1-revelation-space.jpg" /></a> <a href="https://www.goodreads.com/book/show/89185.Chasm_City"><img src="//blog.jverkamp.com/2016/02/26/revelation-space/2-chasm-city.jpg" /></a></p>
 <p><a href="https://www.goodreads.com/book/show/89187.Revelation_Space">Revelation Space</a> by <a href="https://www.goodreads.com/author/show/51204.Alastair_Reynolds">Alastair Reynolds</a>.</p>
 <p>I'm a bit conflicted on this one. As you'll see in the individual reviews below, I enjoyed Revelation Space (the first book in the trilogy) and Chasm City (the same universe but only a tangentially related storyline), but I just couldn't get into the second of the trilogy: <a href="https://www.goodreads.com/book/show/89190.Redemption_Ark">Redemption Ark</a>. After reading about half of it over the course of a month (which is <em>far</em> longer than it normally takes me to read a book), I'm about ready to try something else. Perhaps I'll give it another try one day.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/89187.Revelation_Space"><img src="//blog.jverkamp.com/2016/02/26/revelation-space/1-revelation-space.jpg" /></a> <a href="https://www.goodreads.com/book/show/89185.Chasm_City"><img src="//blog.jverkamp.com/2016/02/26/revelation-space/2-chasm-city.jpg" /></a></p>
@@ -484,55 +595,4 @@ jQuery(delayedEvent(checkForPlaintexts, 125, 3));</code></pre>
 <p><a href="https://www.goodreads.com/book/show/13151129-earth-unaware"><img src="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective/earth-unaware.jpg" /></a> <a href="https://www.goodreads.com/book/show/68427.Elantris"><img src="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective/elantris.jpg" /></a> <a href="https://www.goodreads.com/book/show/10803121-the-alloy-of-law"><img src="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective/the-alloy-of-law.jpg" /></a> <a href="https://www.goodreads.com/book/show/15819028-the-golem-and-the-jinni"><img src="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective/the-golem-and-the-jinni.jpg" /></a> <a href="https://www.goodreads.com/book/show/7163862-zoo-city"><img src="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective/zoo-city.jpg" /></a> <a href="https://www.goodreads.com/book/show/47613.Mister_Monday"><img src="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective/mister-monday.jpg" /></a></p>
 <p>Overall, I greatly enjoyed reading as much as I did. According to Goodreads, I only read 10 in 2014. Perhaps though, I should aim for something in between those two... Look tomorrow for my 2016 reading list.</p>
 <p>Here's the full list of reviews:</p>
-<ul class="list-unstyled"><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/18/the-heroes-of-olympus">The Heroes of Olympus</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/20/wool">Wool</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/25/his-majestys-dragon">His Majesty's Dragon</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/03/13/alpha-and-omega">Alpha and Omega</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/03/27/white-trash-zombie">White Trash Zombie</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/03/31/precinct-13">Precinct 13</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/06/ender-in-exile">Ender in Exile</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/16/the-first-formic-war">The First Formic War</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/25/the-ender-quintet">The Ender Quintet</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/28/year-zero">Year Zero</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/05/10/the-unnaturalists">The Unnaturalists</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/05/26/american-gods">American Gods</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/06/21/rama">Rama</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/07/28/laundry-files">Laundry Files</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/08/27/the-academy">The Academy</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/01/the-iron-wyrm-affair">The Iron Wyrm Affair</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/16/partials-sequence">Partials Sequence</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/18/elantris">Elantris</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/30/newsflesh-trilogy">Newsflesh Trilogy</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/10/04/throne-of-the-crescent-moon">Throne of the Crescent Moon</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/10/23/the-kane-chronicles">The Kane Chronicles</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/11/10/the-girl-with-the-dragon-tattoo">The Girl with the Dragon Tattoo (The Millennium Trilogy)</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/11/29/spin-saga">Spin Saga</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/05/powder-mage-trilogy">Powder Mage Trilogy</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/09/the-golem-and-the-jinni">The Golem and the Jinni</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/11/zoo-city">Zoo City</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/29/necroscope">Necroscope</a></li></ul>]]></content></entry><entry><title>Necroscope</title><link href="//blog.jverkamp.com/2015/12/29/necroscope" /><id>urn:uuid:a14aaeee-cf12-d338-7ff8-e49dabe164c3</id><updated>2015-12-29T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/66655.Necroscope"><img src="//blog.jverkamp.com/2015/12/29/necroscope/1-necroscope.jpg" /></a> <a href="https://www.goodreads.com/book/show/60836.Necroscope_II"><img src="//blog.jverkamp.com/2015/12/29/necroscope/2-vamphyri.jpg" /></a> <a href="https://www.goodreads.com/book/show/636742.Necroscope_III"><img src="//blog.jverkamp.com/2015/12/29/necroscope/3-the-source.jpg" /></a> <a href="https://www.goodreads.com/book/show/1063378.Necroscope_IV"><img src="//blog.jverkamp.com/2015/12/29/necroscope/4-deadspeak.jpg" /></a> <a href="https://www.goodreads.com/book/show/66658.Necroscope_V"><img src="//blog.jverkamp.com/2015/12/29/necroscope/5-deadspawn.jpg" /></a></p>
-<p>So... The <a href="https://www.goodreads.com/series/40853-necroscope">Necroscope</a> series by <a href="https://www.goodreads.com/author/show/20602.Brian_Lumley">Brian Lumley</a>.</p>
-<p>I don't know if I've ever read anything in quite this genre before. It's basically urban fantasy, except set during the Cold War (which makes some sense, given this book was released in 1986) and with an extra helping of espionage (ESPionage) thrown in. It's an interesting change and the two styles complement one another.</p>
-<p>The world building is neat, especially around the vampires. I like how this universe handles them. The prose itself is a bit strange at times (Lumley really likes exclamation points), but certainly readable. The contents veered well into horror at times, which isn't always my cup of tea--especially towards the end. Overall, I liked the first three a lot and the last two were worth finishing for completion's sake. I'll definitely be taking a break before (if) I start the next Necroscope series though.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/66655.Necroscope"><img src="//blog.jverkamp.com/2015/12/29/necroscope/1-necroscope.jpg" /></a> <a href="https://www.goodreads.com/book/show/60836.Necroscope_II"><img src="//blog.jverkamp.com/2015/12/29/necroscope/2-vamphyri.jpg" /></a> <a href="https://www.goodreads.com/book/show/636742.Necroscope_III"><img src="//blog.jverkamp.com/2015/12/29/necroscope/3-the-source.jpg" /></a> <a href="https://www.goodreads.com/book/show/1063378.Necroscope_IV"><img src="//blog.jverkamp.com/2015/12/29/necroscope/4-deadspeak.jpg" /></a> <a href="https://www.goodreads.com/book/show/66658.Necroscope_V"><img src="//blog.jverkamp.com/2015/12/29/necroscope/5-deadspawn.jpg" /></a></p>
-<p>So... The <a href="https://www.goodreads.com/series/40853-necroscope">Necroscope</a> series by <a href="https://www.goodreads.com/author/show/20602.Brian_Lumley">Brian Lumley</a>.</p>
-<p>I don't know if I've ever read anything in quite this genre before. It's basically urban fantasy, except set during the Cold War (which makes some sense, given this book was released in 1986) and with an extra helping of espionage (ESPionage) thrown in. It's an interesting change and the two styles complement one another.</p>
-<p>The world building is neat, especially around the vampires. I like how this universe handles them. The prose itself is a bit strange at times (Lumley really likes exclamation points), but certainly readable. The contents veered well into horror at times, which isn't always my cup of tea--especially towards the end. Overall, I liked the first three a lot and the last two were worth finishing for completion's sake. I'll definitely be taking a break before (if) I start the next Necroscope series though.</p>
-<!--more-->
-<p>And now, the individual reviews. As is often the case, the individual reviews for later books will almost certainly spoil earlier ones (and at points, minor spoilers for the books themselves). Read at your own peril.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/66655.Necroscope"><img src="//blog.jverkamp.com/2015/12/29/necroscope/1-necroscope.jpg" /></a></p>
-<p>I don't know if I've read many books where the first two chapters go quite so strongly back and forth between this is cool and that's gross. It evened out a bit over the course of the book, but there was still a good amount of each.</p>
-<p>The basic world building takes our own world and adds a bunch of ESPers on top; with ESPers being a general term for all sorts of supernatural power. We see people that can read minds, ones that can see far away events, and those that can speak with the dead (in two different flavors). It's an interesting sort of world and somehow manages not actually to feel too kitchen-sinky, which is a general problem in urban fantasy. Also, there are vampires. I have a feeling we'll be learning a bit more about them later, but so far I'm cautiously intrigued by this particular interpretation. They're weird and alien, which is neat.</p>
-<p>One oddity with the book comes with the main character's abilities--that of a Necroscope. The basic idea is that he can speak with the dead and learn from / gain their abilities. It's a cool power, although in the last ten percent of the story it gets insanely powerful. I'm not sure how there can be a sequel, let alone a dozen of them. I'm curious to find out though.</p>
-<p>Structurally, there's a framing story taking place in the present, telling the story that actually takes place throughout the past many years. In addition, we follow a few different viewpoints (following at least two main characters). It's a bit confusing at first, but started to gel for me about a quarter of the way through the story. There is at least one interesting twist that the frame allows, so I appreciate that.</p>
-<p>Occasionally, the phrasing and especially the punctuation that interrupted my reading. I don't know if I've read a novel with quite so many ellipses and exclamation points. It's not a deal breaker, but it's weird.</p>
-<p>Overall, worth the read and I'll check out the sequels. At the very least, I want to know how in the world their going to deal with such radical events for both main characters during the ending...</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/60836.Necroscope_II"><img src="//blog.jverkamp.com/2015/12/29/necroscope/2-vamphyri.jpg" /></a></p>
-<p>So that's how the series will continue.</p>
-<p>Basically, we get a bit more of Harry who is now sharing bodies with his infant son (it's about that weird) and communicating with the now dead main characters from the first book.</p>
-<p>The world building continues to be one of the stronger parts of these books. This time around, we have a fair chunk of the book from the view point of two of the old vampires (Thibor and Faethor Ferenczy), including a look at how they were turned and what they did over their centuries of life. It's an interesting take of vampires, and I continue to want to want to know more about that.</p>
-<p>On the other hand, Harry's plotline and the moebius continuum remain weird. I think Lumley wrote himself into a bit of a whole introducing all of that at the end of the first book. Teleportation and time travel, essentially for free? Too powerful. Sanderson's Second Law: Limitations > Powers. It doesn't ruin the book by any means, but I think they could be stronger without.</p>
-<p>The other present timeline follows Yulian Bodescu, another of Thibor's offspring (I thought vampires could only have one true offspring in this universe? I guess Yulian is something new). It's certainly an interesting story, if rather dark and probably could have carried the novel by itself. It didn't mesh particularly well with the flashbacks to the Ferenczys history though. They just didn't overly relate.</p>
-<p>On the whole, an interesting read. Enough to keep me going on the series.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/636742.Necroscope_III"><img src="//blog.jverkamp.com/2015/12/29/necroscope/3-the-source.jpg" /></a></p>
-<p>The Source follows a nuclear accident that manages to blow a hole in between our reality and the homeworld (more accurately home universe, since Harry cannot Moebius his way there) of the Vampires.</p>
-<p>It's interesting watching this series progress from espionage mixed with urban fantasy and horror in the first book to a more historical urban fantasy (if that makes sense) to this one which veers a bit more into almost science fiction. We have a parallel universe, a tidally locked planet, and some really weird vampire biology. The world building around vampires continues to be the strongest part of this series (which is amusing, given that I find the Moebius Continuum and the various ESP powers to be among the weakest).</p>
-<p>I'm still not particularly a fan of Harry Keogh, but for most of the book he has a relatively minor role and I like a lot of the new characters in this book. Overall, I liked to see the extra worldbuilding, but the story was a bit weaker. Given the conclusion, I can guess where the next book is going to go (Harry Sr vs Harry Jr). We'll give it a chance.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/1063378.Necroscope_IV"><img src="//blog.jverkamp.com/2015/12/29/necroscope/4-deadspeak.jpg" /></a></p>
-<p>Oh hey, turns out there is another Ferenczy. Or rather, that's what a lot of this book felt like. Don't get me wrong, it's interesting to fill out a few more of the possibilities of what might happen if a vampire spawns a mostly human child who then desperately tries to learn to be a Vampire. But at the same time, it's starting to feel like the same story again, just with different players.</p>
-<p>Another twist this time, which I at first appreciated was that Harry has lost his powers (stolen from him by Harry Jr). So for a large chunk of the story, he cannot speak to the dead except in dreams--which he doesn't remember upon waking--and cannot access the Moebius Continuum at all. Given how often I've complained about how overpowerful the latter made him, I thought it would be good for him to lose the power, but of course I guessed he would at some point get it back. And just in time for the final battle too, making it feel like an echo of the final battle from Necroscope I. So it goes.</p>
-<p>Also this one really played up the more sexual aspects of the story. They were already there in the previous books, but relatively minor and sort of out of the way. Not so much in Deadspeak. Several incidents certainly play into the horror aspect of things and for that I applaud them, but it's starting to get a bit ridiculous.</p>
-<p>Overall, it's still an interesting enough entry to the series and worth reading for completion's sake. Likewise I'll read the fifth and final Necroscope for the same reason. Plus I am vaguely curious how Harry ended up with a bit of vampire in his soul after all...</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/66658.Necroscope_V"><img src="//blog.jverkamp.com/2015/12/29/necroscope/5-deadspawn.jpg" /></a></p>
-<p>I think I'm done with the Necroscope series, at least for the time being. And hey, technically this <em>is</em> the end of the first Necroscope series.</p>
-<p>On the negative side:</p>
-<p>This feels like 2 or 3 novels shoved together. There's the parts on Earth where Harry tracks down a serial killer. Then there are the Wamphyri in exile in the Icelands and what they find there. Then finally, there's Harry in the Vampire world and the final showdown. It all more or less comes together at the end, but switching back and forth was a bit rough.</p>
-<p>The horror, especially around the serial killer plot line, just got too horrific for me. It certainly works as a shock factor I guess.</p>
-<p>The relationship (as it was) between Penny and Harry was weird, abrupt, and ugly. Especially in how it ended. And I don't feel like it actually needed to be there for the story to progress as is it did.</p>
-<p>Speaking of which, Harry went dark. Given how too-good he was before, I thought a turn as anti-hero would be nice. It wasn't. It felt completely out of character for Harry. More in line for a vampire, but it's not what I was wanting to read in that character.</p>
-<p>The sex scene with Lady Karen was ... weird. It certainly fits the horror scenes of the world, but I feel like I'm going to read a palette cleaner after this.</p>
-<p>On the positive side:</p>
-<p>I still really do like the world building around vampires in this world. They're actually horrific and alien, but with related aspects from their former human lives. All together, that seems something less common in modern vampire literature, so it's nice to see here. This was even better and weirder this time around, especially with some of the ancient ones come back.</p>
-<hr />
-<p>I think it's time for something lighter.</p>
-<p>Well, that finishes my original <a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a> (with the exception of Mere Christianity; that one is still in progress).</p>
-<p>Unfortunately, I'm still 2 books shy of my 100 book goal, so I think I'll start <a href="https://www.goodreads.com/author/show/8347.Garth_Nix">Garth Nix's</a> <a href="https://www.goodreads.com/series/42967-the-keys-to-the-kingdom">Keys to the Kingdom</a> series. From what I've been told, they're a bit lighter (everything is relative) and quick reads. I should be able to knock out two of them in the two days and change before the end of the year. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>]]></content></entry></feed>
+<ul class="list-unstyled"><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/18/the-heroes-of-olympus">The Heroes of Olympus</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/20/wool">Wool</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/01/25/his-majestys-dragon">His Majesty's Dragon</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/03/13/alpha-and-omega">Alpha and Omega</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/03/27/white-trash-zombie">White Trash Zombie</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/03/31/precinct-13">Precinct 13</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/06/ender-in-exile">Ender in Exile</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/16/the-first-formic-war">The First Formic War</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/25/the-ender-quintet">The Ender Quintet</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/04/28/year-zero">Year Zero</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/05/10/the-unnaturalists">The Unnaturalists</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/05/26/american-gods">American Gods</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/06/21/rama">Rama</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/07/28/laundry-files">Laundry Files</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/08/27/the-academy">The Academy</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/01/the-iron-wyrm-affair">The Iron Wyrm Affair</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/16/partials-sequence">Partials Sequence</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/18/elantris">Elantris</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/09/30/newsflesh-trilogy">Newsflesh Trilogy</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/10/04/throne-of-the-crescent-moon">Throne of the Crescent Moon</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/10/23/the-kane-chronicles">The Kane Chronicles</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/11/10/the-girl-with-the-dragon-tattoo">The Girl with the Dragon Tattoo (The Millennium Trilogy)</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/11/29/spin-saga">Spin Saga</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/05/powder-mage-trilogy">Powder Mage Trilogy</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/09/the-golem-and-the-jinni">The Golem and the Jinni</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/11/zoo-city">Zoo City</a></li><li class="post-listing"><a href="//blog.jverkamp.com/2015/12/29/necroscope">Necroscope</a></li></ul>]]></content></entry></feed>
