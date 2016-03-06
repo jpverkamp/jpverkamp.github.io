@@ -4,7 +4,7 @@
         
         
 
-        <title>Audiobooks to Podcasts | jverkamp.com | John-Paul Verkamp</title>
+        <title>The Iron Druid Chronicles: Staked | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
         <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
@@ -72,126 +72,43 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Audiobooks to Podcasts</h1>
+                        <h1 class="entry-title">The Iron Druid Chronicles: Staked</h1>
 
                         <div class="entry-meta">
-                                <span class="posted-on"><time class="entry-date" datetime="2016-02-26"><span class="year">2016</span> <span class="month">Feb</span> <span class="day">26</span></time></span>
-                                <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming/by-topic/audio">Audio</a></li><li><a href="//blog.jverkamp.com/category/programming/by-topic/flask">Flask</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li><li><a href="//blog.jverkamp.com/category/programming/by-topic/web-development">Web Development</a></li><li><a href="//blog.jverkamp.com/category/programming/by-topic/nginx">nginx</a></li></ul></span>
+                                <span class="posted-on"><time class="entry-date" datetime="2016-03-05"><span class="year">2016</span> <span class="month">Mar</span> <span class="day">5</span></time></span>
+                                <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/other/book-reviews/2016-reading-list">2016 Reading List</a></li><li><a href="//blog.jverkamp.com/category/other">Other</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p>I've recently started to listen to audiobooks again (<a href="//blog.jverkamp.com/2016/02/10/the-aeronauts-windlass">The Aeronaut's Windlass</a>). If you buy books through Audible or some other setup that has their own app, it's a straight forward enough process. On the other hand, if you have them on CD and want to play them on a mobile device... It's a little more interesting.</p>
-<p>I tried a few different apps that purport to do exactly what I wanted: import an audiobook as a folder full of MP3s and play them, but none that quite meet what I wanted. Since I also listen to a lot of podcasts and have more than one podcast app that I really like (I've used and liked both <a href="http://www.downcastapp.com/">Downcast</a> and <a href="http://www.shiftyjelly.com/pocketcasts">Pocket Casts</a>), I decided to see if I couldn't use one of those as an audiobook player.</p>
+                        <p><a href="https://www.goodreads.com/book/show/16280689-staked"><img src="//blog.jverkamp.com/2016/03/05/the-iron-druid-chronicles-staked/staked.jpg" /></a></p>
+<p>Well, this is something new. I read and reviewed the first seven books of <a href="//blog.jverkamp.com/2015/02/20/the-iron-druid-chronicles">The Iron Druid Chronicles</a> last year, but now there's a whole new book out. Since I wasn't yet doing individual reviews then, I'll go ahead and put up a new post for this one.</p>
 <!--more-->
-<p>My basic set up is one that I've used before. I'll use <a href="https://docs.docker.com/compose/">docker-compose</a> to run a web server running <a href="http://flask.pocoo.org/">flask</a> behind an <a href="https://www.nginx.com/resources/wiki/">nginx reverse proxy</a> (for performance reasons and to serve static files).</p>
-<p>Basically, I want a server that when I hit it will give a list of all books in a folder. If I click any of those, it will generate an RSS feed that I can then give to my podcasting application. That in turn can make requests for any of the MP3 files that make up the book, which should be served back to the app. Simple as pie, no? Well, mostly.</p>
-<p>Creating a list of books is easy:</p>
-<pre class="python"><code>@app.route('/')
-def index():
-    result = '&lt;ul&gt;'
-
-    for path in sorted(os.listdir('books')):
-        config_path = os.path.join('books', path, 'book.yml')
-        print(config_path)
-
-        if not os.path.exists(config_path):
-            continue
-
-        with open(config_path, 'r') as fin:
-            config = yaml.load(fin)
-
-        result += '&lt;li&gt;&lt;a href="feed/{path}.xml"&gt;{title} by {author}&lt;/a&gt;&lt;/li&gt;'.format(
-            path = path,
-            title = config['title'],
-            author = config['author']
-        )
-
-    result += '&lt;/ul&gt;'
-    return result</code></pre>
-<p>Note: Each book is a subdirectory of the folder <code>books</code>. Each book must also contain at least one file named <code>book.yml</code> which defines the <code>title</code> and <code>author</code> of the book, along with any number of MP3 files (we'll see that in a moment).</p>
-<p>All this script does is generate an HTML unordered list (<code>ul</code>) of links to individual RSS feeds. We generate those in turn with:</p>
-<pre class="python"><code>@app.route('/feed/&lt;feed&gt;.xml')
-def get_feed(feed):
-    config_path = os.path.join('books', feed, 'book.yml')
-
-    with open(config_path, 'r') as fin:
-        config = yaml.load(fin)
-
-    fg = feedgen.feed.FeedGenerator()
-    fg.load_extension('podcast')
-
-    host_url = flask.request.scheme + '://' + flask.request.host
-
-    feed_link = host_url + '/feed/{feed}.xml'.format(feed = feed)
-
-    fg.id = feed_link
-    fg.title(config['title'])
-    fg.description('{title} by {author}'.format(title = config['title'], author = config['author']))
-    fg.author(name = config['author'])
-    fg.link(href = feed_link, rel = 'alternate')
-
-    fg.podcast.itunes_category('Arts')
-
-    for file in sorted(os.listdir(os.path.join('books', feed))):
-        if not file.endswith('.mp3'):
-            continue
-
-        name = file.rsplit('.', 1)[0]
-
-        feed_entry_link = host_url + '/feed/{feed}/{file}'.format(feed = feed, file = file)
-
-        fe = fg.add_entry()
-
-        fe.id(feed_entry_link)
-        fe.title(name)
-        fe.description('{title} by {author} - {chapter}'.format(
-            title = config['title'],
-            author = config['author'],
-            chapter = name,
-        ))
-        fe.enclosure(feed_entry_link, 0, 'audio/mpeg')
-
-    return fg.rss_str(pretty = True)</code></pre>
-<p>Here, I basically just read in the <code>book.yml</code> file and any MP3s in the directory and generate a feed. As I did previously in my post on <a href="//blog.jverkamp.com/2015/05/11/generating-youtube-user-rss-feeds">Generating YouTube user RSS feeds</a>, I'm using the <a href="https://lkiesow.github.io/python-feedgen/">feedgen</a> package to generate the RSS feeds. This time I'm using their built in <code>podcast</code> extension. Nice.</p>
-<p>After that, we just need to serve the MP3s. Originally I was going to serve this with flask as well, but since I'm already going to use nginx as a performance / caching layer, we can use that to serve static files. Something like this for an nginx configuration:</p>
-<pre class="nginx"><code>server {
-    root /var/www/;
-
-    location / {
-        try_files $uri @server;
-    }
-
-    location @server {
-        proxy_set_header Host $host;
-        proxy_pass http://server:5000;
-    }
-}</code></pre>
-<p>Essentially, it will <code>try_files</code> to see if there's a static file at the path requested first. If that fails, it will fall back to the <code>@server</code> reverse proxy, which just feeds traffic to the flask server.</p>
-<p>To get everything working together, we'll use docker-compose:</p>
-<pre class="yaml"><code>server:
-    build: server
-    # environment: {DEBUG: True}
-    ports:
-        - 5000
-    volumes:
-        - ./books:/app/books
-
-nginx:
-    image: nginx
-    links:
-        - server
-    ports:
-        - 80:80
-    volumes:
-        - ./books:/var/www/feed/
-        - ./nginx:/etc/nginx/conf.d/</code></pre>
-<p>Since I'm mounting the <code>./books</code> directory as a volume into both containers, the <code>nginx</code> container can use it to server static files while the <code>server</code> container can use it to list files.</p>
-<p>And that's about it. I have mine running with <a href="http://nginx.org/en/docs/http/ngx_http_auth_basic_module.html">nginx HTTP authentication </a>, which means that I have to use <a href="http://www.downcastapp.com/">Downcast</a> (it's the only one I've used that seems to support it), but other than that it works great. It does require that you have your own server running to initially get the files onto the podcast app, but if you download them, almost all of the apps will let you turn off the server.</p>
-<p>The combination of flask and docker is nice. Flask let's you quickly and easily write simple web applications. Docker makes deployment and dependency management a snap.</p>
-<p>If you'd like to see the entire codebase, it's on GitHub: <a href="https://github.com/jpverkamp/podbook">podbook</a>. There are a few bits that I didn't include in the writeup above.</p>
-<p>Any questions? Let me know below.</p>
+<p>On the downside, Staked has pretty much the same issues I've had with each of the previous novels. I don't really care for the shifting points of view, either the style or the additional viewpoint characters themselves. I think the talking dogs are vastly overdone. The worldbuilding (although neat in a lot of places) is badly kitchen sinky, with literally everything thrown into the same world. And Atticus is just too strong. He's always been too strong from the first book and never felt like he had/has to work at anything.</p>
+<p>On the upside, Staked has a lot of the same strengths as the previous Iron Druid novels. There's a heck of a lot of world building, taking on a lot of mythology I'm otherwise not that familiar with (Irish and Slavic mythology in particular). There's also a lot of really fun lines in these books. I've highlighted more sections from a Iron Druid novel than most other series all together... And that's enough to bring this right back up to four stars by itself. Here:</p>
+<p><em>I had to suppress a shudder, because semi-sentient facial hair is viscerally disturbing.</em> (As an aside, those guys are among the coolest characters I've seen in urban fantasy.)</p>
+<p><em>I had to skedaddle, which I think is the best possible word for getting the hell out when a poltergeist thinks you’ve jilted her.</em></p>
+<p><em>"Defend the honor of your arse-munching couch.”</em></p>
+<p><em>Normally I wouldn’t bother punching a stone. Your fingers would break long before the stone would, and rock doesn’t make any noises to let you know it’s hurt.</em></p>
+<p><em>Purposefully seeking out a poltergeist might be one of the dumbest things I’ve ever done. Well, that and growing muttonchops.</em></p>
+<p><em>The truth is, your smarts are better hidden than a pair of snake nuts.”</em></p>
+<p><em>My skin stung all over with the raw thrill of exfoliation.</em></p>
+<p><em>... and a shepherd with a small flock of sheep. ‹Fluffy meat,› Orlaith comments.</em></p>
+<p><em>“Fecking stew me bollocks in the queen’s own cup o’ tea,</em></p>
+<p><em>I had no problem disassembling vampires in plain view but didn’t want to truly terrify anyone with my full frontal nudity.</em></p>
+<p><em>‹Hey, did that guy just call me gross?› Oberon asked. Yes, but that means big in French, as it does in German.</em></p>
+<p><em>The saucier got saucy with me and demanded that I leave.</em></p>
+<p><em>“Of course not. As the famous Vulcan said on more than one occasion, I wish for you to enjoy extreme old age and economic bounty.”</em></p>
+<p><em>There’s harmony there to be found, and I’ll fight for it, and damn the paradox of fighting for peace.</em></p>
+<p><em>“Yeah, I just asked where the weird was happening in the world, and she pointed me here. And look! You’re right next to it!”</em></p>
+<p><em>Or, to be more specific, an unholy horde of Guilt Ferrets. They’re bastards.</em></p>
+<p><em>“Since I’ve become a Druid, I’ve seen some pretty weird shit, Atticus,” Granuaile said, “but Beardy Baggins there squaring off against Squid Head McGee in the snow might be the weirdest.”</em></p>
+<p><em>‹Yeah, finally! I’ve been wanting to tell you that I think you’re an amazing hound. I knew from the moment I first sniffed your ass that we would get along!›</em></p>
+<p>So yeah. I'll keep on reading them if only for that. :)</p>
+<p>Plus, I think there's only supposed to be one more? I want to see how it all ends. A lot of the plot lines were tied up rather happily by the end of Staked, but that only leaves the proverbial shit to really hit the fan when armageddon rolls around...</p>
+<hr />
+<p>Next up: <a href="https://www.goodreads.com/book/show/89187.Revelation_Space">Revelation Space</a> by <a href="https://www.goodreads.com/author/show/51204.Alastair_Reynolds">Alastair Reynolds</a>.</p>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>
@@ -200,8 +117,8 @@ nginx:
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "Audiobooks to Podcasts";
-var disqus_url = "http://blog.jverkamp.com/2016/02/26/audiobooks-to-podcasts/";
+var disqus_title = "The Iron Druid Chronicles: Staked";
+var disqus_url = "http://blog.jverkamp.com/2016/03/05/the-iron-druid-chronicles-staked/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -214,7 +131,7 @@ var disqus_url = "http://blog.jverkamp.com/2016/02/26/audiobooks-to-podcasts/";
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/02/26/revelation-space">← Revelation Space</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li><li><a href="//blog.jverkamp.com/2016/03/05/rainy-day-flowers">Rainy Day Flowers →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/02/08/duplicating-aerosnap-on-osx-with-hammerspoon">← Duplicating AeroSnap on OSX with Hammerspoon</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/03/05/rainy-day-flowers">← Rainy Day Flowers</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/02/26/revelation-space">← Revelation Space</a></li><li><a href="//blog.jverkamp.com/category/other">Other</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="//blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="//blog.jverkamp.com/rss.png" /></a><br />
