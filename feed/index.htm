@@ -1,5 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-04-04T00:05:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Mission Basilica San Diego de Alcalá</title><link href="//blog.jverkamp.com/2016/04/04/mission-basilica-san-diego-de-alcala" /><id>urn:uuid:9c28e0c4-8ebf-6e26-0cd8-7af52c3fb763</id><updated>2016-04-04T00:05:00Z</updated><summary type="html"><![CDATA[<p>California's first mission. Quite the history. Very pretty.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-04-19T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Ensuring docker-machine is running</title><link href="//blog.jverkamp.com/2016/04/19/ensuring-docker-machine-is-running" /><id>urn:uuid:0e62eb30-f56c-7441-a014-2f509ef5d9d5</id><updated>2016-04-19T00:00:00Z</updated><summary type="html"><![CDATA[<p>When developing using <a href="https://www.docker.com/">docker</a> on OS X, you'll currently<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> have to use <a href="https://docs.docker.com/machine/">docker-machine</a> to spin up a virtual machine that is actually running the docker containers. Running a virtual machine takes up a bit more in the way of resources than just the docker containers, so if you're not actually developing at the moment, it's helpful to be able to start up the virtual machine only when you need it.</p>
+<p>The current way I have to do that:</p>
+<pre class="bash"><code>$ docker-machine start default
+$ eval $(docker-machine env default)</code></pre>
+<p>What's worse, the latter command has to be run for every shell that you start up. It's by no means a hard pair of commands and you could easily wrap them in an alias or put them in your <code>.profile</code> equivalent (which is what I used to do). But unfortunately, I found a completely unrelated bug in <a href="https://github.com/tony/tmuxp"><code>tmuxp</code></a>: if the shell takes too long to start up, <code>tmuxp</code> essentially won't work. The above <code>eval</code> command took long enough to hit this limit.</p>
+]]></summary><content type="html"><![CDATA[<p>When developing using <a href="https://www.docker.com/">docker</a> on OS X, you'll currently<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> have to use <a href="https://docs.docker.com/machine/">docker-machine</a> to spin up a virtual machine that is actually running the docker containers. Running a virtual machine takes up a bit more in the way of resources than just the docker containers, so if you're not actually developing at the moment, it's helpful to be able to start up the virtual machine only when you need it.</p>
+<p>The current way I have to do that:</p>
+<pre class="bash"><code>$ docker-machine start default
+$ eval $(docker-machine env default)</code></pre>
+<p>What's worse, the latter command has to be run for every shell that you start up. It's by no means a hard pair of commands and you could easily wrap them in an alias or put them in your <code>.profile</code> equivalent (which is what I used to do). But unfortunately, I found a completely unrelated bug in <a href="https://github.com/tony/tmuxp"><code>tmuxp</code></a>: if the shell takes too long to start up, <code>tmuxp</code> essentially won't work. The above <code>eval</code> command took long enough to hit this limit.</p>
+<!--more-->
+<p>So how do we fix it? Essentially (using <a href="http://www.zsh.org/">zsh</a>, my current shell of choice, although others should be similar):</p>
+<pre class="zsh"><code>assert-docker() {
+    command docker ps 2&gt; /dev/null &gt; /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Starting docker..."
+        docker-machine start default
+        eval $(docker-machine env default)
+        echo
+    fi
+}
+
+docker () { assert-docker && command docker $@ }
+docker-compose () { assert-docker && command docker-compose $@ }</code></pre>
+<p>The basic idea is that <code>assert-docker</code> first checks if <code>docker</code> is running by trying to run <code>docker ps</code>. <code>$?</code> contains the status code, which will be non-zero if <code>docker ps</code> failed, so check that. If that's the case, assume <code>docker ps</code> failed because <code>docker-machine</code> wasn't running, so start it up. This will run <code>docker-machine start default</code> more often than needed, but it turns out it's a <code><a href="https://en.wikipedia.org/wiki/NOP">NOP</a></code> if it's already running.</p>
+<p>The only interesting part here is the use of the keyword <code>command</code> that prefixes <code>docker</code> or <code>docker-machine</code> within the functions. Basically, this tells ZSH to use the system version of <code>docker</code> or <code>docker-compose</code> rather than the one that I defined, thus preventing an infinite loop. Whee!</p>
+<p>How's it work?</p>
+<pre class="bash"><code>$ docker ps
+
+Starting docker...
+(dev) OUT | Starting VM...
+Started machines may have new IP addresses. You may need to re-run the &lt;code&gt;docker-machine env&lt;/code&gt; command.
+
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
+$ docker ps
+
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES</code></pre>
+<p>Switching to another terminal:</p>
+<pre class="bash"><code>$ docker ps
+
+Starting docker...
+Machine "default" is already running.
+
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+
+$ docker ps
+
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES</code></pre>
+<p>Neat. That should <a href="https://xkcd.com/1205/">eventually save me a fraction of the time</a> it took to get it right. :)</p>]]></content></entry><entry><title>Raindrops Etc</title><link href="//blog.jverkamp.com/2016/04/10/raindrops-etc" /><id>urn:uuid:adae5824-6f08-ecd4-8091-e8a1bf311896</id><updated>2016-04-10T00:00:00Z</updated><summary type="html"><![CDATA[<p>Another rainy day. I love taking pictures on such days.</p>
+<div><div class="flickr-gallery" data-set-id="72157664723193864" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157664723193864">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Another rainy day. I love taking pictures on such days.</p>
+<div><div class="flickr-gallery" data-set-id="72157664723193864" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157664723193864">View on Flickr</a></p></div>]]></content></entry><entry><title>Mission Basilica San Diego de Alcalá</title><link href="//blog.jverkamp.com/2016/04/04/mission-basilica-san-diego-de-alcala" /><id>urn:uuid:9c28e0c4-8ebf-6e26-0cd8-7af52c3fb763</id><updated>2016-04-04T00:05:00Z</updated><summary type="html"><![CDATA[<p>California's first mission. Quite the history. Very pretty.</p>
 <div><div class="flickr-gallery" data-set-id="72157666293836000" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157666293836000">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>California's first mission. Quite the history. Very pretty.</p>
 <div><div class="flickr-gallery" data-set-id="72157666293836000" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157666293836000">View on Flickr</a></p></div>]]></content></entry><entry><title>Kingkiller Chronicle</title><link href="//blog.jverkamp.com/2016/03/10/kingkiller-chronicle" /><id>urn:uuid:e93146d9-8751-a44d-7d93-01ceae5c15c7</id><updated>2016-03-10T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/186074.The_Name_of_the_Wind"><img src="//blog.jverkamp.com/2016/03/10/kingkiller-chronicle/1-name-of-the-wind.jpg" /></a> <a href="https://www.goodreads.com/book/show/1215032.The_Wise_Man_s_Fear"><img src="//blog.jverkamp.com/2016/03/10/kingkiller-chronicle/2-wise-mans-fear.jpg" /></a> <a href="https://www.goodreads.com/book/show/21535271-the-slow-regard-of-silent-things"><img src="//blog.jverkamp.com/2016/03/10/kingkiller-chronicle/2.5-slow-regard-of-silent-things.jpg" /></a></p>
 <p>Next up: <a href="https://www.goodreads.com/series/45262-the-kingkiller-chronicle">The Kingkiller Chronicle</a> by <a href="https://www.goodreads.com/author/show/108424.Patrick_Rothfuss">Patrick Rothfuss</a>. It comes extremely highly recommended by a lot of people, so I figure that I was going to have to read it at some point.</p>
@@ -314,196 +365,4 @@ end)</code></pre>
 <p>Basically, I took the same functionality that they had in the demo and factored out the functionality that gets the current window / sets the new sizes. The other interesting bit is the <code>aerosnap_save_window</code> function, which allows you to restore the size of a window you had just maximized. This does have something of a memory leak (in that it never clears up closed windows), but the amount should be small enough that it doesn't overly matter.</p>
 <p>And that's it. My full configs are available in my dotfiles (if I make any further tweaks or add more functionality): <a href="https://github.com/jpverkamp/dotfiles/tree/master/hammerspoon">hammerspoon configs</a></p>
 <p>I'm looking forward to seeing what else I can do with Hammerspoon. You can get fairly extensive: <a href="https://github.com/tstirrat/hammerspoon-config">example Hammerspoon config</a>.</p>
-<p>Also, if you want an alternative to Hammerspoon with what looks like a more modular approach, check out <a href="https://github.com/sdegutis/mjolnir">Mjolnir</a>. It appears that Hammerspoon is a fork of Mjolnir, so their configs are rather similar.</p>]]></content></entry><entry><title>The Keys to the Kingdom</title><link href="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom" /><id>urn:uuid:130c2fa9-32c6-b770-a218-f91e76391d32</id><updated>2016-01-07T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/47613.Mister_Monday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/1-mister-monday.jpg" /></a> <a href="https://www.goodreads.com/book/show/47620.Grim_Tuesday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/2-grim-tuesday.jpg" /></a> <a href="https://www.goodreads.com/book/show/47619.Drowned_Wednesday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/3-drowned-wednesday.jpg" /></a> <a href="https://www.goodreads.com/book/show/47618.Sir_Thursday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/4-sir-thursday.jpg" /></a> <a href="https://www.goodreads.com/book/show/17206.Lady_Friday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/5-lady-friday.jpg" /></a> <a href="https://www.goodreads.com/book/show/2049823.Superior_Saturday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/6-superior-saturday.jpg" /></a> <a href="https://www.goodreads.com/book/show/6657648-lord-sunday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/7-lord-sunday.jpg" /></a></p>
-<p>Three days left in 2015 and I realized I had finished everything on my original <a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, there were only 3 days left in the year, and I had two books left to read so I needed a quick read. After <a href="//blog.jverkamp.com/2015/12/29/necroscope">Necroscope</a>, I also needed something a bit lighter.</p>
-<p><a href="https://www.goodreads.com/author/show/8347.Garth_Nix">Garth Nix</a>'s' <a href="https://www.goodreads.com/series/42967-the-keys-to-the-kingdom">The Keys to the Kingdom</a> series fills both of those needs.</p>
-]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/47613.Mister_Monday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/1-mister-monday.jpg" /></a> <a href="https://www.goodreads.com/book/show/47620.Grim_Tuesday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/2-grim-tuesday.jpg" /></a> <a href="https://www.goodreads.com/book/show/47619.Drowned_Wednesday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/3-drowned-wednesday.jpg" /></a> <a href="https://www.goodreads.com/book/show/47618.Sir_Thursday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/4-sir-thursday.jpg" /></a> <a href="https://www.goodreads.com/book/show/17206.Lady_Friday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/5-lady-friday.jpg" /></a> <a href="https://www.goodreads.com/book/show/2049823.Superior_Saturday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/6-superior-saturday.jpg" /></a> <a href="https://www.goodreads.com/book/show/6657648-lord-sunday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/7-lord-sunday.jpg" /></a></p>
-<p>Three days left in 2015 and I realized I had finished everything on my original <a href="//blog.jverkamp.com/2015/01/01/2015-reading-list">2015 Reading List</a>, there were only 3 days left in the year, and I had two books left to read so I needed a quick read. After <a href="//blog.jverkamp.com/2015/12/29/necroscope">Necroscope</a>, I also needed something a bit lighter.</p>
-<p><a href="https://www.goodreads.com/author/show/8347.Garth_Nix">Garth Nix</a>'s' <a href="https://www.goodreads.com/series/42967-the-keys-to-the-kingdom">The Keys to the Kingdom</a> series fills both of those needs.</p>
-<!--more-->
-<p>The basic idea is that the Creator of the Universe has left the building--literally. They left behind a Will, but the seven Trustees in charge of seeing it done choose not to. One of these bits of sentient Will chooses a random pre-teen (or is he 13? it's unclear) to be the Heir to the Kingdom/House, by way of making him fight each of the seven Trustees in turn.</p>
-<p>It's a weird world, but fun to read. There are a few interesting thoughts in there and plenty of quick, kid friendly (mostly) action.</p>
-<p>Individual reviews (spoilers):</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/47613.Mister_Monday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/1-mister-monday.jpg" /></a></p>
-<p>I'm pretty sure that Arthur died. He had a massive asthma attack, and, as his oxygen starved brain struggled its last, he hallucinated all of the rest. How else do you describe just how ... odd this book is.</p>
-<p>That being said, I liked it. It's weird. Garth Nix really does his Proper Nouns. Everything felt like it Meant Something, although we never quite got a perfect idea what Anything was. Most of them were close enough though; so it goes. It's quick and the action picks you up and pulls you right through the story. When it's over, there's something of a feel of getting off a roller coaster, but in a good way.</p>
-<p>Final thoughts: Is this series really going to take place over a week (Earth time)? All righty then.</p>
-<p>Let's do it.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/47620.Grim_Tuesday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/2-grim-tuesday.jpg" /></a></p>
-<p>Of course they're all going to take place over a week (Earth time)...</p>
-<p>There's really not much different between Mister Monday and Grim Tuesday. Arthur is starting to accept his fate while at the same time learning more about the rules of the House. It interesting to see him change even in just the first two books thus far.</p>
-<p>It's nice to see a bit more of Suzy and also a bit more of the House. I see how they're going to have a different setting and antagonist each day, with an overarching world to tie them together. It's a neat idea and I want to see it all of the way through.</p>
-<p>Also, apparently the Morrow Days are the 7 Deadly Sins? Was that ever explicitly mentioned?  Sloth and Greed down, 5 to go.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/47619.Drowned_Wednesday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/3-drowned-wednesday.jpg" /></a></p>
-<p>The world of the Keys to the Kingdom continues to get more interesting and weirder all at once. This time around, we have a sort of Multiversal Ocean and the Morrow Day that governs it. It's an interesting world all itself, with ships that were once other things, uplifted rats, and a very Nix'ian version of the Jonah and Whale story.</p>
-<p>It's neat to finally see one of the Morrow Days that actually wants to help. I'm guessing we won't see much of that with the other half.</p>
-<p>Also, oh snap that cliff hanger at the end. These really are seven parts of a seven part serialized novel. Nothing wrong with that though. It's an interesting style. I wonder if Nix wrote all seven of them before publishing?</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/47618.Sir_Thursday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/4-sir-thursday.jpg" /></a></p>
-<p>Not much to say. Onwards and upwards for Arthur, taking on another of the Trustees and gaining another of the Keys.</p>
-<p>Pretty much all of the problems in this book seemed overly easy to subdue, the Skinless Boy and Sir Thursday included. I think this has been going on for all of the rest of the books, but it seemed even more obvious in this one. Perhaps it's a factor of how relatively short they are?</p>
-<p>Although on the flip side, setting things up with <spoiler>the Piper</spoiler> was interesting. I expected him to show up at some point, but this was a little different.</p>
-<p>Also Dame Primus is totally going to be a problem. Called it here.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/17206.Lady_Friday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/5-lady-friday.jpg" /></a></p>
-<p>It's interesting throughout the whole series, Nix has managed to combine a relatively formulaic story with new twists and weird new worlds in each and every book.</p>
-<p>The House just keeps getting weirder. I'm not sure how it's even really a 'House' at all. I think originally it was going to be and the Tuesday and Wednesday happened...</p>
-<p>We don't actually see much of Lady Friday; the least of any thus far. So it goes.</p>
-<p>It's interesting to see Arthur finally accept that he's going to finish this and, to do that, he has to use the Keys. Given how narrow a margin he was on before, I was curious how long that would take.</p>
-<p>The Will is going to be a problem...</p>
-<p>Five down, two to go.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/2049823.Superior_Saturday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/6-superior-saturday.jpg" /></a></p>
-<p>I like the visuals around Saturday's realm. It's one of the better ones when it comes to motivation and the idea of a gigantic clockwork tower stretching upwards... cool.</p>
-<p>On the other hand, we saw even less of Saturday than we did of Friday, which is saying something. I think she and Arthur were in the same scene for maybe a half dozen paragraphs? It's a bit weird. I assume we'll see more of her in the next book, but it's something of a departure.</p>
-<p>Back on Earth, things continue to escalate. Did Nix really <spoiler>drop a nuke on the city?</spoiler> Looks like. It's an interesting move. I'm betting time travel shenanigans will be involved in the finale.</p>
-<p>Speaking of the finale, the Will still hasn't caused nearly as much trouble as I expected. It keeps building up and then... nothing. At least nothing big. Another for Sunday I guess.</p>
-<hr />
-<p><a href="https://www.goodreads.com/book/show/6657648-lord-sunday"><img src="//blog.jverkamp.com/2016/01/07/the-keys-to-the-kingdom/7-lord-sunday.jpg" /></a></p>
-<p>Overall, everything I was hoping for in an ending to the series.</p>
-<p>We get to see a lot of Sunday and Sunday's realm: the Incomparable Gardens. It makes as much sense as anything in the rest of the House, so just go with it.</p>
-<p>There's a lot of action, more than any previous book.</p>
-<p>It's nice to see a bit more development in Leaf and Suzy.</p>
-<p>The ending was... weird. Given the rest of the series, perhaps I shouldn't be surprised.</p>
-<hr />
-<p>It's not the best thing I read in 2015 (although it currently does hold that title for 2016), but it's still pretty good. I'm glad I got a chance to fit it in.</p>
-<p>Next up: <a href="https://www.goodreads.com/book/show/89187.Revelation_Space">Revelation Space</a> by <a href="https://www.goodreads.com/author/show/51204.Alastair_Reynolds">Alastair Reynolds</a>.</p>]]></content></entry><entry><title>Command line unicode search</title><link href="//blog.jverkamp.com/2016/01/06/command-line-unicode-search" /><id>urn:uuid:842e94d5-f91e-d1f9-c793-73043fa69212</id><updated>2016-01-06T00:00:00Z</updated><summary type="html"><![CDATA[<p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/01/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
-<pre class="bash"><code>$ uni delta
-⍋	apl functional symbol delta stile
-⍙	apl functional symbol delta underbar
-⍍	apl functional symbol quad delta
-≜	delta equal to
-Δ	greek capital letter delta
-δ	greek small letter delta
-ẟ	latin small letter delta
-ƍ	latin small letter turned delta
-𝚫	mathematical bold capital delta
-𝜟	mathematical bold italic capital delta
-𝜹	mathematical bold italic small delta
-𝛅	mathematical bold small delta
-𝛥	mathematical italic capital delta
-𝛿	mathematical italic small delta
-𝝙	mathematical sans-serif bold capital delta
-𝞓	mathematical sans-serif bold italic capital delta
-𝞭	mathematical sans-serif bold italic small delta
-𝝳	mathematical sans-serif bold small delta
-ᵟ	modifier letter small delta</code></pre>
-]]></summary><content type="html"><![CDATA[<p>Similar to Monday's post about <a href="//blog.jverkamp.com/2016/01/04/command-line-emoji-search">command line emoji search</a>, I often find myself wanting to look up Unicode characters. I have a custom search engine / bookmark set up in Chrome / Firefox (<code>uni %s</code> maps to <code>http://unicode-search.net/unicode-namesearch.pl?term=%s&.submit=Submit&subs=1</code>). That actually works great, but given how relatively much of my day I spend on the command line, I thought it would be interesting to do something there:</p>
-<pre class="bash"><code>$ uni delta
-⍋	apl functional symbol delta stile
-⍙	apl functional symbol delta underbar
-⍍	apl functional symbol quad delta
-≜	delta equal to
-Δ	greek capital letter delta
-δ	greek small letter delta
-ẟ	latin small letter delta
-ƍ	latin small letter turned delta
-𝚫	mathematical bold capital delta
-𝜟	mathematical bold italic capital delta
-𝜹	mathematical bold italic small delta
-𝛅	mathematical bold small delta
-𝛥	mathematical italic capital delta
-𝛿	mathematical italic small delta
-𝝙	mathematical sans-serif bold capital delta
-𝞓	mathematical sans-serif bold italic capital delta
-𝞭	mathematical sans-serif bold italic small delta
-𝝳	mathematical sans-serif bold small delta
-ᵟ	modifier letter small delta</code></pre>
-<!--more-->
-<p>The basic idea is to take Python's <code>unicodedata</code> module and use that to get the names of characters, then to find those that best match user input. Of course one problem with that is that as of version 8 of the Unicode specification there are up to 263,994 characters defined in 262 different blocks. That's a bit much.</p>
-<p>So instead, I'm going to select a handpicked list of blocks that I think might be vaguely interesting (see <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/uni#L284">here</a>) as a default and add the ability to select any other block as a command line switch:</p>
-<pre class="bash"><code>$ uni --block currency euro
-€	euro sign
-₠	euro-currency sign</code></pre>
-<p>So, how do I do it? First, let's assume I have a list of unicode blocks defined as such (available from the Unicode Consortium: <a href="ftp://ftp.unicode.org/Public/8.0.0/ucd/Blocks.txt">Blocks.txt</a>):</p>
-<pre class="text"><code>0000..007F; Basic Latin
-0080..00FF; Latin-1 Supplement
-0100..017F; Latin Extended-A
-0180..024F; Latin Extended-B
-0250..02AF; IPA Extensions
-...</code></pre>
-<p>First, we'll want to either determine which block(s) we'll be looking at:</p>
-<pre class="python"><code># Determine which unicode blocks we'll be searching through
-blocks = []
-
-if args.block:
-    for line in all_blocks.split('\n'):
-        if fuzz.token_set_ratio(args.block, line.split('; ')[-1]) &gt; 100 * args.block_threshold:
-            blocks.append(line)
-else:
-    blocks = default_blocks.split('\n')
-
-if not blocks:
-    sys.stderr.write('No blocks found\n')
-    sys.exit(-1)</code></pre>
-<p><code>args</code> contains the parsed command line parameters, I'll get to that later. <code>fuzz</code> is from the <a href="https://github.com/seatgeek/fuzzywuzzy">fuzzywuzzy</a> Python library for fuzzy string matching. Basically, if the <code>--block</code> parameter was specified, we'll search for any that match closely enough, otherwise we'll use the default blocks.</p>
-<p>Next, we'll look through and build a list of all possible matching characters within those blocks. Given the formats above, we can get the lower and upper bounds with <code>int</code>, specifying base 16 and then use <code>unicodedata</code> to get the character name. Again, we'll apply a fuzzy match to the character names.</p>
-<pre class="python"><code># Search through all of those blocks, whee
-results = []
-
-for block in blocks:
-    bounds, name = block.split('; ')
-    lower_bound, upper_bound = bounds.split('..')
-
-    lower_bound = int(lower_bound, 16)
-    upper_bound = int(upper_bound, 16)
-
-    for codepoint in range(lower_bound, upper_bound + 1):
-        try:
-            character = chr(codepoint)
-            name = unicodedata.name(character, None).lower()
-            score = fuzz.token_set_ratio(args.name, name)
-
-            if score &gt; 100 * args.name_threshold:
-                results.append((score, name, character))
-        except:
-            pass
-
-if not results:
-    sys.stderr.write('No characters found\n')
-    sys.exit(-1)</code></pre>
-<p>And after that, we have a few tweaks for output. We can print all of the results (default) or just a limited number and we can print just the character or also the name:</p>
-<pre class="python"><code># Only print out the requested number of results
-for count, (score, name, character) in enumerate(sorted(results)):
-    if args.count and count &gt;= args.count:
-        break
-
-    if args.quiet:
-        print(character)
-    else:
-        print(character, name, sep = '\t')</code></pre>
-<p>I guess now would be a good time to go back to how we got the <code>args</code> object in the first place:</p>
-<pre class="python"><code>parser = argparse.ArgumentParser('Search unicode characters')
-parser.add_argument('name', nargs = '+', help = ...)
-parser.add_argument('--block', '-b', help = ...)
-parser.add_argument('--block-threshold', default = 0.9, help = ...)
-parser.add_argument('--name-threshold', default = 0.9, help = ...)
-parser.add_argument('--count', default = 0, type = int, help = ...)
-parser.add_argument('--quiet', '-q', default = False, action = 'store_true', help = ...)
-args = parser.parse_args()</code></pre>
-<p><code>argparse</code> is a most excellent library. It allows you to declaratively specify what your command line parameters will be and then will parse it into an object with one field for each variable (fixing the names so that <code>--block-threshold</code> becomes <code>args.block_threshold</code>).</p>
-<p>And that's it. You can use it to look up all sorts of interesting things:</p>
-<pre class="python"><code>uni --count 10 --block runic runic
-
-ᛮ	runic arlaug symbol
-ᛰ	runic belgthor symbol
-᛭	runic cross punctuation
-ᚪ	runic letter ac a
-ᚫ	runic letter aesc
-ᛉ	runic letter algiz eolhx
-ᚨ	runic letter ansuz a
-ᛒ	runic letter berkanan beorc bjarkan b
-ᛍ	runic letter c
-ᛣ	runic letter calc</code></pre>
-<p>(That will display better if you're using a font that includes Unicode range <code>16A0..16FF; Runic</code>.)</p>
-<p>For the most part, I'll use it in this mode and then select characters to copy and paste. But you could also combine it with <a href="https://github.com/garybernhardt/selecta">selecta</a> and <code>pbcopy</code> (on OSX) to get something entirely more interesting:</p>
-<pre class="bash"><code>$ uni --block runic runic | selecta | cut -f 1 | tr -d '\n' | pbcopy</code></pre>
-<p><code>uni</code> will display a list of characters, <code>selecta</code> will let you search for one, <code>cut</code> will get just the character, <code>tr</code> will remove the newline, and <code>pbcopy</code> will send it to the clipboard. You could even shove it into a Bash/ZSH alias:</p>
-<pre class="bash"><code>pbuni() {
-    uni $@ | selecta | cut -f 1 | tr -d '\n' | pbcopy
-}</code></pre>
-<p>Very cool.</p>
-<p>This is in my dotfiles, so you can find the full source here: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/uni">uni</a>. Enjoy!</p>]]></content></entry></feed>
+<p>Also, if you want an alternative to Hammerspoon with what looks like a more modular approach, check out <a href="https://github.com/sdegutis/mjolnir">Mjolnir</a>. It appears that Hammerspoon is a fork of Mjolnir, so their configs are rather similar.</p>]]></content></entry></feed>
