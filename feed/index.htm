@@ -1,5 +1,190 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-06-03T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Automatically uploading files</title><link href="//blog.jverkamp.com/2016/06/03/automatically-uploading-files" /><id>urn:uuid:90df3103-501b-d352-df53-c06dfd486fbd</id><updated>2016-06-03T00:00:00Z</updated><summary type="html"><![CDATA[<p>Quick post today. I was working on a website where I have a live server running the code on another machine. I wanted to write a quick script that would copy any files I changed to the remote machine. This is something you can do automatically in most IDEs, but I wanted something both a bit lighter weight and to have the excuse to write something myself.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-06-04T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Parsing Motorola Surfboard stats</title><link href="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats" /><id>urn:uuid:91b517e2-ff8e-5c7a-e9f5-67526c7c4209</id><updated>2016-06-04T00:00:00Z</updated><summary type="html"><![CDATA[<p>A few weeks ago, I was having some pretty bad problems with my internet randomly hanging. Given that I'm now working from home, that wasn't exactly the most optimal of situations to find myself in, so I decided to dig a bit deeper. After a bit of looking, I found myself at my cable modem's built in web page:</p>
+<p><a href="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats/downstream.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats/downstream.png" /></a></p>
+<p>(This is after I fixed my problem. The values aren't perfect but they're much better.)</p>
+]]></summary><content type="html"><![CDATA[<p>A few weeks ago, I was having some pretty bad problems with my internet randomly hanging. Given that I'm now working from home, that wasn't exactly the most optimal of situations to find myself in, so I decided to dig a bit deeper. After a bit of looking, I found myself at my cable modem's built in web page:</p>
+<p><a href="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats/downstream.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats/downstream.png" /></a></p>
+<p>(This is after I fixed my problem. The values aren't perfect but they're much better.)</p>
+<!--more-->
+<p>There are three numbers here that are particularly interesting:</p>
+<ul>
+    <li><code>Signal to Noise Ratio</code> - >30 dB, although theoretically it can work as low as 25 dB at times; this one is fine</li>
+    <li><code>Downstream Power Level</code> - ±15 dbmV is supposed to be acceptable, but you really want no more than ±8 dbmV (that's why I said it's not great at the moment); I was getting -15 dbmV or worse consistently</li>
+    <li><code>Upstream Power Level</code> (not shown) - 37-55 dbmV, lower is generally better; I'm getting 47 dbmV, so once again fine</li>
+</ul>
+<p>The nice thing about all of these numbers is that they are relatively easy to parse. All of the pages are a series of HTML tables, so I should be able to parse them relatively quickly with a combination of <a href="http://docs.python-requests.org/en/master/">Requests</a> to pull down the pages and <a href="https://www.crummy.com/software/BeautifulSoup/">Beautiful Soup</a> to parse them.</p>
+<p>First, let's write a helper that can parse an table into a Python list of lists:</p>
+<pre class="python"><code>def parse_table(table):
+    '''Given soup &lt;table&gt;, extract the rows'''
+
+    rows = []
+
+    for tr in table.find_all('tr'):
+        if not tr.find_all('td'):
+            continue
+
+        rows.append([
+            td.text.strip()
+            for td in tr.find_all('td')
+            if td.text.strip()
+        ])
+
+    return rows</code></pre>
+<p>Then furthermore, let's assume the first row is a header row and turn them into a list of dictionaries:</p>
+<pre class="python"><code>def lol_to_lod(table, transpose = False):
+    '''Convert a list of lists with headers into a list of dicts.'''
+
+    if transpose:
+        table = list(zip(*table))
+
+    headers = table[0]
+
+    return [
+        dict(zip(headers, row))
+        for row in table[1:]
+    ]</code></pre>
+<p>There's some magic going on there, <code>zip</code>ping the <code>headers</code> and <code>row</code> together to make a <code>dict</code> and transposing arrays via <code>list(zip(*table))</code>. It's perhaps not the most readable code ever, but it's amusing and compact.</p>
+<p>After that, it's just a matter of downloading each of the pages and doing a little bit of massaging the data to get it into a consistent form:</p>
+<pre class="python"><code>def tables_for(endpoint):
+    response = requests.get('http://192.168.100.1' + endpoint)
+    soup = bs4.BeautifulSoup(response.text, 'lxml')
+    return [parse_table(table) for table in soup.find_all('table')]
+
+def status_page():
+    tables = tables_for('/indexData.htm')
+
+    result = {}
+    result.update(lol_to_lod(tables[0], transpose = True)[0])
+    result.update(lol_to_lod(tables[1], transpose = True)[0])
+    return result
+
+def signal_page():
+    tables = tables_for('/cmSignalData.htm')
+    tables[0][4][0] = 'Power Level'
+    del tables[0][-1]
+    del tables[0][-1][1]
+
+    return {
+        'downstream': lol_to_lod(tables[0], transpose = True),
+        'upstream': lol_to_lod(tables[2], transpose = True),
+        'codewords': lol_to_lod(tables[3], transpose = True),
+    }
+
+def addresses_page():
+    tables = tables_for('/cmAddressData.htm')
+    tables[1].insert(0, ['Index', 'MAC Address', 'Status'])
+
+    result = lol_to_lod(tables[0], transpose = True)[0]
+    result['clients'] = lol_to_lod(tables[1])
+
+    return result
+
+def configuration_page():
+    tables = tables_for('/cmConfigData.htm')
+    return lol_to_lod(tables[0][:-1], transpose = True)
+
+def logs_page():
+    tables = tables_for('/cmLogsData.htm')
+    tables[0].insert(0, ['Time', 'Priority', 'Code', 'Message'])
+    return lol_to_lod(tables[0])</code></pre>
+<p>It's a bit odd since each of the pages is actually one page containing another as an <code>iframe</code>, but a quick look into the source gets me all of the names. It's far more data than you probably actually need (and a good bit of it never changes), but you can always filter it after or compress the heck out of it (lines of mostly the same JSON compress very well; 90%+)</p>
+<p>Combine everything into one more layer of Python <code>dict</code> and dump the whole thing as a JSON object.</p>
+<pre class="python"><code>results = {
+    'status': status_page(),
+    'signal': signal_page(),
+    'addresses': addresses_page(),
+    'configuration': configuration_page(),
+    'logs': logs_page(),
+}
+
+print(json.dumps(results))</code></pre>
+<p>Combined with the excellent <a href="https://stedolan.github.io/jq/">jq</a> to make it pretty:</p>
+<pre class="bash"><code>$ modem-stats | jq '.'
+
+{
+  "signal": {
+    "upstream": [
+      {
+        "Upstream Modulation": "[3] QPSK\n[3] 64QAM",
+        "Ranging Status": "Success",
+        "Channel ID": "79",
+        "Symbol Rate": "5.120 Msym/sec",
+        "Frequency": "21000000 Hz",
+        "Ranging Service ID": "15160",
+        "Power Level": "47 dBmV"
+      },
+      ...
+    ],
+    "codewords": [
+      {
+        "Total Unerrored Codewords": "9570874877",
+        "Channel ID": "10",
+        "Total Uncorrectable Codewords": "19826",
+        "Total Correctable Codewords": "4667"
+      },
+      ...
+    ],
+    "downstream": [
+      {
+        "Signal to Noise Ratio": "36 dB",
+        "Downstream Modulation": "QAM256",
+        "Frequency": "663000000 Hz",
+        "Power Level": "-9 dBmV",
+        "Channel ID": "10"
+      },
+      ...
+    ]
+  },
+  "addresses": {
+    "Serial Number": "{redacted}",
+    "clients": [
+      {
+        "Index": "1",
+        "MAC Address": "{redacted}",
+        "Status": "Dynamic"
+      }
+    ],
+    "Ethernet MAC Address": "{redacted}",
+    "HFC MAC Address": "{redacted}",
+    "Ethernet IP Address": "192.168.100.1"
+  },
+  "status": {
+    "Current Time and Date": "Jun 03 2016 23:25:32",
+    "System Up Time": "2 days 10h:30m:54s",
+    "DOCSIS Downstream Channel Acquisition": "Done",
+    "Establish IP Connectivity using DHCP": "Done",
+    "Initialize Baseline Privacy": "Done",
+    "DOCSIS Ranging": "Done",
+    "Register Connection": "Done",
+    "Establish Time Of Day": "Done",
+    "Transfer Operational Parameters through TFTP": "Done",
+    "Cable Modem Status": "Operational"
+  },
+  "configuration": [
+    {
+      "Frequency Plan:": "North American Standard/HRC/IRC",
+      "Upstream Channel ID:": "79",
+      "Favorite Frequency (Hz)": "663000000",
+      "Modem's IP Mode": "IPv6 Only",
+      "Custom Frequency Ordering:": "Default",
+      "DOCSIS MIMO": "Honor MDD IP Mode"
+    }
+  ],
+  "logs": [
+    ...
+  ]
+}</code></pre>
+<p>You can also use a bit of shell-fu to combine everything to get an average downstream power level at any given point in time:</p>
+<pre class="bash"><code>$ modem-stats \
+    | jq '.signal.downstream[]."Power Level"' \
+    | tr -d '"' \
+    | awk '{ sum += $1; count += 1 } END { print sum/count }'
+
+-8.25</code></pre>
+<p>Combine that with a minutely cronjob and you can even detect when certain stats get particularly bad.</p>
+<p>In the end, it was mostly a hardware issue. The coaxial cable I was using between the wall and my modem had a few kinks in it. I replaced with a newer, slightly shorter cable and all was well.</p>
+<p>But still, it's interesting to have such statistics.</p>
+<p>If you'd like to download the entire script, it's in my <a href="https://github.com/jpverkamp/dotfiles/">dotfiles</a>: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/modem-stats">modem-stats</a>.</p>]]></content></entry><entry><title>Automatically uploading files</title><link href="//blog.jverkamp.com/2016/06/03/automatically-uploading-files" /><id>urn:uuid:90df3103-501b-d352-df53-c06dfd486fbd</id><updated>2016-06-03T00:00:00Z</updated><summary type="html"><![CDATA[<p>Quick post today. I was working on a website where I have a live server running the code on another machine. I wanted to write a quick script that would copy any files I changed to the remote machine. This is something you can do automatically in most IDEs, but I wanted something both a bit lighter weight and to have the excuse to write something myself.</p>
 ]]></summary><content type="html"><![CDATA[<p>Quick post today. I was working on a website where I have a live server running the code on another machine. I wanted to write a quick script that would copy any files I changed to the remote machine. This is something you can do automatically in most IDEs, but I wanted something both a bit lighter weight and to have the excuse to write something myself.</p>
 <!--more-->
 <p>Basically, I'm going to wrap <a href="https://fsnotify.org/">fsnotify</a> with a quick queue that can keep track of files as they're changed and upload them in order.</p>
@@ -382,6 +567,4 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 <p>So yeah. I'll keep on reading them if only for that. :)</p>
 <p>Plus, I think there's only supposed to be one more? I want to see how it all ends. A lot of the plot lines were tied up rather happily by the end of Staked, but that only leaves the proverbial shit to really hit the fan when armageddon rolls around...</p>
 <hr />
-<p>Next up: <a href="https://www.goodreads.com/book/show/89187.Revelation_Space">Revelation Space</a> by <a href="https://www.goodreads.com/author/show/51204.Alastair_Reynolds">Alastair Reynolds</a>.</p>]]></content></entry><entry><title>Rainy Day Flowers</title><link href="//blog.jverkamp.com/2016/03/05/rainy-day-flowers" /><id>urn:uuid:9e0e307a-3726-2bec-5541-5451497af03c</id><updated>2016-03-05T00:05:00Z</updated><summary type="html"><![CDATA[<p>Rainy day. Flowers. What more to say?</p>
-<div><div class="flickr-gallery" data-set-id="72157663180238583" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157663180238583">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Rainy day. Flowers. What more to say?</p>
-<div><div class="flickr-gallery" data-set-id="72157663180238583" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157663180238583">View on Flickr</a></p></div>]]></content></entry></feed>
+<p>Next up: <a href="https://www.goodreads.com/book/show/89187.Revelation_Space">Revelation Space</a> by <a href="https://www.goodreads.com/author/show/51204.Alastair_Reynolds">Alastair Reynolds</a>.</p>]]></content></entry></feed>

@@ -4,7 +4,7 @@
         
         
 
-        <title>Automatically uploading files | jverkamp.com | John-Paul Verkamp</title>
+        <title>Parsing Motorola Surfboard stats | jverkamp.com | John-Paul Verkamp</title>
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" defer></script>
         <script src="//code.jquery.com/ui/1.11.1/jquery-ui.min.js" defer></script>
@@ -72,58 +72,199 @@
 
         <article class="container">
                 <header>
-                        <h1 class="entry-title">Automatically uploading files</h1>
+                        <h1 class="entry-title">Parsing Motorola Surfboard stats</h1>
 
                         <div class="entry-meta">
-                                <span class="posted-on"><time class="entry-date" datetime="2016-06-03"><span class="year">2016</span> <span class="month">June</span> <span class="day">3</span></time></span>
+                                <span class="posted-on"><time class="entry-date" datetime="2016-06-04"><span class="year">2016</span> <span class="month">June</span> <span class="day">4</span></time></span>
                                 <span class="tags"><ul class="tag-list list-inline"><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/category/programming/by-language/python">Python</a></li></ul></span>
                         </div>
 
                         <hr />
                 </header>
                 <div class="entry-content">
-                        <p>Quick post today. I was working on a website where I have a live server running the code on another machine. I wanted to write a quick script that would copy any files I changed to the remote machine. This is something you can do automatically in most IDEs, but I wanted something both a bit lighter weight and to have the excuse to write something myself.</p>
+                        <p>A few weeks ago, I was having some pretty bad problems with my internet randomly hanging. Given that I'm now working from home, that wasn't exactly the most optimal of situations to find myself in, so I decided to dig a bit deeper. After a bit of looking, I found myself at my cable modem's built in web page:</p>
+<p><a href="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats/downstream.png" data-toggle="lightbox"><img src="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats/downstream.png" /></a></p>
+<p>(This is after I fixed my problem. The values aren't perfect but they're much better.)</p>
 <!--more-->
-<p>Basically, I'm going to wrap <a href="https://fsnotify.org/">fsnotify</a> with a quick queue that can keep track of files as they're changed and upload them in order.</p>
-<p>First, the functionality that can run an arbitrary command (at least one that returns a list of filenames) and put any files found into a queue (we'll see why in a moment):</p>
-<pre class="python"><code>sync_queue = queue.Queue()
+<p>There are three numbers here that are particularly interesting:</p>
+<ul>
+    <li><code>Signal to Noise Ratio</code> - >30 dB, although theoretically it can work as low as 25 dB at times; this one is fine</li>
+    <li><code>Downstream Power Level</code> - ±15 dbmV is supposed to be acceptable, but you really want no more than ±8 dbmV (that's why I said it's not great at the moment); I was getting -15 dbmV or worse consistently</li>
+    <li><code>Upstream Power Level</code> (not shown) - 37-55 dbmV, lower is generally better; I'm getting 47 dbmV, so once again fine</li>
+</ul>
+<p>The nice thing about all of these numbers is that they are relatively easy to parse. All of the pages are a series of HTML tables, so I should be able to parse them relatively quickly with a combination of <a href="http://docs.python-requests.org/en/master/">Requests</a> to pull down the pages and <a href="https://www.crummy.com/software/BeautifulSoup/">Beautiful Soup</a> to parse them.</p>
+<p>First, let's write a helper that can parse an table into a Python list of lists:</p>
+<pre class="python"><code>def parse_table(table):
+    '''Given soup &lt;table&gt;, extract the rows'''
 
-def sync_command(command):
-    process = subprocess.Popen(command, shell = True, stdout = subprocess.PIPE)
-    for line in process.stdout:
-        for file in line.decode().strip().split():
-            sync_queue.put(file)</code></pre>
-<p>And then the other half--a thread that can take those files off the queue and automatically upload them to a remote server:</p>
-<pre class="python"><code>def do_sync():
-    while True:
-        path = sync_queue.get()
-        local_path = path.replace(local_directory, '').lstrip('/')
-        remote_path = remote_directory.rstrip('/') + '/' + local_path
+    rows = []
 
-        print('[{} remaining] {} ... '.format(sync_queue.qsize(), local_path), end = '')
-        sys.stdout.flush()
+    for tr in table.find_all('tr'):
+        if not tr.find_all('td'):
+            continue
 
-        subprocess.check_call('scp "{local_path}" "{remote_host}:{remote_path}"'.format(
-            local_path = local_path,
-            remote_host = remote_host,
-            remote_path = remote_path
-        ), shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+        rows.append([
+            td.text.strip()
+            for td in tr.find_all('td')
+            if td.text.strip()
+        ])
 
-        print('done')
+    return rows</code></pre>
+<p>Then furthermore, let's assume the first row is a header row and turn them into a list of dictionaries:</p>
+<pre class="python"><code>def lol_to_lod(table, transpose = False):
+    '''Convert a list of lists with headers into a list of dicts.'''
 
-# Start up the sync thread
-sync_thread = threading.Thread(target = do_sync)
-sync_thread.daemon = True
-sync_thread.start()</code></pre>
-<p>And that's all we need. We can run a trio of commands to automatically sync any changes that we've made on a <code>git</code> branch plus any we make going forward:</p>
-<pre class="python"><code># Sync any differences on the current branch (first changed, then new files)
-sync_command('git diff --name-only master')
-sync_command('git ls-files --others --exclude-standard')
+    if transpose:
+        table = list(zip(*table))
 
-# Sync any changes to files as they happen
-sync_command('fswatch -r -e ".git" .')</code></pre>
-<p>And that's it. <code>fswatch</code> really does most of the work, but it's a nice wrapper that will continually sync files until you tell it to quit.</p>
-<p>It's useful enough that I already put it in my <code>dotfiles</code> repo: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/sync">sync</a>.</p>
+    headers = table[0]
+
+    return [
+        dict(zip(headers, row))
+        for row in table[1:]
+    ]</code></pre>
+<p>There's some magic going on there, <code>zip</code>ping the <code>headers</code> and <code>row</code> together to make a <code>dict</code> and transposing arrays via <code>list(zip(*table))</code>. It's perhaps not the most readable code ever, but it's amusing and compact.</p>
+<p>After that, it's just a matter of downloading each of the pages and doing a little bit of massaging the data to get it into a consistent form:</p>
+<pre class="python"><code>def tables_for(endpoint):
+    response = requests.get('http://192.168.100.1' + endpoint)
+    soup = bs4.BeautifulSoup(response.text, 'lxml')
+    return [parse_table(table) for table in soup.find_all('table')]
+
+def status_page():
+    tables = tables_for('/indexData.htm')
+
+    result = {}
+    result.update(lol_to_lod(tables[0], transpose = True)[0])
+    result.update(lol_to_lod(tables[1], transpose = True)[0])
+    return result
+
+def signal_page():
+    tables = tables_for('/cmSignalData.htm')
+    tables[0][4][0] = 'Power Level'
+    del tables[0][-1]
+    del tables[0][-1][1]
+
+    return {
+        'downstream': lol_to_lod(tables[0], transpose = True),
+        'upstream': lol_to_lod(tables[2], transpose = True),
+        'codewords': lol_to_lod(tables[3], transpose = True),
+    }
+
+def addresses_page():
+    tables = tables_for('/cmAddressData.htm')
+    tables[1].insert(0, ['Index', 'MAC Address', 'Status'])
+
+    result = lol_to_lod(tables[0], transpose = True)[0]
+    result['clients'] = lol_to_lod(tables[1])
+
+    return result
+
+def configuration_page():
+    tables = tables_for('/cmConfigData.htm')
+    return lol_to_lod(tables[0][:-1], transpose = True)
+
+def logs_page():
+    tables = tables_for('/cmLogsData.htm')
+    tables[0].insert(0, ['Time', 'Priority', 'Code', 'Message'])
+    return lol_to_lod(tables[0])</code></pre>
+<p>It's a bit odd since each of the pages is actually one page containing another as an <code>iframe</code>, but a quick look into the source gets me all of the names. It's far more data than you probably actually need (and a good bit of it never changes), but you can always filter it after or compress the heck out of it (lines of mostly the same JSON compress very well; 90%+)</p>
+<p>Combine everything into one more layer of Python <code>dict</code> and dump the whole thing as a JSON object.</p>
+<pre class="python"><code>results = {
+    'status': status_page(),
+    'signal': signal_page(),
+    'addresses': addresses_page(),
+    'configuration': configuration_page(),
+    'logs': logs_page(),
+}
+
+print(json.dumps(results))</code></pre>
+<p>Combined with the excellent <a href="https://stedolan.github.io/jq/">jq</a> to make it pretty:</p>
+<pre class="bash"><code>$ modem-stats | jq '.'
+
+{
+  "signal": {
+    "upstream": [
+      {
+        "Upstream Modulation": "[3] QPSK\n[3] 64QAM",
+        "Ranging Status": "Success",
+        "Channel ID": "79",
+        "Symbol Rate": "5.120 Msym/sec",
+        "Frequency": "21000000 Hz",
+        "Ranging Service ID": "15160",
+        "Power Level": "47 dBmV"
+      },
+      ...
+    ],
+    "codewords": [
+      {
+        "Total Unerrored Codewords": "9570874877",
+        "Channel ID": "10",
+        "Total Uncorrectable Codewords": "19826",
+        "Total Correctable Codewords": "4667"
+      },
+      ...
+    ],
+    "downstream": [
+      {
+        "Signal to Noise Ratio": "36 dB",
+        "Downstream Modulation": "QAM256",
+        "Frequency": "663000000 Hz",
+        "Power Level": "-9 dBmV",
+        "Channel ID": "10"
+      },
+      ...
+    ]
+  },
+  "addresses": {
+    "Serial Number": "{redacted}",
+    "clients": [
+      {
+        "Index": "1",
+        "MAC Address": "{redacted}",
+        "Status": "Dynamic"
+      }
+    ],
+    "Ethernet MAC Address": "{redacted}",
+    "HFC MAC Address": "{redacted}",
+    "Ethernet IP Address": "192.168.100.1"
+  },
+  "status": {
+    "Current Time and Date": "Jun 03 2016 23:25:32",
+    "System Up Time": "2 days 10h:30m:54s",
+    "DOCSIS Downstream Channel Acquisition": "Done",
+    "Establish IP Connectivity using DHCP": "Done",
+    "Initialize Baseline Privacy": "Done",
+    "DOCSIS Ranging": "Done",
+    "Register Connection": "Done",
+    "Establish Time Of Day": "Done",
+    "Transfer Operational Parameters through TFTP": "Done",
+    "Cable Modem Status": "Operational"
+  },
+  "configuration": [
+    {
+      "Frequency Plan:": "North American Standard/HRC/IRC",
+      "Upstream Channel ID:": "79",
+      "Favorite Frequency (Hz)": "663000000",
+      "Modem's IP Mode": "IPv6 Only",
+      "Custom Frequency Ordering:": "Default",
+      "DOCSIS MIMO": "Honor MDD IP Mode"
+    }
+  ],
+  "logs": [
+    ...
+  ]
+}</code></pre>
+<p>You can also use a bit of shell-fu to combine everything to get an average downstream power level at any given point in time:</p>
+<pre class="bash"><code>$ modem-stats \
+    | jq '.signal.downstream[]."Power Level"' \
+    | tr -d '"' \
+    | awk '{ sum += $1; count += 1 } END { print sum/count }'
+
+-8.25</code></pre>
+<p>Combine that with a minutely cronjob and you can even detect when certain stats get particularly bad.</p>
+<p>In the end, it was mostly a hardware issue. The coaxial cable I was using between the wall and my modem had a few kinks in it. I replaced with a newer, slightly shorter cable and all was well.</p>
+<p>But still, it's interesting to have such statistics.</p>
+<p>If you'd like to download the entire script, it's in my <a href="https://github.com/jpverkamp/dotfiles/">dotfiles</a>: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/modem-stats">modem-stats</a>.</p>
                 </div>
                 <div class="entry-footnotes">
                         <div id="footnotes"><ol></ol></div>
@@ -132,8 +273,8 @@ sync_command('fswatch -r -e ".git" .')</code></pre>
                 <div id="disqus_thread"></div>
 <script type="text/javascript">
 var disqus_shortname = "jverkamp";
-var disqus_title = "Automatically uploading files";
-var disqus_url = "http://blog.jverkamp.com/2016/06/03/automatically-uploading-files/";
+var disqus_title = "Parsing Motorola Surfboard stats";
+var disqus_url = "http://blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats/";
 /* * * DON'T EDIT BELOW THIS LINE * * */
 (function() {
   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
@@ -146,7 +287,7 @@ var disqus_url = "http://blog.jverkamp.com/2016/06/03/automatically-uploading-fi
         </article>
 
         <footer class="container" role="contentinfo">
-                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/05/09/warbreaker">← Warbreaker</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li><li><a href="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats">Parsing Motorola Surfboard stats →</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/04/19/ensuring-docker-machine-is-running">← Ensuring docker-machine is running</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li><li><a href="//blog.jverkamp.com/2016/06/04/parsing-motorola-surfboard-stats">Parsing Motorola Surfboard stats →</a></li></ul></nav>
+                <nav class="navbar navbar-default" role="navigation"><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/06/03/automatically-uploading-files">← Automatically uploading files</a></li><li><a href="//blog.jverkamp.com/category/archives">Archives</a></li></ul><ul class="nav navbar-nav nav-justified"><li><a href="//blog.jverkamp.com/2016/06/03/automatically-uploading-files">← Automatically uploading files</a></li><li><a href="//blog.jverkamp.com/category/programming">Programming</a></li></ul></nav>
 
                 <div class="legal">
                         <a href="//blog.jverkamp.com/feed/atom.xml">feed <img style="border: 0;" src="//blog.jverkamp.com/rss.png" /></a><br />
