@@ -1,5 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-05-09T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Warbreaker</title><link href="//blog.jverkamp.com/2016/05/09/warbreaker" /><id>urn:uuid:3dba7ec7-9d49-8fe6-1c42-4cda2c7dde4b</id><updated>2016-05-09T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/1268479.Warbreaker"><img src="//blog.jverkamp.com/2016/05/09/warbreaker/warbreaker.jpg" /></a></p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-06-03T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Automatically uploading files</title><link href="//blog.jverkamp.com/2016/06/03/automatically-uploading-files" /><id>urn:uuid:90df3103-501b-d352-df53-c06dfd486fbd</id><updated>2016-06-03T00:00:00Z</updated><summary type="html"><![CDATA[<p>Quick post today. I was working on a website where I have a live server running the code on another machine. I wanted to write a quick script that would copy any files I changed to the remote machine. This is something you can do automatically in most IDEs, but I wanted something both a bit lighter weight and to have the excuse to write something myself.</p>
+]]></summary><content type="html"><![CDATA[<p>Quick post today. I was working on a website where I have a live server running the code on another machine. I wanted to write a quick script that would copy any files I changed to the remote machine. This is something you can do automatically in most IDEs, but I wanted something both a bit lighter weight and to have the excuse to write something myself.</p>
+<!--more-->
+<p>Basically, I'm going to wrap <a href="https://fsnotify.org/">fsnotify</a> with a quick queue that can keep track of files as they're changed and upload them in order.</p>
+<p>First, the functionality that can run an arbitrary command (at least one that returns a list of filenames) and put any files found into a queue (we'll see why in a moment):</p>
+<pre class="python"><code>sync_queue = queue.Queue()
+
+def sync_command(command):
+    process = subprocess.Popen(command, shell = True, stdout = subprocess.PIPE)
+    for line in process.stdout:
+        for file in line.decode().strip().split():
+            sync_queue.put(file)</code></pre>
+<p>And then the other half--a thread that can take those files off the queue and automatically upload them to a remote server:</p>
+<pre class="python"><code>def do_sync():
+    while True:
+        path = sync_queue.get()
+        local_path = path.replace(local_directory, '').lstrip('/')
+        remote_path = remote_directory.rstrip('/') + '/' + local_path
+
+        print('[{} remaining] {} ... '.format(sync_queue.qsize(), local_path), end = '')
+        sys.stdout.flush()
+
+        subprocess.check_call('scp "{local_path}" "{remote_host}:{remote_path}"'.format(
+            local_path = local_path,
+            remote_host = remote_host,
+            remote_path = remote_path
+        ), shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+
+        print('done')
+
+# Start up the sync thread
+sync_thread = threading.Thread(target = do_sync)
+sync_thread.daemon = True
+sync_thread.start()</code></pre>
+<p>And that's all we need. We can run a trio of commands to automatically sync any changes that we've made on a <code>git</code> branch plus any we make going forward:</p>
+<pre class="python"><code># Sync any differences on the current branch (first changed, then new files)
+sync_command('git diff --name-only master')
+sync_command('git ls-files --others --exclude-standard')
+
+# Sync any changes to files as they happen
+sync_command('fswatch -r -e ".git" .')</code></pre>
+<p>And that's it. <code>fswatch</code> really does most of the work, but it's a nice wrapper that will continually sync files until you tell it to quit.</p>
+<p>It's useful enough that I already put it in my <code>dotfiles</code> repo: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/sync">sync</a>.</p>]]></content></entry><entry><title>Warbreaker</title><link href="//blog.jverkamp.com/2016/05/09/warbreaker" /><id>urn:uuid:3dba7ec7-9d49-8fe6-1c42-4cda2c7dde4b</id><updated>2016-05-09T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/1268479.Warbreaker"><img src="//blog.jverkamp.com/2016/05/09/warbreaker/warbreaker.jpg" /></a></p>
 <p>I wish it hadn't taken quite so long to get to <a href="https://www.goodreads.com/book/show/1268479.Warbreaker">Warbreaker</a>. It's really quite a good book, right up there with pretty much all of the rest of <a href="https://www.goodreads.com/author/show/38550.Brandon_Sanderson">Sanderson's</a> works.</p>
 ]]></summary><content type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/1268479.Warbreaker"><img src="//blog.jverkamp.com/2016/05/09/warbreaker/warbreaker.jpg" /></a></p>
 <p>I wish it hadn't taken quite so long to get to <a href="https://www.goodreads.com/book/show/1268479.Warbreaker">Warbreaker</a>. It's really quite a good book, right up there with pretty much all of the rest of <a href="https://www.goodreads.com/author/show/38550.Brandon_Sanderson">Sanderson's</a> works.</p>
@@ -342,115 +384,4 @@ CONTAINER ID        IMAGE               COMMAND             CREATED             
 <hr />
 <p>Next up: <a href="https://www.goodreads.com/book/show/89187.Revelation_Space">Revelation Space</a> by <a href="https://www.goodreads.com/author/show/51204.Alastair_Reynolds">Alastair Reynolds</a>.</p>]]></content></entry><entry><title>Rainy Day Flowers</title><link href="//blog.jverkamp.com/2016/03/05/rainy-day-flowers" /><id>urn:uuid:9e0e307a-3726-2bec-5541-5451497af03c</id><updated>2016-03-05T00:05:00Z</updated><summary type="html"><![CDATA[<p>Rainy day. Flowers. What more to say?</p>
 <div><div class="flickr-gallery" data-set-id="72157663180238583" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157663180238583">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Rainy day. Flowers. What more to say?</p>
-<div><div class="flickr-gallery" data-set-id="72157663180238583" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157663180238583">View on Flickr</a></p></div>]]></content></entry><entry><title>Audiobooks to Podcasts</title><link href="//blog.jverkamp.com/2016/02/26/audiobooks-to-podcasts" /><id>urn:uuid:cfe78150-139b-aa1d-01bd-c73e7e91fd17</id><updated>2016-02-26T00:05:00Z</updated><summary type="html"><![CDATA[<p>I've recently started to listen to audiobooks again (<a href="//blog.jverkamp.com/2016/02/10/the-aeronauts-windlass">The Aeronaut's Windlass</a>). If you buy books through Audible or some other setup that has their own app, it's a straight forward enough process. On the other hand, if you have them on CD and want to play them on a mobile device... It's a little more interesting.</p>
-<p>I tried a few different apps that purport to do exactly what I wanted: import an audiobook as a folder full of MP3s and play them, but none that quite meet what I wanted. Since I also listen to a lot of podcasts and have more than one podcast app that I really like (I've used and liked both <a href="http://www.downcastapp.com/">Downcast</a> and <a href="http://www.shiftyjelly.com/pocketcasts">Pocket Casts</a>), I decided to see if I couldn't use one of those as an audiobook player.</p>
-]]></summary><content type="html"><![CDATA[<p>I've recently started to listen to audiobooks again (<a href="//blog.jverkamp.com/2016/02/10/the-aeronauts-windlass">The Aeronaut's Windlass</a>). If you buy books through Audible or some other setup that has their own app, it's a straight forward enough process. On the other hand, if you have them on CD and want to play them on a mobile device... It's a little more interesting.</p>
-<p>I tried a few different apps that purport to do exactly what I wanted: import an audiobook as a folder full of MP3s and play them, but none that quite meet what I wanted. Since I also listen to a lot of podcasts and have more than one podcast app that I really like (I've used and liked both <a href="http://www.downcastapp.com/">Downcast</a> and <a href="http://www.shiftyjelly.com/pocketcasts">Pocket Casts</a>), I decided to see if I couldn't use one of those as an audiobook player.</p>
-<!--more-->
-<p>My basic set up is one that I've used before. I'll use <a href="https://docs.docker.com/compose/">docker-compose</a> to run a web server running <a href="http://flask.pocoo.org/">flask</a> behind an <a href="https://www.nginx.com/resources/wiki/">nginx reverse proxy</a> (for performance reasons and to serve static files).</p>
-<p>Basically, I want a server that when I hit it will give a list of all books in a folder. If I click any of those, it will generate an RSS feed that I can then give to my podcasting application. That in turn can make requests for any of the MP3 files that make up the book, which should be served back to the app. Simple as pie, no? Well, mostly.</p>
-<p>Creating a list of books is easy:</p>
-<pre class="python"><code>@app.route('/')
-def index():
-    result = '&lt;ul&gt;'
-
-    for path in sorted(os.listdir('books')):
-        config_path = os.path.join('books', path, 'book.yml')
-        print(config_path)
-
-        if not os.path.exists(config_path):
-            continue
-
-        with open(config_path, 'r') as fin:
-            config = yaml.load(fin)
-
-        result += '&lt;li&gt;&lt;a href="feed/{path}.xml"&gt;{title} by {author}&lt;/a&gt;&lt;/li&gt;'.format(
-            path = path,
-            title = config['title'],
-            author = config['author']
-        )
-
-    result += '&lt;/ul&gt;'
-    return result</code></pre>
-<p>Note: Each book is a subdirectory of the folder <code>books</code>. Each book must also contain at least one file named <code>book.yml</code> which defines the <code>title</code> and <code>author</code> of the book, along with any number of MP3 files (we'll see that in a moment).</p>
-<p>All this script does is generate an HTML unordered list (<code>ul</code>) of links to individual RSS feeds. We generate those in turn with:</p>
-<pre class="python"><code>@app.route('/feed/&lt;feed&gt;.xml')
-def get_feed(feed):
-    config_path = os.path.join('books', feed, 'book.yml')
-
-    with open(config_path, 'r') as fin:
-        config = yaml.load(fin)
-
-    fg = feedgen.feed.FeedGenerator()
-    fg.load_extension('podcast')
-
-    host_url = flask.request.scheme + '://' + flask.request.host
-
-    feed_link = host_url + '/feed/{feed}.xml'.format(feed = feed)
-
-    fg.id = feed_link
-    fg.title(config['title'])
-    fg.description('{title} by {author}'.format(title = config['title'], author = config['author']))
-    fg.author(name = config['author'])
-    fg.link(href = feed_link, rel = 'alternate')
-
-    fg.podcast.itunes_category('Arts')
-
-    for file in sorted(os.listdir(os.path.join('books', feed))):
-        if not file.endswith('.mp3'):
-            continue
-
-        name = file.rsplit('.', 1)[0]
-
-        feed_entry_link = host_url + '/feed/{feed}/{file}'.format(feed = feed, file = file)
-
-        fe = fg.add_entry()
-
-        fe.id(feed_entry_link)
-        fe.title(name)
-        fe.description('{title} by {author} - {chapter}'.format(
-            title = config['title'],
-            author = config['author'],
-            chapter = name,
-        ))
-        fe.enclosure(feed_entry_link, 0, 'audio/mpeg')
-
-    return fg.rss_str(pretty = True)</code></pre>
-<p>Here, I basically just read in the <code>book.yml</code> file and any MP3s in the directory and generate a feed. As I did previously in my post on <a href="//blog.jverkamp.com/2015/05/11/generating-youtube-user-rss-feeds">Generating YouTube user RSS feeds</a>, I'm using the <a href="https://lkiesow.github.io/python-feedgen/">feedgen</a> package to generate the RSS feeds. This time I'm using their built in <code>podcast</code> extension. Nice.</p>
-<p>After that, we just need to serve the MP3s. Originally I was going to serve this with flask as well, but since I'm already going to use nginx as a performance / caching layer, we can use that to serve static files. Something like this for an nginx configuration:</p>
-<pre class="nginx"><code>server {
-    root /var/www/;
-
-    location / {
-        try_files $uri @server;
-    }
-
-    location @server {
-        proxy_set_header Host $host;
-        proxy_pass http://server:5000;
-    }
-}</code></pre>
-<p>Essentially, it will <code>try_files</code> to see if there's a static file at the path requested first. If that fails, it will fall back to the <code>@server</code> reverse proxy, which just feeds traffic to the flask server.</p>
-<p>To get everything working together, we'll use docker-compose:</p>
-<pre class="yaml"><code>server:
-    build: server
-    # environment: {DEBUG: True}
-    ports:
-        - 5000
-    volumes:
-        - ./books:/app/books
-
-nginx:
-    image: nginx
-    links:
-        - server
-    ports:
-        - 80:80
-    volumes:
-        - ./books:/var/www/feed/
-        - ./nginx:/etc/nginx/conf.d/</code></pre>
-<p>Since I'm mounting the <code>./books</code> directory as a volume into both containers, the <code>nginx</code> container can use it to server static files while the <code>server</code> container can use it to list files.</p>
-<p>And that's about it. I have mine running with <a href="http://nginx.org/en/docs/http/ngx_http_auth_basic_module.html">nginx HTTP authentication </a>, which means that I have to use <a href="http://www.downcastapp.com/">Downcast</a> (it's the only one I've used that seems to support it), but other than that it works great. It does require that you have your own server running to initially get the files onto the podcast app, but if you download them, almost all of the apps will let you turn off the server.</p>
-<p>The combination of flask and docker is nice. Flask let's you quickly and easily write simple web applications. Docker makes deployment and dependency management a snap.</p>
-<p>If you'd like to see the entire codebase, it's on GitHub: <a href="https://github.com/jpverkamp/podbook">podbook</a>. There are a few bits that I didn't include in the writeup above.</p>
-<p>Any questions? Let me know below.</p>]]></content></entry></feed>
+<div><div class="flickr-gallery" data-set-id="72157663180238583" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157663180238583">View on Flickr</a></p></div>]]></content></entry></feed>
