@@ -1,5 +1,297 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-07-09T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Williams Park</title><link href="//blog.jverkamp.com/2016/07/09/williams-park" /><id>urn:uuid:049cda1f-d07d-a252-4899-d99451d494e9</id><updated>2016-07-09T00:00:00Z</updated><summary type="html"><![CDATA[<p>Went for the Splash Pad, stayed for the flowers and trails. A lovely day.</p>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>jverkamp.com</title><link href="//blog.jverkamp.com" /><link rel="self" href="//blog.jverkamp.com/feed/" /><updated>2016-07-14T00:00:00Z</updated><author><name>JP Verkamp</name></author><id>urn:uuid:b26bbc31-d1d1-3557-055d-3c47073ed3bd</id><entry><title>Solving Loop Puzzles</title><link href="//blog.jverkamp.com/2016/07/14/solving-loop-puzzles" /><id>urn:uuid:0f0f5549-dedc-0695-9d2a-c54fdff8ec54</id><updated>2016-07-14T00:00:00Z</updated><summary type="html"><![CDATA[<p>A quick puzzle from Daily Programmer:</p>
+<blockquote>
+    ∞ Loop is a mobile game that consists of n*m tiles, placed in a n*m grid. There are 16 different tiles:
+
+    <code>┃, ━, ┏, ┓, ┛, ┗, ┣, ┳, ┫, ┻, ╋, ╹, ╺, ╻, ╸, ' '.</code>
+
+    The objective is to create a closed loop: every pipe must have another tile facing it in the adjacent tile <code>—</code> for example if some tile has a pipe going right, its adjacent tile to the right must have a pipe going left.
+</blockquote>
+<p>The most straightforward solution is a hybrid combination of constraints and backtracking, similar to what I did when solving <a href="//blog.jverkamp.com/2015/10/29/takuzu-solver">Takuzu</a> and <a href="//blog.jverkamp.com/2014/10/28/tile-puzzle">tile puzzles</a>.</p>
+]]></summary><content type="html"><![CDATA[<p>A quick puzzle from Daily Programmer:</p>
+<blockquote>
+    ∞ Loop is a mobile game that consists of n*m tiles, placed in a n*m grid. There are 16 different tiles:
+
+    <code>┃, ━, ┏, ┓, ┛, ┗, ┣, ┳, ┫, ┻, ╋, ╹, ╺, ╻, ╸, ' '.</code>
+
+    The objective is to create a closed loop: every pipe must have another tile facing it in the adjacent tile <code>—</code> for example if some tile has a pipe going right, its adjacent tile to the right must have a pipe going left.
+</blockquote>
+<p>The most straightforward solution is a hybrid combination of constraints and backtracking, similar to what I did when solving <a href="//blog.jverkamp.com/2015/10/29/takuzu-solver">Takuzu</a> and <a href="//blog.jverkamp.com/2014/10/28/tile-puzzle">tile puzzles</a>.</p>
+<!--more-->
+<p>First, we'll create two classes, one for individual characters and one for puzzles. Think what you may about <a href="https://en.wikipedia.org/wiki/object_oriented programming">object oriented programming</a>, but I think it fits fairly well with this problem.</p>
+<p>First, characters. We want something that will be able to represent characters with with their character form (the <a href="https://en.wikipedia.org/wiki/box_drawing characters">box drawing characters</a> above) or as a collection of edges (if the top / right / bottom / left pipe is included). This could be represented as a 4-bit integer, but instead I'll use a 4-tuple of bools. It's just a bit easier to read by default.</p>
+<p>On top of that, we want functions that can rotate pieces, test if two characters are actually the same, and to test if two neighboring pieces can border each other or not. The last is true if they either both have a pipe pointing inwards or neither does.</p>
+<pre class="python"><code>class Character(object):
+    '''A box drawing character or empty space ( ╸╻┓╺━┏┳╹┛┃┫┗┻┣╋).'''
+
+    order = ' ╸╻┓╺━┏┳╹┛┃┫┗┻┣╋'
+    sides = {'top': (0, 2), 'right': (1, 3), 'bottom': (2, 0), 'left': (3, 1)}
+
+    def __init__(self, symbol_or_bits):
+        '''
+        Create a new character from either the symbol (must be a valid symbol)
+        or a 4-tuple of booleans representing the sides (top, right, bottom,
+        left).
+        '''
+
+        if isinstance(symbol_or_bits, str):
+            self.symbol = symbol_or_bits
+
+            bits = bin(Character.order.find(symbol_or_bits))[2:]
+            bits = '0' * (4 - len(bits)) + bits
+
+            self.bits = tuple(bit == '1' for bit in bits)
+        else:
+            self.bits = symbol_or_bits
+            self.symbol = Character.order[int(''.join('1' if bit else '0' for bit in symbol_or_bits), 2)]
+
+    def rotate(self):
+        '''Return the next rotation for this character.'''
+
+        return Character(tuple(self.bits[i] for i in range(-1, 3)))
+
+    def rotations(self):
+        '''Generate all four of the rotations this character could have.'''
+
+        c = self
+        for i in range(4):
+            yield c
+            c = c.rotate()
+
+    def can_neighbor(self, other, side):
+        '''
+        Test if this character can neighbor a given other on a given side.
+
+        Two characters can be neighbors if they either both have a line on that
+        side or neither does. If other is not set, that is assumed to be a
+        outside of the puzzle and thus not have a line.
+        '''
+
+        my_bit, their_bit = Character.sides[side]
+
+        # print(side, self, other, my_bit, their_bit, self.bits, other.bits) # DEBUG
+
+        if other:
+            return self.bits[my_bit] == other.bits[their_bit]
+        else:
+            return not self.bits[my_bit]
+
+    def __hash__(self):
+        '''Use the symbol as a hash. This is so we can put characters in sets.'''
+
+        return hash(self.symbol)
+
+    def __eq__(self, other):
+        '''Characters are equal if they have the same symbol.'''
+
+        return self.symbol == other.symbol
+
+    def __repr__(self):
+        '''Print which character this is.'''
+
+        return self.symbol</code></pre>
+<p>After that, the next step will be to create a <code>Puzzle</code>. This is the grid of characters, but we'll actually go a step larger. Each cell in the <code>Puzzle</code> will actually be a set of rotations that are still possible. This means that as long as any cell has more than 1 possibility, it's not solved. If any has managed to reach 0, no solution is possible.</p>
+<p>In addition, we'll put the constraining function here. This will loop through every single cell in the puzzle: for each, it will match each rotation remaining against each rotation of all four neighbors. If a given rotation cannot possibly match any one of the neighbors, remove it from the set. Imagine:</p>
+<pre class="test"><code>┛╸╸
+╺┓╻
+┗ ┣</code></pre>
+<p>The middle character can originally be any of <code>{┏, ┓, ┛, ┗}</code>; however, the bottom center is an empty space, so we should not include any downward facing options. Thus, with a single round of constraint, we've reduced the center tile to <code>{┛, ┗}</code>. Even better, this will further constrain the top center piece. At first it was <code>{╹, ╺, ╻, ╸}</code>, but the center has to have an upward pointing point, forcing the top center to be <code>{╻}</code>. Each round of constraints only sets each tile once and won't work recursively, but it's easy enough to call it more than once. Especially since the function will return <code>True</code> until the puzzle reaches a steady state.</p>
+<pre class="python"><code>class Puzzle(object):
+    '''Represent a grid of possible characters.'''
+
+    border = {Character(' ')}
+
+    def __init__(self, data):
+        '''Initialize from a string containing characters.'''
+
+        self.data = [
+            [set(Character(c).rotations()) for c in line]
+            for line in data.strip().split('\n')
+        ]
+        self.rows = len(self.data)
+        self.cols = len(self.data[0])
+
+    def possibilities(self):
+        '''
+        Return the number of possibilities in the form (unsolved squares, total
+        possibilities). A solved puzzle will return (0, rows * cols).
+        '''
+
+        return (
+            sum(0 if len(el) == 1 else 1 for row in self.data for el in row),
+            sum(len(el) for row in self.data for el in row)
+        )
+
+    def is_solvable(self):
+        '''Test if the puzzle is still solvable (no empty possibilities.)'''
+
+        return not any(
+            len(el) == 0
+            for row in self.data
+            for el in row
+        )
+
+    def is_solved(self):
+        '''Test if this puzzle is currently solved.'''
+
+        return all(
+            len(el) == 1
+            for row in self.data
+            for el in row
+        )
+
+    def constrain(self):
+        '''
+        Constrain this puzzle by removing any rotations that could not possibly
+        be used (there's no possibility in the neighbor to match them).
+
+        Only make one pass, call this function multiple times in case one
+        constraint cascades.
+
+        Return if anything changed.
+        '''
+
+        logging.debug('Applying constraints, possiblities: {}'.format(self.possibilities()))
+
+        offsets = [
+            ('top', -1, 0),
+            ('right', 0, 1),
+            ('bottom', 1, 0),
+            ('left', 0, -1),
+        ]
+
+        something_changed = False
+
+        for row in range(self.rows):
+            for col in range(self.cols):
+                invalid = set()
+                for first_point in self[row, col]:
+                    if not all(
+                        any(
+                            first_point.can_neighbor(second_point, direction)
+                            for second_point in self[row + row_offset, col + col_offset]
+                        ) for direction, row_offset, col_offset in offsets
+                    ):
+                        invalid.add(first_point)
+
+                for impossibility in invalid:
+                    something_changed = True
+                    self[row, col].remove(impossibility)
+
+        return something_changed
+
+    def __getitem__(self, pt):
+        '''
+        Fetch the current possibility set from a given row and column.
+
+        If the index is out of bounds, instead return a 'border character' with
+        no edges to help guarantee that no pieces point outwards.
+        '''
+
+        row, col = pt
+        if 0 &lt;= row &lt; self.rows and 0 &lt;= col &lt; self.cols:
+            return self.data[row][col]
+        else:
+            return Puzzle.border
+
+    def __repr__(self):
+        '''If solved, print the puzzle; if not, print remaining possibilities.'''
+
+        if self.is_solved():
+            return '\n'.join(
+                ''.join(str(list(el)[0]) for el in row)
+                for row in self.data
+            )
+
+        else:
+            def pad_set(el):
+                return ''.join(str(each) for each in el) + ' ' * (4 - len(el))
+
+            line_seperator = '\n' + ('┈' * (7 * self.cols - 3)) + '\n'
+
+            return line_seperator.join(
+                ' ┆ '.join(pad_set(el) for el in row)
+                for row in self.data
+            )
+            return repr(self.data)</code></pre>
+<p>That's actually enough by itself to solve some puzzles. But sometimes, particularly in larger puzzles, you'll reach states where two arrangements are still possible. In those cases, we want to take a <a href="https://en.wikipedia.org/wiki/backtracking">backtracking</a> step: choose each of the possible states in turn and assume it is correct, switching back to the constraint solver until the next block. If a solution is found in that branch, just return. If not, try the next branch from that position.</p>
+<pre class="python"><code>def solve(puzzle):
+    '''
+    Use a hybrid constraint / backtracking solver to solve the puzzle.
+
+    while not solved:
+        apply constraint solver until it doesn't work any more
+        find the first mismatched point and try each possibility
+    '''
+
+    queue = [puzzle]
+    while queue:
+        puzzle = queue.pop()
+        logging.info('Running backtracker, states: {}, possiblities in current state: {}'.format(len(queue), puzzle.possibilities()))
+        logging.debug(puzzle)
+
+        # Apply constraint until the constrain function returns false
+        while puzzle.constrain(): pass
+        logging.debug(puzzle)
+
+        if not puzzle.is_solvable():
+            logging.info('Unsolveable state found, removing it')
+            continue
+
+        if puzzle.is_solved():
+            logging.info('Solved state found, returning it')
+            return puzzle
+
+        # Split to backtracking
+        def first_unclear_point():
+            for row in range(puzzle.rows):
+                for col in range(puzzle.cols):
+                    if len(puzzle[row, col]) &gt; 1:
+                        return row, col, puzzle[row, col]
+
+        row, col, possibilities = first_unclear_point()
+        for possibility in possibilities:
+            copied_puzzle = copy.deepcopy(puzzle)
+            copied_puzzle[row, col].clear()
+            copied_puzzle[row, col].add(possibility)
+
+            queue.append(copied_puzzle)
+
+    # If we made it out of the loop, there is no solution to the puzzle
+    return None</code></pre>
+<p>And that's it. We can solve puzzles from <code>stdin</code>:</p>
+<pre class="python"><code>import sys
+puzzle = Puzzle(sys.stdin.read())
+solution = solve(puzzle)
+print(solution)</code></pre>
+<p>Example running:</p>
+<pre class="bash"><code>$ cat 10x10.loops
+
+┗┣┃┃┗┏┳┓┛┏
+┗┛┛━┳┫┃┃━━
+┛┛━┓┳╋┫━┣┏
+┫╋┻┛┛┻━┳╋┗
+┛┳┃┳┃╋┫┃┳┗
+┓━┓━┏╋┏┻╋┓
+┛┛━┃┻┗┓┓┳┓
+┏╋╋┏┏┳┣┗┗┗
+┣╋╋┏┏┻┓┓┏┫
+┏┏┗┫┣┳┳━┫┗
+
+$ cat 10x10.loops | python3 loop-solver.py
+
+┏┳━━┓┏┳┓┏┓
+┗┛┏━┻┫┃┃┃┃
+┏┓┃┏┳╋┫┃┣┛
+┣╋┻┛┗┫┃┣╋┓
+┗┻━┳━╋┫┃┣┛
+┏━┓┃┏╋┛┣╋┓
+┗┓┃┃┣┛┏┛┣┛
+┏╋╋┛┗┳┻┓┗┓
+┣╋╋┓┏┫┏┛┏┫
+┗┛┗┻┻┻┻━┻┛</code></pre>
+<p>Cool. Looking at this and several other puzzles, it seems like it would be a good generic framework to work out. Given a definition for a puzzle with an <code>is_valid</code> function (<code>can_neighbor</code> here), a <code>constrain</code> function, and the backtracking code above, it should be able to solve a large class of puzzles. <a href="https://en.wikipedia.org/wiki/Sudoku">Sudoku</a>, for example, or <a href="https://en.wikipedia.org/wiki/Hashi">Hashi</a>. Both puzzles I've been working on solvers for. Even better, once you have a solver you can use it to generate puzzles with a difficulty gradient. Just solve each puzzle, keeping track of how many times you had to backtrack and how many were solved with the constraints.</p>
+<p>And that's it. A fun little puzzle.</p>]]></content></entry><entry><title>Williams Park</title><link href="//blog.jverkamp.com/2016/07/09/williams-park" /><id>urn:uuid:049cda1f-d07d-a252-4899-d99451d494e9</id><updated>2016-07-09T00:00:00Z</updated><summary type="html"><![CDATA[<p>Went for the Splash Pad, stayed for the flowers and trails. A lovely day.</p>
 <div><div class="flickr-gallery" data-set-id="72157670747634386" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157670747634386">View on Flickr</a></p></div>]]></summary><content type="html"><![CDATA[<p>Went for the Splash Pad, stayed for the flowers and trails. A lovely day.</p>
 <div><div class="flickr-gallery" data-set-id="72157670747634386" data-per-page="30"></div><p><a href="https://flickr.com/photos/jpverkamp/sets/72157670747634386">View on Flickr</a></p></div>]]></content></entry><entry><title>The Fifth Season</title><link href="//blog.jverkamp.com/2016/07/08/the-fifth-season" /><id>urn:uuid:e08e243c-aaad-2ecb-87f9-dcf3696b6d63</id><updated>2016-07-08T00:00:00Z</updated><summary type="html"><![CDATA[<p><a href="https://www.goodreads.com/book/show/17333324-ancillary-justice"><img src="//blog.jverkamp.com/2016/07/08/the-fifth-season/the-fifth-season.jpg" /></a></p>
 <p><a href="https://www.goodreads.com/book/show/19161852-the-fifth-season">The Fifth Season</a> (by <a href="https://www.goodreads.com/author/show/2917917.N_K_Jemisin">N.K. Jemisin</a>) takes place in what could easily by (may intentionally be?) a far future Earth where volcanoes, earthquakes, and various other seismic disasters have an annoying tendency to kill off large portions of humanity every few centuries. Combine that with a few powerful individuals (orogenes) who have magical abilities associated with said earthquakes that they cannot always control... And you have quite the world.</p>
@@ -647,53 +939,4 @@ sync_command('fswatch -r -e ".git" .')</code></pre>
 <p>Awesome scene: Butters goes full Jedi Knight. And then there was a Jewish Knight of the Cross. It's actually getting kind of ridiculous how only 1 of the 4 we've seen (2 of 5 if you count Murphy) has been particularly devout.</p>
 <hr />
 <p>So... that's a thing. I cannot wait for Peace Talks... But I guess I'll have to. Hey, if it takes long enough to come out, I might just read the entire series yet again before then. <img alt="smile" class="emoji" src="/emoji/smile.svg" /></p>
-<p>Up next on my audiobook lineup I'll be re-listening to the <a href="https://www.goodreads.com/series/40910-mistborn">Mistborn series</a> by <a href="https://www.goodreads.com/author/show/38550.Brandon_Sanderson">Brandon Sanderson</a> in preparation for the two new ones that have just come out. I previously listened to The <a href="https://www.goodreads.com/book/show/10803121-the-alloy-of-law">Alloy of Law</a> (see my <a href="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective">2015 Reading List Retrospective</a>), so I already know that they translate well to audio. I'm looking forward to it.</p>]]></content></entry><entry><title>Ensuring docker-machine is running</title><link href="//blog.jverkamp.com/2016/04/19/ensuring-docker-machine-is-running" /><id>urn:uuid:0e62eb30-f56c-7441-a014-2f509ef5d9d5</id><updated>2016-04-19T00:00:00Z</updated><summary type="html"><![CDATA[<p>When developing using <a href="https://www.docker.com/">docker</a> on OS X, you'll currently<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> have to use <a href="https://docs.docker.com/machine/">docker-machine</a> to spin up a virtual machine that is actually running the docker containers. Running a virtual machine takes up a bit more in the way of resources than just the docker containers, so if you're not actually developing at the moment, it's helpful to be able to start up the virtual machine only when you need it.</p>
-<p>The current way I have to do that:</p>
-<pre class="bash"><code>$ docker-machine start default
-$ eval $(docker-machine env default)</code></pre>
-<p>What's worse, the latter command has to be run for every shell that you start up. It's by no means a hard pair of commands and you could easily wrap them in an alias or put them in your <code>.profile</code> equivalent (which is what I used to do). But unfortunately, I found a completely unrelated bug in <a href="https://github.com/tony/tmuxp"><code>tmuxp</code></a>: if the shell takes too long to start up, <code>tmuxp</code> essentially won't work. The above <code>eval</code> command took long enough to hit this limit.</p>
-]]></summary><content type="html"><![CDATA[<p>When developing using <a href="https://www.docker.com/">docker</a> on OS X, you'll currently<span class="footnote"><sup><a href="#footnote-1">[1]</a></sup></span> have to use <a href="https://docs.docker.com/machine/">docker-machine</a> to spin up a virtual machine that is actually running the docker containers. Running a virtual machine takes up a bit more in the way of resources than just the docker containers, so if you're not actually developing at the moment, it's helpful to be able to start up the virtual machine only when you need it.</p>
-<p>The current way I have to do that:</p>
-<pre class="bash"><code>$ docker-machine start default
-$ eval $(docker-machine env default)</code></pre>
-<p>What's worse, the latter command has to be run for every shell that you start up. It's by no means a hard pair of commands and you could easily wrap them in an alias or put them in your <code>.profile</code> equivalent (which is what I used to do). But unfortunately, I found a completely unrelated bug in <a href="https://github.com/tony/tmuxp"><code>tmuxp</code></a>: if the shell takes too long to start up, <code>tmuxp</code> essentially won't work. The above <code>eval</code> command took long enough to hit this limit.</p>
-<!--more-->
-<p>So how do we fix it? Essentially (using <a href="http://www.zsh.org/">zsh</a>, my current shell of choice, although others should be similar):</p>
-<pre class="zsh"><code>assert-docker() {
-    command docker ps 2&gt; /dev/null &gt; /dev/null
-    if [ $? -ne 0 ]; then
-        echo "Starting docker..."
-        docker-machine start default
-        eval $(docker-machine env default)
-        echo
-    fi
-}
-
-docker () { assert-docker && command docker $@ }
-docker-compose () { assert-docker && command docker-compose $@ }</code></pre>
-<p>The basic idea is that <code>assert-docker</code> first checks if <code>docker</code> is running by trying to run <code>docker ps</code>. <code>$?</code> contains the status code, which will be non-zero if <code>docker ps</code> failed, so check that. If that's the case, assume <code>docker ps</code> failed because <code>docker-machine</code> wasn't running, so start it up. This will run <code>docker-machine start default</code> more often than needed, but it turns out it's a <code><a href="https://en.wikipedia.org/wiki/NOP">NOP</a></code> if it's already running.</p>
-<p>The only interesting part here is the use of the keyword <code>command</code> that prefixes <code>docker</code> or <code>docker-machine</code> within the functions. Basically, this tells ZSH to use the system version of <code>docker</code> or <code>docker-compose</code> rather than the one that I defined, thus preventing an infinite loop. Whee!</p>
-<p>How's it work?</p>
-<pre class="bash"><code>$ docker ps
-
-Starting docker...
-(dev) OUT | Starting VM...
-Started machines may have new IP addresses. You may need to re-run the &lt;code&gt;docker-machine env&lt;/code&gt; command.
-
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-
-$ docker ps
-
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES</code></pre>
-<p>Switching to another terminal:</p>
-<pre class="bash"><code>$ docker ps
-
-Starting docker...
-Machine "default" is already running.
-
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-
-$ docker ps
-
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES</code></pre>
-<p>Neat. That should <a href="https://xkcd.com/1205/">eventually save me a fraction of the time</a> it took to get it right. :)</p>]]></content></entry></feed>
+<p>Up next on my audiobook lineup I'll be re-listening to the <a href="https://www.goodreads.com/series/40910-mistborn">Mistborn series</a> by <a href="https://www.goodreads.com/author/show/38550.Brandon_Sanderson">Brandon Sanderson</a> in preparation for the two new ones that have just come out. I previously listened to The <a href="https://www.goodreads.com/book/show/10803121-the-alloy-of-law">Alloy of Law</a> (see my <a href="//blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective">2015 Reading List Retrospective</a>), so I already know that they translate well to audio. I'm looking forward to it.</p>]]></content></entry></feed>
