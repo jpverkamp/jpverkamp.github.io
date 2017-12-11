@@ -1,7 +1,5 @@
-/* Init highlight.js once everything is loaded */
-hljs.initHighlightingOnLoad();
 
-/* Initialize nanoGALLERY */
+/* nanoGALLERY: Client side flickr */
 $(function() {
     $("div.flickr-gallery").each(function(i, el) {
         $(el).nanoGallery({
@@ -17,42 +15,16 @@ $(function() {
     });
 });
 
-/* Initialize lightboxes on all the images */
-$(document).delegate('*[data-toggle="lightbox"]', 'click', function(event) {
-    event.preventDefault();
-    $(this).ekkoLightbox();
+/* katex: Client side LaTeX */
+$(function() {
+    $('.latex-block, .latex-inline').each(function(i, el) {
+        katex.render(el.innerText, el);
+    });
 });
 
-/* Add alternate content selectors */
+/* Bigfoot: Inline footnotes */
 $(function() {
-    if (!$('*[data-alternate]').is('*')) {
-        return;
-    }
-
-    var toggleAlternates = function(alt) {
-        $('*[data-alternate-target]').each(function(i, el) {
-            var $el = $(el);
-            if ($el.attr('data-alternate-target') == alt) {
-                $el.addClass('active');
-            } else {
-                $el.removeClass('active');
-            }
-        });
-
-        $('*[data-alternate]').each(function(i, el) {
-            var $el = $(el);
-            if ($el.attr('data-alternate') == alt) {
-                $el.fadeIn();
-            } else {
-                $el.hide();
-            }
-        });
-    };
-
-    toggleAlternates($('*[data-alternate]').attr('data-alternate'));
-
-    $('.alt-selector').click(function(event) {
-        event.preventDefault();
-        toggleAlternates($(event.target).attr('data-alternate-target'));
+    $.bigfoot({
+        actionOriginalFN: 'ignore',
     });
 });
