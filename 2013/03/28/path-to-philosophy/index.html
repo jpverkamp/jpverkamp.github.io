@@ -2221,6 +2221,17 @@
 
   <span style="color:#75715e">; Load the file from cache (assume the previous worked)</span>
   (string-&gt;jsexpr (file-&gt;string path)))</code></pre></div>
+<blockquote>
+<p><code>UPDATE 2018-07-08</code></p>
+
+<p>When fixing the below issue, I also found that I sometimes found pages that contained characters in the names that caused issues. Specifically <code>:</code> which doesn&rsquo;t work on Mac OS and <code>/</code> which doesn&rsquo;t work ever (since it&rsquo;s trying to create a subfolder). To fix it, we just strip out non-alphanumeric characters:</p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Fetch pages from Wikipedia, caching them to disk</span>
+(<span style="color:#66d9ef">define </span>(get-page title [skip-cache <span style="color:#66d9ef">#f</span>])
+  <span style="color:#75715e">; If the file isn&#39;t cached, fetch it</span>
+  (<span style="color:#66d9ef">define </span>clean-title (regexp-replace* <span style="color:#f92672">#</span>rx<span style="color:#e6db74">&#34;[^a-zA-Z0-9._-]+&#34;</span> title <span style="color:#e6db74">&#34;-&#34;</span>))
+  (<span style="color:#66d9ef">define </span>path (build-path cache (format <span style="color:#e6db74">&#34;~a.json&#34;</span> clean-title)))
+  <span style="color:#f92672">...</span></code></pre></div>
 <p>Basically, where ever your code is running from, it will create / use a subdirectory called <em>cache</em> into which it will dump one file per page, each with the *<a href="https://en.wikipedia.org/wiki/json">json</a>* extension duplicating whatever content that Wikipedia has returned. Technically, it has the ability to force a refresh, but in practice I just deleted the entire cache folder when I wanted to reset it ((Yes, I know. That kind of defeats the purpose of having a cache in the first place&hellip;)).</p>
 
 <p>Unfortunately, once you have that, it&rsquo;s still in a nice nested structure. So we need to be able to pull out the actual page content. If you use <a title="Racket API: JSON" href="http://pre.racket-lang.org/docs/html/json/index.html">Racket&rsquo;s JSON library</a>, you&rsquo;ll have a nested series of <code><a href="http://docs.racket-lang.org/search/index.html?q=hashes%20">hashes </a></code>
@@ -2231,6 +2242,21 @@ and <code><a href="http://docs.racket-lang.org/search/index.html?q=lists">lists<
   (<span style="color:#66d9ef">define </span>page-keys (hash-keys (hash-ref (hash-ref page <span style="color:#e6db74">&#39;query</span>) <span style="color:#e6db74">&#39;pages</span>)))
   (<span style="color:#66d9ef">define </span>content (hash-ref (hash-ref (hash-ref page <span style="color:#e6db74">&#39;query</span>) <span style="color:#e6db74">&#39;pages</span>) (car page-keys)))
   (hash-ref (car (hash-ref content <span style="color:#e6db74">&#39;revisions</span>)) <span style="color:#e6db74">&#39;*</span>))</code></pre></div>
+<blockquote>
+<p><code>UPDATE 2018-07-08</code></p>
+
+<p>This actually needs a fix. It seems the Wikipedia API will occasionally return &lsquo;missing pages&rsquo;. To fix that, we need to detect those and return empty content for those pages. The backtracking we implement later will take care of skipping those pages.</p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Extract the first page content from a JSON encoded Wikipedia API response</span>
+(<span style="color:#66d9ef">define </span>(get-first-page-content page)
+  (<span style="color:#66d9ef">define </span>page-keys (hash-keys (hash-ref (hash-ref page <span style="color:#e6db74">&#39;query</span>) <span style="color:#e6db74">&#39;pages</span>)))
+  (<span style="color:#66d9ef">define </span>content (hash-ref (hash-ref (hash-ref page <span style="color:#e6db74">&#39;query</span>) <span style="color:#e6db74">&#39;pages</span>) (car page-keys)))
+  (cond
+    [(hash-has-key? content <span style="color:#e6db74">&#39;missing</span>)
+     (debug-printf <span style="color:#e6db74">&#34;[DEBUG] missing content detected, skipping\n&#34;</span>)
+     <span style="color:#e6db74">&#34;&#34;</span>]
+    [else
+     (hash-ref (car (hash-ref content <span style="color:#e6db74">&#39;revisions</span>)) <span style="color:#e6db74">&#39;*</span>)]))</code></pre></div>
 <p>Now we have the actual content of the page in the original <a title="MediaWiki Syntax" href="http://www.mediawiki.org/wiki/Help:Formatting">MediaWiki syntax</a>. Links will look like this <code>[[target|text]]</code>, so we should just be able to write a simple <a href="https://en.wikipedia.org/wiki/regular%20expression">regular expression</a> and we&rsquo;ll be golden, right? Well, not so much. There are a number of additional rules that we&rsquo;re supposed to follow:</p>
 
 <ul>
