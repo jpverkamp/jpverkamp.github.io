@@ -6,10 +6,62 @@
     <description>Recent content on jverkamp.com</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 09 Jul 2018 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 15 Jul 2018 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Counting and Sizing S3 Buckets</title>
+      <link>https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/</link>
+      <pubDate>Sun, 15 Jul 2018 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/</guid>
+      <description>&lt;p&gt;A long time ago in a galaxy far far away, I wrote up a script that I used to take an &lt;a href=&#34;https://aws.amazon.com/s3/&#34;&gt;AWS S3&lt;/a&gt; bucket and count how many objects there were in the bucket and calculate its total size. While you could get some of this information from billing reports, there just wasn&amp;rsquo;t a good way to get it other than that at the time. The only way you could do it was to&amp;hellip; iterate through the entire bucket, summing as you go. If you have buckets with millions (or more) objects, this could take a while.&lt;/p&gt;
+
+&lt;p&gt;Basically:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;conn &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; boto&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;connect_s3()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; bucket &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; sorted(conn&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;get_all_buckets()):
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;try&lt;/span&gt;:
+        total_count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+        total_size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+        start &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;now()
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; key &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; bucket&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;list_versions():
+            &lt;span style=&#34;color:#75715e&#34;&gt;# Skip deleted files&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; isinstance(key, boto&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;s3&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;deletemarker&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;DeleteMarker):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+            size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; key&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;size
+            total_count &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+            total_size &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; size
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(&lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;-- {count} files, {size}, {time} to calculate&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;format(
+            count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; total_count,
+            size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; humanize&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;naturalsize(total_size),
+            time &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; humanize&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;naturaltime(datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;now() &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; start)&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;replace(&lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39; ago&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;)
+        ))&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>The Fires of Heaven</title>
+      <link>https://blog.jverkamp.com/2018/07/11/the-fires-of-heaven/</link>
+      <pubDate>Wed, 11 Jul 2018 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2018/07/11/the-fires-of-heaven/</guid>
+      <description>&lt;figure class=&#34;cover-image&#34;&gt;
+                &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;13895&#34; href=&#34;https://www.goodreads.com/book/show/13895.the-fires-of-heaven&#34;&gt;&lt;img src=&#34;https://blog.jverkamp.com/embeds/books/the-fires-of-heaven.jpg&#34;&gt;
+                &lt;/a&gt;
+            &lt;/figure&gt;
+
+&lt;p&gt;The Fires of Heaven is mostly a book to extend what we&amp;rsquo;ve seen before.&lt;/p&gt;
+
+&lt;p&gt;Elida solidifies her control on the tower while the rebels come together to oppose her. Nynaeve tugs her braid. A lot. Elayne and Nynaeve end up in the circus (not even kidding) and with a  &lt;span class=&#34;spoiler&#34;&gt;captured Forsaken...&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
     
     <item>
       <title>Creating a temporary SMTP server to &#39;catch&#39; domain validation emails</title>
@@ -18,6 +70,26 @@
       
       <guid>https://blog.jverkamp.com/2018/07/09/creating-a-temporary-smtp-server-to-catch-domain-validation-emails/</guid>
       <description>&lt;p&gt;One problem that has come up a time or two is dealing with email-based domain validation (specifically in this case for the issuance of TLS certificates) on domains that aren&amp;rsquo;t actually configured to receive email. Yes, in a perfect world, it would be easier to switch to DNS-based validation (since we have to have control of the DNS for the domain, we need it later), but let&amp;rsquo;s just assume that&amp;rsquo;s not an option. So, how do we &amp;lsquo;catch&amp;rsquo; the activation email so we can prove we can receive email on that domain?&lt;/p&gt;
+
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>The Blood Mirror</title>
+      <link>https://blog.jverkamp.com/2018/07/02/the-blood-mirror/</link>
+      <pubDate>Mon, 02 Jul 2018 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2018/07/02/the-blood-mirror/</guid>
+      <description>&lt;figure class=&#34;cover-image&#34;&gt;
+                &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;29467232&#34; href=&#34;https://www.goodreads.com/book/show/29467232.the-blood-mirror&#34;&gt;&lt;img src=&#34;https://blog.jverkamp.com/embeds/books/the-blood-mirror.jpg&#34;&gt;
+                &lt;/a&gt;
+            &lt;/figure&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;Look at your mistakes long enough to learn from them, then put them behind you.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;On one hand, &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;29467232&#34; href=&#34;https://www.goodreads.com/book/show/29467232.the-blood-mirror&#34;&gt; The Blood Mirror &lt;/a&gt; takes the storyline of the previous books and turns it up even more.&lt;/p&gt;
 
 &lt;p&gt;&lt;/p&gt;</description>
     </item>
@@ -141,64 +213,6 @@
 
 &lt;p&gt;Rand is just now starting to understand what being the Dragon Reborn could mean. Perrin has a connection to the wolves, something very old, come new again. Mat is still cursed by his dagger and yet  &lt;span class=&#34;spoiler&#34;&gt;he&#39;s the one to finally sound the Horn&lt;/span&gt;
   . You have the first hints of parallel universes and world hopping, along with the World of Dreams&amp;ndash;which will turn out to be rather important to the universe all together&amp;ndash;along with a few more Forsaken coming out of the woodwork. Lanfear&amp;hellip; Lanfear proves that being loved by a power hungry hundred/thousand year old super powerful jealous woman can be&amp;hellip; interesting.&lt;/p&gt;
-
-&lt;p&gt;&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>The Eye of the World</title>
-      <link>https://blog.jverkamp.com/2018/06/02/the-eye-of-the-world/</link>
-      <pubDate>Sat, 02 Jun 2018 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2018/06/02/the-eye-of-the-world/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-                &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;228665&#34; href=&#34;https://www.goodreads.com/book/show/228665.the-eye-of-the-world&#34;&gt;&lt;img src=&#34;https://blog.jverkamp.com/embeds/books/the-eye-of-the-world.jpg&#34;&gt;
-                &lt;/a&gt;
-            &lt;/figure&gt;
-
-&lt;blockquote&gt;
-&lt;p&gt;The Wheel of Time turns and Ages come and go, leaving memories that become legend. Legend fades to myth, and even myth is long forgotten when the Age that gave it birth returns again. In the Third Age, an Age of Prophecy, the World and Time themselves hang in the balance. What was, what will be, and what is, may yet fall under the Shadow.&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;I first read the Wheel of Time somewhere around 2004, with only 10 of the eventual 14 books published. When &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;13888&#34; href=&#34;https://www.goodreads.com/book/show/13888.knife-of-dreams&#34;&gt;Knife of Dreams&lt;/a&gt; was published in 2005, I read them all again. Likewise with &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;1166599&#34; href=&#34;https://www.goodreads.com/book/show/1166599.the-gathering-storm&#34;&gt;The Gathering Storm&lt;/a&gt; in 2009 (the first written by &lt;a data-goodreads-type=&#34;author&#34; data-goodreads-id=&#34;38550&#34; href=&#34;https://www.goodreads.com/author/show/38550.brandon-sanderson&#34;&gt;Brandon Sanderson&lt;/a&gt; after &lt;a data-goodreads-type=&#34;author&#34; data-goodreads-id=&#34;6252&#34; href=&#34;https://www.goodreads.com/author/show/6252.robert-jordan&#34;&gt;Robert Jordan&lt;/a&gt;&amp;rsquo;s death), &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;8253920&#34; href=&#34;https://www.goodreads.com/book/show/8253920.towers-of-midnight&#34;&gt;Towers of Midnight&lt;/a&gt; in 2010, and finally &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;7743175&#34; href=&#34;https://www.goodreads.com/book/show/7743175.a-memory-of-light&#34;&gt;A Memory of Light&lt;/a&gt; in 2013. It&amp;rsquo;s been a few years, but the series as a whole is well worth every minute to invest in a reread&amp;ndash;it&amp;rsquo;s among my favorite series I&amp;rsquo;ve ever written. This time around though (for the second time) I&amp;rsquo;ll be listening to the audiobooks.&lt;/p&gt;
-
-&lt;p&gt;&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>The Shepherd&#39;s Crown</title>
-      <link>https://blog.jverkamp.com/2018/05/26/the-shepherds-crown/</link>
-      <pubDate>Sat, 26 May 2018 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2018/05/26/the-shepherds-crown/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-                &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;22886868&#34; href=&#34;https://www.goodreads.com/book/show/22886868.the-shepherds-crown&#34;&gt;&lt;img src=&#34;https://blog.jverkamp.com/embeds/books/the-shepherds-crown.jpg&#34;&gt;
-                &lt;/a&gt;
-            &lt;/figure&gt;
-
-&lt;blockquote&gt;
-&lt;p&gt;FOR I CAN SEE THE BALANCE AND YOU HAVE LEFT THE WORLD MUCH BETTER THAN YOU FOUND IT, AND IF YOU ASK ME, said Death, NOBODY COULD DO ANY BETTER THAN THAT&amp;hellip;&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;And so it ends.&lt;/p&gt;
-
-&lt;p&gt;&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>I Shall Wear Midnight</title>
-      <link>https://blog.jverkamp.com/2018/05/19/i-shall-wear-midnight/</link>
-      <pubDate>Sat, 19 May 2018 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2018/05/19/i-shall-wear-midnight/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-                &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;7576115&#34; href=&#34;https://www.goodreads.com/book/show/7576115.i-shall-wear-midnight&#34;&gt;&lt;img src=&#34;https://blog.jverkamp.com/embeds/books/i-shall-wear-midnight.jpg&#34;&gt;
-                &lt;/a&gt;
-            &lt;/figure&gt;
-
-&lt;p&gt;Tiffany Aching is back! Now she&amp;rsquo;s a full witch, out on her own.&lt;/p&gt;
-
-&lt;p&gt;Of course things are going to go wrong.&lt;/p&gt;
 
 &lt;p&gt;&lt;/p&gt;</description>
     </item>

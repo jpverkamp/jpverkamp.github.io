@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>AWS CloudWatch on jverkamp.com</title>
+    <link>https://blog.jverkamp.com/programming/topics/aws-cloudwatch/</link>
+    <description>Recent content in AWS CloudWatch on jverkamp.com</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 15 Jul 2018 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="https://blog.jverkamp.com/programming/topics/aws-cloudwatch/atom.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Counting and Sizing S3 Buckets</title>
+      <link>https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/</link>
+      <pubDate>Sun, 15 Jul 2018 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/</guid>
+      <description>&lt;p&gt;A long time ago in a galaxy far far away, I wrote up a script that I used to take an &lt;a href=&#34;https://aws.amazon.com/s3/&#34;&gt;AWS S3&lt;/a&gt; bucket and count how many objects there were in the bucket and calculate its total size. While you could get some of this information from billing reports, there just wasn&amp;rsquo;t a good way to get it other than that at the time. The only way you could do it was to&amp;hellip; iterate through the entire bucket, summing as you go. If you have buckets with millions (or more) objects, this could take a while.&lt;/p&gt;
+
+&lt;p&gt;Basically:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;conn &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; boto&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;connect_s3()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; bucket &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; sorted(conn&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;get_all_buckets()):
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;try&lt;/span&gt;:
+        total_count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+        total_size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+        start &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;now()
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; key &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; bucket&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;list_versions():
+            &lt;span style=&#34;color:#75715e&#34;&gt;# Skip deleted files&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; isinstance(key, boto&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;s3&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;deletemarker&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;DeleteMarker):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+            size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; key&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;size
+            total_count &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+            total_size &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; size
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(&lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;-- {count} files, {size}, {time} to calculate&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;format(
+            count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; total_count,
+            size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; humanize&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;naturalsize(total_size),
+            time &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; humanize&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;naturaltime(datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;datetime&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;now() &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; start)&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;replace(&lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39; ago&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;)
+        ))&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;/p&gt;</description>
+    </item>
+    
+  </channel>
+</rss>
