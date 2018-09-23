@@ -94,25 +94,30 @@
         <article class="li">
         	<header>
         		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/19/i-shall-wear-midnight/" class="clearfix">I Shall Wear Midnight</a>
+                    <a href="https://blog.jverkamp.com/2018/07/18/adding-hsts-to-redirects-in-apache/" class="clearfix">Adding HSTS to Redirects in Apache</a>
                 </h1>
 
         		<div class="entry-meta">
                     
-                    <span class="entry-date">2018-05-19</span>
+                    <span class="entry-date">2018-07-18</span>
                     
                     
         		</div>
         	</header>
             <div class="entry-content">
-                <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="7576115" href="https://www.goodreads.com/book/show/7576115.i-shall-wear-midnight"><img src="/embeds/books/i-shall-wear-midnight.jpg">
-                </a>
-            </figure>
+                <p>TLDR:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-apache" data-lang="apache"><span style="color:#75715e"># Use &#39;always&#39; so headers are also set for non-2XX and unset to avoid duplicates</span>
+<span style="color:#f92672">&lt;IfModule</span> <span style="color:#e6db74">headers_module</span><span style="color:#f92672">&gt;</span>
+	header unset Strict-Transport-Security
+	header always set Strict-Transport-Security <span style="color:#e6db74">&#34;max-age=16070400; includeSubDomains;&#34;</span>
+<span style="color:#f92672">&lt;/IfModule</span><span style="color:#e6db74"></span><span style="color:#f92672">&gt;</span></code></pre></div>
+<p>Slightly<sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup> longer version:</p>
 
-<p>Tiffany Aching is back! Now she&rsquo;s a full witch, out on her own.</p>
+<p><a href="https://www.eff.org/https-everywhere">HTTPS everywhere</a> is a worthwhile goal. Even when you have traffic that isn&rsquo;t super interesting or sensitive by itself, the fact that you&rsquo;re encrypting it makes traffic that really does need to be encrypted safer against tools that grab all of the encrypted traffic they can to decrypt later if/when possible.</p>
 
-<p>Of course things are going to go wrong.</p>
+<p>One of the downsides of using HTTPS though is that without certain things in place, many users will still type <code>domain.com</code> in their address bar from time to time, completely missing out on the <code>https://</code>. While you can immediately redirect them, that very first request is a risk, since if a <a href="https://en.wikipedia.org/wiki/man-in-the-middle%20attack">man-in-the-middle attack</a> happens to catch that request, they can downgrade the entire connection.</p>
+
+<p>Enter <a href="https://en.wikipedia.org/wiki/HTTP%20Strict%20Transport%20Security">HTTP Strict Transport Security</a> (HSTS). It&rsquo;s a HTTP header that you can send on the first <code>HTTPS</code> connection you establish with a compatible client. Once you&rsquo;ve done that, any further requests (until the header&rsquo;s TTL expires without being renewed) will be sent to <code>https://</code> no matter what the user types. Which solves the first request problem for all sessions&hellip; but it still doesn&rsquo;t fix the very first time you have to get the header. So how do you fix that?</p>
 
 <p></p>
         	</div>
@@ -126,27 +131,132 @@
         <article class="li">
         	<header>
         		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/19/the-broken-eye/" class="clearfix">The Broken Eye</a>
+                    <a href="https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/" class="clearfix">Counting and Sizing S3 Buckets</a>
                 </h1>
 
         		<div class="entry-meta">
                     
-                    <span class="entry-date">2018-05-19</span>
+                    <span class="entry-date">2018-07-15</span>
+                    
+                    
+        		</div>
+        	</header>
+            <div class="entry-content">
+                <p>A long time ago in a galaxy far far away, I wrote up a script that I used to take an <a href="https://aws.amazon.com/s3/">AWS S3</a> bucket and count how many objects there were in the bucket and calculate its total size. While you could get some of this information from billing reports, there just wasn&rsquo;t a good way to get it other than that at the time. The only way you could do it was to&hellip; iterate through the entire bucket, summing as you go. If you have buckets with millions (or more) objects, this could take a while.</p>
+
+<p>Basically:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">conn <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span>connect_s3()
+<span style="color:#66d9ef">for</span> bucket <span style="color:#f92672">in</span> sorted(conn<span style="color:#f92672">.</span>get_all_buckets()):
+    <span style="color:#66d9ef">try</span>:
+        total_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        total_size <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        start <span style="color:#f92672">=</span> datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now()
+
+        <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> bucket<span style="color:#f92672">.</span>list_versions():
+            <span style="color:#75715e"># Skip deleted files</span>
+            <span style="color:#66d9ef">if</span> isinstance(key, boto<span style="color:#f92672">.</span>s3<span style="color:#f92672">.</span>deletemarker<span style="color:#f92672">.</span>DeleteMarker):
+                <span style="color:#66d9ef">continue</span>
+
+            size <span style="color:#f92672">=</span> key<span style="color:#f92672">.</span>size
+            total_count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+            total_size <span style="color:#f92672">+=</span> size
+
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;-- {count} files, {size}, {time} to calculate&#39;</span><span style="color:#f92672">.</span>format(
+            count <span style="color:#f92672">=</span> total_count,
+            size <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturalsize(total_size),
+            time <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturaltime(datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now() <span style="color:#f92672">-</span> start)<span style="color:#f92672">.</span>replace(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39; ago&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;</span>)
+        ))</code></pre></div>
+<p></p>
+        	</div>
+
+            
+            <hr />
+        </article>
+    
+    
+    
+        <article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/11/the-fires-of-heaven/" class="clearfix">The Fires of Heaven</a>
+                </h1>
+
+        		<div class="entry-meta">
+                    
+                    <span class="entry-date">2018-07-11</span>
                     
                     
         		</div>
         	</header>
             <div class="entry-content">
                 <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="12652457" href="https://www.goodreads.com/book/show/12652457.the-broken-eye"><img src="/embeds/books/the-broken-eye.jpg">
+                <a data-goodreads-type="book" data-goodreads-id="13895" href="https://www.goodreads.com/book/show/13895.the-fires-of-heaven"><img src="/embeds/books/the-fires-of-heaven.jpg">
+                </a>
+            </figure>
+
+<p>The Fires of Heaven is mostly a book to extend what we&rsquo;ve seen before.</p>
+
+<p>Elida solidifies her control on the tower while the rebels come together to oppose her. Nynaeve tugs her braid. A lot. Elayne and Nynaeve end up in the circus (not even kidding) and with a  <span class="spoiler">captured Forsaken...</span>
+</p>
+
+<p></p>
+        	</div>
+
+            
+            <hr />
+        </article>
+    
+    
+    
+        <article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/09/creating-a-temporary-smtp-server-to-catch-domain-validation-emails/" class="clearfix">Creating a temporary SMTP server to &#39;catch&#39; domain validation emails</a>
+                </h1>
+
+        		<div class="entry-meta">
+                    
+                    <span class="entry-date">2018-07-09</span>
+                    
+                    
+        		</div>
+        	</header>
+            <div class="entry-content">
+                <p>One problem that has come up a time or two is dealing with email-based domain validation (specifically in this case for the issuance of TLS certificates) on domains that aren&rsquo;t actually configured to receive email. Yes, in a perfect world, it would be easier to switch to DNS-based validation (since we have to have control of the DNS for the domain, we need it later), but let&rsquo;s just assume that&rsquo;s not an option. So, how do we &lsquo;catch&rsquo; the activation email so we can prove we can receive email on that domain?</p>
+
+<p></p>
+        	</div>
+
+            
+            <hr />
+        </article>
+    
+    
+    
+        <article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/02/the-blood-mirror/" class="clearfix">The Blood Mirror</a>
+                </h1>
+
+        		<div class="entry-meta">
+                    
+                    <span class="entry-date">2018-07-02</span>
+                    
+                    
+        		</div>
+        	</header>
+            <div class="entry-content">
+                <figure class="cover-image">
+                <a data-goodreads-type="book" data-goodreads-id="29467232" href="https://www.goodreads.com/book/show/29467232.the-blood-mirror"><img src="/embeds/books/the-blood-mirror.jpg">
                 </a>
             </figure>
 
 <blockquote>
-<p>Magic was useful for everything. It just killed you. You should always think of it first. Then you should decide if a little dram of death was worth it.</p>
+<p>Look at your mistakes long enough to learn from them, then put them behind you.</p>
 </blockquote>
 
-<p>Just whoa. This book got big. We see a lot more about the world and more about the powers that exist beneath the surface. The world is weird and complicated and everything we thought we knew&hellip; well, i9t&rsquo;s mostly right. Just incomplete.</p>
+<p>On one hand, <a data-goodreads-type="book" data-goodreads-id="29467232" href="https://www.goodreads.com/book/show/29467232.the-blood-mirror"> The Blood Mirror </a> takes the storyline of the previous books and turns it up even more.</p>
 
 <p></p>
         	</div>
@@ -160,25 +270,25 @@
         <article class="li">
         	<header>
         		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/16/the-reality-bug/" class="clearfix">The Reality Bug</a>
+                    <a href="https://blog.jverkamp.com/2018/07/01/pale-green-dot-sequel-to-the-forest/" class="clearfix">Pale Green Dot: Sequel to The Forest</a>
                 </h1>
 
         		<div class="entry-meta">
                     
-                    <span class="entry-date">2018-05-16</span>
+                    <span class="entry-date">2018-07-01</span>
                     
                     
         		</div>
         	</header>
             <div class="entry-content">
                 <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="215541" href="https://www.goodreads.com/book/show/215541.the-reality-bug"><img src="/embeds/books/the-reality-bug.jpg">
+                <a data-goodreads-type="book" data-goodreads-id="36549857" href="https://www.goodreads.com/book/show/36549857.pale-green-dot-sequel-to-the-forest"><img src="/embeds/books/pale-green-dot-sequel-to-the-forest.jpg">
                 </a>
             </figure>
 
-<p>Onwards! This time around, Pendragon has come to the territory of Veelox, dealing with a virtual reality addiction crisis. It&rsquo;s a topic that comes up over and over again in science fiction and even in real world media coverage, warning that as virtual reality gets better and better, it will be harder and harder for people to leave, leading to society decaying. Regardless of what you think about the idea of such a thing happening in the real world, it&rsquo;s an interesting enough take to build the story on.</p>
+<p>Review of .</p>
 
-<p>Characterwise, Aja is actually one of the more interesting travelers we&rsquo;ve been introduced to. She&rsquo;s so confident in herself at first that she nearly refuses Bobby&rsquo;s help, but as could be expected, things go sideways. She seems to learn from her mistakes and finally admits that perhaps she can&rsquo;t save the world all by herself.</p>
+<p><a data-goodreads-type="book" data-goodreads-id="36549857" href="https://www.goodreads.com/book/show/36549857.pale-green-dot-sequel-to-the-forest">Pale Green Dot: Sequel to The Forest</a> is the sequel to <a data-goodreads-type="book" data-goodreads-id="28001090" href="https://www.goodreads.com/book/show/28001090.the-forest">The Forest</a>, but really they should have been (and often are) combined into a single book. The Pale Green Dot continues where The Forest left off and expands the world significantly. We see a bit behind the curtain at just what the Forest is and how the world works.</p>
 
 <p></p>
         	</div>
@@ -192,162 +302,26 @@
         <article class="li">
         	<header>
         		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/15/wintersmith/" class="clearfix">Wintersmith</a>
+                    <a href="https://blog.jverkamp.com/2018/06/30/the-forest/" class="clearfix">The Forest</a>
                 </h1>
 
         		<div class="entry-meta">
                     
-                    <span class="entry-date">2018-05-15</span>
+                    <span class="entry-date">2018-06-30</span>
                     
                     
         		</div>
         	</header>
             <div class="entry-content">
                 <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="34492" href="https://www.goodreads.com/book/show/34492.wintersmith"><img src="/embeds/books/wintersmith.jpg">
+                <a data-goodreads-type="book" data-goodreads-id="28001090" href="https://www.goodreads.com/book/show/28001090.the-forest"><img src="/embeds/books/the-forest.jpg">
                 </a>
             </figure>
+
+<p><a data-goodreads-type="book" data-goodreads-id="28001090" href="https://www.goodreads.com/book/show/28001090.the-forest">The Forest</a> came out of <a href="https://www.reddit.com/r/WritingPrompts/comments/2ueggh/wp_instead_of_oceans_they_are_all_big_forests/co7rxc7/">/r/WritingPrompts</a>:</p>
 
 <blockquote>
-<p>The trouble is you can shut your eyes but you can’t shut your mind.</p>
-</blockquote>
-
-<p>Tiffany returns, this time slightly older and in just a bit more trouble than before. This time around, she accidentally danced with the Wintersmith (the very embodiment of winter) and, as one thing leads to another, the Wintersmith beings to fall in love, trying to become human along the way.</p>
-
-<p></p>
-        	</div>
-
-            
-            <hr />
-        </article>
-    
-    
-    
-        <article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/12/a-hat-full-of-sky/" class="clearfix">A Hat Full of Sky</a>
-                </h1>
-
-        		<div class="entry-meta">
-                    
-                    <span class="entry-date">2018-05-12</span>
-                    
-                    
-        		</div>
-        	</header>
-            <div class="entry-content">
-                <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="618145" href="https://www.goodreads.com/book/show/618145.a-hat-full-of-sky"><img src="/embeds/books/a-hat-full-of-sky.jpg">
-                </a>
-            </figure>
-
-<blockquote>
-<p>Why do you go away? So that you can come back. So that you can see the place you came from with new eyes and extra colors. And the people there see you differently, too. Coming back to where you started is not the same as never leaving.</p>
-</blockquote>
-
-<p><a data-goodreads-type="book" data-goodreads-id="618145" href="https://www.goodreads.com/book/show/618145.a-hat-full-of-sky"> A Hat Full of Sky </a> takes <a data-goodreads-type="book" data-goodreads-id="34494" href="https://www.goodreads.com/book/show/34494.the-wee-free-men"> The Wee Free Men </a> and grows from there, following Tiffany Aching as she actually starts to learn a bit more witching, while at the same time having to deal with some of the fall out from her actions in The Wee Free Men.</p>
-
-<p></p>
-        	</div>
-
-            
-            <hr />
-        </article>
-    
-    
-    
-        <article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/10/the-wee-free-men/" class="clearfix">The Wee Free Men</a>
-                </h1>
-
-        		<div class="entry-meta">
-                    
-                    <span class="entry-date">2018-05-10</span>
-                    
-                    
-        		</div>
-        	</header>
-            <div class="entry-content">
-                <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="34494" href="https://www.goodreads.com/book/show/34494.the-wee-free-men"><img src="/embeds/books/the-wee-free-men.jpg">
-                </a>
-            </figure>
-
-<blockquote>
-<p>Open your eyes and then open your eyes again.</p>
-</blockquote>
-
-<p>The Wee Free Men is a wonderful book. It&rsquo;s the Witches again, done YA this time around. It follows the story of Tiffany Aching&ndash;young witch to be&ndash;as she begins to discovers her powers and finds that the world may be just a bit more complicated than she (or the adults around her) thinks it is.</p>
-
-<p></p>
-        	</div>
-
-            
-            <hr />
-        </article>
-    
-    
-    
-        <article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/04/small-gods/" class="clearfix">Small Gods</a>
-                </h1>
-
-        		<div class="entry-meta">
-                    
-                    <span class="entry-date">2018-05-04</span>
-                    
-                    
-        		</div>
-        	</header>
-            <div class="entry-content">
-                <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="34484" href="https://www.goodreads.com/book/show/34484.small-gods"><img src="/embeds/books/small-gods.jpg">
-                </a>
-            </figure>
-
-<blockquote>
-<p>The turtle moves.</p>
-</blockquote>
-
-<p>Small Gods is a bit odd in the greater Discworld universe, being one of only a handful of one-off stories (Pyramids and Amazing Maurice are the other two if you count the Industrial Revolution subseries as a series) and being relatively early in the reading order. So with the exception of offhand references (such as to the Great God Om), it&rsquo;s one of the books you could easily read anywhere in your reading order.</p>
-
-<p></p>
-        	</div>
-
-            
-            <hr />
-        </article>
-    
-    
-    
-        <article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/03/the-never-war/" class="clearfix">The Never War</a>
-                </h1>
-
-        		<div class="entry-meta">
-                    
-                    <span class="entry-date">2018-05-03</span>
-                    
-                    
-        		</div>
-        	</header>
-            <div class="entry-content">
-                <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="536982" href="https://www.goodreads.com/book/show/536982.the-never-war"><img src="/embeds/books/the-never-war.jpg">
-                </a>
-            </figure>
-
-<blockquote>
-<p>“You want to know why we&rsquo;re the ones responsible?&rdquo; Gunny asked.</p>
-
-<p>I looked up into a pair of wise eyes that had seen far more than mine.</p>
+<p>[WP] Instead of Oceans, they are all big forests, that gets taller and darker instead of deeper, with more dangerous animals living further out in the forest. A person decides to cross the Mariana Trench</p>
 </blockquote>
 
 <p></p>
@@ -362,25 +336,25 @@
         <article class="li">
         	<header>
         		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/02/raising-steam/" class="clearfix">Raising Steam</a>
+                    <a href="https://blog.jverkamp.com/2018/06/29/black-water/" class="clearfix">Black Water</a>
                 </h1>
 
         		<div class="entry-meta">
                     
-                    <span class="entry-date">2018-05-02</span>
+                    <span class="entry-date">2018-06-29</span>
                     
                     
         		</div>
         	</header>
             <div class="entry-content">
                 <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="11275323" href="https://www.goodreads.com/book/show/11275323.raising-steam"><img src="/embeds/books/raising-steam.jpg">
+                <a data-goodreads-type="book" data-goodreads-id="147801" href="https://www.goodreads.com/book/show/147801.black-water"><img src="/embeds/books/black-water.jpg">
                 </a>
             </figure>
 
-<p>In <a data-goodreads-type="book" data-goodreads-id="64222" href="https://www.goodreads.com/book/show/64222.going-postal">Going Postal</a>, Moist von Lipwig rebuilt the post office. In <a data-goodreads-type="book" data-goodreads-id="116296" href="https://www.goodreads.com/book/show/116296.making-money">Making Money</a>, he took on the banks. Now? Steam engines are coming to the Discworld!</p>
+<p>I tried. Really I did. But when you read as quickly as I do and realize that you&rsquo;ve already spent more than a month on one book, it&rsquo;s time to move on.</p>
 
-<p>On one hand, it&rsquo;s interesting to see more and more technology come to the Discworld, especially watching it blend with the magic that&rsquo;s already there. You have goblins running the clacks (telegraphs) and now the trains and a engine that might just be alive. On top of that, we&rsquo;re dealing with some of the fall out of the recent (bookwise) war between the Trolls and the Dwarves.</p>
+<p>I think most of my frustration with this book comes from the fact that Pendragon is a teenager and acts like it. He is hit in the face with a world where humanoid cats are the dominant species and humans are little more than animals and just <em>cannot get it through his head</em>. Over and over, he expects the world to work one way, despite all evidence to the contrary.</p>
 
 <p></p>
         	</div>
@@ -394,26 +368,69 @@
         <article class="li">
         	<header>
         		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/04/27/the-lost-city-of-faar/" class="clearfix">The Lost City of Faar</a>
+                    <a href="https://blog.jverkamp.com/2018/06/28/the-shadow-rising/" class="clearfix">The Shadow Rising</a>
                 </h1>
 
         		<div class="entry-meta">
                     
-                    <span class="entry-date">2018-04-27</span>
+                    <span class="entry-date">2018-06-28</span>
                     
                     
         		</div>
         	</header>
             <div class="entry-content">
                 <figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="215543" href="https://www.goodreads.com/book/show/215543.the-lost-city-of-faar"><img src="/embeds/books/the-lost-city-of-faar.jpg">
+                <a data-goodreads-type="book" data-goodreads-id="9539" href="https://www.goodreads.com/book/show/9539.the-shadow-rising"><img src="/embeds/books/the-shadow-rising.jpg">
                 </a>
             </figure>
 
-<p>In the continuing stories of Bobby Pendragon, this time around he has to save the ocean Territory of Cloral. It&rsquo;s a fascinating world, where at some point in the long past, the world flooded such that everyone now lives in floating cities. They have all sorts of neat water based technology and what seems like a pretty peaceful, fun loving society. Of course things are about to go wrong.</p>
+<blockquote>
+<p>Mat snorted. “I don’t want to be any bloody hero.”</p>
+</blockquote>
 
-<p>Plotwise, things seem mostly straightforward. There&rsquo;s a lost city (Farr; <span class="spoiler">which of course turns out to be real</span>
-  ), pirates, and an &lsquo;accidental&rsquo; plague (oh! the horrors of GMO foods!). Nothing super surprising, but still enough tension to pull you through the book.</p>
+<p>Bit late for that. For all of them.</p>
+
+<p></p>
+        	</div>
+
+            
+            <hr />
+        </article>
+    
+    
+    
+        <article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/06/19/the-dragon-reborn/" class="clearfix">The Dragon Reborn</a>
+                </h1>
+
+        		<div class="entry-meta">
+                    
+                    <span class="entry-date">2018-06-19</span>
+                    
+                    
+        		</div>
+        	</header>
+            <div class="entry-content">
+                <figure class="cover-image">
+                <a data-goodreads-type="book" data-goodreads-id="34897" href="https://www.goodreads.com/book/show/34897.the-dragon-reborn"><img src="/embeds/books/the-dragon-reborn.jpg">
+                </a>
+            </figure>
+
+<blockquote>
+<p>Til shade is gone,</p>
+
+<p>til water is gone</p>
+
+<p>Into the shadow with teeth bared</p>
+
+<p>Screaming defiance with the last breath</p>
+
+<p>To spit in Sightblinder’s eye on the Last Day.</p>
+</blockquote>
+
+<p>As <a data-goodreads-type="book" data-goodreads-id="233649" href="https://www.goodreads.com/book/show/233649.the-great-hunt">The Great Hunt</a> was a step up from <a data-goodreads-type="book" data-goodreads-id="228665" href="https://www.goodreads.com/book/show/228665.the-eye-of-the-world">The Eye of the World</a>, <a data-goodreads-type="book" data-goodreads-id="34897" href="https://www.goodreads.com/book/show/34897.the-dragon-reborn">The Dragon Reborn</a> is a step up from the Great Hunt. Things are really moving now.</p>
 
 <p></p>
         	</div>
@@ -1470,8 +1487,26 @@
         
     
     
+    
+    
+    
+    
+    
+        
+        
+    
+    
+    
+    
+    
+    
+    
+        
+        
+    
+    
     <li
-    ><a href="/page/113/">113</a></li>
+    ><a href="/page/115/">115</a></li>
     
     
     <li
@@ -1480,7 +1515,7 @@
     </li>
     
     <li>
-        <a href="/page/113/" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
+        <a href="/page/115/" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
     </li>
     
 </ul>
