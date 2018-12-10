@@ -1136,6 +1136,48 @@
 <p>I do wonder though if there&rsquo;s a faster way to solve this part? I bet there is. Probably something to do with <a href="https://en.wikipedia.org/wiki/graph%20theory">graph theory</a>. It&rsquo;s always graph theory.</p>
 
 <p>A problem for another day.</p>
+
+<blockquote>
+<p><strong>Update 2018-12-10:</strong> Got a command (below): Can you use a stack to solve this problem?</p>
+</blockquote>
+
+<p>Why yes. Yes you can! Let&rsquo;s do it.</p>
+
+<p>All we actually have to change is the <code>collapse</code> function. What we&rsquo;re going to do is move elements from an <code>input</code> list to an <code>output</code> list. Whenever the top element of each list/stack reacts, remove them both. This will allow reactions to cascade natively:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Collapse an alchemical polymer removing matching units of opposite polarity</span>
+(<span style="color:#66d9ef">define</span> (collapse polymer)
+  (<span style="color:#66d9ef">let</span> loop ([input polymer]
+             [output <span style="color:#f92672">&#39;</span>()])
+    (<span style="color:#66d9ef">cond</span>
+      <span style="color:#75715e">; End condition, output the stack</span>
+      [(null? input) (reverse output)]
+      <span style="color:#75715e">; Initial state, nothing on the output stack to compare</span>
+      [(null? output)
+       (loop (rest input) (list (first input)))]
+      <span style="color:#75715e">; Top of stack and next of input match, remove both</span>
+      <span style="color:#75715e">; This will allow chain reactions since it exposes a new top of stack to react</span>
+      [(react? (first input) (first output))
+       (loop (rest input) (rest output))]
+      <span style="color:#75715e">; Don&#39;t react, move to output</span>
+      [<span style="color:#66d9ef">else</span>
+       (loop (rest input) (list* (first input) output))])))</code></pre></div>
+<p>And that&rsquo;s it; the rest of the code remains the same. We don&rsquo;t even need a wrapper function to collapse multiple time, this just does it.</p>
+
+<p>And the crazy thing is just how much faster it is:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cat input.txt | time racket alchemical-collapser.rkt
+
+<span style="color:#f92672">[</span>part <span style="color:#ae81ff">1</span><span style="color:#f92672">]</span> output length: <span style="color:#ae81ff">9078</span>
+<span style="color:#f92672">[</span>part <span style="color:#ae81ff">2</span><span style="color:#f92672">]</span> removing u gives a length of: <span style="color:#ae81ff">5698</span>
+       <span style="color:#ae81ff">33</span>.44 real        <span style="color:#ae81ff">32</span>.64 user         <span style="color:#ae81ff">0</span>.68 sys
+
+$ cat input.txt | time racket alchemical-stacker.rkt
+
+<span style="color:#f92672">[</span>part <span style="color:#ae81ff">1</span><span style="color:#f92672">]</span> output length: <span style="color:#ae81ff">9078</span>
+<span style="color:#f92672">[</span>part <span style="color:#ae81ff">2</span><span style="color:#f92672">]</span> removing u gives a length of: <span style="color:#ae81ff">5698</span>
+        <span style="color:#ae81ff">0</span>.54 real         <span style="color:#ae81ff">0</span>.45 user         <span style="color:#ae81ff">0</span>.08 sys</code></pre></div>
+<p>Now that&rsquo;s a speedup&hellip; Most of which comes from not having to process the entire list over and over again, instead just doing it all at once. It really does show just how much difference you can get by coming at a problem from an algorithmically different direction.</p>
+
+<p>Thanks!</p>
 	</div>
 
     
