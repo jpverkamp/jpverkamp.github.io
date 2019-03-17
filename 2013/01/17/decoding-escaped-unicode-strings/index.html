@@ -784,7 +784,7 @@
                     
 
                     <li>
-                        <a href="https://blog.jverkamp.com/2012/08/06/usenix/foci-2012---inferring-mechanics-of-web-censorship-around-the-world/" class="previous-link"></a>
+                        <a href="https://blog.jverkamp.com/2012/08/06/usenix/foci-2012-inferring-mechanics-of-web-censorship-around-the-world/" class="previous-link"></a>
                         <a class="taxonomy-value" href="/programming/topics/censorship">Censorship</a>
                         <a href="https://blog.jverkamp.com/2013/01/31/scanning-for-dns-resolvers/" class="next-link"></a>
                     </li>
@@ -1647,15 +1647,13 @@
 		<p>In one of my current research projects involving large amounts of <a href="https://twitter.com/" title="Twitter">Twitter</a> data from a variety of countries, I came across an interesting problem. The Twitter stream is encoded as a series of <a href="https://en.wikipedia.org/wiki/JSON">JSON</a> objects&ndash;each of which has been written out using <a href="https://en.wikipedia.org/wiki/ASCII">ASCII</a> characters. But not all of the Tweets (or even a majority in this case) can be represented with only ASCII. So what happens?</p>
 
 <p>Well, it turns out that they encode the data as JSON strings with <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a> <a href="https://en.wikipedia.org/wiki/escape%20characters">escape characters</a>. So if we had the Russian hashtag #победазанами (victory is ours), that would be encoded as such:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#e6db74"></span><span style="color:#e6db74">&#34;#</span><span style="color:#ae81ff">\u043f\u043e\u0431\u0435\u0434\u0430\u0437\u0430\u043d\u0430\u043c\u0438</span><span style="color:#e6db74">&#34;</span></code></pre></div>
-<p></p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#e6db74">&#34;#</span><span style="color:#ae81ff">\u043f\u043e\u0431\u0435\u0434\u0430\u0437\u0430\u043d\u0430\u043c\u0438</span><span style="color:#e6db74">&#34;</span></code></pre></div>
 <p>Each block of characters with the form <code>\uxxxx</code> (where <code>x</code> is a <a href="https://en.wikipedia.org/wiki/hexadecimal">hexadecimal</a> value) is actually a Unicode character. But the problem is, there&rsquo;s no direct way (to my knowledge) to force Python to convert those to the actual characters. At least not directly. (My original plan was to use <code>eval</code>, but some Tweets broke that rather badly.)</p>
 
 <p>What I ended up doing was writing a quick script that would convert such strings. Essentially, it would use regular expression to match the <code>\uxxxx</code> pattern. Then it would extract the hex value and convert it to a single Unicode character. Finally, the former would be replaced with the latter, repeating the process so long as more matches were found.</p>
 
 <p>What does that mean in code?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">re_uni <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>compile(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\\\\</span><span style="color:#e6db74">u(([0-9a-fA-F]){4})&#39;</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">re_uni <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>compile(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\\\\</span><span style="color:#e6db74">u(([0-9a-fA-F]){4})&#39;</span>)
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">re_unicode</span>(str):
 	match <span style="color:#f92672">=</span> re_uni<span style="color:#f92672">.</span>search(str)
@@ -1665,7 +1663,7 @@
 		match <span style="color:#f92672">=</span> re_uni<span style="color:#f92672">.</span>search(str)
 	<span style="color:#66d9ef">return</span> str</code></pre></div>
 <p>Now we can do something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> re_unicode(<span style="color:#e6db74"></span><span style="color:#e6db74">&#34;#</span><span style="color:#ae81ff">\u043f\u043e\u0431\u0435\u0434\u0430\u0437\u0430\u043d\u0430\u043c\u0438</span><span style="color:#e6db74">&#34;</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> re_unicode(<span style="color:#e6db74">&#34;#</span><span style="color:#ae81ff">\u043f\u043e\u0431\u0435\u0434\u0430\u0437\u0430\u043d\u0430\u043c\u0438</span><span style="color:#e6db74">&#34;</span>)
 <span style="color:#75715e">#победазанами</span></code></pre></div>
 <p>Line by line, the first interesting point is the regular expression itself. We start with <code>\u</code>. Because <code>\</code> is the escape character in Python strings, we need to escape it. But it&rsquo;s also the escape character in regular expressions. So we need to escape the <code>\</code>s. Ergo <code>\u</code> becomes <code>\\\\u</code>. Next, we want exactly four hex characters. The group <code>[0-9a-fA-F]</code> matches a hex character (although in our dataset, they&rsquo;ll always be lower case so it could be simplified) and the <code>{4}</code> means to match exactly four times (short hand for just repeating the group). The extra parenthesis are so we can later pull out just that group.</p>
 

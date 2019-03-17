@@ -2010,7 +2010,7 @@
                 
 
                 
-                <a href="https://blog.jverkamp.com/2013/08/13/usenix/foci-2013---five-incidents-one-theme--twitter-spam-as-a-weapon-to-drown-voices-of-protest/" class="next-link">Next</a>
+                <a href="https://blog.jverkamp.com/2013/08/13/usenix/foci-2013-five-incidents-one-theme-twitter-spam-as-a-weapon-to-drown-voices-of-protest/" class="next-link">Next</a>
                 
             </ul>
         </li>
@@ -2023,8 +2023,6 @@
 
 	<div class="entry-content">
 		<p>In my research, I work with a lot of rather large text files&ndash;on the order of gigabytes if not terabytes per file. Since they&rsquo;re plain text, they&rsquo;re generally rather compressible though, so it makes sense to <code>gzip</code> them while they&rsquo;re on disk. The drawback though comes when you&rsquo;re working with them. There are a few options though.</p>
-
-<p></p>
 
 <p>First, you could <code>gunzip</code> the files before use and <code>gzip</code> them again when you&rsquo;re done:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">gunzip data.txt.gz
@@ -2040,13 +2038,13 @@ gzip -9 data.txt</code></pre></div>
 
 <p>Okay, so what about to do it directly in the script? Traditionally, I write a lot of scripts in Python. It&rsquo;s quick and generally painless to write and I know the language particularly well. If I wanted to process gzipped files, all I would need is something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> gzip
-<span style="color:#66d9ef">with</span> gzip<span style="color:#f92672">.</span>open(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;data.txt.gz&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+<span style="color:#66d9ef">with</span> gzip<span style="color:#f92672">.</span>open(<span style="color:#e6db74">&#39;data.txt.gz&#39;</span>, <span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
     <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> fin:
          <span style="color:#66d9ef">print</span>(line)</code></pre></div>
 <p>Quick and easy. In addition, <code>gzip.open</code> returns a file-like object that&rsquo;s only read as we need it. That way, we can only have (roughly) one line in memory at a time. That&rsquo;s exactly what I want when dealing with large files.</p>
 
 <p>More recently though though, I&rsquo;ve been writing a lot of scripts in Racket. For slightly more in depth scripts, it has a lot going for it. Racket is<code><a href="http://docs.racket-lang.org/search/index.html?q=batteries%20included">batteries included</a></code>
-, nicely functional<sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup>, and can be much more parallelized to multi-core machines without running into Python&rsquo;s pesky <a href="https://en.wikipedia.org/wiki/Global%20Interpreter%20Lock">Global Interpreter Lock</a><sup class="footnote-ref" id="fnref:2"><a rel="footnote" href="#fn:2">2</a></sup>.</p>
+, nicely functional<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>, and can be much more parallelized to multi-core machines without running into Python&rsquo;s pesky <a href="https://en.wikipedia.org/wiki/Global%20Interpreter%20Lock">Global Interpreter Lock</a><sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>.</p>
 
 <p>So how can we write the same code in Racket?</p>
 
@@ -2054,7 +2052,7 @@ gzip -9 data.txt</code></pre></div>
 module, but it doesn&rsquo;t really have a nice <code>with-input-from-gzipped-file</code> or <code>with-gunzip</code> function. The closest thing we have appears to be <code>gunzip-through-ports</code>. It takes two ports,<code>in</code> and <code>out</code>, reading gzipped data from<code>in</code>and writing decompressed data to <code>out</code>. But how do we make use of that?</p>
 
 <p>It took me a while to find what I was looking for, but finally I came across<code><a href="http://docs.racket-lang.org/search/index.html?q=pipes">pipes</a></code>
-. They&rsquo;re essentially equivalent to Unix-like pipes<sup class="footnote-ref" id="fnref:3"><a rel="footnote" href="#fn:3">3</a></sup>, forming a sort of bridge between two streams. So theoretically, we can open the file, use <code>gunzip-through-ports</code> to attach it to the pipe, and then read from the other end. Something like this:</p>
+. They&rsquo;re essentially equivalent to Unix-like pipes<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>, forming a sort of bridge between two streams. So theoretically, we can open the file, use <code>gunzip-through-ports</code> to attach it to the pipe, and then read from the other end. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(with-gunzip thunk)
  (define-values (pipe-from pipe-to) (make-pipe))
  (gunzip-through-ports (current-input-port) pipe-to)
@@ -2084,7 +2082,7 @@ module, but it doesn&rsquo;t really have a nice <code>with-input-from-gzipped-fi
 
 <p>First, we have termination. Based on <a href="http://lists.racket-lang.org/users/archive/2013-August/058852.html">a response from Ryan Culpepper</a> on the Racket mailing list, the problem is that <code>gunzip-through-ports</code> doesn&rsquo;t actually close the port. This means that an <code>eof-object?</code> is never sent through the <code>pipe</code> to <code>in-lines</code>.</p>
 
-<p>So at some point we need to close the port. The problem is: when? If we close it at the end as one might expect, it won&rsquo;t work. Since the code hangs in the <code>for</code>, we&rsquo;ll never get to it. So we have to have it before that at least. Let&rsquo;s true putting it right after the <code>gunzip-through-ports</code> line<sup class="footnote-ref" id="fnref:4"><a rel="footnote" href="#fn:4">4</a></sup>:</p>
+<p>So at some point we need to close the port. The problem is: when? If we close it at the end as one might expect, it won&rsquo;t work. Since the code hangs in the <code>for</code>, we&rsquo;ll never get to it. So we have to have it before that at least. Let&rsquo;s true putting it right after the <code>gunzip-through-ports</code> line<sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(with-gunzip thunk)
   (define-values (pipe-from pipe-to) (make-pipe))
   (gunzip-through-ports (current-input-port) pipe-to)

@@ -1221,20 +1221,18 @@
 	<div class="entry-content">
 		<p>I do like having my <a href="https://blog.jverkamp.com/2015/02/11/update-dotfiles-encryption/">dotfiles</a> on GitHub. For one, it means that they&rsquo;re always available when I set up a new machine. For two, others can see them and take whatever is interesting for their own dotfiles. But all that has a disadvantage: what if I want to store my SSH configs?</p>
 
-<p></p>
-
 <p>Technically, they&rsquo;re not secret. I don&rsquo;t have my actual SSH keys in there. But I do have some names of machines and at least not having those on the GitHub means that the spiders trolling the repos have at least one more step before finding them. Especially those running on non-standard ports.</p>
 
 <p>To that end, here&rsquo;s a quick script to AES encrypt / decrypt files with Python.</p>
 
 <p>First, we want something that can turn any password into an AES key. Since they have to be an exact number of bits a hashing function works particularly well here:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_key</span>():
-    <span style="color:#66d9ef">if</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;AESKEY&#39;</span> <span style="color:#f92672">in</span> os<span style="color:#f92672">.</span>environ:
-        key <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;AESKEY&#39;</span>]
+    <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;AESKEY&#39;</span> <span style="color:#f92672">in</span> os<span style="color:#f92672">.</span>environ:
+        key <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;AESKEY&#39;</span>]
     <span style="color:#66d9ef">else</span>:
-        key <span style="color:#f92672">=</span> getpass<span style="color:#f92672">.</span>getpass(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;AES passphrase: &#39;</span>)
+        key <span style="color:#f92672">=</span> getpass<span style="color:#f92672">.</span>getpass(<span style="color:#e6db74">&#39;AES passphrase: &#39;</span>)
 
-    <span style="color:#66d9ef">return</span> hashlib<span style="color:#f92672">.</span>sha256(key<span style="color:#f92672">.</span>encode(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;utf-8&#39;</span>))<span style="color:#f92672">.</span>digest()</code></pre></div>
+    <span style="color:#66d9ef">return</span> hashlib<span style="color:#f92672">.</span>sha256(key<span style="color:#f92672">.</span>encode(<span style="color:#e6db74">&#39;utf-8&#39;</span>))<span style="color:#f92672">.</span>digest()</code></pre></div>
 <p>(Yes, I should be using a <a href="https://en.wikipedia.org/wiki/Password-Based%20Key%20Derivation%20Function">Password-Based Key Derivation Function</a>. So it goes.)</p>
 
 <p>Next, the encryption function. We need to set up a random <a href="https://en.wikipedia.org/wiki/initialization%20vector">initialization vector</a>.</p>
@@ -1249,11 +1247,11 @@
     iv <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>urandom(<span style="color:#ae81ff">16</span>)
     encryptor <span style="color:#f92672">=</span> AES<span style="color:#f92672">.</span>new(key, AES<span style="color:#f92672">.</span>MODE_CBC, IV <span style="color:#f92672">=</span> iv)
 
-    <span style="color:#66d9ef">with</span> open(file, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;rb&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+    <span style="color:#66d9ef">with</span> open(file, <span style="color:#e6db74">&#39;rb&#39;</span>) <span style="color:#66d9ef">as</span> fin:
         content <span style="color:#f92672">=</span> fin<span style="color:#f92672">.</span>read()
 
     <span style="color:#75715e"># Store the original file size as uint64 and pad to 16 bytes</span>
-    content <span style="color:#f92672">=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&gt;Q&#39;</span>, len(content)) <span style="color:#f92672">+</span> content
+    content <span style="color:#f92672">=</span> struct<span style="color:#f92672">.</span>pack(<span style="color:#e6db74">&#39;&gt;Q&#39;</span>, len(content)) <span style="color:#f92672">+</span> content
     content <span style="color:#f92672">=</span> content <span style="color:#f92672">+</span> (<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\0</span><span style="color:#e6db74">&#39;</span> <span style="color:#f92672">*</span> (<span style="color:#ae81ff">16</span> <span style="color:#f92672">-</span> len(content) <span style="color:#f92672">%</span> <span style="color:#ae81ff">16</span>))
 
     content <span style="color:#f92672">=</span> encryptor<span style="color:#f92672">.</span>encrypt(content)
@@ -1261,8 +1259,8 @@
 
     content <span style="color:#f92672">=</span> base64<span style="color:#f92672">.</span>b64encode(iv <span style="color:#f92672">+</span> hash <span style="color:#f92672">+</span> content)
 
-    outfile <span style="color:#f92672">=</span> file <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;.aes&#39;</span>
-    <span style="color:#66d9ef">with</span> open(outfile, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;wb&#39;</span>) <span style="color:#66d9ef">as</span> fout:
+    outfile <span style="color:#f92672">=</span> file <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;.aes&#39;</span>
+    <span style="color:#66d9ef">with</span> open(outfile, <span style="color:#e6db74">&#39;wb&#39;</span>) <span style="color:#66d9ef">as</span> fout:
         fout<span style="color:#f92672">.</span>write(content)</code></pre></div>
 <p>Straight forward.</p>
 
@@ -1271,12 +1269,12 @@
 
     key <span style="color:#f92672">=</span> get_key()
 
-    <span style="color:#66d9ef">with</span> open(file, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+    <span style="color:#66d9ef">with</span> open(file, <span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
         content <span style="color:#f92672">=</span> fin<span style="color:#f92672">.</span>read()
 
     content <span style="color:#f92672">=</span> base64<span style="color:#f92672">.</span>b64decode(content)
     <span style="color:#66d9ef">if</span> len(content) <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">32</span>:
-        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Malformed content: not enough data&#39;</span>)
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;Malformed content: not enough data&#39;</span>)
         sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">1</span>)
 
     iv <span style="color:#f92672">=</span> content[:<span style="color:#ae81ff">16</span>]
@@ -1284,17 +1282,17 @@
     content <span style="color:#f92672">=</span> content[<span style="color:#ae81ff">48</span>:]
 
     <span style="color:#66d9ef">if</span> hash <span style="color:#f92672">!=</span> hashlib<span style="color:#f92672">.</span>sha256(content)<span style="color:#f92672">.</span>digest():
-        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Failed hash check&#39;</span>)
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;Failed hash check&#39;</span>)
         sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">1</span>)
 
     decryptor <span style="color:#f92672">=</span> AES<span style="color:#f92672">.</span>new(key, AES<span style="color:#f92672">.</span>MODE_CBC, IV <span style="color:#f92672">=</span> iv)
     content <span style="color:#f92672">=</span> decryptor<span style="color:#f92672">.</span>decrypt(content)
 
-    fileSize <span style="color:#f92672">=</span> struct<span style="color:#f92672">.</span>unpack(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&gt;Q&#39;</span>, content[:<span style="color:#ae81ff">8</span>])[<span style="color:#ae81ff">0</span>]
+    fileSize <span style="color:#f92672">=</span> struct<span style="color:#f92672">.</span>unpack(<span style="color:#e6db74">&#39;&gt;Q&#39;</span>, content[:<span style="color:#ae81ff">8</span>])[<span style="color:#ae81ff">0</span>]
     content <span style="color:#f92672">=</span> content[<span style="color:#ae81ff">8</span>:fileSize<span style="color:#f92672">+</span><span style="color:#ae81ff">8</span>]
 
     outfile <span style="color:#f92672">=</span> file[:<span style="color:#f92672">-</span><span style="color:#ae81ff">4</span>]
-    <span style="color:#66d9ef">with</span> open(outfile, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;wb&#39;</span>) <span style="color:#66d9ef">as</span> fout:
+    <span style="color:#66d9ef">with</span> open(outfile, <span style="color:#e6db74">&#39;wb&#39;</span>) <span style="color:#66d9ef">as</span> fout:
         fout<span style="color:#f92672">.</span>write(content)</code></pre></div>
 <p>Shiny. Now let&rsquo;s tweak the script that updates dotfiles to handle encrypted files:</p>
 
@@ -1302,18 +1300,18 @@
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">...</span>
 
 <span style="color:#75715e"># If the file is encrypted, decrypt it</span>
-<span style="color:#66d9ef">if</span> path<span style="color:#f92672">.</span>endswith(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;.aes&#39;</span>):
+<span style="color:#66d9ef">if</span> path<span style="color:#f92672">.</span>endswith(<span style="color:#e6db74">&#39;.aes&#39;</span>):
     <span style="color:#66d9ef">try</span>:
         <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> aes:
-            aes <span style="color:#f92672">=</span> imp<span style="color:#f92672">.</span>load_source(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;aes&#39;</span>, os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>expanduser(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;~/.bin/aes&#39;</span>))
+            aes <span style="color:#f92672">=</span> imp<span style="color:#f92672">.</span>load_source(<span style="color:#e6db74">&#39;aes&#39;</span>, os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>expanduser(<span style="color:#e6db74">&#39;~/.bin/aes&#39;</span>))
 
         <span style="color:#66d9ef">if</span> aes:
-            <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{0} decrypting&#39;</span><span style="color:#f92672">.</span>format(path))
+            <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;{0} decrypting&#39;</span><span style="color:#f92672">.</span>format(path))
             aes<span style="color:#f92672">.</span>decrypt(path)
             shutil<span style="color:#f92672">.</span>copymode(path, path[:<span style="color:#f92672">-</span><span style="color:#ae81ff">4</span>])
             path <span style="color:#f92672">=</span> path[:<span style="color:#f92672">-</span><span style="color:#ae81ff">4</span>]
     <span style="color:#66d9ef">except</span>:
-        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{0} cannot decrypt, aes does not exist&#39;</span><span style="color:#f92672">.</span>format(path))
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;{0} cannot decrypt, aes does not exist&#39;</span><span style="color:#f92672">.</span>format(path))
 
 <span style="color:#f92672">...</span></code></pre></div>
 <p>One caveat is that since the <code>aes</code> library is stored without the <code>py</code> suffix, we load it dynamically with the <code>imp</code> module. I love how that&rsquo;s possible (even easy) in Python.</p>

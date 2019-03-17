@@ -2002,8 +2002,6 @@
 <p>If you run the given program, how many times is <code>mul</code> invoked?</p>
 </blockquote>
 
-<p></p>
-
 <p>Interesting.</p>
 
 <p>We could definitely use the same code as <a href="https://blog.jverkamp.com/2017/12/18/aoc-2017-day-18-duetvm/">before</a>, implementing the instructions as such:</p>
@@ -2017,7 +2015,7 @@
 
 <span style="color:#a6e22e">@VM.register</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">mul</span>(vm, x, y):
-    vm<span style="color:#f92672">.</span>mul_count <span style="color:#f92672">=</span> getattr(vm, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;mul_count&#39;</span>, <span style="color:#ae81ff">0</span>) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>
+    vm<span style="color:#f92672">.</span>mul_count <span style="color:#f92672">=</span> getattr(vm, <span style="color:#e6db74">&#39;mul_count&#39;</span>, <span style="color:#ae81ff">0</span>) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>
     vm<span style="color:#f92672">.</span>registers[x] <span style="color:#f92672">*=</span> vm<span style="color:#f92672">.</span>value(y)
 
 <span style="color:#a6e22e">@VM.register</span>
@@ -2029,9 +2027,9 @@
 <p>Instead, let&rsquo;s implement a <a href="https://en.wikipedia.org/wiki/compiler">compiler</a> to turn DuetVM code into Python. 😇 It&rsquo;s probably a bad idea, but we&rsquo;re just going to use a series of <a href="https://en.wikipedia.org/wiki/regular%20expressions">regular expressions</a> that will match the input program and rewrite sections one step at a time. For example:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@compile_step</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rewrite_simple_binops</span>(code):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Rewrite simple binary ops that have a direct python equivalent.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Rewrite simple binary ops that have a direct python equivalent.&#39;&#39;&#39;</span>
 
-    <span style="color:#66d9ef">for</span> name, symbol <span style="color:#f92672">in</span> [(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;set&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;</span>), (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;sub&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;-&#39;</span>), (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;mul&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;*&#39;</span>)]:
+    <span style="color:#66d9ef">for</span> name, symbol <span style="color:#f92672">in</span> [(<span style="color:#e6db74">&#39;set&#39;</span>, <span style="color:#e6db74">&#39;&#39;</span>), (<span style="color:#e6db74">&#39;sub&#39;</span>, <span style="color:#e6db74">&#39;-&#39;</span>), (<span style="color:#e6db74">&#39;mul&#39;</span>, <span style="color:#e6db74">&#39;*&#39;</span>)]:
         code <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>sub(
             <span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;{} ([a-h]) ([a-h]|-?\d+)&#39;</span><span style="color:#f92672">.</span>format(name),
             <span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;\1 {}= \2&#39;</span><span style="color:#f92672">.</span>format(symbol),
@@ -2053,10 +2051,10 @@
 <p>Next, we want to get rid of the relative jumps. First, Python doesn&rsquo;t have relative jumps (well, it doesn&rsquo;t have direct jumps at all, we&rsquo;ll get to that), and second as we rewrite code, the relative jumps will change. So let&rsquo;s make them absolute jumps instead, specified (for now) by comments:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@compile_step</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rewrite_jumps_as_absolute</span>(code):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Rewrite jumps in an absolute form with a label at the destination.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Rewrite jumps in an absolute form with a label at the destination.&#39;&#39;&#39;</span>
 
     labels <span style="color:#f92672">=</span> {}
-    lines <span style="color:#f92672">=</span> code<span style="color:#f92672">.</span>split(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)
+    lines <span style="color:#f92672">=</span> code<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)
 
     <span style="color:#66d9ef">for</span> index, line <span style="color:#f92672">in</span> enumerate(lines):
         m <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>match(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;jnz ([a-h]|-?\d+) (-?\d+)&#39;</span>, line)
@@ -2065,19 +2063,19 @@
             offset <span style="color:#f92672">=</span> int(offset)
 
             <span style="color:#66d9ef">if</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&lt;=</span> index <span style="color:#f92672">+</span> offset <span style="color:#f92672">&lt;</span> len(lines):
-                label <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;L{}&#39;</span><span style="color:#f92672">.</span>format(len(labels))
+                label <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;L{}&#39;</span><span style="color:#f92672">.</span>format(len(labels))
                 labels[label] <span style="color:#f92672">=</span> index <span style="color:#f92672">+</span> offset
-                lines[index] <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;jnz {} {}&#39;</span><span style="color:#f92672">.</span>format(register, label)
+                lines[index] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;jnz {} {}&#39;</span><span style="color:#f92672">.</span>format(register, label)
             <span style="color:#66d9ef">else</span>:
                 <span style="color:#75715e"># Out of bounds jumps will instead compile into a `halt` (stop execution)</span>
-                lines[index] <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;sys.exit(0)&#39;</span>
+                lines[index] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;sys.exit(0)&#39;</span>
 
     <span style="color:#66d9ef">for</span> label, index <span style="color:#f92672">in</span> labels<span style="color:#f92672">.</span>items():
-        lines[index] <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;# {}</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{}&#39;</span><span style="color:#f92672">.</span>format(label, lines[index])
+        lines[index] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;# {}</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{}&#39;</span><span style="color:#f92672">.</span>format(label, lines[index])
 
-    <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(lines)</code></pre></div>
+    <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(lines)</code></pre></div>
 <p>As an example:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> code <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> code <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">... set a 2
 </span><span style="color:#e6db74">... set b 3
 </span><span style="color:#e6db74">... jnz a 2
@@ -2097,14 +2095,14 @@ mul a b</code></pre></div>
 
 <p>Next, we he have a few different possible styles of jumps. The easiest two are jumps that don&rsquo;t overlap any other jumps, going either forward or backwards. For the case of a jump going forward, it&rsquo;s basically an <code>if</code> statement:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rewrite_simple_if</span>(code):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Rewrite non-nested foward jumps as simple ifs.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Rewrite non-nested foward jumps as simple ifs.&#39;&#39;&#39;</span>
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">make_if</span>(m):
         indentation, register, label, body <span style="color:#f92672">=</span> m<span style="color:#f92672">.</span>groups()
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{}if {} == 0:</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{}&#39;</span><span style="color:#f92672">.</span>format(
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;{}if {} == 0:</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{}&#39;</span><span style="color:#f92672">.</span>format(
             indentation,
             register,
-            <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;    &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> body<span style="color:#f92672">.</span>split(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)),
+            <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;    &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> body<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)),
         )
 
     <span style="color:#66d9ef">return</span> re<span style="color:#f92672">.</span>sub(
@@ -2164,7 +2162,7 @@ mul a b</code></pre></div>
 </table>
 
 <p>When we rewrite that, we want to generate the condition <code>if {register} == 0:</code> and then intent each line in the block by an additional four spaces. So if we apply this to the code we had earlier:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> code <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> code <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">... set a 2
 </span><span style="color:#e6db74">... set b 3
 </span><span style="color:#e6db74">... jnz a 2
@@ -2181,11 +2179,11 @@ set b <span style="color:#ae81ff">3</span>
 mul a b</code></pre></div>
 <p>Next up, let&rsquo;s rewrite non-overlapping backward loops.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rewrite_simple_while</span>(code):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Rewrite non-nested backward jumps as while loops with a flag.&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;Rewrite non-nested backward jumps as while loops with a flag.&#39;&#39;&#39;</span>
 
         <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">make_while</span>(m):
             indentation, label, body, register <span style="color:#f92672">=</span> m<span style="color:#f92672">.</span>groups()
-            <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
+            <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span><span style="color:#e6db74">{indentation}# {label}
 </span><span style="color:#e6db74">{indentation}while True:
 </span><span style="color:#e6db74">{body}
@@ -2194,7 +2192,7 @@ mul a b</code></pre></div>
     indentation <span style="color:#f92672">=</span> indentation,
     register <span style="color:#f92672">=</span> register,
     label <span style="color:#f92672">=</span> label,
-    body <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;    &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> body<span style="color:#f92672">.</span>split(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)),
+    body <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;    &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> body<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)),
 )
 
         <span style="color:#66d9ef">return</span> re<span style="color:#f92672">.</span>sub(
@@ -2234,17 +2232,17 @@ sub c -17000
 set f 1</code></pre></div>
 <p>How to read that is if <code>a != 0</code>, we want to skip the second jump and run the rest of the code. If <code>a == 0</code>, then we hit the second jump and always skip over five instructions (<code>1 != 0</code> is always true). Logically, that means that if <code>a != 0</code>, we&rsquo;ll run the instructions but if <code>a == 2</code>, we will not. So we can rewrite that as so:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rewrite_if_not</span>(code):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Rewrite an overlapping pair of forward jumps as if/else.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Rewrite an overlapping pair of forward jumps as if/else.&#39;&#39;&#39;</span>
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">make_if_not</span>(m):
         indentation, register, label_1, label_2, body <span style="color:#f92672">=</span> m<span style="color:#f92672">.</span>groups()
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span><span style="color:#e6db74">{indentation}if {register} != 0:
 </span><span style="color:#e6db74">{body}</span><span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span><span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#f92672">.</span>format(
 indentation <span style="color:#f92672">=</span> indentation,
 register <span style="color:#f92672">=</span> register,
-body <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;    &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> body<span style="color:#f92672">.</span>split(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)),
+body <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;    &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> body<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)),
 )
 
     <span style="color:#66d9ef">return</span> re<span style="color:#f92672">.</span>sub(
@@ -2254,7 +2252,7 @@ body <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><sp
         flags <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>DOTALL
     )</code></pre></div>
 <p>It&rsquo;s similar to the <code>if</code> statements, but the regular expression is a bit more complicated, since we&rsquo;re matching two back to back jumps and have to have two closing labels. In practice:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> code <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> code <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">... set a 2
 </span><span style="color:#e6db74">... set b 3
 </span><span style="color:#e6db74">... jnz a 2
@@ -2279,7 +2277,7 @@ set f <span style="color:#ae81ff">1</span></code></pre></div>
 <p>One last thing we want to do is deal with potentially nested if statements. To do that, we just want to run the above three functions over and over again until the current code stops changing:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@compile_step</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rewrite_jumps</span>(code):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Using the previous step, rewrite jumps.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Using the previous step, rewrite jumps.&#39;&#39;&#39;</span>
     <span style="color:#75715e"># Keep running these functions until we reach a stable state</span>
     functions <span style="color:#f92672">=</span> [
         rewrite_simple_if,
@@ -2383,13 +2381,13 @@ c <span style="color:#f92672">=</span> b
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@compile_step</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">add_debug_statements</span>(code):
     code <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;([a-h]) \*=&#39;</span>, <span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;mul_count += 1; \1 *=&#39;</span>, code)
-    code <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;sys.exit&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;print(mul_count); sys.exit&#39;</span>, code)
-    code <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;mul_count = 0</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span> <span style="color:#f92672">+</span> code <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">print(mul_count)&#39;</span>
+    code <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;sys.exit&#39;</span>, <span style="color:#e6db74">&#39;print(mul_count); sys.exit&#39;</span>, code)
+    code <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;mul_count = 0</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span> <span style="color:#f92672">+</span> code <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">print(mul_count)&#39;</span>
     <span style="color:#66d9ef">return</span> code
 
 <span style="color:#a6e22e">@compile_step</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">add_initial_registers</span>(code):
-    <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;a = b = c = d = e = f = g = h = 0</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span> <span style="color:#f92672">+</span> code</code></pre></div>
+    <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;a = b = c = d = e = f = g = h = 0</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span> <span style="color:#f92672">+</span> code</code></pre></div>
 <p>That leaves our actual final code as:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Final code:</span>
 <span style="color:#f92672">import</span> sys
@@ -2506,10 +2504,10 @@ c <span style="color:#f92672">=</span> b
 <span style="color:#a6e22e">@compile_step</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">replace_with_composite_counter</span>(code):
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">comment_out</span>(m):
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;# &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> m<span style="color:#f92672">.</span>group(<span style="color:#ae81ff">1</span>)<span style="color:#f92672">.</span>split(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)) <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;# &#39;</span> <span style="color:#f92672">+</span> line <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> m<span style="color:#f92672">.</span>group(<span style="color:#ae81ff">1</span>)<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
 
     code <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;(# L7\n.*)&#39;</span>, comment_out, code, flags <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>DOTALL)
-    code <span style="color:#f92672">+=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+    code <span style="color:#f92672">+=</span> <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74"># Turns out the code is checking for composite numbers... very inefficiently
 </span><span style="color:#e6db74"># a != 0 sets up the range on b and c (note the off by one for c...)
 </span><span style="color:#e6db74"># The L7 loop is looping from b to c by 17 (the b -= -17 at the end)

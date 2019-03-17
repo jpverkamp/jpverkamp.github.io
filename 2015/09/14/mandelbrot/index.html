@@ -1611,25 +1611,19 @@
 	<div class="entry-content">
 		<p>Perhaps the best known fractal of all: the <a href="https://en.wikipedia.org/wiki/Mandelbrot%20set">Mandelbrot set</a>.</p>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_default_400x300_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_default_400x300_hot-and-cold.png"/> 
 </figure>
 
 
 <p>Since I was already working on Python code that would render an image given a function (for a future post), I figured that I might as well render fractals with it.</p>
-
-<p></p>
 
 <p>The basic idea is simple. Use <a href="https://python-pillow.github.io/">pillow</a> (the successor <a href="http://www.pythonware.com/products/pil/">PIL</a>), create an empty image of a given size. Then, call a given function for each point in that image, passing the <code>x</code> and <code>y</code> coordinates of the function as parameters. Basically, the <code><a href="http://docs.racket-lang.org/search/index.html?q=build-flomap*">build-flomap*</a></code>
  function I use all the time in Racket.</p>
 
 <p>It turns out, that&rsquo;s actually really straight forward:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">generate_image</span>(width, height, generator):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+    <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">    Generate an RGB image using a generator function.
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">    width, height -- the size of the generated image
@@ -1640,15 +1634,15 @@
     data <span style="color:#f92672">=</span> [generator(x, y) <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(height) <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(width)]
 
     <span style="color:#75715e"># Pack that into a Pillow image and return it</span>
-    img <span style="color:#f92672">=</span> PIL<span style="color:#f92672">.</span>Image<span style="color:#f92672">.</span>new(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;RGB&#39;</span>, (width, height))
+    img <span style="color:#f92672">=</span> PIL<span style="color:#f92672">.</span>Image<span style="color:#f92672">.</span>new(<span style="color:#e6db74">&#39;RGB&#39;</span>, (width, height))
     img<span style="color:#f92672">.</span>putdata(data)
     <span style="color:#66d9ef">return</span> img</code></pre></div>
 <p>I like that you can have multiple <code>for</code> statements in a generator like that. It&rsquo;s very similiar to the different forms of Racket&rsquo;s <code><a href="http://docs.racket-lang.org/search/index.html?q=for">for</a></code>
-<sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup>, but I always seem to forget that I can do that in Python.</p>
+<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>, but I always seem to forget that I can do that in Python.</p>
 
 <p>One downside of this is that it&rsquo;s relatively slow (at least on the big multi-core machines we have now). Luckily, we can use the <code>&lt;a href=&quot;https://docs.python.org/2/library/multiprocessing.html&quot;&gt;multiprocessing&lt;/a&gt;</code> module to speed things up:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">generate_image</span>(width, height, generator, threads <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+    <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">    Generate an RGB image using a generator function.
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">    width, height -- the size of the generated image
@@ -1664,14 +1658,14 @@
         data <span style="color:#f92672">=</span> pool<span style="color:#f92672">.</span>starmap(generator, [(x, y) <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(height) <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(width)])
 
     <span style="color:#75715e"># Pack that into a Pillow image and return it</span>
-    img <span style="color:#f92672">=</span> PIL<span style="color:#f92672">.</span>Image<span style="color:#f92672">.</span>new(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;RGB&#39;</span>, (width, height))
+    img <span style="color:#f92672">=</span> PIL<span style="color:#f92672">.</span>Image<span style="color:#f92672">.</span>new(<span style="color:#e6db74">&#39;RGB&#39;</span>, (width, height))
     img<span style="color:#f92672">.</span>putdata(data)
     <span style="color:#66d9ef">return</span> img</code></pre></div>
 <p>By using <code>multiprocessing</code> rather than <code>threading</code>, we are actually spawning multiple Python processes, so we get a true multithreaded speedup. Since this program is almost entirely CPU bound, <code>threading</code> (with Python&rsquo;s <a href="https://en.wikipedia.org/wiki/global%20interpreter%20lock">global interpreter lock</a>) wouldn&rsquo;t actually be any faster.</p>
 
-<p>An aside: Using <code>starmap</code> allows us to pass multiple parameters to the function we are mapping over. This was only introduced in Python 2.6 / 3.3, so make sure you have a sufficiently new version<sup class="footnote-ref" id="fnref:2"><a rel="footnote" href="#fn:2">2</a></sup>.</p>
+<p>An aside: Using <code>starmap</code> allows us to pass multiple parameters to the function we are mapping over. This was only introduced in Python 2.6 / 3.3, so make sure you have a sufficiently new version<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>.</p>
 
-<p>With that, we can make some pretty pictures like I&rsquo;m sure I&rsquo;ve shown off before<sup class="footnote-ref" id="fnref:3"><a rel="footnote" href="#fn:3">3</a></sup>.</p>
+<p>With that, we can make some pretty pictures like I&rsquo;m sure I&rsquo;ve shown off before<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">generate_image(
     <span style="color:#ae81ff">400</span>,
     <span style="color:#ae81ff">300</span>,
@@ -1680,19 +1674,15 @@
         (x <span style="color:#f92672">+</span> y) <span style="color:#f92672">%</span> <span style="color:#ae81ff">256</span>,
         max(x, y) <span style="color:#f92672">%</span> <span style="color:#ae81ff">256</span>
     )
-)<span style="color:#f92672">.</span>save(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;sample.png&#39;</span>)</code></pre></div>
-
-<figure >
-    
-        <img src="/embeds/2015/sample.png" />
-    
-    
+)<span style="color:#f92672">.</span>save(<span style="color:#e6db74">&#39;sample.png&#39;</span>)</code></pre></div>
+<figure>
+    <img src="/embeds/2015/sample.png"/> 
 </figure>
 
 
 <p>Yes, I realize that&rsquo;s not the most Pythonic code in the world. And because the body of a Python <code>lambda</code> has to be an expression, you cannot write nearly as complicated functions as you could in Racket. It&rsquo;s perfectly valid though. :)</p>
 
-<p>Okay, so we have a way to generate images, let&rsquo;s use it to generate Mandelbrot sets. The basic idea of the Mandelbrot set is surprisingly simple<sup class="footnote-ref" id="fnref:4"><a rel="footnote" href="#fn:4">4</a></sup>:</p>
+<p>Okay, so we have a way to generate images, let&rsquo;s use it to generate Mandelbrot sets. The basic idea of the Mandelbrot set is surprisingly simple<sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup>:</p>
 
 <p>Given a complex number <span class="latex-inline">\mathbb{C}</span>
 , the <a href="https://en.wikipedia.org/wiki/complex">complex number</a> <a href="https://en.wikipedia.org/wiki/quadratic%20polynomial">quadratic polynomial</a>:</p>
@@ -1705,7 +1695,7 @@
 <p>Either does or does not escape to infinity. If the result remains bounded as <span class="latex-inline">n \to \infty</span>
 , the number is part of the Mandelbrot set. If not, it&rsquo;s not. Because Python has built in support for complex numbers, this code is fairly elegant:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">make_mandelbrot_generator</span>(width, height, center, size, max_iterations <span style="color:#f92672">=</span> <span style="color:#ae81ff">256</span>):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+        <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">        A generator that makes generate_image compatible mandelbrot generators.
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">        width, height -- the size of the resulting image (used for scale)
@@ -1770,28 +1760,24 @@ generate_image(<span style="color:#ae81ff">400</span>, <span style="color:#ae81f
 
 <p>Anyways, what do we get when we try it out?</p>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_default_400x300_grayscale.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_default_400x300_grayscale.png"/> 
 </figure>
 
 
-<p>Beautiful<sup class="footnote-ref" id="fnref:5"><a rel="footnote" href="#fn:5">5</a></sup>!</p>
+<p>Beautiful<sup class="footnote-ref" id="fnref:5"><a href="#fn:5">5</a></sup>!</p>
 
 <p>We need some color. Let&rsquo;s introduce one more parameter to the <code>make_mandelbrot_generator</code> function: <code>coloring</code>. Basically, a function that takes in a number in the range <code>[0, 1]</code> (which we&rsquo;re already computing; that is <code>iteration / max_iterations</code>) and return an RGB color. That way, we can have some more interesting colorations.</p>
 
 <p>For example, the grayscale coloring function from earlier:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">grayscale</span>(v):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Simple grayscale value.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Simple grayscale value.&#39;&#39;&#39;</span>
 
     g <span style="color:#f92672">=</span> int(<span style="color:#ae81ff">256</span> <span style="color:#f92672">*</span> v)
     <span style="color:#66d9ef">return</span> (g, g, g)</code></pre></div>
 <p>Or how about instead, we render something in blue and red. Start at black, then fade up the blue channel, crossfade to red in the next third, and fade back to black in the last:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">hot_and_cold</span>(v):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Scale from black to blue to red and back to black.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Scale from black to blue to red and back to black.&#39;&#39;&#39;</span>
 
     r <span style="color:#f92672">=</span> g <span style="color:#f92672">=</span> b <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
 
@@ -1810,12 +1796,8 @@ generate_image(<span style="color:#ae81ff">400</span>, <span style="color:#ae81f
 <p>Let&rsquo;s render that one instead:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">generator <span style="color:#f92672">=</span> make_mandelbrot_generator(<span style="color:#ae81ff">400</span>, <span style="color:#ae81ff">300</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>, <span style="color:#ae81ff">0</span>), <span style="color:#ae81ff">3</span>),
 generate_image(<span style="color:#ae81ff">400</span>, <span style="color:#ae81ff">300</span>, generator, threads <span style="color:#f92672">=</span> <span style="color:#ae81ff">4</span>, coloring <span style="color:#f92672">=</span> hot_and_cold)</code></pre></div>
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_default_400x300_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_default_400x300_hot-and-cold.png"/> 
 </figure>
 
 
@@ -1830,25 +1812,25 @@ SIZES <span style="color:#f92672">=</span> [
 ]
 
 COLORINGS <span style="color:#f92672">=</span> [
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;grayscale&#39;</span>, grayscale),
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;hot-and-cold&#39;</span>, hot_and_cold),
+    (<span style="color:#e6db74">&#39;grayscale&#39;</span>, grayscale),
+    (<span style="color:#e6db74">&#39;hot-and-cold&#39;</span>, hot_and_cold),
 ]
 
 IMAGES <span style="color:#f92672">=</span> [
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;default&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>, <span style="color:#ae81ff">0</span>), <span style="color:#ae81ff">3</span>),
+    (<span style="color:#e6db74">&#39;default&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">0.5</span>, <span style="color:#ae81ff">0</span>), <span style="color:#ae81ff">3</span>),
     <span style="color:#75715e"># http://www.nahee.com/Derbyshire/manguide.html</span>
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;seahorse-valley&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">0.75</span>, <span style="color:#ae81ff">0.1</span>), <span style="color:#ae81ff">0.05</span>),
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;triple-spiral-valley&#39;</span>, (<span style="color:#ae81ff">0.088</span>, <span style="color:#ae81ff">0.654</span>), <span style="color:#ae81ff">0.25</span>),
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;quad-spiral-valley&#39;</span>, (<span style="color:#ae81ff">0.274</span>, <span style="color:#ae81ff">0.482</span>), <span style="color:#ae81ff">0.005</span>),
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;double-scepter-valley&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">0.1</span>, <span style="color:#ae81ff">0.8383</span>), <span style="color:#ae81ff">0.005</span>),
-    (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;mini-mandelbrot&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">1.75</span>, <span style="color:#ae81ff">0</span>), <span style="color:#ae81ff">0.1</span>),
+    (<span style="color:#e6db74">&#39;seahorse-valley&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">0.75</span>, <span style="color:#ae81ff">0.1</span>), <span style="color:#ae81ff">0.05</span>),
+    (<span style="color:#e6db74">&#39;triple-spiral-valley&#39;</span>, (<span style="color:#ae81ff">0.088</span>, <span style="color:#ae81ff">0.654</span>), <span style="color:#ae81ff">0.25</span>),
+    (<span style="color:#e6db74">&#39;quad-spiral-valley&#39;</span>, (<span style="color:#ae81ff">0.274</span>, <span style="color:#ae81ff">0.482</span>), <span style="color:#ae81ff">0.005</span>),
+    (<span style="color:#e6db74">&#39;double-scepter-valley&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">0.1</span>, <span style="color:#ae81ff">0.8383</span>), <span style="color:#ae81ff">0.005</span>),
+    (<span style="color:#e6db74">&#39;mini-mandelbrot&#39;</span>, (<span style="color:#f92672">-</span><span style="color:#ae81ff">1.75</span>, <span style="color:#ae81ff">0</span>), <span style="color:#ae81ff">0.1</span>),
 
 ]
 
 <span style="color:#66d9ef">for</span> width, height <span style="color:#f92672">in</span> SIZES:
     <span style="color:#66d9ef">for</span> image_name, center, size <span style="color:#f92672">in</span> IMAGES:
         <span style="color:#66d9ef">for</span> coloring_name, coloring <span style="color:#f92672">in</span> COLORINGS:
-            filename <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{width}x{height}&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;mandelbrot_{name}_{width}x{height}_{coloring}.png&#39;</span>)
+            filename <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;{width}x{height}&#39;</span>, <span style="color:#e6db74">&#39;mandelbrot_{name}_{width}x{height}_{coloring}.png&#39;</span>)
             filename <span style="color:#f92672">=</span> filename<span style="color:#f92672">.</span>format(
                 name <span style="color:#f92672">=</span> image_name,
                 width <span style="color:#f92672">=</span> width,
@@ -1870,7 +1852,7 @@ IMAGES <span style="color:#f92672">=</span> [
                 os<span style="color:#f92672">.</span>makedirs(os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>dirname(filename))
             img<span style="color:#f92672">.</span>save(filename)
 
-            <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{} generated in {} seconds with {} threads&#39;</span><span style="color:#f92672">.</span>format(
+            <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;{} generated in {} seconds with {} threads&#39;</span><span style="color:#f92672">.</span>format(
                 filename,
                 end <span style="color:#f92672">-</span> start,
                 THREAD_COUNT
@@ -1881,67 +1863,43 @@ IMAGES <span style="color:#f92672">=</span> [
 
 <h3 id="seahorse-valley-h3">Seahorse Valley<h3></h3>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_seahorse-valley_400x300_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_seahorse-valley_400x300_hot-and-cold.png"/> 
 </figure>
 
 
 <p><h3>Double Scepter Valley</p>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_double-scepter-valley_400x300_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_double-scepter-valley_400x300_hot-and-cold.png"/> 
 </figure>
 
 
 <h3 id="triple-spiral-valley">Triple Spiral Valley</h3>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_triple-spiral-valley_400x300_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_triple-spiral-valley_400x300_hot-and-cold.png"/> 
 </figure>
 
 
 <h3 id="quad-spiral-valley">Quad Spiral Valley</h3>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_quad-spiral-valley_400x300_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_quad-spiral-valley_400x300_hot-and-cold.png"/> 
 </figure>
 
 
 <h3 id="mini-mandelbrot">Mini Mandelbrot</h3>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_mini-mandelbrot_400x300_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_mini-mandelbrot_400x300_hot-and-cold.png"/> 
 </figure>
 
 
 <p>Or how about one nice large one (right click, save as):</p>
 
-
-<figure >
-    
-        <img src="/embeds/2015/mandelbrot_seahorse-valley_1920x1080_hot-and-cold.png" />
-    
-    
+<figure>
+    <img src="/embeds/2015/mandelbrot_seahorse-valley_1920x1080_hot-and-cold.png"/> 
 </figure>
 
 

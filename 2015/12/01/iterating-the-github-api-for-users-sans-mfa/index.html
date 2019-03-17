@@ -1548,9 +1548,7 @@
     </header>
 
 	<div class="entry-content">
-		<p>Today I found myself auditing an organization&rsquo;s users to see which have <a href="https://en.wikipedia.org/wiki/multifactor%20authentication">multifactor authentication</a> enabled<sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go&hellip; and now I have a clean way of iterating across paginated GitHub API responses.</p>
-
-<p></p>
+		<p>Today I found myself auditing an organization&rsquo;s users to see which have <a href="https://en.wikipedia.org/wiki/multifactor%20authentication">multifactor authentication</a> enabled<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go&hellip; and now I have a clean way of iterating across paginated GitHub API responses.</p>
 
 <p>First, the full script:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
@@ -1559,22 +1557,22 @@
 <span style="color:#f92672">import</span> os
 
 <span style="color:#66d9ef">try</span>:
-    token <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;GITHUB_TOKEN&#39;</span>]
+    token <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;GITHUB_TOKEN&#39;</span>]
 <span style="color:#66d9ef">except</span>:
-    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;$GITHUB_TOKEN must be set with proper permission&#39;</span>)
+    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;$GITHUB_TOKEN must be set with proper permission&#39;</span>)
     sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">0</span>)
 
-headers <span style="color:#f92672">=</span> {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Authorization&#39;</span>: <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;token {}&#39;</span><span style="color:#f92672">.</span>format(token)}
+headers <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;Authorization&#39;</span>: <span style="color:#e6db74">&#39;token {}&#39;</span><span style="color:#f92672">.</span>format(token)}
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">api_iterator</span>(endpoint):
-    url <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;https://api.github.com&#39;</span> <span style="color:#f92672">+</span> endpoint
+    url <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;https://api.github.com&#39;</span> <span style="color:#f92672">+</span> endpoint
 
     <span style="color:#66d9ef">while</span> True:
         response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(url, headers <span style="color:#f92672">=</span> headers)
         <span style="color:#66d9ef">yield</span> <span style="color:#f92672">from</span> response.json()
 
-        <span style="color:#66d9ef">if</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;next&#39;</span> <span style="color:#f92672">in</span> response<span style="color:#f92672">.</span>links:
-            url <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>links[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;next&#39;</span>][<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;url&#39;</span>]
+        <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;next&#39;</span> <span style="color:#f92672">in</span> response<span style="color:#f92672">.</span>links:
+            url <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>links[<span style="color:#e6db74">&#39;next&#39;</span>][<span style="color:#e6db74">&#39;url&#39;</span>]
         <span style="color:#66d9ef">else</span>:
             <span style="color:#66d9ef">return</span></code></pre></div>
 <p>The core of this script once again leans against the excellent <a href="http://docs.python-requests.org/en/latest/">Requests</a> library for Python. It makes making simple requests and parsing the <a href="http://www.w3.org/wiki/LinkHeader">HTTP Link Header</a> trivial. Also, <code>yield from</code> is pretty cool.</p>
@@ -1582,12 +1580,12 @@ headers <span style="color:#f92672">=</span> {<span style="color:#e6db74"></span
 <p>Basically, we use these instructions to <a href="https://help.github.com/articles/creating-an-access-token-for-command-line-use/">create a GitHub access token</a>. You&rsquo;ll need at least the organization rights, I don&rsquo;t have an exact list. Unfortunately, it doesn&rsquo;t look like there is a way to do this with a username, password, and MFA token. I tried a few variations but it kept claiming that I wasn&rsquo;t an owner of the organization. So it goes.</p>
 
 <p>Now, if we wanted to use this for my original goal of finding users without MFA, you need the <code>/orgs/:organization/members</code> endpoint, with a specific filter:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">endpoint <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;/orgs/{}/members?filter=2fa_disabled&#39;</span><span style="color:#f92672">.</span>format(organization)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">endpoint <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;/orgs/{}/members?filter=2fa_disabled&#39;</span><span style="color:#f92672">.</span>format(organization)
 <span style="color:#66d9ef">for</span> user <span style="color:#f92672">in</span> api_iterator(endpoint):
-    <span style="color:#66d9ef">print</span>(user[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;login&#39;</span>])</code></pre></div>
+    <span style="color:#66d9ef">print</span>(user[<span style="color:#e6db74">&#39;login&#39;</span>])</code></pre></div>
 <p>Alternatively, you can use it just as easily to get all of your repositories (similar to what I did for my post on <a href="https://blog.jverkamp.com/2015/09/08/backing-up-github-repositories/">backing up GitHub repositories</a>):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">for</span> repo <span style="color:#f92672">in</span> api_iterator(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;/user/repos&#39;</span>):
-    <span style="color:#66d9ef">print</span>(repo[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;url&#39;</span>])</code></pre></div>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">for</span> repo <span style="color:#f92672">in</span> api_iterator(<span style="color:#e6db74">&#39;/user/repos&#39;</span>):
+    <span style="color:#66d9ef">print</span>(repo[<span style="color:#e6db74">&#39;url&#39;</span>])</code></pre></div>
 <p>Cool. Hope it&rsquo;s helpful!</p>
 
 <p>The full source for the MFA version is also available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/missing-mfa.py">missing-mfa.py</a></p>

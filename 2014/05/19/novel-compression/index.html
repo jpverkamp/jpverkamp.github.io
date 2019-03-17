@@ -1292,8 +1292,6 @@
 
 <p>(If you&rsquo;d like to follow along: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/novel-compression.rkt">full source</a>)</p>
 
-<p></p>
-
 <h2 id="decompression">Decompression</h2>
 
 <p>Given the ordering above (and the relative difficulty of the tasks) we&rsquo;ll start with decoding first. Eventually, we&rsquo;re going to have a single <code>decompress</code> function:</p>
@@ -1318,7 +1316,7 @@
  into <code>words</code> to decode words.</p>
 
 <p>Second things second, we need to break apart all of the tokens. Normally, I&rsquo;d use the <code><a href="http://docs.racket-lang.org/search/index.html?q=read">read</a></code>
- function and let Racket do some processing for us, but one token in particular (<code>.</code>) will cause some trouble. So instead, we&rsquo;ll read via loading the content into a string and splitting on spaces<sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup>.</p>
+ function and let Racket do some processing for us, but one token in particular (<code>.</code>) will cause some trouble. So instead, we&rsquo;ll read via loading the content into a string and splitting on spaces<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>.</p>
 
 <p>Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Read the rest of the file into a list of chunks</span>
@@ -1331,7 +1329,7 @@
 <p>It&rsquo;s a bit strange to be using <code><a href="http://docs.racket-lang.org/search/index.html?q=for/fold">for/fold</a></code>
 , but it seemed the cleanest way to be able to go &lsquo;back in time&rsquo; in the special case characters. Specifically, this will help a lot with &ldquo;-&rdquo; tokens, in that we know if we&rsquo;re going to use the normal space or not.</p>
 
-<p>The first case within the fold will be words. This is straight forward enough if it&rsquo;s purely numeric, but we might also have a suffix of either <code>!</code> (for upper case) or <code>^</code> (for titlecase). Regular expressions to the rescue<sup class="footnote-ref" id="fnref:2"><a rel="footnote" href="#fn:2">2</a></sup>!</p>
+<p>The first case within the fold will be words. This is straight forward enough if it&rsquo;s purely numeric, but we might also have a suffix of either <code>!</code> (for upper case) or <code>^</code> (for titlecase). Regular expressions to the rescue<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>!</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(match chunk
   <span style="color:#75715e">; Numbers indicate words from the dictionary</span>
   <span style="color:#75715e">; ^ means upcase the first letter</span>
@@ -1399,7 +1397,7 @@ I <span style="color:#66d9ef">do </span>not like them, Sam-I-am<span style="colo
 <span style="color:#75715e">; Store words we&#39;ve already seen along with a count</span>
 <span style="color:#75715e">; Later we&#39;re going to sort these so the most common are first</span>
 (<span style="color:#66d9ef">define </span>words (make-hash))</code></pre></div>
-<p><code>specialcase</code> is another extension that I&rsquo;m adding. Basically, if we have a word like LaTeX, we wouldn&rsquo;t be able to encode it as stands. What I&rsquo;m going to do is encode the three cases as described, but then anything else will get its own entry in the dictionary. So something like this would be a valid compressed file<sup class="footnote-ref" id="fnref:3"><a rel="footnote" href="#fn:3">3</a></sup>:</p>
+<p><code>specialcase</code> is another extension that I&rsquo;m adding. Basically, if we have a word like LaTeX, we wouldn&rsquo;t be able to encode it as stands. What I&rsquo;m going to do is encode the three cases as described, but then anything else will get its own entry in the dictionary. So something like this would be a valid compressed file<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>:</p>
 
 <pre><code> plaintext: latex Latex LATEX LaTeX
 compressed: 2 latex LaTeX 0 0^ 0! 1
@@ -1548,7 +1546,7 @@ I <span style="color:#66d9ef">do</span> not like them, Sam-I-am.</code></pre></d
 -rwx------+ <span style="color:#ae81ff">1</span> me None <span style="color:#ae81ff">190</span> May <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">19</span>:14 eggs.d.txt
 -rwx------+ <span style="color:#ae81ff">1</span> me None <span style="color:#ae81ff">197</span> May <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">19</span>:07 eggs.txt
 -rwx------+ <span style="color:#ae81ff">1</span> me None <span style="color:#ae81ff">235</span> May <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">19</span>:10 eggs.txt.nc</code></pre></div>
-<p>So&hellip; It actually made it bigger (and the output isn&rsquo;t <em>exactly</em> the same as the input, the newlines are different). Most of our compression is 1:2 (for I) or 2:2 (for do)<sup class="footnote-ref" id="fnref:4"><a rel="footnote" href="#fn:4">4</a></sup>. But if you have a larger text that still has a lot of duplicate text, say the first chapter of the Book of Genesis:</p>
+<p>So&hellip; It actually made it bigger (and the output isn&rsquo;t <em>exactly</em> the same as the input, the newlines are different). Most of our compression is 1:2 (for I) or 2:2 (for do)<sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup>. But if you have a larger text that still has a lot of duplicate text, say the first chapter of the Book of Genesis:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">$ <span style="color:#f92672">.</span>/novel-compression -c genesis<span style="color:#f92672">.</span>txt genesis<span style="color:#f92672">.</span>txt<span style="color:#f92672">.</span>nc
 Compress genesis<span style="color:#f92672">.</span>txt -&gt; genesis<span style="color:#f92672">.</span>txt<span style="color:#f92672">.</span>nc
 

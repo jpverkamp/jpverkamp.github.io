@@ -1591,7 +1591,6 @@
 	<div class="entry-content">
 		<p>Another script similar to my previous post about <a href="https://blog.jverkamp.com/2015/07/22/finding-aws-iam-users-by-access-key/">Finding AWS IAM users by access key</a>. This time, we want to do much the same thing for EC2 instances by tag.</p>
 
-<p></p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
 
 <span style="color:#f92672">import</span> argparse
@@ -1600,20 +1599,20 @@
 <span style="color:#f92672">import</span> re
 <span style="color:#f92672">import</span> sys
 
-parser <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>ArgumentParser(description <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Find out information about EC2 instances&#39;</span>)
-parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;--region&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;us-west-2&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;The AWS region to search&#39;</span>)
-parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;--limit&#39;</span>, type <span style="color:#f92672">=</span> int, default <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;How many results to report, 0 will return all&#39;</span>)
-parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;--output&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;private_ip_address&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;The output to fetch for each instance; json will output a json object will all of the outputs&#39;</span>)
-parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;filters&#39;</span>, nargs <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>REMAINDER, help <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Regular expressions to apply to each tag&#39;</span>)
+parser <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>ArgumentParser(description <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Find out information about EC2 instances&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;--region&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;us-west-2&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The AWS region to search&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;--limit&#39;</span>, type <span style="color:#f92672">=</span> int, default <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;How many results to report, 0 will return all&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;--output&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;private_ip_address&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The output to fetch for each instance; json will output a json object will all of the outputs&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;filters&#39;</span>, nargs <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>REMAINDER, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Regular expressions to apply to each tag&#39;</span>)
 args <span style="color:#f92672">=</span> parser<span style="color:#f92672">.</span>parse_args()
 
-ec2 <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span>ec2<span style="color:#f92672">.</span>connect_to_region(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;us-west-2&#39;</span>)
+ec2 <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span>ec2<span style="color:#f92672">.</span>connect_to_region(<span style="color:#e6db74">&#39;us-west-2&#39;</span>)
 
 <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> args<span style="color:#f92672">.</span>filters:
-    <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">Exception</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;You must specify at least one instance&#39;</span>)
+    <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">Exception</span>(<span style="color:#e6db74">&#39;You must specify at least one instance&#39;</span>)
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">include_instance</span>(instance):
-    <span style="color:#66d9ef">if</span> instance<span style="color:#f92672">.</span>state <span style="color:#f92672">!=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;running&#39;</span>:
+    <span style="color:#66d9ef">if</span> instance<span style="color:#f92672">.</span>state <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#39;running&#39;</span>:
         <span style="color:#66d9ef">return</span>
 
     <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> args<span style="color:#f92672">.</span>filters:
@@ -1622,7 +1621,7 @@ ec2 <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span
     <span style="color:#66d9ef">for</span> filter <span style="color:#f92672">in</span> args<span style="color:#f92672">.</span>filters:
         <span style="color:#66d9ef">for</span> tag_key <span style="color:#f92672">in</span> instance<span style="color:#f92672">.</span>tags:
             tag_value <span style="color:#f92672">=</span> instance<span style="color:#f92672">.</span>tags[tag_key]
-            tag <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{}={}&#39;</span><span style="color:#f92672">.</span>format(tag_key, tag_value)<span style="color:#f92672">.</span>lower()
+            tag <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;{}={}&#39;</span><span style="color:#f92672">.</span>format(tag_key, tag_value)<span style="color:#f92672">.</span>lower()
 
             <span style="color:#66d9ef">if</span> re<span style="color:#f92672">.</span>search(filter, tag_value):
                 <span style="color:#66d9ef">return</span> instance
@@ -1635,7 +1634,7 @@ ec2 <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span
                 <span style="color:#66d9ef">yield</span> instance
 
 <span style="color:#66d9ef">for</span> i, instance <span style="color:#f92672">in</span> enumerate(filter(), <span style="color:#ae81ff">1</span>):
-    <span style="color:#66d9ef">if</span> args<span style="color:#f92672">.</span>output <span style="color:#f92672">==</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;json&#39;</span>:
+    <span style="color:#66d9ef">if</span> args<span style="color:#f92672">.</span>output <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;json&#39;</span>:
         <span style="color:#66d9ef">print</span>(json<span style="color:#f92672">.</span>dumps(instance<span style="color:#f92672">.</span>__dict__, default <span style="color:#f92672">=</span> str))
     <span style="color:#66d9ef">else</span>:
         <span style="color:#66d9ef">print</span>(getattr(instance, args<span style="color:#f92672">.</span>output))
@@ -1643,7 +1642,7 @@ ec2 <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span
     <span style="color:#66d9ef">if</span> args<span style="color:#f92672">.</span>limit <span style="color:#f92672">and</span> i <span style="color:#f92672">&gt;=</span> args<span style="color:#f92672">.</span>limit:
         <span style="color:#66d9ef">break</span></code></pre></div>
 <p>It&rsquo;s original goal was to get a single IP from a group of servers with a specific tag so that I could log in and poke around:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ssh <span style="color:#e6db74">`</span>ec2 prod-server<span style="color:#e6db74">`</span></code></pre></div>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ssh &amp;grave;ec2 prod-server&amp;grave;</code></pre></div>
 <p>There are a few other uses though, especially when combined with other tools such as <a href="https://stedolan.github.io/jq/"><code>jq</code></a>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">ec2 --limit <span style="color:#ae81ff">0</span> --output json | jq <span style="color:#e6db74">&#39;.instance_type&#39;</span> | sort | uniq -c | sort -nr
 

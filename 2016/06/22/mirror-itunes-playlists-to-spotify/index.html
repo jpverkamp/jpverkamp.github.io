@@ -1568,42 +1568,40 @@
 
 <p>One nice thing that Spotify does have though is a fairly powerful API: <a href="https://developer.spotify.com/web-api/">Spotify Web API</a>. Inspired by a post on <a href="http://aguo.us/writings/spotify-billboard.html">Spotify and billboard.py</a> which automatically creates Spotify playlists from the Billboard music ranking charts, I decided to write up a script that can sync my playlists from iTunes to Spotify.</p>
 
-<p></p>
-
 <p>First, let&rsquo;s write a method that uses the Spotify web API to search for tracks (or actually any <code>type</code>, such as an artist):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@memory.cache</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">spotify_search</span>(type, retries <span style="color:#f92672">=</span> <span style="color:#ae81ff">3</span>, <span style="color:#f92672">**</span>params):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Search for an item on the spotify API.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Search for an item on the spotify API.&#39;&#39;&#39;</span>
 
-    logging<span style="color:#f92672">.</span>debug(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;spotify_search({}, {})&#39;</span><span style="color:#f92672">.</span>format(type, params))
+    logging<span style="color:#f92672">.</span>debug(<span style="color:#e6db74">&#39;spotify_search({}, {})&#39;</span><span style="color:#f92672">.</span>format(type, params))
 
-    url <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;https://api.spotify.com/v1/search&#39;</span>
-    query <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{key}:{value}&#39;</span><span style="color:#f92672">.</span>format(key <span style="color:#f92672">=</span> key, value <span style="color:#f92672">=</span> params[key])
+    url <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;https://api.spotify.com/v1/search&#39;</span>
+    query <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(
+        <span style="color:#e6db74">&#39;{key}:{value}&#39;</span><span style="color:#f92672">.</span>format(key <span style="color:#f92672">=</span> key, value <span style="color:#f92672">=</span> params[key])
         <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> params
     )
 
-    response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(url, {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;type&#39;</span>: type, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;q&#39;</span>: query})
+    response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(url, {<span style="color:#e6db74">&#39;type&#39;</span>: type, <span style="color:#e6db74">&#39;q&#39;</span>: query})
 
     <span style="color:#66d9ef">if</span> response<span style="color:#f92672">.</span>status_code <span style="color:#f92672">==</span> <span style="color:#ae81ff">419</span>:
-        timeout <span style="color:#f92672">=</span> int(response<span style="color:#f92672">.</span>headers[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Retry-After&#39;</span>])
-        sys<span style="color:#f92672">.</span>stderr<span style="color:#f92672">.</span>write(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Rate limited, waiting {} seconds...</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>format(timeout))
+        timeout <span style="color:#f92672">=</span> int(response<span style="color:#f92672">.</span>headers[<span style="color:#e6db74">&#39;Retry-After&#39;</span>])
+        sys<span style="color:#f92672">.</span>stderr<span style="color:#f92672">.</span>write(<span style="color:#e6db74">&#39;Rate limited, waiting {} seconds...</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>format(timeout))
         time<span style="color:#f92672">.</span>sleep(timeout)
         <span style="color:#66d9ef">return</span> spotify_search(type, retries <span style="color:#f92672">=</span> <span style="color:#ae81ff">3</span>, <span style="color:#f92672">**</span>params)
 
     <span style="color:#66d9ef">if</span> response<span style="color:#f92672">.</span>status_code <span style="color:#f92672">!=</span> <span style="color:#ae81ff">200</span>:
         <span style="color:#66d9ef">if</span> retries:
-            logging<span style="color:#f92672">.</span>warning(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Non-200 status code for {}, retrying in 1 second...</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>format(query))
+            logging<span style="color:#f92672">.</span>warning(<span style="color:#e6db74">&#39;Non-200 status code for {}, retrying in 1 second...</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>format(query))
             time<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">1</span>)
             <span style="color:#66d9ef">return</span> spotify_search(type, retries <span style="color:#f92672">=</span> retries <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, <span style="color:#f92672">**</span>params)
         <span style="color:#66d9ef">else</span>:
-            logging<span style="color:#f92672">.</span>critical(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Non-200 status code for {}, no more retries&#39;</span><span style="color:#f92672">.</span>format(query))
-            <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">Exception</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Error in spotify api for {}&#39;</span><span style="color:#f92672">.</span>format(query))
+            logging<span style="color:#f92672">.</span>critical(<span style="color:#e6db74">&#39;Non-200 status code for {}, no more retries&#39;</span><span style="color:#f92672">.</span>format(query))
+            <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">Exception</span>(<span style="color:#e6db74">&#39;Error in spotify api for {}&#39;</span><span style="color:#f92672">.</span>format(query))
 
-    type_plural <span style="color:#f92672">=</span> type <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;s&#39;</span>
+    type_plural <span style="color:#f92672">=</span> type <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;s&#39;</span>
 
-    <span style="color:#66d9ef">if</span> response<span style="color:#f92672">.</span>json()[type_plural][<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;total&#39;</span>] <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>:
-        <span style="color:#66d9ef">return</span> response<span style="color:#f92672">.</span>json()[type_plural][<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;items&#39;</span>][<span style="color:#ae81ff">0</span>]
+    <span style="color:#66d9ef">if</span> response<span style="color:#f92672">.</span>json()[type_plural][<span style="color:#e6db74">&#39;total&#39;</span>] <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>:
+        <span style="color:#66d9ef">return</span> response<span style="color:#f92672">.</span>json()[type_plural][<span style="color:#e6db74">&#39;items&#39;</span>][<span style="color:#ae81ff">0</span>]
     <span style="color:#66d9ef">else</span>:
         <span style="color:#66d9ef">return</span> None</code></pre></div>
 <p>Essentially, it&rsquo;s just a call to the API endpoint <code>/v1/search</code>. The only two odd parts are how the query string is formatted (it looks something like this: <code>Artist:Arist Name Song:Song Name</code>) and the <code>memory.cache</code> decorator.</p>
@@ -1612,36 +1610,32 @@
 
 <p>Now that we have a way of looking up songs, lets write a few more helper methods to read from the iTunes library. The first thing that you have to do is check the Advanced setting to &lsquo;Share iTunes Library XML with other applications&rsquo;:</p>
 
-
-<figure >
-    
-        <img src="/embeds/2016/itunes-settings.png" />
-    
-    
+<figure>
+    <img src="/embeds/2016/itunes-settings.png"/> 
 </figure>
 
 
 <p>This will make the file <code>iTunes Library.xml</code> / <code>iTunes Music Library.xml</code> (it changed between Yosemite and El Capitan) available in your iTunes folder. This is a <a href="https://en.wikipedia.org/wiki/plist">plist</a> file which means the built in <a href="https://docs.python.org/2/library/plistlib.html">plistlib</a> can read it directly:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">path <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>expanduser(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;~/Music/iTunes/iTunes Music Library.xml&#39;</span>)
-<span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;rb&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">path <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>expanduser(<span style="color:#e6db74">&#39;~/Music/iTunes/iTunes Music Library.xml&#39;</span>)
+<span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74">&#39;rb&#39;</span>) <span style="color:#66d9ef">as</span> fin:
     ITUNES_LIBRARY <span style="color:#f92672">=</span> plistlib<span style="color:#f92672">.</span>load(fin)</code></pre></div>
 <p>We can then use this directly to read in information about any given track that we have in our library.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@memory.cache</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_track</span>(track_id):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Get a track by ID.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Get a track by ID.&#39;&#39;&#39;</span>
 
-    logging<span style="color:#f92672">.</span>debug(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;get_track({})&#39;</span><span style="color:#f92672">.</span>format(track_id))
+    logging<span style="color:#f92672">.</span>debug(<span style="color:#e6db74">&#39;get_track({})&#39;</span><span style="color:#f92672">.</span>format(track_id))
 
-    track <span style="color:#f92672">=</span> ITUNES_LIBRARY[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Tracks&#39;</span>]<span style="color:#f92672">.</span>get(str(track_id), None)
+    track <span style="color:#f92672">=</span> ITUNES_LIBRARY[<span style="color:#e6db74">&#39;Tracks&#39;</span>]<span style="color:#f92672">.</span>get(str(track_id), None)
     <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> track:
         <span style="color:#66d9ef">return</span> None
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">remove_parentheticals</span>(s):
-        <span style="color:#66d9ef">return</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;\s+[\(\[].*[\)\]]&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;</span>, s)
+        <span style="color:#66d9ef">return</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;\s+[\(\[].*[\)\]]&#39;</span>, <span style="color:#e6db74">&#39;&#39;</span>, s)
 
-    spotify_data <span style="color:#f92672">=</span> spotify_search(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;track&#39;</span>,
-        artist <span style="color:#f92672">=</span> remove_parentheticals(track[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Artist&#39;</span>]),
-        track <span style="color:#f92672">=</span> remove_parentheticals(track[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Name&#39;</span>]),
+    spotify_data <span style="color:#f92672">=</span> spotify_search(<span style="color:#e6db74">&#39;track&#39;</span>,
+        artist <span style="color:#f92672">=</span> remove_parentheticals(track[<span style="color:#e6db74">&#39;Artist&#39;</span>]),
+        track <span style="color:#f92672">=</span> remove_parentheticals(track[<span style="color:#e6db74">&#39;Name&#39;</span>]),
     )
 
     <span style="color:#66d9ef">if</span> spotify_data:
@@ -1652,34 +1646,34 @@
 
 <p>Next, we want to look up playlists:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_playlists</span>():
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+    <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">    Return all playlists for the current user.
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">    Each will be of the form:
 </span><span style="color:#e6db74">    {&#39;name&#39;: &#39;{playlist_name}&#39;, &#39;tracks&#39;: [...]}
 </span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
 
-    <span style="color:#66d9ef">for</span> playlist <span style="color:#f92672">in</span> ITUNES_LIBRARY[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Playlists&#39;</span>]:
-        <span style="color:#66d9ef">if</span> any(key <span style="color:#f92672">in</span> playlist <span style="color:#f92672">and</span> playlist[key] <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> [<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Master&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Movies&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;TV Shows&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Podcasts&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;iTunesU&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Audiobooks&#39;</span>]):
+    <span style="color:#66d9ef">for</span> playlist <span style="color:#f92672">in</span> ITUNES_LIBRARY[<span style="color:#e6db74">&#39;Playlists&#39;</span>]:
+        <span style="color:#66d9ef">if</span> any(key <span style="color:#f92672">in</span> playlist <span style="color:#f92672">and</span> playlist[key] <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> [<span style="color:#e6db74">&#39;Master&#39;</span>, <span style="color:#e6db74">&#39;Movies&#39;</span>, <span style="color:#e6db74">&#39;TV Shows&#39;</span>, <span style="color:#e6db74">&#39;Podcasts&#39;</span>, <span style="color:#e6db74">&#39;iTunesU&#39;</span>, <span style="color:#e6db74">&#39;Audiobooks&#39;</span>]):
             <span style="color:#66d9ef">continue</span>
 
         <span style="color:#66d9ef">yield</span> {
-            <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;name&#39;</span>: playlist[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Name&#39;</span>],
-            <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;tracks&#39;</span>: [
-                get_track(track[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Track ID&#39;</span>])
-                <span style="color:#66d9ef">for</span> track <span style="color:#f92672">in</span> playlist[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Playlist Items&#39;</span>]
-                <span style="color:#66d9ef">if</span> get_track(track[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Track ID&#39;</span>])
+            <span style="color:#e6db74">&#39;name&#39;</span>: playlist[<span style="color:#e6db74">&#39;Name&#39;</span>],
+            <span style="color:#e6db74">&#39;tracks&#39;</span>: [
+                get_track(track[<span style="color:#e6db74">&#39;Track ID&#39;</span>])
+                <span style="color:#66d9ef">for</span> track <span style="color:#f92672">in</span> playlist[<span style="color:#e6db74">&#39;Playlist Items&#39;</span>]
+                <span style="color:#66d9ef">if</span> get_track(track[<span style="color:#e6db74">&#39;Track ID&#39;</span>])
             ]
         }</code></pre></div>
 <p>This is a bit odd, since there are many different kinds of playlists in the iTunes library, not all of which have the same keys. With a bit of experimentation, I found that the list of keys above are the ones we want to avoid. Other than that, we will <code>yield</code> each playlist along with a list of track objects from <code>get_track</code>. This is why I cached those results, since a track can (and often will be) in multiple playlists and we don&rsquo;t want to re-fetch the track information if that&rsquo;s the case.</p>
 
 <p>That&rsquo;s actually the lion&rsquo;s share of what I need. All that&rsquo;s left is the code to create / find Spotify playlists and then add the songs to them. For that, I&rsquo;m going to use the <a href="https://github.com/plamere/spotipy">spotipy</a> library rather than directly dealing with the endpoints. For the most part, it really helps with the OAuth tokens. All we have to do to create a Spotipy client is this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">token <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</span>util<span style="color:#f92672">.</span>prompt_for_user_token(
-    os<span style="color:#f92672">.</span>env[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;SPOTIFY_USERNAME&#39;</span>],
-    client_id <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;SPOTIFY_CLIENT_ID&#39;</span>],
-    client_secret <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;SPOTIFY_CLIENT_SECRET&#39;</span>],
-    redirect_uri <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;SPOTIFY_REDIRECT_URI&#39;</span>],
-    scope <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;SPOTIFY_SCOPE&#39;</span>],
+    os<span style="color:#f92672">.</span>env[<span style="color:#e6db74">&#39;SPOTIFY_USERNAME&#39;</span>],
+    client_id <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74">&#39;SPOTIFY_CLIENT_ID&#39;</span>],
+    client_secret <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74">&#39;SPOTIFY_CLIENT_SECRET&#39;</span>],
+    redirect_uri <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74">&#39;SPOTIFY_REDIRECT_URI&#39;</span>],
+    scope <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74">&#39;SPOTIFY_SCOPE&#39;</span>],
 )
 
 sp <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</span>Spotify(auth <span style="color:#f92672">=</span> token)</code></pre></div>
@@ -1687,27 +1681,27 @@ sp <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</sp
 
 <p>I&rsquo;m going to use that to write one more helper method:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_spotify_playlist</span>(title):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Get either an existing or new playlist by title.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Get either an existing or new playlist by title.&#39;&#39;&#39;</span>
 
-    playlists <span style="color:#f92672">=</span> sp<span style="color:#f92672">.</span>user_playlists(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;id&#39;</span>])[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;items&#39;</span>]
+    playlists <span style="color:#f92672">=</span> sp<span style="color:#f92672">.</span>user_playlists(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74">&#39;id&#39;</span>])[<span style="color:#e6db74">&#39;items&#39;</span>]
     <span style="color:#66d9ef">for</span> playlist <span style="color:#f92672">in</span> playlists:
-        <span style="color:#66d9ef">if</span> title <span style="color:#f92672">==</span> playlist[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;name&#39;</span>]:
+        <span style="color:#66d9ef">if</span> title <span style="color:#f92672">==</span> playlist[<span style="color:#e6db74">&#39;name&#39;</span>]:
             <span style="color:#66d9ef">return</span> playlist
 
-    <span style="color:#66d9ef">return</span> sp<span style="color:#f92672">.</span>user_playlist_create(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;id&#39;</span>], title)</code></pre></div>
+    <span style="color:#66d9ef">return</span> sp<span style="color:#f92672">.</span>user_playlist_create(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74">&#39;id&#39;</span>], title)</code></pre></div>
 <p><a href="http://aguo.us/writings/spotify-billboard.html">The article</a> that inspired this code only used the <code>user_playlist_create</code> method, but that will create a new playlist on each run. Instead, we want to check if there&rsquo;s already a playlist matching the name that we&rsquo;re trying to create. If so, return that playlist. If not, create a new one to return.</p>
 
 <p>Now we have everything we need. We can write a script that will loop through any iTunes playlists specified on the command line (or all of them if none are specified) and sync them to Spotify:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">for</span> playlist <span style="color:#f92672">in</span> get_playlists():
-    <span style="color:#66d9ef">if</span> len(sys<span style="color:#f92672">.</span>argv) <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">and</span> playlist[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;name&#39;</span>] <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> sys<span style="color:#f92672">.</span>argv:
+    <span style="color:#66d9ef">if</span> len(sys<span style="color:#f92672">.</span>argv) <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">and</span> playlist[<span style="color:#e6db74">&#39;name&#39;</span>] <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> sys<span style="color:#f92672">.</span>argv:
         <span style="color:#66d9ef">continue</span>
 
-    spotify_playlist <span style="color:#f92672">=</span> get_spotify_playlist(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;iTunes - {}&#39;</span><span style="color:#f92672">.</span>format(playlist[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;name&#39;</span>]))
+    spotify_playlist <span style="color:#f92672">=</span> get_spotify_playlist(<span style="color:#e6db74">&#39;iTunes - {}&#39;</span><span style="color:#f92672">.</span>format(playlist[<span style="color:#e6db74">&#39;name&#39;</span>]))
 
     uris <span style="color:#f92672">=</span> [
-        track[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;uri&#39;</span>] <span style="color:#66d9ef">for</span>
-        track <span style="color:#f92672">in</span> playlist[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;tracks&#39;</span>]
-        <span style="color:#66d9ef">if</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;uri&#39;</span> <span style="color:#f92672">in</span> track
+        track[<span style="color:#e6db74">&#39;uri&#39;</span>] <span style="color:#66d9ef">for</span>
+        track <span style="color:#f92672">in</span> playlist[<span style="color:#e6db74">&#39;tracks&#39;</span>]
+        <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;uri&#39;</span> <span style="color:#f92672">in</span> track
     ]
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">chunks</span>(items, size):
@@ -1715,7 +1709,7 @@ sp <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</sp
             <span style="color:#66d9ef">yield</span> items[start : start <span style="color:#f92672">+</span> size]
 
     <span style="color:#66d9ef">for</span> uri_chunk <span style="color:#f92672">in</span> chunks(uris, <span style="color:#ae81ff">100</span>):
-        sp<span style="color:#f92672">.</span>user_playlist_add_tracks(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;id&#39;</span>], spotify_playlist[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;id&#39;</span>], uri_chunk)</code></pre></div>
+        sp<span style="color:#f92672">.</span>user_playlist_add_tracks(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74">&#39;id&#39;</span>], spotify_playlist[<span style="color:#e6db74">&#39;id&#39;</span>], uri_chunk)</code></pre></div>
 <p>I did hit one interesting temporary roadblock in that the Spotify API cannot accept more than 100 URIs at a time, but the <code>chunk</code> method took care of that. One thing that is nice is that the list of songs in a playlist form a set. So it doesn&rsquo;t matter if we add the same song to a playlist more than once, it will still only exist a single time. That&rsquo;s pretty cool!</p>
 
 <p>And that&rsquo;s it. A quick run (it took a few minutes to get all of the information for the 500 songs I have in my iTunes library) and I now have a Spotify playlist for each of my iTunes ones. It&rsquo;s not perfect. There are still a few artists that are on Apple Music but not Spotify. But for a stopgap and when I&rsquo;m on computers that don&rsquo;t have my iTunes library, it works pretty well. I&rsquo;ll probably set this up to run periodically, just so I always have my playlists relatively up to date.</p>

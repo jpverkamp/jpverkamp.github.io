@@ -2029,35 +2029,33 @@
 <p>What is the total score of your input?</p>
 </blockquote>
 
-<p></p>
-
-<p>Since the <code>groups</code> can be nested, they can&rsquo;t<sup class="footnote-ref" id="fnref:doOrDoNot"><a rel="footnote" href="#fn:doOrDoNot">1</a></sup> be parsed with <a href="https://en.wikipedia.org/wiki/regular%20expressions">regular expressions</a>. The language is relatively simple enough that we could directly write a <a href="https://en.wikipedia.org/wiki/Parsing#Computer_languages">parser</a> (keeping a stack of how deep we are currently nested in <code>groups</code>), but this sounds like a wonderful excuse to use the <a href="http://pyparsing.wikispaces.com/">PyParsing</a> module:</p>
+<p>Since the <code>groups</code> can be nested, they can&rsquo;t<sup class="footnote-ref" id="fnref:doOrDoNot"><a href="#fn:doOrDoNot">1</a></sup> be parsed with <a href="https://en.wikipedia.org/wiki/regular%20expressions">regular expressions</a>. The language is relatively simple enough that we could directly write a <a href="https://en.wikipedia.org/wiki/Parsing#Computer_languages">parser</a> (keeping a stack of how deep we are currently nested in <code>groups</code>), but this sounds like a wonderful excuse to use the <a href="http://pyparsing.wikispaces.com/">PyParsing</a> module:</p>
 
 <p>First, we want to define <code>garbage</code>, since it cannot have anything nested in it. Garbage works essentially like a string:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">garbage <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Suppress(pp<span style="color:#f92672">.</span>QuotedString(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&lt;&#39;</span>, escChar <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;!&#39;</span>, endQuoteChar<span style="color:#f92672">=</span><span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&gt;&#39;</span>))</code></pre></div>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">garbage <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Suppress(pp<span style="color:#f92672">.</span>QuotedString(<span style="color:#e6db74">&#39;&lt;&#39;</span>, escChar <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;!&#39;</span>, endQuoteChar<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;&gt;&#39;</span>))</code></pre></div>
 <p>And then <code>groups</code> can contain either nested <code>groups</code>, <code>garbage</code>, or data:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">group <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Forward()
 data <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Regex(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;[^}]+&#39;</span>)
 
 group <span style="color:#f92672">&lt;&lt;</span> pp<span style="color:#f92672">.</span>Group(
-    pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{&#39;</span>)
+    pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74">&#39;{&#39;</span>)
     <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Optional(pp<span style="color:#f92672">.</span>delimitedList(group <span style="color:#f92672">|</span> garbage <span style="color:#f92672">|</span> data))
-    <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;}&#39;</span>)
+    <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74">&#39;}&#39;</span>)
 )</code></pre></div>
 <p>We have to use <a href="https://pythonhosted.org/pyparsing/pyparsing.Forward-class.html">Forward</a> since <code>groups</code> can be nested within themselves.</p>
 
 <p>With those definitions, we can put together a parsing function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">parse</span>(stream):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Implement a pyparsing parser for the stream format.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Implement a pyparsing parser for the stream format.&#39;&#39;&#39;</span>
 
     group <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Forward()
-    garbage <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Suppress(pp<span style="color:#f92672">.</span>QuotedString(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&lt;&#39;</span>, escChar <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;!&#39;</span>, endQuoteChar<span style="color:#f92672">=</span><span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&gt;&#39;</span>))
+    garbage <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Suppress(pp<span style="color:#f92672">.</span>QuotedString(<span style="color:#e6db74">&#39;&lt;&#39;</span>, escChar <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;!&#39;</span>, endQuoteChar<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;&gt;&#39;</span>))
     data <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Regex(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;[^}]+&#39;</span>)
 
     group <span style="color:#f92672">&lt;&lt;</span> pp<span style="color:#f92672">.</span>Group(
-        pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{&#39;</span>)
+        pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74">&#39;{&#39;</span>)
         <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Optional(pp<span style="color:#f92672">.</span>delimitedList(group <span style="color:#f92672">|</span> garbage <span style="color:#f92672">|</span> data))
-        <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;}&#39;</span>)
+        <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74">&#39;}&#39;</span>)
     )
 
     parser <span style="color:#f92672">=</span> (group <span style="color:#f92672">|</span> garbage)
@@ -2067,7 +2065,7 @@ group <span style="color:#f92672">&lt;&lt;</span> pp<span style="color:#f92672">
         <span style="color:#66d9ef">return</span> data[<span style="color:#ae81ff">0</span>]</code></pre></div>
 <p>Now that we can parse the data, we can score it recursively:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">score_groups</span>(data, depth <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+    <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">    The score of a group is equal to its depth.
 </span><span style="color:#e6db74">    The score of data is equal to the sum of its groups.
 </span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
@@ -2097,7 +2095,7 @@ total_score <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">_last_garbage_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">parse</span>(stream):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Implement a pyparsing parser for the stream format.&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Implement a pyparsing parser for the stream format.&#39;&#39;&#39;</span>
 
     <span style="color:#66d9ef">global</span> _last_garbage_count
     _last_garbage_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
@@ -2107,9 +2105,9 @@ total_score <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</
     data <span style="color:#f92672">=</span> pp<span style="color:#f92672">.</span>Regex(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;[^}]+&#39;</span>)
 
     group <span style="color:#f92672">&lt;&lt;</span> pp<span style="color:#f92672">.</span>Group(
-        pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{&#39;</span>)
+        pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74">&#39;{&#39;</span>)
         <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Optional(pp<span style="color:#f92672">.</span>delimitedList(group <span style="color:#f92672">|</span> garbage <span style="color:#f92672">|</span> data))
-        <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;}&#39;</span>)
+        <span style="color:#f92672">+</span> pp<span style="color:#f92672">.</span>Suppress(<span style="color:#e6db74">&#39;}&#39;</span>)
     )
 
     parser <span style="color:#f92672">=</span> (group <span style="color:#f92672">|</span> garbage)
@@ -2129,7 +2127,7 @@ total_garbage <span style="color:#f92672">=</span> <span style="color:#ae81ff">0
 
     total_garbage <span style="color:#f92672">+=</span> _last_garbage_count
 
-<span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;score: {}, garbage: {}&#39;</span><span style="color:#f92672">.</span>format(total_score, total_garbage))</code></pre></div>
+<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;score: {}, garbage: {}&#39;</span><span style="color:#f92672">.</span>format(total_score, total_garbage))</code></pre></div>
 <p>It&rsquo;s a big ugly (with the global variable), but so it goes.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 run-all.py day-09
 

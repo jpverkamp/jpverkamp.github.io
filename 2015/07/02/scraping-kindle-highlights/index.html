@@ -1583,21 +1583,19 @@
 	<div class="entry-content">
 		<p>As part of an ongoing effort to <a href="https://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps/">backup all the things</a>, combined with a rather agressive <a href="https://blog.jverkamp.com/2015/12/31/2015-reading-list-retrospective/">2015 Reading List</a>, I wanted to the ability to back up any sections that I&rsquo;ve highlighted on my Kindle. Unfortunately, Amazon doesn&rsquo;t seem to have an API to do that, but why should that stop me?</p>
 
-<p>Using a combination of <a href="https://blog.jverkamp.com/2007/10/20/pymint---a-python-multi-interpreter/">Python</a> and the Python libraries <a href="http://docs.python-requests.org/en/latest/">Requests</a> and <a href="http://www.crummy.com/software/BeautifulSoup/">BeautifulSoup</a><sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup>, it&rsquo;s entirely possible to write a Python script that will log into Amazon, get a list of all of the books on your account, and download the highlights for each.</p>
+<p>Using a combination of <a href="https://blog.jverkamp.com/2007/10/20/pymint-a-python-multi-interpreter/">Python</a> and the Python libraries <a href="http://docs.python-requests.org/en/latest/">Requests</a> and <a href="http://www.crummy.com/software/BeautifulSoup/">BeautifulSoup</a><sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>, it&rsquo;s entirely possible to write a Python script that will log into Amazon, get a list of all of the books on your account, and download the highlights for each.</p>
 
 <p>Let&rsquo;s do it!</p>
-
-<p></p>
 
 <p>First, we are going to be using a Requests <code>session</code>. This will keep track of any cookies that Amazon decides to send us so that we know that we&rsquo;re logged in.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">session <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>Session()</code></pre></div>
 <p>After that, the next thing we need to do is to use requests to log into Amazon. Loading up the login page (<code>https://kindle.amazon.com/login</code>), we see that the <code>form</code> target is a <code>POST</code> request to <code>https://www.amazon.com/ap/signin</code>, specifying the fields <code>email</code> and <code>password</code>. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">signin_data <span style="color:#f92672">=</span> {}
 
-signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;email&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;AMAZON_USERNAME&#39;</span>]
-signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;password&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;AMAZON_PASSWORD&#39;</span>]
+signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;email&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;AMAZON_USERNAME&#39;</span>]
+signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;password&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;AMAZON_PASSWORD&#39;</span>]
 
-response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>post(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;https://www.amazon.com/ap/signin&#39;</span>, data <span style="color:#f92672">=</span> signin_data)</code></pre></div>
+response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>post(<span style="color:#e6db74">&#39;https://www.amazon.com/ap/signin&#39;</span>, data <span style="color:#f92672">=</span> signin_data)</code></pre></div>
 <p>I&rsquo;m reading my Amazon username and password from the environment. In general, that means I can have a simple file like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">export AMAZON_USERNAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;me@example.com&#34;</span>
 export AMAZON_PASSWORD<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;correct horse battery staple&#34;</span></code></pre></div>
@@ -1605,29 +1603,29 @@ export AMAZON_PASSWORD<span style="color:#f92672">=</span><span style="color:#e6
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">. ./env.conf <span style="color:#f92672">&amp;&amp;</span> python3 kindle-highlights-backups.py</code></pre></div>
 <p>That should work, but unfortunately it doesn&rsquo;t. It looks like Amazon is sending a small pile of hidden fields. Theoretically, I could look at the page and hard code them, but where&rsquo;s the fun in that? Instead, let&rsquo;s use Requests to grab the login page and BeautifulSoup to parse out all of the fiels we&rsquo;re going to send:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Log in to Amazon, we have to get the real login page to bypass CSRF</span>
-<span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Logging in...&#39;</span>)
-response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>get(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;https://kindle.amazon.com/login&#39;</span>)
+<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;Logging in...&#39;</span>)
+response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>get(<span style="color:#e6db74">&#39;https://kindle.amazon.com/login&#39;</span>)
 soup <span style="color:#f92672">=</span> bs4<span style="color:#f92672">.</span>BeautifulSoup(response<span style="color:#f92672">.</span>text)
 
 signin_data <span style="color:#f92672">=</span> {}
-signin_form <span style="color:#f92672">=</span> soup<span style="color:#f92672">.</span>find(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;form&#39;</span>, {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;name&#39;</span>: <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;signIn&#39;</span>})
-<span style="color:#66d9ef">for</span> field <span style="color:#f92672">in</span> signin_form<span style="color:#f92672">.</span>find_all(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;input&#39;</span>):
+signin_form <span style="color:#f92672">=</span> soup<span style="color:#f92672">.</span>find(<span style="color:#e6db74">&#39;form&#39;</span>, {<span style="color:#e6db74">&#39;name&#39;</span>: <span style="color:#e6db74">&#39;signIn&#39;</span>})
+<span style="color:#66d9ef">for</span> field <span style="color:#f92672">in</span> signin_form<span style="color:#f92672">.</span>find_all(<span style="color:#e6db74">&#39;input&#39;</span>):
     <span style="color:#66d9ef">try</span>:
-        signin_data[field[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;name&#39;</span>]] <span style="color:#f92672">=</span> field[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;value&#39;</span>]
+        signin_data[field[<span style="color:#e6db74">&#39;name&#39;</span>]] <span style="color:#f92672">=</span> field[<span style="color:#e6db74">&#39;value&#39;</span>]
     <span style="color:#66d9ef">except</span>:
         <span style="color:#66d9ef">pass</span>
 
-signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;email&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;AMAZON_USERNAME&#39;</span>]
-signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;password&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;AMAZON_PASSWORD&#39;</span>]
+signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;email&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;AMAZON_USERNAME&#39;</span>]
+signin_data[<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;password&#39;</span>] <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;AMAZON_PASSWORD&#39;</span>]
 
-response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>post(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;https://www.amazon.com/ap/signin&#39;</span>, data <span style="color:#f92672">=</span> signin_data)
+response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>post(<span style="color:#e6db74">&#39;https://www.amazon.com/ap/signin&#39;</span>, data <span style="color:#f92672">=</span> signin_data)
 <span style="color:#66d9ef">if</span> response<span style="color:#f92672">.</span>status_code <span style="color:#f92672">!=</span> <span style="color:#ae81ff">200</span>:
-    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Failed to login: {0} {1}&#39;</span><span style="color:#f92672">.</span>format(response<span style="color:#f92672">.</span>status_code, response<span style="color:#f92672">.</span>reason))
+    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;Failed to login: {0} {1}&#39;</span><span style="color:#f92672">.</span>format(response<span style="color:#f92672">.</span>status_code, response<span style="color:#f92672">.</span>reason))
     sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">0</span>)</code></pre></div>
 <p>&hellip; Still doesn&rsquo;t work. I&rsquo;m getting a page back that says I need to enable cookies, which I most definitely have enabled (that&rsquo;s why I created the <code>session</code>). A bit of Google-fu later, and I find out that Amazon will only allow connections from semi-reasonable <a href="https://en.wikipedia.org/wiki/User%20Agents">User Agents</a>. Let&rsquo;s set it to a recent Chrome build on Windows 8.1:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">session <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>Session()
 session<span style="color:#f92672">.</span>headers <span style="color:#f92672">=</span> {
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;User-Agent&#39;</span>: <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.61 Safari/537.36&#39;</span>
+    <span style="color:#e6db74">&#39;User-Agent&#39;</span>: <span style="color:#e6db74">&#39;Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.61 Safari/537.36&#39;</span>
 }</code></pre></div>
 <p>Ah ha! That works. Finally logged in. Next, we know that we can get a list of your current books by going to <code>https://kindle.amazon.com/your_reading/0/0/0</code>. The last three numbers are:</p>
 
@@ -1643,12 +1641,12 @@ session<span style="color:#f92672">.</span>headers <span style="color:#f92672">=
 <span style="color:#75715e">#   - mode (all, read, reading)</span>
 <span style="color:#75715e">#   - starting index / page (increments in 25)</span>
 <span style="color:#75715e">#   - all books (0) versus kindle only (1)</span>
-<span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Getting books...&#39;</span>)
+<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;Getting books...&#39;</span>)
 book_page <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
 <span style="color:#66d9ef">while</span> True:
     time<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">0.5</span>) <span style="color:#75715e"># Half a second between pages</span>
 
-    response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>get(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;https://kindle.amazon.com/your_reading/0/{book_page}/0&#39;</span><span style="color:#f92672">.</span>format(book_page <span style="color:#f92672">=</span> book_page))
+    response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>get(<span style="color:#e6db74">&#39;https://kindle.amazon.com/your_reading/0/{book_page}/0&#39;</span><span style="color:#f92672">.</span>format(book_page <span style="color:#f92672">=</span> book_page))
     soup <span style="color:#f92672">=</span> bs4<span style="color:#f92672">.</span>BeautifulSoup(response<span style="color:#f92672">.</span>text)
     found_book <span style="color:#f92672">=</span> False
 
@@ -1663,14 +1661,14 @@ book_page <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</sp
 
     <span style="color:#75715e"># For each page of books, find all of the individual book links</span>
     <span style="color:#75715e"># The last part of each URL is Amazon&#39;s internal ID for that book</span>
-    <span style="color:#66d9ef">for</span> el <span style="color:#f92672">in</span> soup<span style="color:#f92672">.</span>findAll(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;td&#39;</span>, {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;class&#39;</span>: <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;titleAndAuthor&#39;</span>}, recursive <span style="color:#f92672">=</span> True):
+    <span style="color:#66d9ef">for</span> el <span style="color:#f92672">in</span> soup<span style="color:#f92672">.</span>findAll(<span style="color:#e6db74">&#39;td&#39;</span>, {<span style="color:#e6db74">&#39;class&#39;</span>: <span style="color:#e6db74">&#39;titleAndAuthor&#39;</span>}, recursive <span style="color:#f92672">=</span> True):
         time<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">0.1</span>) <span style="color:#75715e"># 1/10 of a second between books</span>
 
         found_book <span style="color:#f92672">=</span> True
 
-        book_id <span style="color:#f92672">=</span> el<span style="color:#f92672">.</span>find(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;a&#39;</span>)[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;href&#39;</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;/&#39;</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
-        title <span style="color:#f92672">=</span> el<span style="color:#f92672">.</span>find(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;a&#39;</span>)<span style="color:#f92672">.</span>text
-        sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>write(title <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39; ... &#39;</span>)
+        book_id <span style="color:#f92672">=</span> el<span style="color:#f92672">.</span>find(<span style="color:#e6db74">&#39;a&#39;</span>)[<span style="color:#e6db74">&#39;href&#39;</span>]<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;/&#39;</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+        title <span style="color:#f92672">=</span> el<span style="color:#f92672">.</span>find(<span style="color:#e6db74">&#39;a&#39;</span>)<span style="color:#f92672">.</span>text
+        sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>write(title <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39; ... &#39;</span>)
 
         highlights <span style="color:#f92672">=</span> []
         cursor <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
@@ -1681,16 +1679,16 @@ book_page <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</sp
 
         <span style="color:#75715e"># Ask the Amazon API for highlights one page of 10 at a time until we have them all</span>
         <span style="color:#66d9ef">while</span> True:
-            response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>get(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;https://kindle.amazon.com/kcw/highlights?asin={book_id}&amp;cursor={cursor}&amp;count=10&#39;</span><span style="color:#f92672">.</span>format(
+            response <span style="color:#f92672">=</span> session<span style="color:#f92672">.</span>get(<span style="color:#e6db74">&#39;https://kindle.amazon.com/kcw/highlights?asin={book_id}&amp;cursor={cursor}&amp;count=10&#39;</span><span style="color:#f92672">.</span>format(
                 book_id <span style="color:#f92672">=</span> book_id,
                 cursor <span style="color:#f92672">=</span> cursor,
             ))
             js <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>json()
 
             found_highlight <span style="color:#f92672">=</span> False
-            <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> js[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;items&#39;</span>]:
+            <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> js[<span style="color:#e6db74">&#39;items&#39;</span>]:
                 found_highlight <span style="color:#f92672">=</span> True
-                item[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;highlight&#39;</span>] <span style="color:#f92672">=</span> html_unescape(item[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;highlight&#39;</span>])
+                item[<span style="color:#e6db74">&#39;highlight&#39;</span>] <span style="color:#f92672">=</span> html_unescape(item[<span style="color:#e6db74">&#39;highlight&#39;</span>])
                 highlights<span style="color:#f92672">.</span>append(item)
 
             <span style="color:#66d9ef">if</span> found_highlight:
@@ -1715,19 +1713,19 @@ book_page <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</sp
 
 <p>Now that we have a list of highlights, let&rsquo;s save them to disk. Generate a filename from the book title, and use the <code>json</code> library to write them out. Make sure that we&rsquo;re writing everything as UTF8 so that any more unusual characters (like more interesting quotes) save correctly:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Use book title as filename, but strip out &#39;dangerous&#39; characters</span>
-        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{count} highlights found&#39;</span><span style="color:#f92672">.</span>format(count <span style="color:#f92672">=</span> len(highlights)))
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;{count} highlights found&#39;</span><span style="color:#f92672">.</span>format(count <span style="color:#f92672">=</span> len(highlights)))
         <span style="color:#66d9ef">if</span> highlights:
-            filename <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;[\/:*?&#34;&lt;&gt;|&#34;</span><span style="color:#ae81ff">\&#39;</span><span style="color:#e6db74">]&#39;</span>, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;</span>, title)<span style="color:#f92672">.</span>strip() <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;.json&#39;</span>
-            path <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Kindle Highlights&#39;</span>, filename)
+            filename <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>sub(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;[\/:*?&#34;&lt;&gt;|&#34;</span><span style="color:#ae81ff">\&#39;</span><span style="color:#e6db74">]&#39;</span>, <span style="color:#e6db74">&#39;&#39;</span>, title)<span style="color:#f92672">.</span>strip() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;.json&#39;</span>
+            path <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;Kindle Highlights&#39;</span>, filename)
 
-            <span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;w&#39;</span>, encoding <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;utf8&#39;</span>) <span style="color:#66d9ef">as</span> fout:
+            <span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74">&#39;w&#39;</span>, encoding <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;utf8&#39;</span>) <span style="color:#66d9ef">as</span> fout:
                 fout<span style="color:#f92672">.</span>write(json<span style="color:#f92672">.</span>dumps(highlights, fout, indent <span style="color:#f92672">=</span> <span style="color:#ae81ff">4</span>, sort_keys <span style="color:#f92672">=</span> True, ensure_ascii <span style="color:#f92672">=</span> False))</code></pre></div>
 <p>And there you have it. A simple(ish) way to download your Kindle highlights.</p>
 
 <p>Unfortunately&hellip; that&rsquo;s not all she wrote. After running my script for a few days, it started to fail. Why? Because Amazon detected some strange activity on my account and started displaying a captcha. I can detect it easily enough:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">warning <span style="color:#f92672">=</span> soup<span style="color:#f92672">.</span>find(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;div&#39;</span>, {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;id&#39;</span>: <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;message_warning&#39;</span>})
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">warning <span style="color:#f92672">=</span> soup<span style="color:#f92672">.</span>find(<span style="color:#e6db74">&#39;div&#39;</span>, {<span style="color:#e6db74">&#39;id&#39;</span>: <span style="color:#e6db74">&#39;message_warning&#39;</span>})
 <span style="color:#66d9ef">if</span> warning:
-    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Failed to login: {0}&#39;</span><span style="color:#f92672">.</span>format(warning<span style="color:#f92672">.</span>text))
+    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;Failed to login: {0}&#39;</span><span style="color:#f92672">.</span>format(warning<span style="color:#f92672">.</span>text))
     sys<span style="color:#f92672">.</span>exit(<span style="color:#ae81ff">0</span>)</code></pre></div>
 <p>Put that just after the previous &lsquo;Failed to login&rsquo; block and you&rsquo;ll seem some text to the order of &lsquo;please enter these characters to continue&rsquo;. It&rsquo;s actually not that hard to solve a catcha programmatically&hellip; but we&rsquo;ll save that for another post.</p>
 

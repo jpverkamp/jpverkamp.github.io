@@ -2120,14 +2120,12 @@
 <p>Move all items to the top (4th) floor.</p>
 </blockquote>
 
-<p></p>
-
 <p>Plan of attack: create a simulation and the perform a <a href="https://en.wikipedia.org/wiki/breadth%20first%20search">breadth first search</a> to find the fastest solution. This might have issues depending on how large the solution space is, but we can start with this.</p>
 
 <p>First, represent the microchips and generators:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Thing</span>(object):
     <span style="color:#66d9ef">def</span> __init__(self, element): self<span style="color:#f92672">.</span>element <span style="color:#f92672">=</span> element
-    <span style="color:#66d9ef">def</span> __repr__(self): <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{}&lt;{}&gt;&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__, self<span style="color:#f92672">.</span>element)
+    <span style="color:#66d9ef">def</span> __repr__(self): <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;{}&lt;{}&gt;&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__, self<span style="color:#f92672">.</span>element)
     <span style="color:#66d9ef">def</span> __hash__(self): <span style="color:#66d9ef">return</span> hash(repr(self))
     <span style="color:#66d9ef">def</span> __eq__(self, other): <span style="color:#66d9ef">return</span> repr(self) <span style="color:#f92672">==</span> repr(other)
     <span style="color:#66d9ef">def</span> __lt__(self, other): <span style="color:#66d9ef">return</span> repr(self) <span style="color:#f92672">&lt;</span> repr(other)
@@ -2147,26 +2145,26 @@
         self<span style="color:#f92672">.</span>_hash <span style="color:#f92672">=</span> hash(repr(self))
 
     <span style="color:#66d9ef">def</span> __repr__(self):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Simple output for repr that doesn&#39;t include steps (since this is used by hash).&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;Simple output for repr that doesn&#39;t include steps (since this is used by hash).&#39;&#39;&#39;</span>
 
         floor_strings <span style="color:#f92672">=</span> []
         <span style="color:#66d9ef">for</span> items <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>_floors:
             <span style="color:#66d9ef">if</span> items:
-                floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(repr(item) <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> sorted(items)))
+                floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(repr(item) <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> sorted(items)))
             <span style="color:#66d9ef">else</span>:
-                floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;∅&#39;</span>)
+                floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39;∅&#39;</span>)
 
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;State&lt;{}, {}&gt;&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>_elevator, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;, &#39;</span><span style="color:#f92672">.</span>join(floor_strings))
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;State&lt;{}, {}&gt;&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>_elevator, <span style="color:#e6db74">&#39;, &#39;</span><span style="color:#f92672">.</span>join(floor_strings))
 
     <span style="color:#66d9ef">def</span> __str__(self):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Nicer output for str(state) that includes steps.&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;Nicer output for str(state) that includes steps.&#39;&#39;&#39;</span>
 
         floors <span style="color:#f92672">=</span> []
         <span style="color:#66d9ef">for</span> i, floor <span style="color:#f92672">in</span> enumerate(self<span style="color:#f92672">.</span>_floors):
-            level_part <span style="color:#f92672">=</span> (<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;[{}]&#39;</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>_elevator <span style="color:#f92672">==</span> i <span style="color:#66d9ef">else</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39; {} &#39;</span>)<span style="color:#f92672">.</span>format(i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>)
-            item_part <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(str(item) <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> sorted(floor))
-            floors<span style="color:#f92672">.</span>append(level_part <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">+</span> item_part)
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(reversed(floors))
+            level_part <span style="color:#f92672">=</span> (<span style="color:#e6db74">&#39;[{}]&#39;</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>_elevator <span style="color:#f92672">==</span> i <span style="color:#66d9ef">else</span> <span style="color:#e6db74">&#39; {} &#39;</span>)<span style="color:#f92672">.</span>format(i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>)
+            item_part <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(str(item) <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> sorted(floor))
+            floors<span style="color:#f92672">.</span>append(level_part <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">+</span> item_part)
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(reversed(floors))
 
     <span style="color:#66d9ef">def</span> __hash__(self):
         <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>_hash
@@ -2175,12 +2173,12 @@
         <span style="color:#66d9ef">return</span> hash(self) <span style="color:#f92672">==</span> hash(other)
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">steps</span>(self):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Return the steps taken by this object.&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;Return the steps taken by this object.&#39;&#39;&#39;</span>
 
         <span style="color:#66d9ef">return</span> copy<span style="color:#f92672">.</span>copy(self<span style="color:#f92672">.</span>_steps)
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">move</span>(self, delta, items):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+        <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">        Return a new state resulting from moving the elevator by delta (-1/+1) and take items with it.
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">        If the new state isn&#39;t valid, return None.
@@ -2204,7 +2202,7 @@
             <span style="color:#66d9ef">return</span> new_state
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_valid</span>(self):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+        <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">        A state is invalid if a microchip is on a floor with a generator, but
 </span><span style="color:#e6db74">        does not have its own generator.
 </span><span style="color:#e6db74">        &#39;&#39;&#39;</span>
@@ -2225,12 +2223,12 @@
         <span style="color:#66d9ef">return</span> True
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_solved</span>(self):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;If all items are on the top floor, the puzzle is solved.&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;If all items are on the top floor, the puzzle is solved.&#39;&#39;&#39;</span>
 
         <span style="color:#66d9ef">return</span> <span style="color:#f92672">not</span> any(self<span style="color:#f92672">.</span>_floors[:<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>])
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">next_states</span>(self):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Return all valid next states possible from moving 1-2 items up or down a floor.&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;Return all valid next states possible from moving 1-2 items up or down a floor.&#39;&#39;&#39;</span>
 
         <span style="color:#66d9ef">for</span> delta <span style="color:#f92672">in</span> [<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>]:
             <span style="color:#66d9ef">for</span> count <span style="color:#f92672">in</span> [<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>]:
@@ -2251,17 +2249,17 @@
 <p>Now that we have the simulation layed out, we have a bit to load the initial state from a file:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Read the initial state from the given input file</span>
 re_object <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>compile(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;(\w+)(?:-compatible)? (generator|microchip)&#39;</span>)
-<span style="color:#66d9ef">with</span> open(args<span style="color:#f92672">.</span>input, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+<span style="color:#66d9ef">with</span> open(args<span style="color:#f92672">.</span>input, <span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
     floors <span style="color:#f92672">=</span> []
     <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> fin:
-        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> line<span style="color:#f92672">.</span>strip() <span style="color:#f92672">or</span> line<span style="color:#f92672">.</span>startswith(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;#&#39;</span>):
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> line<span style="color:#f92672">.</span>strip() <span style="color:#f92672">or</span> line<span style="color:#f92672">.</span>startswith(<span style="color:#e6db74">&#39;#&#39;</span>):
             <span style="color:#66d9ef">continue</span>
 
         floor <span style="color:#f92672">=</span> set()
         <span style="color:#66d9ef">for</span> element, type <span style="color:#f92672">in</span> re_object<span style="color:#f92672">.</span>findall(line):
-            <span style="color:#66d9ef">if</span> type <span style="color:#f92672">==</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;generator&#39;</span>:
+            <span style="color:#66d9ef">if</span> type <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;generator&#39;</span>:
                 floor<span style="color:#f92672">.</span>add(Generator(element))
-            <span style="color:#66d9ef">elif</span> type <span style="color:#f92672">==</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;microchip&#39;</span>:
+            <span style="color:#66d9ef">elif</span> type <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;microchip&#39;</span>:
                 floor<span style="color:#f92672">.</span>add(Microchip(element))
 
         floors<span style="color:#f92672">.</span>append(floor)
@@ -2289,7 +2287,7 @@ re_object <span style="color:#f92672">=</span> re<span style="color:#f92672">.</
 
 final_state <span style="color:#f92672">=</span> solve(initial_state)
 
-<span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
+<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span><span style="color:#e6db74">=== Solution ===
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">Initial state:
@@ -2304,8 +2302,8 @@ final_state <span style="color:#f92672">=</span> solve(initial_state)
     count <span style="color:#f92672">=</span> len(final_state<span style="color:#f92672">.</span>steps()),
     initial <span style="color:#f92672">=</span> initial_state,
     final <span style="color:#f92672">=</span> final_state,
-    steps <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{}: {} {}&#39;</span><span style="color:#f92672">.</span>format(i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>, delta, items)
+    steps <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(
+        <span style="color:#e6db74">&#39;{}: {} {}&#39;</span><span style="color:#f92672">.</span>format(i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>, delta, items)
         <span style="color:#66d9ef">for</span> i, (delta, items) <span style="color:#f92672">in</span> enumerate(final_state<span style="color:#f92672">.</span>steps())
     ),
 ))</code></pre></div>
@@ -2327,11 +2325,11 @@ final_state <span style="color:#f92672">=</span> solve(initial_state)
 
 <p>Instead, we can make an intuitive leap that took me rather a long time to think of: <em>there&rsquo;s no difference between the elements</em>.</p>
 
-<p>So long as the generator and microchip match, there&rsquo;s no difference between having elerium<sup class="footnote-ref" id="fnref:xcom"><a rel="footnote" href="#fn:xcom">1</a></sup> on floor 1 and dilithium<sup class="footnote-ref" id="fnref:startrek"><a rel="footnote" href="#fn:startrek">2</a></sup> on floor 2 versus having dilithium on floor 1 and elerium on floor 2.</p>
+<p>So long as the generator and microchip match, there&rsquo;s no difference between having elerium<sup class="footnote-ref" id="fnref:xcom"><a href="#fn:xcom">1</a></sup> on floor 1 and dilithium<sup class="footnote-ref" id="fnref:startrek"><a href="#fn:startrek">2</a></sup> on floor 2 versus having dilithium on floor 1 and elerium on floor 2.</p>
 
 <p>So what we can do is modify the <code>__repr__</code> function so that those two states have the same representation. This in turn will update the <code>__hash__</code> function so that we won&rsquo;t visit either state if we&rsquo;ve already seen the other.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> __repr__(self):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Simple output for repr that doesn&#39;t include steps (since this is used by hash).&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Simple output for repr that doesn&#39;t include steps (since this is used by hash).&#39;&#39;&#39;</span>
 
     <span style="color:#75715e"># Optimization: Parts are interchangeable, rewrite them by order</span>
     <span style="color:#75715e"># This will assign an index the first time it sees a name and use that any more</span>
@@ -2342,19 +2340,19 @@ final_state <span style="color:#f92672">=</span> solve(initial_state)
         <span style="color:#66d9ef">if</span> name <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> cache:
             cache[name] <span style="color:#f92672">=</span> str(len(cache))
 
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{}{}&#39;</span><span style="color:#f92672">.</span>format(type[<span style="color:#ae81ff">0</span>], cache[name])
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;{}{}&#39;</span><span style="color:#f92672">.</span>format(type[<span style="color:#ae81ff">0</span>], cache[name])
 
     floor_strings <span style="color:#f92672">=</span> []
     <span style="color:#66d9ef">for</span> items <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>_floors:
         <span style="color:#66d9ef">if</span> items:
-            floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(repr(item) <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> sorted(items)))
+            floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39; &#39;</span><span style="color:#f92672">.</span>join(repr(item) <span style="color:#66d9ef">for</span> item <span style="color:#f92672">in</span> sorted(items)))
         <span style="color:#66d9ef">else</span>:
-            floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;∅&#39;</span>)
+            floor_strings<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39;∅&#39;</span>)
 
     <span style="color:#66d9ef">return</span> re<span style="color:#f92672">.</span>sub(
         <span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;(Microchip|Generator)&lt;([^&lt;&gt;]+)&gt;&#39;</span>,
         ordered_rewrite,
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;State&lt;{}, {}&gt;&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>_elevator, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;, &#39;</span><span style="color:#f92672">.</span>join(floor_strings)),
+        <span style="color:#e6db74">&#39;State&lt;{}, {}&gt;&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>_elevator, <span style="color:#e6db74">&#39;, &#39;</span><span style="color:#f92672">.</span>join(floor_strings)),
     )</code></pre></div>
 <p>The trick here is apply a regex with a function (<code>ordered_rewrite</code>) that will rewrite each element with a number based on the order they appear in the string. This requires that Python&rsquo;s regex engine does replacements in the same order all the time, but that does actually work out. Using this, the solution is still relatively slow, but I did finally get an actual answer.</p>
 <div class="footnotes">

@@ -675,8 +675,6 @@
 	<div class="entry-content">
 		<p>Quick post today. I was working on a website where I have a live server running the code on another machine. I wanted to write a quick script that would copy any files I changed to the remote machine. This is something you can do automatically in most IDEs, but I wanted something both a bit lighter weight and to have the excuse to write something myself.</p>
 
-<p></p>
-
 <p>Basically, I&rsquo;m going to wrap <a href="https://fsnotify.org/">fsnotify</a> with a quick queue that can keep track of files as they&rsquo;re changed and upload them in order.</p>
 
 <p>First, the functionality that can run an arbitrary command (at least one that returns a list of filenames) and put any files found into a queue (we&rsquo;ll see why in a moment):</p>
@@ -691,19 +689,19 @@
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">do_sync</span>():
     <span style="color:#66d9ef">while</span> True:
         path <span style="color:#f92672">=</span> sync_queue<span style="color:#f92672">.</span>get()
-        local_path <span style="color:#f92672">=</span> path<span style="color:#f92672">.</span>replace(local_directory, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;</span>)<span style="color:#f92672">.</span>lstrip(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;/&#39;</span>)
-        remote_path <span style="color:#f92672">=</span> remote_directory<span style="color:#f92672">.</span>rstrip(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;/&#39;</span>) <span style="color:#f92672">+</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;/&#39;</span> <span style="color:#f92672">+</span> local_path
+        local_path <span style="color:#f92672">=</span> path<span style="color:#f92672">.</span>replace(local_directory, <span style="color:#e6db74">&#39;&#39;</span>)<span style="color:#f92672">.</span>lstrip(<span style="color:#e6db74">&#39;/&#39;</span>)
+        remote_path <span style="color:#f92672">=</span> remote_directory<span style="color:#f92672">.</span>rstrip(<span style="color:#e6db74">&#39;/&#39;</span>) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;/&#39;</span> <span style="color:#f92672">+</span> local_path
 
-        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;[{} remaining] {} ... &#39;</span><span style="color:#f92672">.</span>format(sync_queue<span style="color:#f92672">.</span>qsize(), local_path), end <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;</span>)
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;[{} remaining] {} ... &#39;</span><span style="color:#f92672">.</span>format(sync_queue<span style="color:#f92672">.</span>qsize(), local_path), end <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;&#39;</span>)
         sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>flush()
 
-        subprocess<span style="color:#f92672">.</span>check_call(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;scp &#34;{local_path}&#34; &#34;{remote_host}:{remote_path}&#34;&#39;</span><span style="color:#f92672">.</span>format(
+        subprocess<span style="color:#f92672">.</span>check_call(<span style="color:#e6db74">&#39;scp &#34;{local_path}&#34; &#34;{remote_host}:{remote_path}&#34;&#39;</span><span style="color:#f92672">.</span>format(
             local_path <span style="color:#f92672">=</span> local_path,
             remote_host <span style="color:#f92672">=</span> remote_host,
             remote_path <span style="color:#f92672">=</span> remote_path
         ), shell <span style="color:#f92672">=</span> True, stdout <span style="color:#f92672">=</span> subprocess<span style="color:#f92672">.</span>PIPE, stderr <span style="color:#f92672">=</span> subprocess<span style="color:#f92672">.</span>STDOUT)
 
-        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;done&#39;</span>)
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;done&#39;</span>)
 
 <span style="color:#75715e"># Start up the sync thread</span>
 sync_thread <span style="color:#f92672">=</span> threading<span style="color:#f92672">.</span>Thread(target <span style="color:#f92672">=</span> do_sync)
@@ -711,11 +709,11 @@ sync_thread<span style="color:#f92672">.</span>daemon <span style="color:#f92672
 sync_thread<span style="color:#f92672">.</span>start()</code></pre></div>
 <p>And that&rsquo;s all we need. We can run a trio of commands to automatically sync any changes that we&rsquo;ve made on a <code>git</code> branch plus any we make going forward:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Sync any differences on the current branch (first changed, then new files)</span>
-sync_command(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;git diff --name-only master&#39;</span>)
-sync_command(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;git ls-files --others --exclude-standard&#39;</span>)
+sync_command(<span style="color:#e6db74">&#39;git diff --name-only master&#39;</span>)
+sync_command(<span style="color:#e6db74">&#39;git ls-files --others --exclude-standard&#39;</span>)
 
 <span style="color:#75715e"># Sync any changes to files as they happen</span>
-sync_command(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;fswatch -r -e &#34;.git&#34; .&#39;</span>)</code></pre></div>
+sync_command(<span style="color:#e6db74">&#39;fswatch -r -e &#34;.git&#34; .&#39;</span>)</code></pre></div>
 <p>And that&rsquo;s it. <code>fswatch</code> really does most of the work, but it&rsquo;s a nice wrapper that will continually sync files until you tell it to quit.</p>
 
 <p>It&rsquo;s useful enough that I already put it in my <code>dotfiles</code> repo: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/sync">sync</a>.</p>

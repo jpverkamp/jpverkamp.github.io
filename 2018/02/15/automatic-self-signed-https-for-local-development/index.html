@@ -1231,8 +1231,6 @@
 
 <p>Today I will show you <code>autohttps</code>, a thin nginx proxy using Docker and a <a href="https://en.wikipedia.org/wiki/self%20signed%20certificate">self signed certificate</a> to automatically create an HTTPS proxy in front of your application.</p>
 
-<p></p>
-
 <h1 id="setting-up-nginx">Setting up nginx</h1>
 
 <p>First, we need an nginx config file that will listen for HTTPS, terminate the encryption, and then talk over HTTP to the backend connection:</p>
@@ -1254,7 +1252,7 @@
         <span style="color:#f92672">proxy_read_timeout</span> <span style="color:#ae81ff">90</span>;
     }
 }</code></pre></div>
-<p>First, we create an nginx <code>server</code> block that listens to the standard HTTPS port (443) and is expecting encrypted communication (<code>ssl</code>)<sup class="footnote-ref" id="fnref:ssl"><a rel="footnote" href="#fn:ssl">1</a></sup>. Then, we make sure <code>SSL</code> is on and tell it where we can find a certificate pair&ndash;we&rsquo;ll generate this in the next step.</p>
+<p>First, we create an nginx <code>server</code> block that listens to the standard HTTPS port (443) and is expecting encrypted communication (<code>ssl</code>)<sup class="footnote-ref" id="fnref:ssl"><a href="#fn:ssl">1</a></sup>. Then, we make sure <code>SSL</code> is on and tell it where we can find a certificate pair&ndash;we&rsquo;ll generate this in the next step.</p>
 
 <p>After that, we want to redirect all traffic with a <code>location /</code> block. We&rsquo;re going to pass along the <code>host</code> header from the host and then set a couple of expected headers. In particularly the <code>X-Forwarded-Proto</code> header is often used by applications to determine if they need to be forwarding HTTP connections to HTTPS (since the application itself would otherwise not know that the client thinks we&rsquo;re speaking HTTPS, since all it sees is HTTP).</p>
 
@@ -1309,17 +1307,13 @@ local_ip <span style="color:#f92672">=</span> socket<span style="color:#f92672">
 <p>We have to tweak one line of the nginx config:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-nginx" data-lang="nginx"><span style="color:#66d9ef">proxy_pass</span> <span style="color:#e6db74">http://dockerhost:80</span>;</code></pre></div>
 <p>And then we can then pass that into the Docker container on run:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">os<span style="color:#f92672">.</span>system(f<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;docker run --rm -it --add-host=dockerhost:{local_ip} -p 443:443 autohttps&#39;</span>)</code></pre></div>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">os<span style="color:#f92672">.</span>system(f<span style="color:#e6db74">&#39;docker run --rm -it --add-host=dockerhost:{local_ip} -p 443:443 autohttps&#39;</span>)</code></pre></div>
 <p>That command will add the IP that we found into the Docker container&rsquo;s hosts file so that when you would go to <code>http://dockerhost</code> in the container, you&rsquo;ll get the given IP without having to resolve it.</p>
 
 <p>And that actually works. You get a nice warning page:</p>
 
-
-<figure >
-    
-        <img src="/embeds/2018/connection-not-private.png" />
-    
-    
+<figure>
+    <img src="/embeds/2018/connection-not-private.png"/> 
 </figure>
 
 
@@ -1328,16 +1322,16 @@ local_ip <span style="color:#f92672">=</span> socket<span style="color:#f92672">
 <h1 id="custom-ports">Custom ports</h1>
 
 <p>One final thing I&rsquo;d like to do is make the IP customizable (otherwise you need superuser permissions in order to bind something to ports 80 or 443). We&rsquo;ll wrap everything up in a neat Python script and do just that:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">arg_parser <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>ArgumentParser(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Automatically map an HTTP port to HTTPS with a self signed certificate&#39;</span>)
-arg_parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;--http-port&#39;</span>, type <span style="color:#f92672">=</span> int, default <span style="color:#f92672">=</span> <span style="color:#ae81ff">80</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;The port your HTTP server is listening on&#39;</span>)
-arg_parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;--https-port&#39;</span>, type <span style="color:#f92672">=</span> int, default <span style="color:#f92672">=</span> <span style="color:#ae81ff">443</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;The port your HTTPS server should listen on&#39;</span>)
-arg_parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;--rebuild&#39;</span>, action <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;store_true&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Force the container to rebuild&#39;</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">arg_parser <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>ArgumentParser(<span style="color:#e6db74">&#39;Automatically map an HTTP port to HTTPS with a self signed certificate&#39;</span>)
+arg_parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;--http-port&#39;</span>, type <span style="color:#f92672">=</span> int, default <span style="color:#f92672">=</span> <span style="color:#ae81ff">80</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The port your HTTP server is listening on&#39;</span>)
+arg_parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;--https-port&#39;</span>, type <span style="color:#f92672">=</span> int, default <span style="color:#f92672">=</span> <span style="color:#ae81ff">443</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The port your HTTPS server should listen on&#39;</span>)
+arg_parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;--rebuild&#39;</span>, action <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;store_true&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Force the container to rebuild&#39;</span>)
 args <span style="color:#f92672">=</span> arg_parser<span style="color:#f92672">.</span>parse_args()
 
 local_ip <span style="color:#f92672">=</span> socket<span style="color:#f92672">.</span>gethostbyname(socket<span style="color:#f92672">.</span>gethostname())
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">write_dockerfile</span>(fout):
-    fout<span style="color:#f92672">.</span>write(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
+    fout<span style="color:#f92672">.</span>write(<span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span><span style="color:#e6db74">FROM ubuntu:16.04
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">RUN apt-get update </span><span style="color:#ae81ff">\
@@ -1364,7 +1358,7 @@ local_ip <span style="color:#f92672">=</span> socket<span style="color:#f92672">
 </span><span style="color:#e6db74">&#39;&#39;&#39;</span>)
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">write_nginx_config</span>(fout):
-    fout<span style="color:#f92672">.</span>write(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
+    fout<span style="color:#f92672">.</span>write(<span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span><span style="color:#e6db74">server {
 </span><span style="color:#e6db74">    listen HTTPS_PORT ssl;
 </span><span style="color:#e6db74">
@@ -1388,18 +1382,18 @@ local_ip <span style="color:#f92672">=</span> socket<span style="color:#f92672">
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">build</span>():
     temp_directory <span style="color:#f92672">=</span> tempfile<span style="color:#f92672">.</span>mkdtemp()
 
-    <span style="color:#66d9ef">with</span> open(os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(temp_directory, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Dockerfile&#39;</span>), <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
+    <span style="color:#66d9ef">with</span> open(os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(temp_directory, <span style="color:#e6db74">&#39;Dockerfile&#39;</span>), <span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
         write_dockerfile(fout)
 
-    <span style="color:#66d9ef">with</span> open(os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(temp_directory, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;nginx.conf&#39;</span>), <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
+    <span style="color:#66d9ef">with</span> open(os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(temp_directory, <span style="color:#e6db74">&#39;nginx.conf&#39;</span>), <span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
         write_nginx_config(fout)
 
-    subprocess<span style="color:#f92672">.</span>check_call(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;docker build -t autohttps .&#39;</span>, shell <span style="color:#f92672">=</span> True, cwd <span style="color:#f92672">=</span> temp_directory)
+    subprocess<span style="color:#f92672">.</span>check_call(<span style="color:#e6db74">&#39;docker build -t autohttps .&#39;</span>, shell <span style="color:#f92672">=</span> True, cwd <span style="color:#f92672">=</span> temp_directory)
 
     shutil<span style="color:#f92672">.</span>rmtree(temp_directory)
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">run</span>():
-    subprocess<span style="color:#f92672">.</span>check_call(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;docker run --rm -it -e HTTP_PORT={http} -e HTTPS_PORT={https} --add-host=dockerhost:{ip} -p {https}:{https} autohttps&#39;</span><span style="color:#f92672">.</span>format(
+    subprocess<span style="color:#f92672">.</span>check_call(<span style="color:#e6db74">&#39;docker run --rm -it -e HTTP_PORT={http} -e HTTPS_PORT={https} --add-host=dockerhost:{ip} -p {https}:{https} autohttps&#39;</span><span style="color:#f92672">.</span>format(
         http <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>http_port,
         https <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>https_port,
         ip <span style="color:#f92672">=</span> local_ip,
@@ -1413,7 +1407,7 @@ run()</code></pre></div>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sed -i -e <span style="color:#e6db74">&#34;s/HTTP_PORT/</span>$HTTP_PORT<span style="color:#e6db74">/; s/HTTPS_PORT/</span>$HTTPS_PORT<span style="color:#e6db74">/&#34;</span> /etc/nginx/sites-enabled/default</code></pre></div>
 <p>Now we can map arbitrary ports and rebuild the container if/when things change:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ autohttps --https-port <span style="color:#ae81ff">445</span> --http-port <span style="color:#ae81ff">8000</span></code></pre></div>
-<p>That will make <code>https://localhost:445</code> work and serve whatever is running on 8000. You can even run more than one of these at once if you have multiple applications you&rsquo;re testing. Neat. Also, it even works if the other application is running in a docker container as well, so long as you&rsquo;ve exposed the port so it can be seen from the localhost<sup class="footnote-ref" id="fnref:dockernet"><a rel="footnote" href="#fn:dockernet">2</a></sup>.</p>
+<p>That will make <code>https://localhost:445</code> work and serve whatever is running on 8000. You can even run more than one of these at once if you have multiple applications you&rsquo;re testing. Neat. Also, it even works if the other application is running in a docker container as well, so long as you&rsquo;ve exposed the port so it can be seen from the localhost<sup class="footnote-ref" id="fnref:dockernet"><a href="#fn:dockernet">2</a></sup>.</p>
 
 <p>It&rsquo;s all wrapped up in my dotfiles: <a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/autohttps">autohttps</a> (that&rsquo;s why the Dockerfile and nginx config are in the Python script rather than separate files). Give it a try and let me know what you think.</p>
 <div class="footnotes">

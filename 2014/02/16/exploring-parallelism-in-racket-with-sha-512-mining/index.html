@@ -2186,8 +2186,6 @@
 	<div class="entry-content">
 		<p>While I&rsquo;ve been getting a fair few programming exercises from Reddit&rsquo;s <a href="http://www.reddit.com/r/dailyprogrammer">/r/dailyprogrammer</a>, more recently I&rsquo;ve started following a few other sub-Reddits, such as <a href="http://www.reddit.com/r/programming">/r/programming</a> and <a href="http://www.reddit.com/r/netsec">/r/netsec</a>. While browsing the former, I came across this intriguing gem of a problem: <a tabindex="1" href="http://www.h11e.com/">HashChallenge: can you find the lowest value SHA-512 hash?</a></p>
 
-<p></p>
-
 <p>The basic idea is simple. Find the input string <em>s</em> such that the output SHA-512 hash is minimized. As an an example,</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ echo <span style="color:#e6db74">&#34;Hello world&#34;</span> | shasum -a <span style="color:#ae81ff">512</span>
 81381f1dacd4824a6c503fd070577630...
@@ -2231,11 +2229,11 @@ main: D19naE3qFtrKT6Lt -&gt; 000707066075fce0... <span style="color:#f92672">(</
 main: 4PQKs7crKnQTBjfs -&gt; 00018fe9e134c366... <span style="color:#f92672">(</span><span style="color:#ae81ff">11</span>.7 kh @ <span style="color:#ae81ff">113</span>.6 kh/s<span style="color:#f92672">)</span>
 main: NZS717BXvT0ErzSR -&gt; 0000ed34ec5c0222... <span style="color:#f92672">(</span><span style="color:#ae81ff">120</span>.5 kh @ <span style="color:#ae81ff">131</span>.1 kh/s<span style="color:#f92672">)</span>
 main: 3QuXbtG0xlRaDKqV -&gt; 000005fb0ac4a407... <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span>.7 Mh @ <span style="color:#ae81ff">133</span>.2 kh/s<span style="color:#f92672">)</span></code></pre></div>
-<p>Since it only prints a line when it finds a new best hash, output can be a little chaotic at best, but at the very least this gives us a pretty good baseline. We managed to find a hash with 5 leading zeros and are running at about 133.2 kh/s. Nowhere near what most ASIC bitcoin miners <a href="https://en.bitcoin.it/wiki/Mining_hardware_comparison#ASIC">claim to be able to do</a><sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup>, but not terrible for a pure CPU miner.</p>
+<p>Since it only prints a line when it finds a new best hash, output can be a little chaotic at best, but at the very least this gives us a pretty good baseline. We managed to find a hash with 5 leading zeros and are running at about 133.2 kh/s. Nowhere near what most ASIC bitcoin miners <a href="https://en.bitcoin.it/wiki/Mining_hardware_comparison#ASIC">claim to be able to do</a><sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>, but not terrible for a pure CPU miner.</p>
 
 <p>Let&rsquo;s do better.</p>
 
-<p>The next idea would be to use Racket&rsquo;s threads. Going in to it, I already know that this isn&rsquo;t going to buy us much<sup class="footnote-ref" id="fnref:2"><a rel="footnote" href="#fn:2">2</a></sup>, but it&rsquo;s an easy enough tweak.</p>
+<p>The next idea would be to use Racket&rsquo;s threads. Going in to it, I already know that this isn&rsquo;t going to buy us much<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>, but it&rsquo;s an easy enough tweak.</p>
 
 <p>First, pull out the <code>hashes-tried</code>, <code>best-str</code>, and <code>best-hash</code> variables so all threads can access them. Then, create a wrapper function that will fire off the right number of threads:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Mine with multiple threads concurrently</span>
@@ -2323,7 +2321,7 @@ main: 3QuXbtG0xlRaDKqV -&gt; 000005fb0ac4a407... <span style="color:#f92672">(</
         (<span style="color:#66d9ef">set! </span>best-hash hash)
         (print-timing id estimated-hashes (/ (- (current-inexact-milliseconds) start-time) <span style="color:#ae81ff">1000</span>) best-str best-hash)))
     (loop)))</code></pre></div>
-<p>There is a potential inefficiency here, in that we go round robin through the places asking each in turn for their best hash. Because they wait a random amount of time (up to 10 seconds) between reports, it could be a bit before we actually report a new lowest hash<sup class="footnote-ref" id="fnref:3"><a rel="footnote" href="#fn:3">3</a></sup>. In fact, it may even be out of date by then. Still, it&rsquo;s a reasonable enough count, especially if you&rsquo;re going to be running the program for a while.</p>
+<p>There is a potential inefficiency here, in that we go round robin through the places asking each in turn for their best hash. Because they wait a random amount of time (up to 10 seconds) between reports, it could be a bit before we actually report a new lowest hash<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>. In fact, it may even be out of date by then. Still, it&rsquo;s a reasonable enough count, especially if you&rsquo;re going to be running the program for a while.</p>
 
 <p>So with that being said, the first thing to try would be a single place. Theoretically, that should give us the same performance as the original program (maybe minus a bit for the channel):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ racket mine-sha512-places.rkt <span style="color:#ae81ff">1</span>
@@ -2333,7 +2331,7 @@ main: 3QuXbtG0xlRaDKqV -&gt; 000005fb0ac4a407... <span style="color:#f92672">(</
 <span style="color:#ae81ff">0</span>: bGh0LDfnwCiSIb95 -&gt; 000001e204acff0c... <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span>.4 Mh @ <span style="color:#ae81ff">140</span>.2 kh/s<span style="color:#f92672">)</span>
 <span style="color:#ae81ff">0</span>: JoWy6CXotik87OWh -&gt; 0000010fe4646f6f... <span style="color:#f92672">(</span><span style="color:#ae81ff">6</span>.5 Mh @ <span style="color:#ae81ff">140</span>.7 kh/s<span style="color:#f92672">)</span>
 <span style="color:#ae81ff">0</span>: iS6rIH4kClxc0SdF -&gt; 000000ecdcc2cc1e... <span style="color:#f92672">(</span><span style="color:#ae81ff">16</span>.0 Mh @ <span style="color:#ae81ff">141</span>.3 kh/s<span style="color:#f92672">)</span></code></pre></div>
-<p>Well that&rsquo;s not bad at all. If anything, it&rsquo;s a little faster<sup class="footnote-ref" id="fnref:4"><a rel="footnote" href="#fn:4">4</a></sup>.</p>
+<p>Well that&rsquo;s not bad at all. If anything, it&rsquo;s a little faster<sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup>.</p>
 
 <p>Now, let&rsquo;s really let it go. I have 4 cores, so let&rsquo;s try 4 places:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ racket mine-sha512-places.rkt <span style="color:#ae81ff">4</span>

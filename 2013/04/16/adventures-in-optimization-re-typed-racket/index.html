@@ -1673,7 +1673,7 @@
                     <li>
                         <a href="https://blog.jverkamp.com/2013/04/11/perlin-and-simplex-noise-in-racket/" class="previous-link"></a>
                         <a class="taxonomy-value" href="/programming/topics/mathematics">Mathematics</a>
-                        <a href="https://blog.jverkamp.com/2013/06/29/a-programming-puzzle-ffn---n/" class="next-link"></a>
+                        <a href="https://blog.jverkamp.com/2013/06/29/a-programming-puzzle-ffn-n/" class="next-link"></a>
                     </li>
                 
             
@@ -2201,8 +2201,6 @@
 	<div class="entry-content">
 		<p>Last Thursday I wrote a <a href="https://blog.jverkamp.com/2013/04/11/perlin-and-simplex-noise-in-racket/">post about generating Perlin/simplex noise</a> in Racket. Later that day, I <a title="[racket] Perlin and simplex noise - optimizing Racket code" href="http://lists.racket-lang.org/users/archive/2013-April/057245.html">posted to the Racket mailing list</a> asking how I could make it faster. What resulted was a whole sequence of responses (primarily about Typed Racket) and a bit of a rabbit hole that I&rsquo;m still trying to wrap my head around.</p>
 
-<p></p>
-
 <p>The first version that I tried to run was the original untyped code which used the <code><a href="http://docs.racket-lang.org/search/index.html?q=picturing-programs">picturing-programs</a></code>
  teachpack to generate an image. Running Racket 5.3.3 on an x86_64 Linux machine, here are the timing results (if you&rsquo;d like to try it yourself, use <a href="https://github.com/jpverkamp/noise/tree/b2d12e4">git b2d12e4</a>):</p>
 
@@ -2222,7 +2220,7 @@ Type Checker: Expected Vector, but got Any in: g
 &hellip;</pre>
 Yeah&hellip; Basically Racket is telling me that it knows I&rsquo;m trying, but I&rsquo;m going to have to give it a few more (read: any) types before it can help me.</p>
 
-<p>So I go through and I start typing<sup class="footnote-ref" id="fnref:1"><a rel="footnote" href="#fn:1">1</a></sup> things. One caveat is that there are at least two ways to assign a type to things in Typed Racket. Either you can declare the types inline, using forms like <code>define:</code> and <code>let:</code> or you can keep the code as it was and add the type signatures with just <code>:</code>.</p>
+<p>So I go through and I start typing<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup> things. One caveat is that there are at least two ways to assign a type to things in Typed Racket. Either you can declare the types inline, using forms like <code>define:</code> and <code>let:</code> or you can keep the code as it was and add the type signatures with just <code>:</code>.</p>
 
 <p>As an example, the definition of <code>grad3</code> could be:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; using inline types</span>
@@ -2293,16 +2291,12 @@ simplex: cpu time: 147 real time: 147 gc time: 4
 
 <p>The problem was, running through the code I had, there was a heck of a lot of red&hellip; Running through my code, there was a heck of a lot of red:</p>
 
-
-<figure >
-    
-        <img src="/embeds/2013/optimization-errors.png" />
-    
-    
+<figure>
+    <img src="/embeds/2013/optimization-errors.png"/> 
 </figure>
 
 
-<p>Drilling down into the errors (it took a while to realize that right clicking would give more detail), it eventually turned out that converting from <code>Flonum</code> to <code>Real</code> was actually <em>causing</em> more errors than it was solving. Since <code>Real</code> is more generic and includes <code>Integer</code>s as well as <code>Flonum</code>s, it wasn&rsquo;t possible for the compiler to use pure floating point functions although we both knew it wanted to. So back to <code>Flonum</code> we went!<sup class="footnote-ref" id="fnref:2"><a rel="footnote" href="#fn:2">2</a></sup></p>
+<p>Drilling down into the errors (it took a while to realize that right clicking would give more detail), it eventually turned out that converting from <code>Flonum</code> to <code>Real</code> was actually <em>causing</em> more errors than it was solving. Since <code>Real</code> is more generic and includes <code>Integer</code>s as well as <code>Flonum</code>s, it wasn&rsquo;t possible for the compiler to use pure floating point functions although we both knew it wanted to. So back to <code>Flonum</code> we went!<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup></p>
 
 <p>Actually, no. I&rsquo;m not really sure why, but at this point, I decided that I liked <code>Float</code> better than <code>Flonum</code>. It turns out that the two are essentially aliases for one another (which doesn&rsquo;t help when it&rsquo;s not consistent which will appear in error messages), so I could have used either. In the end, I switched to <code>Float</code> though. I think it was mostly because of experience with other languages. <code>Float</code> is a common term, <code>Flonum</code> is less so.</p>
 
@@ -2318,16 +2312,12 @@ simplex: cpu time: 147 real time: 147 gc time: 4
 (: perlin^ (Float Float Float -&gt; Float))
 (<span style="color:#66d9ef">define </span>(perlin^ x y z)
   <span style="color:#f92672">...</span>)</code></pre></div>
-<p>Since I was would only <code>provide</code> <code>perlin</code>, not <code>perlin^</code><sup class="footnote-ref" id="fnref:3"><a rel="footnote" href="#fn:3">3</a></sup>, I could have a function that accepted any real number but internally use <code>Floats</code> for all of my types.</p>
+<p>Since I was would only <code>provide</code> <code>perlin</code>, not <code>perlin^</code><sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>, I could have a function that accepted any real number but internally use <code>Floats</code> for all of my types.</p>
 
 <p>I ran the Optimization Coach again and the results were beautiful:</p>
 
-
-<figure >
-    
-        <img src="/embeds/2013/optimization-better.png" />
-    
-    
+<figure>
+    <img src="/embeds/2013/optimization-better.png"/> 
 </figure>
 
 
@@ -2347,7 +2337,7 @@ simplex: cpu time: 52 real time: 52 gc time: 2
 
 <p>That&rsquo;s none too shabby at all. Actually, if you compare it to the <a title="PDF describing Perlin and simplex noise" href="http://webstaff.itn.liu.se/~stegu/simplexnoise/simplexnoise.pdf">original algorithm</a> my code is based on (written in Java, not C as I originally stated) it&rsquo;s well within the same order of magnitude. In the Java code, without generating an image, generating a 256x256 simplex grid takes an average of 30 ms.</p>
 
-<p>All things considered, I&rsquo;m pretty happy with my results. It is mildly puzzling that up until the very final test case the results for Perlin are always slower than simplex (which is to be expected given the relative runtimes of the algorithms<sup class="footnote-ref" id="fnref:4"><a rel="footnote" href="#fn:4">4</a></sup>) , but in the last case they&rsquo;re exactly the same. If anyone has a good reason for why that might be, I&rsquo;d love to hear it.</p>
+<p>All things considered, I&rsquo;m pretty happy with my results. It is mildly puzzling that up until the very final test case the results for Perlin are always slower than simplex (which is to be expected given the relative runtimes of the algorithms<sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup>) , but in the last case they&rsquo;re exactly the same. If anyone has a good reason for why that might be, I&rsquo;d love to hear it.</p>
 
 <p>Well, that&rsquo;s all I have. Working with Typed Racket was actually a surprisingly pleasant experience. It reminded me of all of the better parts of <a title="Haskell" href="http://www.haskell.org/haskellwiki/Haskell">Haskell</a>, where you can add type annotations to make the compiler work with you rather than against you.</p>
 <div class="footnotes">

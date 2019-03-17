@@ -1110,11 +1110,9 @@
 
 <p><strong>Part 1:</strong> Simulate an RPG mage battle; finding the winning solution using the least mana. See the <a href="http://adventofcode.com/2015/day/22">original writeup</a> for more details.</p>
 
-<p></p>
-
 <p>First, let&rsquo;s create some simple abstractions for the players:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Entity</span>(dict):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Represent a damagable entity such as the player or a boss&#39;&#39;&#39;</span>
+    <span style="color:#e6db74">&#39;&#39;&#39;Represent a damagable entity such as the player or a boss&#39;&#39;&#39;</span>
 
     <span style="color:#66d9ef">def</span> __init__(self, <span style="color:#f92672">**</span>kwargs):
         <span style="color:#66d9ef">for</span> key, val <span style="color:#f92672">in</span> kwargs<span style="color:#f92672">.</span>items():
@@ -1127,25 +1125,25 @@
             <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">damage</span>(self, points):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Apply damage to this entity; minimum damage is always 1&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;Apply damage to this entity; minimum damage is always 1&#39;&#39;&#39;</span>
 
-        self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">-=</span> max(<span style="color:#ae81ff">1</span>, points <span style="color:#f92672">-</span> self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Armor&#39;</span>])
+        self[<span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">-=</span> max(<span style="color:#ae81ff">1</span>, points <span style="color:#f92672">-</span> self[<span style="color:#e6db74">&#39;Armor&#39;</span>])
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">tick_active_spells</span>(self, target):
-        <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;Apply all active spells to the target, remove any that have expired.&#39;&#39;&#39;</span>
+        <span style="color:#e6db74">&#39;&#39;&#39;Apply all active spells to the target, remove any that have expired.&#39;&#39;&#39;</span>
 
-        <span style="color:#66d9ef">if</span> self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>]:
-            <span style="color:#66d9ef">for</span> spell <span style="color:#f92672">in</span> list(self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>]):
-                self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(str(spell))
+        <span style="color:#66d9ef">if</span> self[<span style="color:#e6db74">&#39;Active Spells&#39;</span>]:
+            <span style="color:#66d9ef">for</span> spell <span style="color:#f92672">in</span> list(self[<span style="color:#e6db74">&#39;Active Spells&#39;</span>]):
+                self[<span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(str(spell))
                 spell<span style="color:#f92672">.</span>tick(self, target)
                 spell<span style="color:#f92672">.</span>Duration <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>
                 <span style="color:#66d9ef">if</span> spell<span style="color:#f92672">.</span>Duration <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
-                    self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{} fades&#39;</span><span style="color:#f92672">.</span>format(spell<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__))
+                    self[<span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39;{} fades&#39;</span><span style="color:#f92672">.</span>format(spell<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__))
                     spell<span style="color:#f92672">.</span>fade(self, target)
-                    self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>]<span style="color:#f92672">.</span>remove(spell)</code></pre></div>
+                    self[<span style="color:#e6db74">&#39;Active Spells&#39;</span>]<span style="color:#f92672">.</span>remove(spell)</code></pre></div>
 <p>Basically, we have an extended <code>dict</code> that will default values to 0, includes a method for applying <code>damage</code> while taking armor into account, and applying an active spells to a given player. That will make more sense once you see the way spells are defined:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Spell</span>(dict):
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&#39;&#39;
+    <span style="color:#e6db74">&#39;&#39;&#39;
 </span><span style="color:#e6db74">    Create a spell. Spells have `Cost` mana and last `Duration` turns.
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">    cast() is called when a spell is first cast
@@ -1154,11 +1152,11 @@
 </span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
 
 
-    Cost <span style="color:#f92672">=</span> float(<span style="color:#e6db74"></span><span style="color:#e6db74">&#34;inf&#34;</span>)
+    Cost <span style="color:#f92672">=</span> float(<span style="color:#e6db74">&#34;inf&#34;</span>)
     Duration <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
 
     <span style="color:#66d9ef">def</span> __init__(self):
-        self[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Duration&#39;</span>] <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>Duration
+        self[<span style="color:#e6db74">&#39;Duration&#39;</span>] <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>Duration
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">cast</span>(self, caster, target):
         <span style="color:#66d9ef">pass</span>
@@ -1170,7 +1168,7 @@
         <span style="color:#66d9ef">pass</span>
 
     <span style="color:#66d9ef">def</span> __repr__(self):
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;{}({})&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__, self<span style="color:#f92672">.</span>Duration)
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;{}({})&#39;</span><span style="color:#f92672">.</span>format(self<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__, self<span style="color:#f92672">.</span>Duration)
 
     <span style="color:#66d9ef">def</span> __eq__(self, other):
         <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__ <span style="color:#f92672">==</span> other<span style="color:#f92672">.</span>__class__<span style="color:#f92672">.</span>__name__
@@ -1189,17 +1187,17 @@
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">cast</span>(self, caster, target):
         target<span style="color:#f92672">.</span>damage(<span style="color:#ae81ff">2</span>)
-        caster[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">2</span>
+        caster[<span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">2</span>
 
 <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Shield</span>(Spell):
     Cost <span style="color:#f92672">=</span> <span style="color:#ae81ff">113</span>
     Duration <span style="color:#f92672">=</span> <span style="color:#ae81ff">6</span>
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">cast</span>(self, caster, target):
-        caster[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Armor&#39;</span>] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">7</span>
+        caster[<span style="color:#e6db74">&#39;Armor&#39;</span>] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">7</span>
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">fade</span>(self, caster, target):
-        caster[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Armor&#39;</span>] <span style="color:#f92672">-=</span> <span style="color:#ae81ff">7</span>
+        caster[<span style="color:#e6db74">&#39;Armor&#39;</span>] <span style="color:#f92672">-=</span> <span style="color:#ae81ff">7</span>
 
 <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Poison</span>(Spell):
     Cost <span style="color:#f92672">=</span> <span style="color:#ae81ff">173</span>
@@ -1213,7 +1211,7 @@
     Duration <span style="color:#f92672">=</span> <span style="color:#ae81ff">5</span>
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">tick</span>(self, caster, target):
-        caster[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">101</span>
+        caster[<span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">101</span>
 
 spells <span style="color:#f92672">=</span> [MagicMissle, Drain, Shield, Poison, Recharge]</code></pre></div>
 <p>As noted in the comment for the <code>Spell</code> class, there are two interesting fields (<code>Cost</code> is the mana cost and <code>Duration</code> is how long an ongoing spell will last) and three functions that can be overridden. <code>cast</code> will be called when the spell is first cast, <code>tick</code> will be called each turn it runs for ongoing spells, and <code>fade</code> will be called when an ongoing spell runs out of time. That will let us encode the five spells in the <a href="http://adventofcode.com/2015/day/22">problem statement</a>.</p>
@@ -1221,14 +1219,14 @@ spells <span style="color:#f92672">=</span> [MagicMissle, Drain, Shield, Poison,
 <p>Finally, we can load the player and boss:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">boss <span style="color:#f92672">=</span> lib<span style="color:#f92672">.</span>Entity()
 <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> sys<span style="color:#f92672">.</span>stdin:
-    key, val <span style="color:#f92672">=</span> line<span style="color:#f92672">.</span>strip()<span style="color:#f92672">.</span>split(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;: &#39;</span>)
+    key, val <span style="color:#f92672">=</span> line<span style="color:#f92672">.</span>strip()<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;: &#39;</span>)
     boss[key] <span style="color:#f92672">=</span> int(val)
 
 player <span style="color:#f92672">=</span> lib<span style="color:#f92672">.</span>Entity(<span style="color:#f92672">**</span>{
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>: <span style="color:#ae81ff">50</span>,
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Points&#39;</span>: <span style="color:#ae81ff">500</span>,
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>: [],
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>: [],
+    <span style="color:#e6db74">&#39;Hit Points&#39;</span>: <span style="color:#ae81ff">50</span>,
+    <span style="color:#e6db74">&#39;Mana Points&#39;</span>: <span style="color:#ae81ff">500</span>,
+    <span style="color:#e6db74">&#39;Active Spells&#39;</span>: [],
+    <span style="color:#e6db74">&#39;History&#39;</span>: [],
 })</code></pre></div>
 <p>Now we have everything to solve the problem. My first take at a solution using a <a href="https://en.wikipedia.org/wiki/priority%20queue">priority queue</a> based on the mana spent. That means that as soon as we find a solution where <code>boss['Hit Points'] &lt;= 0</code>, we have the minimal solution:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">queue_breaker <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
@@ -1236,7 +1234,7 @@ player <span style="color:#f92672">=</span> lib<span style="color:#f92672">.</sp
 states <span style="color:#f92672">=</span> queue<span style="color:#f92672">.</span>PriorityQueue()
 states<span style="color:#f92672">.</span>put((<span style="color:#ae81ff">0</span>, queue_breaker, player, boss))
 
-best_player <span style="color:#f92672">=</span> {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>: float(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;inf&#39;</span>)}
+best_player <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;Mana Spent&#39;</span>: float(<span style="color:#e6db74">&#39;inf&#39;</span>)}
 
 <span style="color:#75715e"># This will be used to break ties in the queue since Entities are not orderable</span>
 queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
@@ -1245,63 +1243,63 @@ queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">
     score, _, player, boss <span style="color:#f92672">=</span> states<span style="color:#f92672">.</span>get()
 
     <span style="color:#75715e"># If we win, because of the priority queue, this is the best solution</span>
-    <span style="color:#66d9ef">if</span> boss[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
+    <span style="color:#66d9ef">if</span> boss[<span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
         <span style="color:#66d9ef">return</span> player
 
     <span style="color:#75715e"># Player died, no point in continuing on this track</span>
-    <span style="color:#66d9ef">if</span> player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
+    <span style="color:#66d9ef">if</span> player[<span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
         <span style="color:#66d9ef">continue</span>
 
     <span style="color:#75715e"># --- Player&#39;s turn ---</span>
     player <span style="color:#f92672">=</span> copy<span style="color:#f92672">.</span>deepcopy(player)
     boss <span style="color:#f92672">=</span> copy<span style="color:#f92672">.</span>deepcopy(boss)
-    player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&gt;&gt; Player Turn &lt;&lt;&#39;</span>)
+    player[<span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39;&gt;&gt; Player Turn &lt;&lt;&#39;</span>)
     player<span style="color:#f92672">.</span>tick_active_spells(boss)
 
     <span style="color:#75715e"># Branch (see the copy below) to applying each possible spell for the player&#39;s turn</span>
     <span style="color:#66d9ef">for</span> potential_spell <span style="color:#f92672">in</span> lib<span style="color:#f92672">.</span>spells:
-        <span style="color:#66d9ef">if</span> player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">&lt;</span> potential_spell<span style="color:#f92672">.</span>Cost:
+        <span style="color:#66d9ef">if</span> player[<span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">&lt;</span> potential_spell<span style="color:#f92672">.</span>Cost:
             <span style="color:#66d9ef">continue</span>
 
         spell <span style="color:#f92672">=</span> potential_spell()
-        <span style="color:#66d9ef">if</span> spell <span style="color:#f92672">in</span> player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>]:
+        <span style="color:#66d9ef">if</span> spell <span style="color:#f92672">in</span> player[<span style="color:#e6db74">&#39;Active Spells&#39;</span>]:
             <span style="color:#66d9ef">continue</span>
 
         current_player <span style="color:#f92672">=</span> copy<span style="color:#f92672">.</span>deepcopy(player)
         current_boss <span style="color:#f92672">=</span> copy<span style="color:#f92672">.</span>deepcopy(boss)
 
         <span style="color:#75715e"># Cast the player&#39;s new spell</span>
-        current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">-=</span> potential_spell<span style="color:#f92672">.</span>Cost
-        current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">+=</span> potential_spell<span style="color:#f92672">.</span>Cost
+        current_player[<span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">-=</span> potential_spell<span style="color:#f92672">.</span>Cost
+        current_player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">+=</span> potential_spell<span style="color:#f92672">.</span>Cost
         spell<span style="color:#f92672">.</span>cast(current_player, current_boss)
 
-        <span style="color:#66d9ef">if</span> spell[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Duration&#39;</span>]:
-            current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>]<span style="color:#f92672">.</span>append(spell)
+        <span style="color:#66d9ef">if</span> spell[<span style="color:#e6db74">&#39;Duration&#39;</span>]:
+            current_player[<span style="color:#e6db74">&#39;Active Spells&#39;</span>]<span style="color:#f92672">.</span>append(spell)
 
-        current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(str(spell))
+        current_player[<span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(str(spell))
 
         <span style="color:#75715e"># --- Boss&#39;s turn ---</span>
-        current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;&gt;&gt; Boss Turn &lt;&lt;&#39;</span>)
+        current_player[<span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39;&gt;&gt; Boss Turn &lt;&lt;&#39;</span>)
         current_player<span style="color:#f92672">.</span>tick_active_spells(current_boss)
-        current_player<span style="color:#f92672">.</span>damage(current_boss[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Damage&#39;</span>])
+        current_player<span style="color:#f92672">.</span>damage(current_boss[<span style="color:#e6db74">&#39;Damage&#39;</span>])
 
         <span style="color:#75715e"># Store the altered copies back in the queue</span>
-        states<span style="color:#f92672">.</span>put((current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>], queue_breaker, current_player, current_boss))
+        states<span style="color:#f92672">.</span>put((current_player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>], queue_breaker, current_player, current_boss))
         queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span></code></pre></div>
 <p>Most of the code is spent getting the order of events exactly correct. It&rsquo;s a bit weird, but it does work in the end (I think I rewrote exactly this code a dozen times and it finally worked&hellip;). The only problem with this solution: the search space is <em>huge</em>. I let it run for rather a while and it simulated literally millions of states still without finding a final solution. I need to cut that down.</p>
 
 <p>My next trial was to tweak the scoring algorithm. By doing this, we lose the ability to return immediately once we have a solution, but we gain the ability to find <em>a</em> solution quickly and then throw out any solutions that would be worse than that one. We only have to make a few tweaks to the above code:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">best_player <span style="color:#f92672">=</span> {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>: float(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;inf&#39;</span>)}
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">best_player <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;Mana Spent&#39;</span>: float(<span style="color:#e6db74">&#39;inf&#39;</span>)}
 
 <span style="color:#66d9ef">while</span> <span style="color:#f92672">not</span> states<span style="color:#f92672">.</span>empty():
     score, _, player, boss <span style="color:#f92672">=</span> states<span style="color:#f92672">.</span>get()
 
     <span style="color:#75715e"># If we win, because of the priority queue, this is the best solution</span>
-    <span style="color:#66d9ef">if</span> boss[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
+    <span style="color:#66d9ef">if</span> boss[<span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
         <span style="color:#66d9ef">if</span> early_exit:
             <span style="color:#66d9ef">return</span> player
-        <span style="color:#66d9ef">elif</span> player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">&lt;</span> best_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>]:
-            <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;New best mana spent:&#39;</span>, player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>])
+        <span style="color:#66d9ef">elif</span> player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">&lt;</span> best_player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>]:
+            <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;New best mana spent:&#39;</span>, player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>])
             best_player <span style="color:#f92672">=</span> player
             <span style="color:#66d9ef">continue</span>
 
@@ -1326,11 +1324,11 @@ queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">
         self<span style="color:#f92672">.</span>reason <span style="color:#f92672">=</span> reason
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">check_game_over</span>(player, boss):
-    <span style="color:#66d9ef">if</span> boss[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
-        <span style="color:#66d9ef">raise</span> GameOverException(True, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;boss died&#39;</span>)
+    <span style="color:#66d9ef">if</span> boss[<span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
+        <span style="color:#66d9ef">raise</span> GameOverException(True, <span style="color:#e6db74">&#39;boss died&#39;</span>)
 
-    <span style="color:#66d9ef">if</span> player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
-        <span style="color:#66d9ef">raise</span> GameOverException(False, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;player died&#39;</span>)
+    <span style="color:#66d9ef">if</span> player[<span style="color:#e6db74">&#39;Hit Points&#39;</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>:
+        <span style="color:#66d9ef">raise</span> GameOverException(False, <span style="color:#e6db74">&#39;player died&#39;</span>)
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">fight</span>(player, boss, spell_iterator):
     <span style="color:#66d9ef">while</span> True:
@@ -1342,24 +1340,24 @@ queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">
 
         <span style="color:#66d9ef">for</span> i, potential_spell <span style="color:#f92672">in</span> enumerate(spell_iterator):
             <span style="color:#66d9ef">if</span> i <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">10</span>:
-                <span style="color:#66d9ef">raise</span> GameOverException(False, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;failed to cast 10 spells&#39;</span>)
+                <span style="color:#66d9ef">raise</span> GameOverException(False, <span style="color:#e6db74">&#39;failed to cast 10 spells&#39;</span>)
 
-            <span style="color:#66d9ef">if</span> potential_spell<span style="color:#f92672">.</span>Cost <span style="color:#f92672">&gt;</span> player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Points&#39;</span>]:
+            <span style="color:#66d9ef">if</span> potential_spell<span style="color:#f92672">.</span>Cost <span style="color:#f92672">&gt;</span> player[<span style="color:#e6db74">&#39;Mana Points&#39;</span>]:
                 <span style="color:#66d9ef">continue</span>
 
             spell <span style="color:#f92672">=</span> potential_spell()
-            <span style="color:#66d9ef">if</span> spell <span style="color:#f92672">in</span> player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>]:
+            <span style="color:#66d9ef">if</span> spell <span style="color:#f92672">in</span> player[<span style="color:#e6db74">&#39;Active Spells&#39;</span>]:
                 <span style="color:#66d9ef">continue</span>
 
-            player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Player casts {}&#39;</span><span style="color:#f92672">.</span>format(potential_spell<span style="color:#f92672">.</span>__name__))
-            player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">-=</span> potential_spell<span style="color:#f92672">.</span>Cost
-            player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">+=</span> potential_spell<span style="color:#f92672">.</span>Cost
+            player[<span style="color:#e6db74">&#39;History&#39;</span>]<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39;Player casts {}&#39;</span><span style="color:#f92672">.</span>format(potential_spell<span style="color:#f92672">.</span>__name__))
+            player[<span style="color:#e6db74">&#39;Mana Points&#39;</span>] <span style="color:#f92672">-=</span> potential_spell<span style="color:#f92672">.</span>Cost
+            player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">+=</span> potential_spell<span style="color:#f92672">.</span>Cost
 
             spell<span style="color:#f92672">.</span>cast(player, boss)
             check_game_over(player, boss)
 
             <span style="color:#66d9ef">if</span> spell<span style="color:#f92672">.</span>Duration:
-                player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>]<span style="color:#f92672">.</span>append(spell)
+                player[<span style="color:#e6db74">&#39;Active Spells&#39;</span>]<span style="color:#f92672">.</span>append(spell)
 
             <span style="color:#66d9ef">break</span>
 
@@ -1367,12 +1365,12 @@ queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">
         player<span style="color:#f92672">.</span>tick_active_spells(boss)
         check_game_over(player, boss)
 
-        player<span style="color:#f92672">.</span>damage(boss[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Damage&#39;</span>])
+        player<span style="color:#f92672">.</span>damage(boss[<span style="color:#e6db74">&#39;Damage&#39;</span>])
         check_game_over(player, boss)
 
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">monte_carlo</span>(player, boss, timeout <span style="color:#f92672">=</span> TIME_TO_RUN):
     start <span style="color:#f92672">=</span> time<span style="color:#f92672">.</span>time()
-    best_player <span style="color:#f92672">=</span> {<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>: float(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;inf&#39;</span>)}
+    best_player <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;Mana Spent&#39;</span>: float(<span style="color:#e6db74">&#39;inf&#39;</span>)}
     simulations <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
     wins <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
 
@@ -1389,8 +1387,8 @@ queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">
         <span style="color:#66d9ef">except</span> GameOverException <span style="color:#66d9ef">as</span> game_over:
             <span style="color:#66d9ef">if</span> game_over<span style="color:#f92672">.</span>player_won:
                 wins <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-                <span style="color:#66d9ef">if</span> current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">&lt;</span> best_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>]:
-                    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;New best:&#39;</span>, current_player[<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Spent&#39;</span>])
+                <span style="color:#66d9ef">if</span> current_player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>] <span style="color:#f92672">&lt;</span> best_player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>]:
+                    <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;New best:&#39;</span>, current_player[<span style="color:#e6db74">&#39;Mana Spent&#39;</span>])
                     best_player <span style="color:#f92672">=</span> current_player
 
     <span style="color:#66d9ef">return</span> simulations, wins, best_player</code></pre></div>
@@ -1400,18 +1398,18 @@ queue_breaker <span style="color:#f92672">+=</span> <span style="color:#ae81ff">
 
 <p>Based on the way that I structured the code, this is actually as easy as adding a new spell with unlimited <code>Duration</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">HardMode</span>(Spell):
-    Duration <span style="color:#f92672">=</span> float(<span style="color:#e6db74"></span><span style="color:#e6db74">&#39;inf&#39;</span>)
+    Duration <span style="color:#f92672">=</span> float(<span style="color:#e6db74">&#39;inf&#39;</span>)
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">tick</span>(self, caster, target):
-        self<span style="color:#f92672">.</span>toggle <span style="color:#f92672">=</span> <span style="color:#f92672">not</span> getattr(self, <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;toggle&#39;</span>, False)
+        self<span style="color:#f92672">.</span>toggle <span style="color:#f92672">=</span> <span style="color:#f92672">not</span> getattr(self, <span style="color:#e6db74">&#39;toggle&#39;</span>, False)
         <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>toggle:
             caster<span style="color:#f92672">.</span>damage(<span style="color:#ae81ff">1</span>)</code></pre></div>
 <p>There&rsquo;s a bit of weirdness there to make sure that it only runs half as often as most spells (since we don&rsquo;t have half hit points), but this works perfectly. We then start the player with this as an active spell:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">player <span style="color:#f92672">=</span> lib<span style="color:#f92672">.</span>Entity(<span style="color:#f92672">**</span>{
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Hit Points&#39;</span>: <span style="color:#ae81ff">50</span>,
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Mana Points&#39;</span>: <span style="color:#ae81ff">500</span>,
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;Active Spells&#39;</span>: [lib<span style="color:#f92672">.</span>HardMode()],
-    <span style="color:#e6db74"></span><span style="color:#e6db74">&#39;History&#39;</span>: [],
+    <span style="color:#e6db74">&#39;Hit Points&#39;</span>: <span style="color:#ae81ff">50</span>,
+    <span style="color:#e6db74">&#39;Mana Points&#39;</span>: <span style="color:#ae81ff">500</span>,
+    <span style="color:#e6db74">&#39;Active Spells&#39;</span>: [lib<span style="color:#f92672">.</span>HardMode()],
+    <span style="color:#e6db74">&#39;History&#39;</span>: [],
 })</code></pre></div>
 <p>And that&rsquo;s it. The rest of the simulation is identical. Since <code>HardMode</code> isn&rsquo;t in the <code>lib.spells</code> list, it won&rsquo;t get cast by either solution. Even if we wanted to we couldn&rsquo;t because of the limitation of only one of each ongoing spell at a time.</p>
 
