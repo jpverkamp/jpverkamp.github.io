@@ -390,6 +390,8 @@
                     
                         
                     
+                        
+                    
 
                     
                     
@@ -451,6 +453,13 @@
                         <a class="taxonomy-value" href="/programming/languages/html">HTML</a>
                         
                     </li>
+                
+            
+                
+
+                
+                
+
                 
             
                 
@@ -1504,6 +1513,8 @@
                     
                         
                     
+                        
+                    
 
                     
                     
@@ -1513,6 +1524,13 @@
                         <a class="taxonomy-value" href="/programming/topics/aws">AWS</a>
                         
                     </li>
+                
+            
+                
+
+                
+                
+
                 
             
                 
@@ -2362,6 +2380,93 @@
         <article class="li">
         	<header>
         		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/18/adding-hsts-to-redirects-in-apache/" class="clearfix">Adding HSTS to Redirects in Apache</a>
+                </h1>
+
+        		<div class="entry-meta">
+                    
+                    <span class="entry-date">2018-07-18</span>
+                    
+                    
+        		</div>
+        	</header>
+            <div class="entry-content">
+                
+                    <p>TLDR:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-apache" data-lang="apache"><span style="color:#75715e"># Use &#39;always&#39; so headers are also set for non-2XX and unset to avoid duplicates</span>
+<span style="color:#f92672">&lt;IfModule</span> <span style="color:#e6db74">headers_module</span><span style="color:#f92672">&gt;</span>
+	header unset Strict-Transport-Security
+	header always set Strict-Transport-Security <span style="color:#e6db74">&#34;max-age=16070400; includeSubDomains;&#34;</span>
+<span style="color:#f92672">&lt;/IfModule&gt;</span></code></pre></div>
+<p>Slightly<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup> longer version:</p>
+
+<p><a href="https://www.eff.org/https-everywhere">HTTPS everywhere</a> is a worthwhile goal. Even when you have traffic that isn&rsquo;t super interesting or sensitive by itself, the fact that you&rsquo;re encrypting it makes traffic that really does need to be encrypted safer against tools that grab all of the encrypted traffic they can to decrypt later if/when possible.</p>
+
+<p>One of the downsides of using HTTPS though is that without certain things in place, many users will still type <code>domain.com</code> in their address bar from time to time, completely missing out on the <code>https://</code>. While you can immediately redirect them, that very first request is a risk, since if a <a href="https://en.wikipedia.org/wiki/man-in-the-middle%20attack">man-in-the-middle attack</a> happens to catch that request, they can downgrade the entire connection.</p>
+
+<p>Enter <a href="https://en.wikipedia.org/wiki/HTTP%20Strict%20Transport%20Security">HTTP Strict Transport Security</a> (HSTS). It&rsquo;s a HTTP header that you can send on the first <code>HTTPS</code> connection you establish with a compatible client. Once you&rsquo;ve done that, any further requests (until the header&rsquo;s TTL expires without being renewed) will be sent to <code>https://</code> no matter what the user types. Which solves the first request problem for all sessions&hellip; but it still doesn&rsquo;t fix the very first time you have to get the header. So how do you fix that?</p>
+                    <p><a href="/2018/07/18/adding-hsts-to-redirects-in-apache/">read more...</a></p>
+                
+        	</div>
+
+            
+            <hr />
+        </article>
+    
+    
+    
+        <article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/" class="clearfix">Counting and Sizing S3 Buckets</a>
+                </h1>
+
+        		<div class="entry-meta">
+                    
+                    <span class="entry-date">2018-07-15</span>
+                    
+                    
+        		</div>
+        	</header>
+            <div class="entry-content">
+                
+                    <p>A long time ago in a galaxy far far away, I wrote up a script that I used to take an <a href="https://aws.amazon.com/s3/">AWS S3</a> bucket and count how many objects there were in the bucket and calculate its total size. While you could get some of this information from billing reports, there just wasn&rsquo;t a good way to get it other than that at the time. The only way you could do it was to&hellip; iterate through the entire bucket, summing as you go. If you have buckets with millions (or more) objects, this could take a while.</p>
+
+<p>Basically:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">conn <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span>connect_s3()
+<span style="color:#66d9ef">for</span> bucket <span style="color:#f92672">in</span> sorted(conn<span style="color:#f92672">.</span>get_all_buckets()):
+    <span style="color:#66d9ef">try</span>:
+        total_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        total_size <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        start <span style="color:#f92672">=</span> datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now()
+
+        <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> bucket<span style="color:#f92672">.</span>list_versions():
+            <span style="color:#75715e"># Skip deleted files</span>
+            <span style="color:#66d9ef">if</span> isinstance(key, boto<span style="color:#f92672">.</span>s3<span style="color:#f92672">.</span>deletemarker<span style="color:#f92672">.</span>DeleteMarker):
+                <span style="color:#66d9ef">continue</span>
+
+            size <span style="color:#f92672">=</span> key<span style="color:#f92672">.</span>size
+            total_count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+            total_size <span style="color:#f92672">+=</span> size
+
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;-- {count} files, {size}, {time} to calculate&#39;</span><span style="color:#f92672">.</span>format(
+            count <span style="color:#f92672">=</span> total_count,
+            size <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturalsize(total_size),
+            time <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturaltime(datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now() <span style="color:#f92672">-</span> start)<span style="color:#f92672">.</span>replace(<span style="color:#e6db74">&#39; ago&#39;</span>, <span style="color:#e6db74">&#39;&#39;</span>)
+        ))</code></pre></div>
+                    <p><a href="/2018/07/15/counting-and-sizing-s3-buckets/">read more...</a></p>
+                
+        	</div>
+
+            
+            <hr />
+        </article>
+    
+    
+    
+        <article class="li">
+        	<header>
+        		<h1 class="entry-title">
                     <a href="https://blog.jverkamp.com/2018/07/09/creating-a-temporary-smtp-server-to-catch-domain-validation-emails/" class="clearfix">Creating a temporary SMTP server to &#39;catch&#39; domain validation emails</a>
                 </h1>
 
@@ -2606,77 +2711,6 @@ In state A:
 <p>What is the final number of <code>1s</code> on the tape?</p>
 </blockquote>
                     <p><a href="/2017/12/25/aoc-2017-day-25-turing/">read more...</a></p>
-                
-        	</div>
-
-            
-            <hr />
-        </article>
-    
-    
-    
-        <article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2017/12/24/aoc-2017-day-24-maker-of-bridges/" class="clearfix">AoC 2017 Day 24: Maker Of Bridges</a>
-                </h1>
-
-        		<div class="entry-meta">
-                    
-                    <span class="entry-date">2017-12-24</span>
-                    
-                    
-        		</div>
-        	</header>
-            <div class="entry-content">
-                
-                    <h3 id="source-electromagnetic-moat-http-adventofcode-com-2017-day-24">Source: <a href="http://adventofcode.com/2017/day/24">Electromagnetic Moat</a></h3>
-
-<blockquote>
-<p><strong>Part 1:</strong> Given a series of reversible components of the form <code>3/4</code> (can connect a <code>3</code> on one end to a <code>4</code> on the other), form a bridge of components. The bridge&rsquo;s strength is equal to the sum of component values. So <code>0/3, 3/7, and 7/4</code> has a strength of <code>0+3 + 3+7 + 7+4 = 24</code>.</p>
-
-<p>What is the strongest possible bridge?</p>
-</blockquote>
-                    <p><a href="/2017/12/24/aoc-2017-day-24-maker-of-bridges/">read more...</a></p>
-                
-        	</div>
-
-            
-            <hr />
-        </article>
-    
-    
-    
-        <article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2017/12/23/aoc-2017-day-23-duetvmc/" class="clearfix">AoC 2017 Day 23: Duetvmc</a>
-                </h1>
-
-        		<div class="entry-meta">
-                    
-                    <span class="entry-date">2017-12-23</span>
-                    
-                    
-        		</div>
-        	</header>
-            <div class="entry-content">
-                
-                    <h3 id="source-coprocessor-conflagration-http-adventofcode-com-2017-day-23">Source: <a href="http://adventofcode.com/2017/day/23">Coprocessor Conflagration</a></h3>
-
-<blockquote>
-<p><strong>Part 1:</strong> Create a variation of the <a href="https://blog.jverkamp.com/2017/12/18/aoc-2017-day-18-duetvm/">previous DuetVM</a> with only the following four instructions:</p>
-
-<ul>
-<li><code>set X Y</code> sets register <code>X</code> to <code>Y</code></li>
-<li><code>sub X Y</code> set register <code>X</code> to <code>X - Y</code></li>
-<li><code>mul X Y</code> sets register <code>X</code> to <code>X * Y</code></li>
-<li><code>jnz X Y</code> jumps with an offset of the value of <code>Y</code>, iff <code>X</code> is not equal to zero</li>
-</ul>
-
-<p>If you run the given program, how many times is <code>mul</code> invoked?</p>
-</blockquote>
-                    <p><a href="/2017/12/23/aoc-2017-day-23-duetvmc/">read more...</a></p>
                 
         	</div>
 
