@@ -52,6 +52,101 @@
     <div class="post-list"><article class="li">
         	<header>
         		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/19/lord-of-chaos/" class="clearfix">Lord of Chaos</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2018-07-19</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><figure class="cover-image">
+                <a data-goodreads-type="book" data-goodreads-id="35231" href="https://www.goodreads.com/book/show/35231.lord-of-chaos"><img src="/embeds/books/lord-of-chaos.jpg"></a>
+            </figure>
+
+<blockquote>
+<p>Let the <a data-goodreads-type="book" data-goodreads-id="35231" href="https://www.goodreads.com/book/show/35231.lord-of-chaos"> Lord of Chaos </a> rule.</p>
+</blockquote>
+
+<p>Rand is trying to rule Cairhien and Caemlyn, Tear and the Aiel. Egwene is <span class="spoiler">raised Amyrlin Seat</span>
+  . Nynaeve discovers how to Heal that which should be impossible to heal. Mat begins to build an army and finds himself bullied into following Elayne and Nynaeve to Ebou Dar.</p><p><a href="/2018/07/19/lord-of-chaos/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/18/adding-hsts-to-redirects-in-apache/" class="clearfix">Adding HSTS to Redirects in Apache</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2018-07-18</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><p>TLDR:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-apache" data-lang="apache"><span style="color:#75715e"># Use &#39;always&#39; so headers are also set for non-2XX and unset to avoid duplicates</span>
+<span style="color:#f92672">&lt;IfModule</span> <span style="color:#e6db74">headers_module</span><span style="color:#f92672">&gt;</span>
+	header unset Strict-Transport-Security
+	header always set Strict-Transport-Security <span style="color:#e6db74">&#34;max-age=16070400; includeSubDomains;&#34;</span>
+<span style="color:#f92672">&lt;/IfModule&gt;</span></code></pre></div>
+<p>Slightly<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup> longer version:</p>
+
+<p><a href="https://www.eff.org/https-everywhere">HTTPS everywhere</a> is a worthwhile goal. Even when you have traffic that isn&rsquo;t super interesting or sensitive by itself, the fact that you&rsquo;re encrypting it makes traffic that really does need to be encrypted safer against tools that grab all of the encrypted traffic they can to decrypt later if/when possible.</p>
+
+<p>One of the downsides of using HTTPS though is that without certain things in place, many users will still type <code>domain.com</code> in their address bar from time to time, completely missing out on the <code>https://</code>. While you can immediately redirect them, that very first request is a risk, since if a <a href="https://en.wikipedia.org/wiki/man-in-the-middle%20attack">man-in-the-middle attack</a> happens to catch that request, they can downgrade the entire connection.</p>
+
+<p>Enter <a href="https://en.wikipedia.org/wiki/HTTP%20Strict%20Transport%20Security">HTTP Strict Transport Security</a> (HSTS). It&rsquo;s a HTTP header that you can send on the first <code>HTTPS</code> connection you establish with a compatible client. Once you&rsquo;ve done that, any further requests (until the header&rsquo;s TTL expires without being renewed) will be sent to <code>https://</code> no matter what the user types. Which solves the first request problem for all sessions&hellip; but it still doesn&rsquo;t fix the very first time you have to get the header. So how do you fix that?</p><p><a href="/2018/07/18/adding-hsts-to-redirects-in-apache/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/" class="clearfix">Counting and Sizing S3 Buckets</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2018-07-15</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><p>A long time ago in a galaxy far far away, I wrote up a script that I used to take an <a href="https://aws.amazon.com/s3/">AWS S3</a> bucket and count how many objects there were in the bucket and calculate its total size. While you could get some of this information from billing reports, there just wasn&rsquo;t a good way to get it other than that at the time. The only way you could do it was to&hellip; iterate through the entire bucket, summing as you go. If you have buckets with millions (or more) objects, this could take a while.</p>
+
+<p>Basically:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">conn <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span>connect_s3()
+<span style="color:#66d9ef">for</span> bucket <span style="color:#f92672">in</span> sorted(conn<span style="color:#f92672">.</span>get_all_buckets()):
+    <span style="color:#66d9ef">try</span>:
+        total_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        total_size <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        start <span style="color:#f92672">=</span> datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now()
+
+        <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> bucket<span style="color:#f92672">.</span>list_versions():
+            <span style="color:#75715e"># Skip deleted files</span>
+            <span style="color:#66d9ef">if</span> isinstance(key, boto<span style="color:#f92672">.</span>s3<span style="color:#f92672">.</span>deletemarker<span style="color:#f92672">.</span>DeleteMarker):
+                <span style="color:#66d9ef">continue</span>
+
+            size <span style="color:#f92672">=</span> key<span style="color:#f92672">.</span>size
+            total_count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+            total_size <span style="color:#f92672">+=</span> size
+
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;-- {count} files, {size}, {time} to calculate&#39;</span><span style="color:#f92672">.</span>format(
+            count <span style="color:#f92672">=</span> total_count,
+            size <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturalsize(total_size),
+            time <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturaltime(datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now() <span style="color:#f92672">-</span> start)<span style="color:#f92672">.</span>replace(<span style="color:#e6db74">&#39; ago&#39;</span>, <span style="color:#e6db74">&#39;&#39;</span>)
+        ))</code></pre></div><p><a href="/2018/07/15/counting-and-sizing-s3-buckets/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2018/07/11/the-fires-of-heaven/" class="clearfix">The Fires of Heaven</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2018-07-11</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><figure class="cover-image">
+                <a data-goodreads-type="book" data-goodreads-id="13895" href="https://www.goodreads.com/book/show/13895.the-fires-of-heaven"><img src="/embeds/books/the-fires-of-heaven.jpg"></a>
+            </figure>
+
+<p>The Fires of Heaven is mostly a book to extend what we&rsquo;ve seen before.</p>
+
+<p>Elida solidifies her control on the tower while the rebels come together to oppose her. Nynaeve tugs her braid. A lot. Elayne and Nynaeve end up in the circus (not even kidding) and with a  <span class="spoiler">captured Forsaken...</span>
+</p><p><a href="/2018/07/11/the-fires-of-heaven/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
+        	<header>
+        		<h1 class="entry-title">
                     <a href="https://blog.jverkamp.com/2018/07/09/creating-a-temporary-smtp-server-to-catch-domain-validation-emails/" class="clearfix">Creating a temporary SMTP server to &#39;catch&#39; domain validation emails</a>
                 </h1>
 
@@ -150,87 +245,6 @@
 </blockquote>
 
 <p>Bit late for that. For all of them.</p><p><a href="/2018/06/28/the-shadow-rising/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/06/19/the-dragon-reborn/" class="clearfix">The Dragon Reborn</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2018-06-19</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="34897" href="https://www.goodreads.com/book/show/34897.the-dragon-reborn"><img src="/embeds/books/the-dragon-reborn.jpg"></a>
-            </figure>
-
-<blockquote>
-<p>Til shade is gone,</p>
-
-<p>til water is gone</p>
-
-<p>Into the shadow with teeth bared</p>
-
-<p>Screaming defiance with the last breath</p>
-
-<p>To spit in Sightblinder’s eye on the Last Day.</p>
-</blockquote><p><a href="/2018/06/19/the-dragon-reborn/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/06/11/the-great-hunt/" class="clearfix">The Great Hunt</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2018-06-11</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="233649" href="https://www.goodreads.com/book/show/233649.the-great-hunt"><img src="/embeds/books/the-great-hunt.jpg"></a>
-            </figure>
-
-<p>Amusingly, due to the library not having a copy of <a data-goodreads-type="book" data-goodreads-id="228665" href="https://www.goodreads.com/book/show/228665.the-eye-of-the-world"> The Eye of the World </a> , the first two times I read the series, I actually started with <a data-goodreads-type="book" data-goodreads-id="233649" href="https://www.goodreads.com/book/show/233649.the-great-hunt"> The Great Hunt </a> . While the Eye of the World could arguably stand alone (albeit with a somewhat unsatisfying feeling, given the sheer quantity of untapped potential in the world building), it&rsquo;s in the Great Hunt that things really start getting crazy.</p>
-
-<p>Rand is just now starting to understand what being the Dragon Reborn could mean. Perrin has a connection to the wolves, something very old, come new again. Mat is still cursed by his dagger and yet  <span class="spoiler">he's the one to finally sound the Horn</span>
-  . You have the first hints of parallel universes and world hopping, along with the World of Dreams&ndash;which will turn out to be rather important to the universe all together&ndash;along with a few more Forsaken coming out of the woodwork. Lanfear&hellip; Lanfear proves that being loved by a power hungry hundred/thousand year old super powerful jealous woman can be&hellip; interesting.</p><p><a href="/2018/06/11/the-great-hunt/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/06/02/the-eye-of-the-world/" class="clearfix">The Eye of the World</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2018-06-02</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="228665" href="https://www.goodreads.com/book/show/228665.the-eye-of-the-world"><img src="/embeds/books/the-eye-of-the-world.jpg"></a>
-            </figure>
-
-<blockquote>
-<p>The Wheel of Time turns and Ages come and go, leaving memories that become legend. Legend fades to myth, and even myth is long forgotten when the Age that gave it birth returns again. In the Third Age, an Age of Prophecy, the World and Time themselves hang in the balance. What was, what will be, and what is, may yet fall under the Shadow.</p>
-</blockquote>
-
-<p>I first read the Wheel of Time somewhere around 2004, with only 10 of the eventual 14 books published. When <a data-goodreads-type="book" data-goodreads-id="13888" href="https://www.goodreads.com/book/show/13888.knife-of-dreams">Knife of Dreams</a> was published in 2005, I read them all again. Likewise with <a data-goodreads-type="book" data-goodreads-id="1166599" href="https://www.goodreads.com/book/show/1166599.the-gathering-storm">The Gathering Storm</a> in 2009 (the first written by <a data-goodreads-type="author" data-goodreads-id="38550" href="https://www.goodreads.com/author/show/38550.brandon-sanderson">Brandon Sanderson</a> after <a data-goodreads-type="author" data-goodreads-id="6252" href="https://www.goodreads.com/author/show/6252.robert-jordan">Robert Jordan</a>&rsquo;s death), <a data-goodreads-type="book" data-goodreads-id="8253920" href="https://www.goodreads.com/book/show/8253920.towers-of-midnight">Towers of Midnight</a> in 2010, and finally <a data-goodreads-type="book" data-goodreads-id="7743175" href="https://www.goodreads.com/book/show/7743175.a-memory-of-light">A Memory of Light</a> in 2013. It&rsquo;s been a few years, but the series as a whole is well worth every minute to invest in a reread&ndash;it&rsquo;s among my favorite series I&rsquo;ve ever written. This time around though (for the second time) I&rsquo;ll be listening to the audiobooks.</p><p><a href="/2018/06/02/the-eye-of-the-world/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2018/05/26/the-shepherds-crown/" class="clearfix">The Shepherd&#39;s Crown</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2018-05-26</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><figure class="cover-image">
-                <a data-goodreads-type="book" data-goodreads-id="22886868" href="https://www.goodreads.com/book/show/22886868.the-shepherds-crown"><img src="/embeds/books/the-shepherds-crown.jpg"></a>
-            </figure>
-
-<blockquote>
-<p>FOR I CAN SEE THE BALANCE AND YOU HAVE LEFT THE WORLD MUCH BETTER THAN YOU FOUND IT, AND IF YOU ASK ME, said Death, NOBODY COULD DO ANY BETTER THAN THAT&hellip;</p>
-</blockquote>
-
-<p>And so it ends.</p><p><a href="/2018/05/26/the-shepherds-crown/">read more...</a></p></div>
 
             <hr /></article></div>
 
