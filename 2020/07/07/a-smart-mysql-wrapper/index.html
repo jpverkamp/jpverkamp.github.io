@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html onclick >
+<head>
+    <title>A Smart MySQL Wrapper – jverkamp.com</title>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8"><link rel="alternate" type="application/atom+xml" title="jverkamp.com (Atom 2.0)" href="//blog.jverkamp.com/feed/">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css" integrity="sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css" integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous" />
+
+<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel="stylesheet">
+
+<link rel="stylesheet" href="/custom.css" defer />
+
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+</head>
+<body>
+    <div id="wrapper"><header id="page-header" role="banner">
+    <h1><a href="/">JP's Blog</a></h1>
+
+    <ul id="page-header-links">
+        <li>
+            <a href="https://github.com/jpverkamp">GitHub</a> *
+            <a href="https://www.flickr.com/photos/jpverkamp">Flickr</a> *
+            <a href="/resume">Resume</a>
+        </li>
+        <li>
+            <form action="//www.google.com/search" method="get" onsubmit="(function(obj){obj.q.value='site:blog.jverkamp.com '+obj.qfront.value;})(this)" class="navbar-form navbar-right" role="search" _lpchecked="1">
+                <div class="form-group">
+                    <input name="q" type="hidden">
+                    <input name="qfront" type="text" class="form-control" placeholder="Search">
+                    <button type="submit" class="btn btn-default" value="Search">Search</button>
+                </div>
+            </form>
+        </li>
+    </ul>
+
+    <nav id="header-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        </ul>
+    </nav>
+</header>
+<div id="page-content-wrapper">
+            <div id="page-content"><article>
+	<header>
+		<h1 class="entry-title">A Smart MySQL Wrapper</h1>
+
+        <div class="entry-meta"><span class="entry-date">2020-07-07</span>
+            </div>
+
+        <div class="entry-taxonomies"><div class="entry-tags"><ul class="taxonomy-keys"><li>
+            <a class="taxonomy-key" href="/programming/languages/">Languages</a>
+            <ul class="taxonomy-values"><li><a class="taxonomy-value" href="/programming/languages/mysql">MySQL</a></li><li><a href="https://blog.jverkamp.com/2020/06/10/observation-server/" class="previous-link"></a><a class="taxonomy-value" href="/programming/languages/python">Python</a></li></ul>
+        </li><li>
+            <a class="taxonomy-key" href="/programming/topics/">Topics</a>
+            <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2020/04/09/command-line-aes-with-openssl-and-tar/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/dotfiles">Dotfiles</a></li><li><a href="https://blog.jverkamp.com/2019/04/27/tiny-helper-scripts-for-command-line-mysql/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/mysql">MySQL</a></li></ul>
+        </li><li><a class="taxonomy-key" href="/programming">programming</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2020/06/30/ssrf-protection-in-rails/" class="previous-link">Prev</a>
+                </ul>
+        </li><li><a class="taxonomy-key" href="/">All Posts</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2020/07/07/fullmetal-alchemist-vol.-22/" class="previous-link">Prev</a>
+                </ul>
+        </li></ul>
+</div>
+</div>
+    </header>
+
+	<div class="entry-content"><p>One thing tha tI often need to do is deal with a large collection of database servers in different clusters and in different environments. On top of that, sometimes, I want a UI, sometime I want a CLI to script. And sometimes I&rsquo;m on a VPN and sometimes I&rsquo;m not. All together, it&rsquo;s a rather complicated number of saved connections and CLI switches and everything else. All together, I want:</p>
+
+<ul>
+<li>Specify the cluster, environment, and mode (read/write/adhoc)</li>
+<li>Specify if I want to run via CLI or via UI</li>
+<li>Specify an optional user with safely stored and used passwords</li>
+<li>Automatically connected via SSH tunnel if I&rsquo;m not on VPN, but not if I am (for CLI or VPN)</li>
+</ul>
+
+<p>Let&rsquo;s do it!</p>
+
+<h1 id="parsing-command-line-parameters">Parsing command line parameters</h1>
+
+<p>First problem, let&rsquo;s get some command line arguments. I&rsquo;m going to use it like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ my-mysql <span style="color:#f92672">{</span>environment<span style="color:#f92672">}</span> <span style="color:#f92672">{</span>cluster<span style="color:#f92672">}</span> <span style="color:#f92672">{</span>mode<span style="color:#f92672">}</span> <span style="color:#f92672">[</span>--ui<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>--user <span style="color:#f92672">{</span>user<span style="color:#f92672">}]</span> <span style="color:#f92672">[</span>--verbose<span style="color:#f92672">]</span></code></pre></div>
+<p>So that means we need to <code><a href="https://docs.python.org/3/search.html?q=argparse">argparse</a></code>
+ it like so:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">parser <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>ArgumentParser(description <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;MySQL wrapper, connects to a MySQL wrapper or runs a query from stdin&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(dest <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;environment&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Environment to run in, if an IP is specified it will be used as hostname&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(dest <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;database&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Database to connect to&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(dest <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;mode&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Mode to run in (read,write,adhoc)&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;--ui&#39;</span>, action <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;store_true&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Launch in SQL pro&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;-u&#39;</span>, <span style="color:#e6db74">&#39;--user&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;default&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The credentials block to use&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;-s&#39;</span>, <span style="color:#e6db74">&#39;--sshtunnel&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;my-tunnel&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The SSH tunnel host to use&#39;</span>)
+parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;-v&#39;</span>, <span style="color:#e6db74">&#39;--verbose&#39;</span>, action <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;store_true&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Run in verbose mode&#39;</span>)
+args <span style="color:#f92672">=</span> parser<span style="color:#f92672">.</span>parse_args()</code></pre></div>
+<h1 id="determining-db-hostname">Determining DB hostname</h1>
+
+<p>Our hostnames are made somewhat easier by the fact that our DB folks have named the hosts nicely with CNAMEs everywhere, so that <code>{cluster}-{mode}.{domain}</code> always resolves to what we need. We just need a map of <code>environment</code> to <code>domain</code>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">domain_map <span style="color:#f92672">=</span> {
+    <span style="color:#e6db74">&#39;prod&#39;</span>: <span style="color:#e6db74">&#39;domain.com&#39;</span>,
+    <span style="color:#e6db74">&#39;qa&#39;</span>: <span style="color:#e6db74">&#39;staging-domain.com&#39;</span>,
+    <span style="color:#e6db74">&#39;dev&#39;</span>: <span style="color:#e6db74">&#39;development-domain.com&#39;</span>,
+}
+
+<span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;.&#39;</span> <span style="color:#f92672">in</span> args<span style="color:#f92672">.</span>environment:
+	host <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>environment
+	args<span style="color:#f92672">.</span>mode <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;custom&#39;</span>
+<span style="color:#66d9ef">else</span>:
+	host <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;{db}-{mode}.{domain}&#39;</span><span style="color:#f92672">.</span>format(
+	    db <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>database,
+	    mode <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>mode,
+	    domain <span style="color:#f92672">=</span> domain_map<span style="color:#f92672">.</span>get(args<span style="color:#f92672">.</span>environment) <span style="color:#f92672">or</span> args<span style="color:#f92672">.</span>environment,
+	)</code></pre></div>
+<p>That takes care of connecting to the correct DB mode/host, but next we need to determine if we&rsquo;re on a VPN or not:</p>
+
+<h1 id="vpn-detection">VPN detection</h1>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">on_vpn <span style="color:#f92672">=</span> (os<span style="color:#f92672">.</span>system(<span style="color:#e6db74">&#39;dig +short myip.opendns.com @resolver1.opendns.com | egrep &#34;^(10|50|52)</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">.&#34; &gt; /dev/null&#39;</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)</code></pre></div>
+<p>It&rsquo;s a trick I&rsquo;d previously used in <a href="https://blog.jverkamp.com/2017/12/13/dynamic-automatic-proxies/">Dynamic Automatic Proxy</a> and <a href="https://blog.jverkamp.com/2017/12/18/ssh-config-proxycommand-tricks/">SSH Config Tricks</a>, using DNS to tell what my local IP is. If it&rsquo;s in a private range (or in this case, an AWS IP starting with <code>50</code> or <code>52</code>), then I&rsquo;m already on VPN and don&rsquo;t need another step. Otherwise, I do.</p>
+
+<h1 id="connecting-to-the-mysql-client">Connecting to the <code>mysql</code> client</h1>
+
+<p>Let&rsquo;s start with the CLI mode. If we&rsquo;re on VPN, connect directly. If not, we want to establish an SSH tunnel with the <code><a href="https://docs.python.org/3/search.html?q=sshtunnel">sshtunnel</a></code>
+ library and then connect via that:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">env <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ<span style="color:#f92672">.</span>copy()
+env[<span style="color:#e6db74">&#39;MYSQL_PWD&#39;</span>] <span style="color:#f92672">=</span> credentials[<span style="color:#e6db74">&#39;password&#39;</span>]
+
+<span style="color:#66d9ef">if</span> on_vpn:
+    subprocess<span style="color:#f92672">.</span>check_call(
+        [<span style="color:#e6db74">&#39;mysql&#39;</span>, <span style="color:#e6db74">&#39;-A&#39;</span>, <span style="color:#e6db74">&#39;-h&#39;</span>, host, <span style="color:#e6db74">&#39;-u&#39;</span>, credentials[<span style="color:#e6db74">&#39;user&#39;</span>], db_map<span style="color:#f92672">.</span>get(args<span style="color:#f92672">.</span>database) <span style="color:#f92672">or</span> args<span style="color:#f92672">.</span>database],
+        env <span style="color:#f92672">=</span> env,
+    )
+
+<span style="color:#66d9ef">else</span>:
+    <span style="color:#66d9ef">with</span> sshtunnel<span style="color:#f92672">.</span>open_tunnel((args<span style="color:#f92672">.</span>sshtunnel, <span style="color:#ae81ff">22</span>), remote_bind_address <span style="color:#f92672">=</span> (host, <span style="color:#ae81ff">3306</span>)) <span style="color:#66d9ef">as</span> tunnel:
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Established SSH tunnel from {tunnel.local_bind_host}:{tunnel.local_bind_port} via {args.sshtunnel}:22 to {host}:3306&#39;</span>)
+        subprocess<span style="color:#f92672">.</span>check_call(
+            [<span style="color:#e6db74">&#39;mysql&#39;</span>, <span style="color:#e6db74">&#39;-A&#39;</span>, <span style="color:#e6db74">&#39;-h&#39;</span>, <span style="color:#e6db74">&#39;127.0.0.1&#39;</span>, <span style="color:#e6db74">&#39;-P&#39;</span>, str(tunnel<span style="color:#f92672">.</span>local_bind_port), <span style="color:#e6db74">&#39;-u&#39;</span>, credentials[<span style="color:#e6db74">&#39;user&#39;</span>], db_map<span style="color:#f92672">.</span>get(args<span style="color:#f92672">.</span>database) <span style="color:#f92672">or</span> args<span style="color:#f92672">.</span>database],
+            env <span style="color:#f92672">=</span> env,
+        )</code></pre></div>
+<p>On additional trick is setting the <code>MYSQL_PWD</code> environment variable before calling the command with <code><a href="https://docs.python.org/3/search.html?q=subprocess">subprocess</a></code>
+. That way we can pass the password without it being displayed when we&rsquo;re in verbose mode.</p>
+
+<p>Connecting via the SSH tunnel was something that I was particularly proud of. Essentially, we can make an SSH tunnel via a <a href="https://en.wikipedia.org/wiki/bastion%20host">bastion host</a> to the MySQL host inside a private network and then connecting to that tunnel, which in turn forwards the connection through the tunnel. It doesn&rsquo;t even cost that much performancewise.</p>
+
+<p>Because we&rsquo;re using <code>subprocess</code>, we can actually do fun things with pipes:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ echo <span style="color:#e6db74">&#39;select * from users where user_id = 1337&#39;</span> | my-mysql prod primary adhoc
+...
+
+$ echo <span style="color:#e6db74">&#39;select * from files where creator_id in (&#39;</span> <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>    <span style="color:#f92672">(</span>echo <span style="color:#e6db74">&#39;select user_id from users where creation_date &gt; &#34;2020-01-01&#34;&#39;</span> | my-mysql prod primary adhoc | skiphead | commaify<span style="color:#f92672">)</span> <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>    | my-mysql prod secondary adhoc</code></pre></div>
+<p>References for <code>skiphead</code> and <code>commaify</code>: <a href="https://blog.jverkamp.com/2019/04/27/tiny-helper-scripts-for-command-line-mysql/">Tiny Helper Scripts for Command Line MySQL</a></p>
+
+<p>Pretty cool.</p>
+
+<h1 id="connecting-via-sequelpro">Connecting via SequelPro</h1>
+
+<p>Next, I want to use a UI sometimes. Since I&rsquo;m on a Mac, the best client I&rsquo;ve found by far is <a href="http://sequelpro.com/">SequelPro</a>. At first, I despired at finding a way to launch SequelPro from a script, it doesn&rsquo;t have helpful switches for that. But then I came across <code>.spf</code> file associations. It turns out that <code>.spf</code> files are associated with SequelPro by default. So what is a SPF file?</p>
+
+<p>XML (more specifically a <a href="https://en.wikipedia.org/wiki/plist">plist</a>!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#75715e">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+<span style="color:#75715e">&lt;!DOCTYPE plist PUBLIC &#34;-//Apple//DTD PLIST 1.0//EN&#34; &#34;http://www.apple.com/DTDs/PropertyList-1.0.dtd&#34;&gt;</span>
+<span style="color:#f92672">&lt;plist</span> <span style="color:#a6e22e">version=</span><span style="color:#e6db74">&#34;1.0&#34;</span><span style="color:#f92672">&gt;</span>
+<span style="color:#f92672">&lt;dict&gt;</span>
+	<span style="color:#f92672">&lt;key&gt;</span>version<span style="color:#f92672">&lt;/key&gt;&lt;integer&gt;</span>1<span style="color:#f92672">&lt;/integer&gt;</span>
+	<span style="color:#f92672">&lt;key&gt;</span>encrypted<span style="color:#f92672">&lt;/key&gt;&lt;false/&gt;</span>
+	<span style="color:#f92672">&lt;key&gt;</span>format<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>connection<span style="color:#f92672">&lt;/string&gt;</span>
+	<span style="color:#f92672">&lt;key&gt;</span>ContentFilters<span style="color:#f92672">&lt;/key&gt;&lt;dict/&gt;</span>
+	<span style="color:#f92672">&lt;key&gt;</span>auto_connect<span style="color:#f92672">&lt;/key&gt;&lt;true/&gt;</span>
+
+	<span style="color:#f92672">&lt;key&gt;</span>rdbms_type<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>mysql<span style="color:#f92672">&lt;/string&gt;</span>
+
+	<span style="color:#f92672">&lt;key&gt;</span>data<span style="color:#f92672">&lt;/key&gt;</span>
+	<span style="color:#f92672">&lt;dict&gt;</span>
+		<span style="color:#f92672">&lt;key&gt;</span>connection<span style="color:#f92672">&lt;/key&gt;</span>
+		<span style="color:#f92672">&lt;dict&gt;</span>
+			<span style="color:#f92672">&lt;key&gt;</span>name<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>{user} @ {host} ({mode})<span style="color:#f92672">&lt;/string&gt;</span>
+			<span style="color:#f92672">&lt;key&gt;</span>colorIndex<span style="color:#f92672">&lt;/key&gt;&lt;integer&gt;</span>{color}<span style="color:#f92672">&lt;/integer&gt;</span>
+
+			<span style="color:#f92672">&lt;key&gt;</span>host<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>{host}<span style="color:#f92672">&lt;/string&gt;</span>
+            <span style="color:#f92672">&lt;key&gt;</span>database<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>{db}<span style="color:#f92672">&lt;/string&gt;</span>
+			<span style="color:#f92672">&lt;key&gt;</span>user<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>{user}<span style="color:#f92672">&lt;/string&gt;</span>
+			<span style="color:#f92672">&lt;key&gt;</span>password<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>{password}<span style="color:#f92672">&lt;/string&gt;</span>
+
+			<span style="color:#f92672">&lt;key&gt;</span>rdbms_type<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>mysql<span style="color:#f92672">&lt;/string&gt;</span>
+
+			<span style="color:#f92672">&lt;key&gt;</span>type<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>SPSSHTunnelConnection<span style="color:#f92672">&lt;/string&gt;</span>
+			<span style="color:#f92672">&lt;key&gt;</span>ssh_host<span style="color:#f92672">&lt;/key&gt;&lt;string&gt;</span>{tunnel}<span style="color:#f92672">&lt;/string&gt;</span>
+		<span style="color:#f92672">&lt;/dict&gt;</span>
+	<span style="color:#f92672">&lt;/dict&gt;</span>
+
+	<span style="color:#f92672">&lt;key&gt;</span>queryFavorites<span style="color:#f92672">&lt;/key&gt;&lt;array/&gt;</span>
+	<span style="color:#f92672">&lt;key&gt;</span>queryHistory<span style="color:#f92672">&lt;/key&gt;&lt;array/&gt;</span>
+<span style="color:#f92672">&lt;/dict&gt;</span>
+<span style="color:#f92672">&lt;/plist&gt;</span></code></pre></div>
+<p>It took a bit to work out coloring so that I could tell different type of connections apart (if you have enough tabs open, things go all sorts of sideways). We do have to have a file somewhere, so I used <code><a href="https://docs.python.org/3/search.html?q=tempfile">tempfile</a></code>
+ to make a quick file and then tell the <code>system</code> to <code>open</code> it. It works pretty well.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">path <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(tempfile<span style="color:#f92672">.</span>tempdir <span style="color:#f92672">or</span> <span style="color:#e6db74">&#39;/tmp&#39;</span>, <span style="color:#e6db74">&#39;db-{}-{}.spf&#39;</span><span style="color:#f92672">.</span>format(host, args<span style="color:#f92672">.</span>mode))
+os<span style="color:#f92672">.</span>makedirs(os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>dirname(path), exist_ok <span style="color:#f92672">=</span> True)
+logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Using temporary file: {}&#39;</span><span style="color:#f92672">.</span>format(path))
+
+<span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
+    fout<span style="color:#f92672">.</span>write(sqlpro_template<span style="color:#f92672">.</span>format(
+        color <span style="color:#f92672">=</span> mode_color_map[args<span style="color:#f92672">.</span>mode],
+        db <span style="color:#f92672">=</span> db_map<span style="color:#f92672">.</span>get(args<span style="color:#f92672">.</span>database) <span style="color:#f92672">or</span> args<span style="color:#f92672">.</span>database,
+        host <span style="color:#f92672">=</span> host,
+        user <span style="color:#f92672">=</span> credentials[<span style="color:#e6db74">&#39;user&#39;</span>],
+        password <span style="color:#f92672">=</span> credentials[<span style="color:#e6db74">&#39;password&#39;</span>],
+        mode <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>mode,
+        tunnel <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>sshtunnel,
+    ))
+
+os<span style="color:#f92672">.</span>system(<span style="color:#e6db74">&#39;open &#34;{}&#34;&#39;</span><span style="color:#f92672">.</span>format(path))</code></pre></div>
+<p><code>tempfile</code> should automatically clean up the files (since they have passwords stored&hellip;), but just in case, we should deal with them ourselfs.</p>
+
+<p>Now, there is a gotcha here. We always use the SSH tunnel. I could very easily select a template just without the <code>SPSSHTunnelConnection</code> key, it just hasn&rsquo;t really come up.</p>
+
+<p>And that&rsquo;s about it. Handy for me. Hope there is at lteast something interesting in there for you.</p></div>
+<div class="entry-comments">
+    <div id="disqus_thread"></div>
+        <script type="text/javascript">
+            var disqus_shortname = "jverkamp";
+            var disqus_title = "A Smart MySQL Wrapper";
+            var disqus_url = "https:\/\/blog.jverkamp.com\/2020\/07\/07\/a-smart-mysql-wrapper\/";
+
+             
+            (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+            })();
+        </script>
+        <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+        <a href="https://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    </div></article></div>
+        </div><footer id="page-footer" role="contentinfo">
+    <nav id="footer-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation">
+            <li><a href="/archive-by-date/">All posts: By Date</a></li>
+            <li><a href="/archive-by-tag/">All posts: By Tag</a></li>
+
+            <li>
+                <a href="/atom.xml">
+                    RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li><li>
+                <a href="/programming/atom.xml">
+                    RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li></ul>
+    </nav>
+
+    <div id="page-footer-content">
+        <div class="legal">
+            <p>
+                All posts unless otherwise mentioned are licensed under
+                <a rel="license" href="//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US">
+                    <img alt="Creative Commons License" style="border-width:0" src="//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png">
+                </a>
+            </p>
+
+            <p>
+                Any source code unless otherwise mentioned is licensed under the <a href="//directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+            </p>
+        </div>
+    </div>
+</footer>
+</div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js" integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js" integrity="sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js" integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin="anonymous"></script>
+
+<script type="text/javascript" src="/custom.js" defer></script>
+</body>
+</html>
