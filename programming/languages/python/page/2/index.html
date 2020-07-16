@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -48,6 +48,59 @@
     <div class="entry-content"></div>
 
     <article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2018/12/01/advent-of-code-2018/" class="clearfix">Advent of Code 2018</a>
+            </h1>
+
+    		<div class="entry-meta"><span class="entry-date">2018-12-01</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><p>Let&rsquo;s do it again! I&rsquo;m starting a day late, but much better than <a href="https://blog.jverkamp.com/2018/01/08/advent-of-code-2017/">last year</a> 😄!</p>
+
+<p>This time around, I&rsquo;m hoping to solve each problem in both Python and Racket, both to show an example of how the languages differ and &hellip; well, because I can 😇.</p>
+
+<p><em>EDIT 2018-12-05</em>: Yeah&hellip; I&rsquo;m not actually going to do these in both Racket and Python. The solutions are ending up being near direct translations. Since there are probably fewer people solving these in Racket, I&rsquo;ll do that first and Python eventually™.</p>
+
+<p>As always, these problems are wonderful to try to solve yourself. If you agree, <em>stop reading now</em>. This post isn&rsquo;t going anywhere.</p>
+
+<p>If you&rsquo;d like to see the full form of any particular solution, you can do so on GitHub (including previous years and possibly some I haven&rsquo;t written up yet): <a href="https://github.com/jpverkamp/advent-of-code">jpverkamp/advent-of-code</a></p><p><a href="/2018/12/01/advent-of-code-2018/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2018/07/15/counting-and-sizing-s3-buckets/" class="clearfix">Counting and Sizing S3 Buckets</a>
+            </h1>
+
+    		<div class="entry-meta"><span class="entry-date">2018-07-15</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><p>A long time ago in a galaxy far far away, I wrote up a script that I used to take an <a href="https://aws.amazon.com/s3/">AWS S3</a> bucket and count how many objects there were in the bucket and calculate its total size. While you could get some of this information from billing reports, there just wasn&rsquo;t a good way to get it other than that at the time. The only way you could do it was to&hellip; iterate through the entire bucket, summing as you go. If you have buckets with millions (or more) objects, this could take a while.</p>
+
+<p>Basically:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">conn <span style="color:#f92672">=</span> boto<span style="color:#f92672">.</span>connect_s3()
+<span style="color:#66d9ef">for</span> bucket <span style="color:#f92672">in</span> sorted(conn<span style="color:#f92672">.</span>get_all_buckets()):
+    <span style="color:#66d9ef">try</span>:
+        total_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        total_size <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        start <span style="color:#f92672">=</span> datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now()
+
+        <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> bucket<span style="color:#f92672">.</span>list_versions():
+            <span style="color:#75715e"># Skip deleted files</span>
+            <span style="color:#66d9ef">if</span> isinstance(key, boto<span style="color:#f92672">.</span>s3<span style="color:#f92672">.</span>deletemarker<span style="color:#f92672">.</span>DeleteMarker):
+                <span style="color:#66d9ef">continue</span>
+
+            size <span style="color:#f92672">=</span> key<span style="color:#f92672">.</span>size
+            total_count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+            total_size <span style="color:#f92672">+=</span> size
+
+        <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;-- {count} files, {size}, {time} to calculate&#39;</span><span style="color:#f92672">.</span>format(
+            count <span style="color:#f92672">=</span> total_count,
+            size <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturalsize(total_size),
+            time <span style="color:#f92672">=</span> humanize<span style="color:#f92672">.</span>naturaltime(datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>now() <span style="color:#f92672">-</span> start)<span style="color:#f92672">.</span>replace(<span style="color:#e6db74">&#39; ago&#39;</span>, <span style="color:#e6db74">&#39;&#39;</span>)
+        ))</code></pre></div><p><a href="/2018/07/15/counting-and-sizing-s3-buckets/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
     	<header>
     		<h1 class="entry-title">
                 <a href="https://blog.jverkamp.com/2018/07/09/creating-a-temporary-smtp-server-to-catch-domain-validation-emails/" class="clearfix">Creating a temporary SMTP server to &#39;catch&#39; domain validation emails</a>
@@ -193,65 +246,6 @@ In state A:
 
 <p>After 10,000 iterations, how many pixels were turned from <code>.</code> to <code>#</code>?</p>
 </blockquote><p><a href="/2017/12/22/aoc-2017-day-22-langtons-ant/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2017/12/21/aoc-2017-day-21-fractal-expander/" class="clearfix">AoC 2017 Day 21: Fractal Expander</a>
-            </h1>
-
-    		<div class="entry-meta"><span class="entry-date">2017-12-21</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-fractal-art-http-adventofcode-com-2017-day-21">Source: <a href="http://adventofcode.com/2017/day/21">Fractal Art</a></h3>
-
-<blockquote>
-<p><strong>Part 1:</strong> Start with an input image made of <code>.</code> and <code>#</code> pixels. For <code>n</code> iterations, break the image into blocks:</p>
-
-<ul>
-<li>If the current size is even, break the image into 2x2 chunks and replace each with a 3x3 chunk</li>
-<li>If the current size is odd, break the image into 3x3 chunks and replace each with a 4x4 chunk</li>
-</ul>
-
-<p>The replacement rules will be specified in the following format (example is a 3x3 -&gt; 4x4 rule):</p>
-
-<pre><code>.#./..#/### =&gt; #..#/..../..../#..#
-</code></pre>
-
-<p>In that example, replace this:</p>
-
-<pre><code>.#.
-..#
-###
-</code></pre>
-
-<p>With this:</p>
-
-<pre><code>#..#
-....
-....
-#..#
-</code></pre>
-
-<p>Any rotation or reflection of a chunk can be used to match the input of a replacement rule.</p>
-
-<p>After <code>n = 18</code> iterations, how many <code>#</code> pixels are there?</p>
-</blockquote><p><a href="/2017/12/21/aoc-2017-day-21-fractal-expander/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2017/12/20/aoc-2017-day-20-miniature-universe-simulator/" class="clearfix">AoC 2017 Day 20: Miniature Universe Simulator</a>
-            </h1>
-
-    		<div class="entry-meta"><span class="entry-date">2017-12-20</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-particle-swarm-http-adventofcode-com-2017-day-20">Source: <a href="http://adventofcode.com/2017/day/20">Particle Swarm</a></h3>
-
-<blockquote>
-<p><strong>Part 1:</strong> Given the initial position, velocity, and acceleration of a large number of particles, which particle will stay the closet to the origin as the simulation runs to infinity?</p>
-</blockquote><p><a href="/2017/12/20/aoc-2017-day-20-miniature-universe-simulator/">read more...</a></p></div>
 
         <hr /></article><nav id="pagination-navigation" role="navigation">
 
