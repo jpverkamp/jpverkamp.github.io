@@ -243,8 +243,17 @@ function keyTyped() {
 
 var oldSetup = setup;
 setup = () =&gt; {
+    // Load saved settings from the browser&#39;s hash fragment
+    if (parent.location.hash &amp;&amp; typeof params !== &#34;undefined&#34;) {
+        try {
+            var settings = JSON.parse(atob(parent.location.hash.substring(1)));
+            Object.keys(params).forEach((key) =&gt; params[key] = settings[key] || params[key]);
+        } catch(ex) {
+        }
+    }
+
     oldSetup();
-    
+
     createButton(&#34;play/pause&#34;).mousePressed(() =&gt; {
       if (isLooping()) {
         noLoop();
@@ -264,6 +273,16 @@ setup = () =&gt; {
             clear();
         }
     });
+
+    if (typeof params !== &#34;undefined&#34;) {
+        for (var el of document.querySelectorAll(&#39;input&#39;)) {
+            if (el.id &amp;&amp; el.id.startsWith(&#39;qs_&#39;)) {
+                el.addEventListener(&#39;change&#39;, () =&gt; {
+                    parent.location.hash = btoa(JSON.stringify(params));
+                });
+            }
+        }
+    }
 }
 </script>
 &lt;noscript&gt;To display this p5.js sketch, JavaScript must be enabled.&lt;/noscript&gt;
