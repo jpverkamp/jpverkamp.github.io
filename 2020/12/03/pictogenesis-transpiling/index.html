@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html onclick >
+<head>
+    <title>Pictogenesis: Transpiling – jverkamp.com</title>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8"><link rel="alternate" type="application/atom+xml" title="jverkamp.com (Atom 2.0)" href="//blog.jverkamp.com/feed/">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css" integrity="sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css" integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous" />
+
+<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel="stylesheet">
+
+<link rel="stylesheet" href="/custom.css" defer />
+
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+</head>
+<body>
+    <div id="wrapper"><header id="page-header" role="banner">
+    <h1><a href="/">JP's Blog</a></h1>
+
+    <ul id="page-header-links">
+        <li>
+            <a href="https://github.com/jpverkamp">GitHub</a> *
+            <a href="https://www.flickr.com/photos/jpverkamp">Flickr</a> *
+            <a href="/resume">Resume</a>
+        </li>
+        <li>
+            <form action="//www.google.com/search" method="get" onsubmit="(function(obj){obj.q.value='site:blog.jverkamp.com '+obj.qfront.value;})(this)" class="navbar-form navbar-right" role="search" _lpchecked="1">
+                <div class="form-group">
+                    <input name="q" type="hidden">
+                    <input name="qfront" type="text" class="form-control" placeholder="Search">
+                    <button type="submit" class="btn btn-default" value="Search">Search</button>
+                </div>
+            </form>
+        </li>
+    </ul>
+
+    <nav id="header-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        </ul>
+    </nav>
+</header>
+<div id="page-content-wrapper">
+            <div id="page-content"><article>
+	<header>
+		<h1 class="entry-title">Pictogenesis: Transpiling</h1>
+
+        <div class="entry-meta"><span class="entry-date">2020-12-03</span>
+            </div>
+
+        <div class="entry-taxonomies"><div class="entry-tags"><ul class="taxonomy-keys"><li>
+            <a class="taxonomy-key" href="/programming/languages/">Languages</a>
+            <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/" class="previous-link"></a><a class="taxonomy-value" href="/programming/languages/javascript">JavaScript</a></li></ul>
+        </li><li>
+            <a class="taxonomy-key" href="/programming/topics/">Topics</a>
+            <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/cellular-automata">Cellular Automata</a></li><li><a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/generative-art">Generative Art</a></li><li><a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/p5js">p5js</a></li><li><a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/procedural-content">Procedural Content</a></li></ul>
+        </li><li>
+            <a class="taxonomy-key" href="/series/">Series</a>
+            <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/" class="previous-link"></a><a class="taxonomy-value" href="/series/pictogenesis">Pictogenesis</a></li></ul>
+        </li><li><a class="taxonomy-key" href="/programming">programming</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/" class="previous-link">Prev</a>
+                </ul>
+        </li><li><a class="taxonomy-key" href="/">All Posts</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2020/12/02/the-umbrella-academy-vol.-2-dallas/" class="previous-link">Prev</a>
+                </ul>
+        </li></ul>
+</div>
+</div>
+    </header>
+
+	<div class="entry-content"><p>Okay. That is <em>slow</em>&hellip; Let&rsquo;s make it faster!</p>
+
+<p>So the main problem we have is that we&rsquo;re interpreting the code. For every single pixel, for every line of code, we&rsquo;re doing a few housekeeping things and making at least one function call. For a 400x400 image with just 10 lines of code, that&rsquo;s 1.6M function calls. Like I said, <em>slow</em>.</p>
+
+<p>So let&rsquo;s make it faster!</p>
+
+<p>My first idea? <a href="https://en.wikipedia.org/wiki/Transpile">Transpile</a> it to Javascript!</p>
+
+<p>Specifically, my goal is to turn this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-asm" data-lang="asm"><span style="color:#a6e22e">ZERO</span> <span style="color:#66d9ef">B</span>
+<span style="color:#a6e22e">ONE</span> <span style="color:#66d9ef">B</span>
+<span style="color:#a6e22e">max</span> <span style="color:#66d9ef">B</span> <span style="color:#66d9ef">T0</span> <span style="color:#66d9ef">Y</span>
+<span style="color:#a6e22e">abs</span> <span style="color:#66d9ef">B</span> <span style="color:#66d9ef">G</span>
+<span style="color:#a6e22e">add</span> <span style="color:#66d9ef">B</span> <span style="color:#66d9ef">B</span> <span style="color:#66d9ef">X</span>
+<span style="color:#a6e22e">inv</span> <span style="color:#66d9ef">Y</span> <span style="color:#66d9ef">T0</span>
+<span style="color:#a6e22e">abs</span> <span style="color:#66d9ef">T1</span> <span style="color:#66d9ef">T1</span>
+<span style="color:#a6e22e">polR</span> <span style="color:#66d9ef">Y</span> <span style="color:#66d9ef">T1</span> <span style="color:#66d9ef">G</span>
+<span style="color:#a6e22e">sqrt</span> <span style="color:#66d9ef">G</span> <span style="color:#66d9ef">B</span>
+<span style="color:#a6e22e">max</span> <span style="color:#66d9ef">G</span> <span style="color:#66d9ef">X</span> <span style="color:#66d9ef">X</span></code></pre></div>
+<p>Into this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">function</span>(<span style="color:#a6e22e">X</span>, <span style="color:#a6e22e">Y</span>) {
+  <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">T1</span>,<span style="color:#a6e22e">T0</span>,<span style="color:#a6e22e">R</span>,<span style="color:#a6e22e">G</span>,<span style="color:#a6e22e">B</span>;
+  <span style="color:#a6e22e">T1</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">T0</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">R</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">G</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">B</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">B</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">B</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+  <span style="color:#a6e22e">B</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">max</span>(<span style="color:#a6e22e">T0</span>, <span style="color:#a6e22e">Y</span>);
+  <span style="color:#a6e22e">B</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">abs</span>(<span style="color:#a6e22e">G</span>);
+  <span style="color:#a6e22e">B</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">B</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">X</span>;
+  <span style="color:#75715e">// Y = 1 / T0;
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">T1</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">abs</span>(<span style="color:#a6e22e">T1</span>);
+  <span style="color:#75715e">// Y = Math.sqrt(T1 * T1 + G * G);
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">G</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">sqrt</span>(<span style="color:#a6e22e">B</span>);
+  <span style="color:#a6e22e">G</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">max</span>(<span style="color:#a6e22e">X</span>, <span style="color:#a6e22e">X</span>);
+  <span style="color:#66d9ef">return</span> [<span style="color:#a6e22e">R</span>, <span style="color:#a6e22e">G</span>, <span style="color:#a6e22e">B</span>];
+}
+</code></pre></div>
+<p>Let&rsquo;s do it!</p>
+
+<p>So, for better or for worse, our code is stored as functions. But one thing that JavaScript does is give us access to the source code for functions with <code>toString()</code>!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">const</span> <span style="color:#a6e22e">instructions</span> <span style="color:#f92672">=</span> [
+  <span style="color:#75715e">// Basic math
+</span><span style="color:#75715e"></span>  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;id&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; <span style="color:#a6e22e">x</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;add&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">x</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">y</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;sub&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">x</span> <span style="color:#f92672">-</span> <span style="color:#a6e22e">y</span>},
+  ...
+];
+
+<span style="color:#f92672">&gt;&gt;</span> <span style="color:#a6e22e">instructions</span>[<span style="color:#ae81ff">1</span>].<span style="color:#66d9ef">function</span>.<span style="color:#a6e22e">toString</span>();
+<span style="color:#e6db74">&#34;(x, y) =&gt; x + y&#34;</span>
+</code></pre></div>
+<p>We can then &lsquo;parse&rsquo; that with a <a href="https://en.wikipedia.org/wiki/regular%20expression">regular expression</a>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;&gt;</span> <span style="color:#a6e22e">instructions</span>[<span style="color:#ae81ff">1</span>].<span style="color:#66d9ef">function</span>.<span style="color:#a6e22e">toString</span>().<span style="color:#a6e22e">match</span>(<span style="color:#e6db74">/^\((.*?)\) =&gt; (.*?)$/</span>)
+Array(<span style="color:#ae81ff">3</span>) [
+  <span style="color:#e6db74">&#34;(x, y) =&gt; x + y&#34;</span>,
+  <span style="color:#e6db74">&#34;x, y&#34;</span>,
+  <span style="color:#e6db74">&#34;x + y&#34;</span>
+]
+</code></pre></div>
+<p>Now that is interesting. We have a list of parameters and the actual code. But how do we match that to the registers (in our first machine)? Well, for each parameter in the &lsquo;function&rsquo; (x and y in this example), we need to map those to the registers in the assembled code:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">let</span> <span style="color:#a6e22e">f</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">command</span>.<span style="color:#66d9ef">function</span>.<span style="color:#a6e22e">toString</span>();
+<span style="color:#66d9ef">let</span> <span style="color:#a6e22e">out</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#ae81ff">0</span>];
+<span style="color:#66d9ef">let</span> <span style="color:#a6e22e">parts</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">match</span>(<span style="color:#a6e22e">pattern</span>);
+
+<span style="color:#75715e">// Directly convert it to code
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">line</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">`  </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> = </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">2</span>]<span style="color:#e6db74">}</span><span style="color:#e6db74">;`</span>;
+
+<span style="color:#75715e">// We have parameters, replace those in the code
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">1</span>]) {
+  <span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">1</span>].<span style="color:#a6e22e">split</span>(<span style="color:#e6db74">&#39;,&#39;</span>).<span style="color:#a6e22e">map</span>((<span style="color:#a6e22e">el</span>, <span style="color:#a6e22e">i</span>) =&gt; {
+    <span style="color:#a6e22e">line</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">line</span>.<span style="color:#a6e22e">replaceAll</span>(
+      <span style="color:#66d9ef">new</span> RegExp(<span style="color:#e6db74">&#34;\\b&#34;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">trim</span>() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;\\b&#34;</span>, <span style="color:#e6db74">&#34;g&#34;</span>),
+      <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#a6e22e">i</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>]
+    );
+  });
+}
+</code></pre></div>
+<p>This also adds the <code>out</code> variable as a prefix.</p>
+
+<p>In this case, <code>\b</code> is fixing the first problem I ran into: what if you&rsquo;re calling functions that use the letters of variable names. For example, <code>max</code> has an <code>x</code> in it. But <code>\b</code> is a special character that means &lsquo;word boundry&rsquo;. It doesn&rsquo;t match anything by itself, but it does mean that the variable has to be an entire &lsquo;word&rsquo;, not part of one.</p>
+
+<p>So now we&rsquo;ve gone from <code>add t1 x y</code> to <code>t1 = x + y</code>. Or does it?</p>
+
+<p>Well, there&rsquo;s actually another bug here. If I have the same variable in the function definition (<code>add(x, y)</code>) and the registers (<code>x</code> and <code>y</code> are registers), then they can collide in weird ways. I thought about doing two passes, writing to temporary variables that wouldn&rsquo;t collide, but in the end, I just ended up using case. Registers are all named with capital letters, while the functions in <code>instructions</code> use lower case. In that way <code>x</code> and <code>X</code> are different.</p>
+
+<p>So for a full function (including parsing functions that have the <code>function(x,y) { ... }</code> syntax), <a href="https://blog.jverkamp.com/2020/12/01/pictogenesis-wrapping-modes/">wrapping modes</a>, and <code>readonlyXY</code>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#a6e22e">transpile</span>() {
+  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">patterns</span> <span style="color:#f92672">=</span> [
+    <span style="color:#e6db74">/^\((.*?)\) =&gt; (.*?)$/</span>,
+    <span style="color:#e6db74">/^function\((.*?)\) {(.*?)}$/</span>,
+  ]
+
+  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">registers</span> <span style="color:#f92672">=</span> [<span style="color:#e6db74">&#39;X&#39;</span>, <span style="color:#e6db74">&#39;Y&#39;</span>, <span style="color:#e6db74">&#39;R&#39;</span>, <span style="color:#e6db74">&#39;G&#39;</span>, <span style="color:#e6db74">&#39;B&#39;</span>];
+  <span style="color:#66d9ef">while</span> (<span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">registerCount</span>) {
+    <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">splice</span>(<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">0</span>, <span style="color:#e6db74">&#39;T&#39;</span> <span style="color:#f92672">+</span> (<span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">-</span> <span style="color:#ae81ff">5</span>));
+  }
+  <span style="color:#a6e22e">registers</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">slice</span>(<span style="color:#ae81ff">2</span>);
+  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">code</span> <span style="color:#f92672">=</span> [
+    <span style="color:#e6db74">&#39;this.run = function(X, Y) {&#39;</span>,
+    <span style="color:#e6db74">&#39;  var &#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39;,&#39;</span>) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;;&#39;</span>,
+    <span style="color:#e6db74">&#39;  &#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39; = &#39;</span>) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39; = 0;&#39;</span>
+  ];
+
+  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">command</span> <span style="color:#66d9ef">of</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">program</span>) {
+    <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">f</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">command</span>.<span style="color:#66d9ef">function</span>.<span style="color:#a6e22e">toString</span>();
+    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">pattern</span> <span style="color:#66d9ef">of</span> <span style="color:#a6e22e">patterns</span>) {
+      <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">out</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#ae81ff">0</span>];
+
+      <span style="color:#75715e">// Match each kind of function
+</span><span style="color:#75715e"></span>      <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">parts</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">match</span>(<span style="color:#a6e22e">pattern</span>);
+      <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">parts</span>) {
+        <span style="color:#75715e">// Directly convert it to code
+</span><span style="color:#75715e"></span>        <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">line</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">`  </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> = </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">2</span>]<span style="color:#e6db74">}</span><span style="color:#e6db74">;`</span>;
+        
+        <span style="color:#75715e">// We have parameters, replace those in the code
+</span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">1</span>]) {
+          <span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">1</span>].<span style="color:#a6e22e">split</span>(<span style="color:#e6db74">&#39;,&#39;</span>).<span style="color:#a6e22e">map</span>((<span style="color:#a6e22e">el</span>, <span style="color:#a6e22e">i</span>) =&gt; {
+            <span style="color:#a6e22e">line</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">line</span>.<span style="color:#a6e22e">replaceAll</span>(
+              <span style="color:#66d9ef">new</span> RegExp(<span style="color:#e6db74">&#34;\\b&#34;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">trim</span>() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;\\b&#34;</span>, <span style="color:#e6db74">&#34;g&#34;</span>),
+              <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#a6e22e">i</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>]
+            );
+          });
+        }
+        
+        <span style="color:#75715e">// When x/y are readonly, comment out the line
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// Otherwise, apply any end of call functions
+</span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">readonlyXY</span> <span style="color:#f92672">&amp;&amp;</span> (<span style="color:#a6e22e">out</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;X&#39;</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">out</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;Y&#39;</span>)) {
+          <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">&#39;  // &#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">line</span>.<span style="color:#a6e22e">trim</span>());
+        } <span style="color:#66d9ef">else</span> {
+          <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">line</span>);
+          <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeCall</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;clamp&#34;</span>) {
+            <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">`  </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> = </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> &lt; 0 ? 0 : (</span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> &gt; 1 ? 1 : </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74">);`</span>);
+          } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeCall</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;wrap&#34;</span>) {
+            <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">`  </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> %= 1.0;`</span>);
+          }
+        }
+      }
+    }
+  }
+  <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">&#39;  return [R, G, B];&#39;</span>)
+  <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">&#39;}&#39;</span>);
+  <span style="color:#a6e22e">code</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39;\n&#39;</span>);
+
+  eval(<span style="color:#a6e22e">code</span>);
+}
+</code></pre></div>
+<p>And yup. At the end I use <code>eval</code>. It&rsquo;s <a href="https://www.google.com/search?&amp;q=eval+is+evil">evil</a> afterall. :D But it works perfectly well here, so ONWARDS! Once I transpile, I replace the previous <code>run</code> function.</p>
+
+<p>And man is it faster. Several times faster.</p>
+
+<p>I haven&rsquo;t actually timed it, but try it out, you can see it for yourself (try setting the <code>genomeSize</code> to 1000, that really crawls in the old model):</p>
+
+<p>(Note: Click <code>register</code> to generate a new image, and then <code>transpile</code> to transpile and re-render it.)</p>
+
+
+
+
+
+
+
+
+
+
+<iframe 
+    width="660" height="990.0000000000001" frameBorder="0"
+    srcdoc="
+&lt;html&gt;
+&lt;head&gt;
+    &lt;script src=&#34;https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js&#34; integrity=&#34;sha512-WIklPM6qPCIp6d3fSSr90j&#43;1unQHUOoWDS4sdTiR8gxUTnyZ8S2Mr8e10sKKJ/bhJgpAa/qG068RDkg6fIlNFA==&#34; crossorigin=&#34;anonymous&#34;&gt;&lt;/script&gt;
+    &lt;script src=&#34;https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js&#34; integrity=&#34;sha512-wM&#43;t5MzLiNHl2fwT5rWSXr2JMeymTtixiw2lWyVk1JK/jDM4RBSFoH4J8LjucwlDdY6Mu84Kj0gPXp7rLGaDyA==&#34; crossorigin=&#34;anonymous&#34;&gt;&lt;/script&gt;    
+    
+    &lt;script src=&#34;https://unpkg.com/p5.gui.variables@1.0.1/libraries/quicksettings.js&#34; integrity=&#34;sha384-XlyRxqW2TTF2gFC0VpBI8OqnCTsZOdgrhBFikxYD4hEu68QdNQ64kiej07hCAiJq&#34; crossorigin=&#34;anonymous&#34;&gt;&lt;/script&gt;
+    &lt;script src=&#34;https://unpkg.com/p5.gui.variables@1.0.1/libraries/p5.gui.js&#34; integrity=&#34;sha384-/Uy&#43;8NNvYJjG164REYQP/RnqVcrnsFTtnoCJcLg/tVBKaHUaovtr&#43;ZJgKQKHGAPW&#34; crossorigin=&#34;anonymous&#34;&gt;&lt;/script&gt;
+
+    &lt;style&gt;canvas { border: 1px solid black; border-radius: 1em; }&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+<script>
+let gui;
+let params = {
+  registerCount: 7,
+  registerCountMin: 5, // x, y, ..., r, g, b
+  registerCountMax: 30,
+  genomeSize: 30,
+  genomeSizeMin: 10,
+  genomeSizeMax: 1000,
+  modeCall: [&#34;keep&#34;, &#34;clamp&#34;, &#34;wrap&#34;],
+  modeEnd: [&#34;clamp&#34;, &#34;wrap&#34;],
+  readonlyXY: true,
+  renderPerFrame: 100,
+  renderPerFrameMax: 1000,
+  noise: 10,
+  noiseMin: 0.01,
+  noiseMax: 100,
+  noiseStep: 0.01,
+};
+
+let g, p;
+let rendering = true,
+  renderingX = 0,
+  renderingY = 0;
+let code;
+
+function resetRendering() {
+  background(0);
+  rendering = false;
+  renderingX = 0;
+  renderingY = 0;
+}
+
+function updateP(kls) {
+  if (kls) {
+    p = new kls(g);
+  } else {
+    p = new p.constructor(g);
+  }
+  code.value(p.toString());
+  resetRendering();
+  rendering = true;
+}
+
+// Helper function to index an array by a real number
+gendex = (arr, id) =&gt; arr[int(arr.length * id)];
+
+function setup() {
+  createCanvas(400, 400);
+  gui = createGuiPanel();
+  gui.addObject(params);
+  gui.setPosition(420, 0);
+
+  background(0);
+
+  g = new Genome(params.genomeSize);
+  p = new RegisterMachine(g);
+
+  let divMachine = createDiv(&#34;machines&#34;);
+  
+  divMachine.child(createButton(&#34;registers&#34;).mousePressed(() =&gt; {
+    g = new Genome(params.genomeSize);
+    updateP(RegisterMachine);
+  }));
+
+  let divMutations = createDiv(&#34;mutations&#34;);
+
+  divMutations.child(createButton(&#34;point&#34;).mousePressed(() =&gt; {
+    g.mutatePoint();
+    updateP();
+  }));
+
+  divMutations.child(createButton(&#34;insert&#34;).mousePressed(() =&gt; {
+    g.mutateInsertion();
+    updateP();
+  }));
+
+  divMutations.child(createButton(&#34;delete&#34;).mousePressed(() =&gt; {
+    g.mutateDeletion();
+    updateP();
+  }));
+
+  divMutations.child(createButton(&#34;duplicate&#34;).mousePressed(() =&gt; {
+    g.mutateDuplication();
+    updateP();
+  }));
+
+  let divControl = createDiv(&#34;control&#34;);
+
+  divControl.child(createButton(&#34;rerender&#34;).mousePressed(() =&gt; {
+    resetRendering();
+    rendering = true;
+  }));
+
+  divControl.child(createButton(&#34;transpile&#34;).mousePressed(() =&gt; {
+    p.transpile();
+    code.value(p.run.toString());
+    resetRendering();
+    rendering = true;
+  }));
+
+  let block = createElement(&#39;div&#39;);
+  code = createElement(&#39;textarea&#39;);
+  code.style(&#39;width&#39;, &#39;400px&#39;);
+  code.style(&#39;height&#39;, &#39;400px&#39;);
+  code.value(p.toString());
+  block.child(code);
+}
+
+function draw() {
+  if (rendering) {
+    let f = (v) =&gt; v;
+    if (params.modeEnd === &#34;clamp&#34;) {
+      f = (v) =&gt; constrain(v, 0, 1);
+    } else if (params.modeEnd === &#34;wrap&#34;) {
+      f = (v) =&gt; v % 1.0;
+    }
+
+    for (var i = 0; i &lt; params.renderPerFrame; i&#43;&#43;) {
+      let c = p.run(1.0 * renderingX / width, 1.0 * renderingY / height);
+      c = c.map((el) =&gt; int(255 * f(el)));
+
+      fill(c);
+      noStroke();
+      rect(renderingX, renderingY, 1, 1);
+
+      renderingX&#43;&#43;;
+      if (renderingX &gt;= width) {
+        renderingX = 0;
+        renderingY&#43;&#43;;
+      }
+      if (renderingY &gt;= height) {
+        rendering = false;
+      }
+    }
+  }
+}
+
+const instructions = [
+  // Basic math
+  {name: &#34;id&#34;, function: (x) =&gt; x},
+  {name: &#34;add&#34;, function: (x, y) =&gt; x &#43; y},
+  {name: &#34;sub&#34;, function: (x, y) =&gt; x - y},
+  {name: &#34;mul&#34;, function: (x, y) =&gt; x * y},
+  {name: &#34;div&#34;, function: (x, y) =&gt; x / y},
+  {name: &#34;mod&#34;, function: (x, y) =&gt; x % y},
+  {name: &#34;max&#34;, function: (x, y) =&gt; Math.max(x, y)},
+  {name: &#34;min&#34;, function: (x, y) =&gt; Math.min(x, y)},
+  {name: &#34;abs&#34;, function: (x) =&gt; Math.abs(x)},
+  {name: &#34;inv&#34;, function: (x) =&gt; 1 / x},
+  {name: &#34;invsub&#34;, function: (x) =&gt; 1 - x},
+  {name: &#34;neg&#34;, function: (x) =&gt; -x},
+  {name: &#34;sin&#34;, function: (x) =&gt; Math.sin(x)},
+  {name: &#34;exp&#34;, function: (x) =&gt; Math.exp(x)},
+  {name: &#34;log&#34;, function: (x) =&gt; Math.log(x)},
+  {name: &#34;sqrt&#34;, function: (x) =&gt; Math.sqrt(x)},
+  
+  // Polar coordinate conversions
+  {name: &#34;polR&#34;, function: (x, y) =&gt; Math.sqrt(x * x &#43; y * y)},
+  {name: &#34;polT&#34;, function: (x, y) =&gt; Math.atan2(x, y)},
+  
+  // Constants
+  {name: &#34;ZERO&#34;, function: () =&gt; 0},
+  {name: &#34;ONE&#34;, function: () =&gt; 1},
+  
+  // Conditionals
+  {name: &#34;zero?&#34;, function: (c, t, f) =&gt; c === 0 ? t : f},
+  {name: &#34;equal?&#34;, function: (a, b, t, f) =&gt; a === b ? t : f},
+  {name: &#34;gt?&#34;, function: (a, b, t, f) =&gt; a &gt; b ? t : f},
+  
+  // Perlin noise
+  {name: &#34;noise1&#34;, function: (x) =&gt; noise(params.noise * x)},
+  {name: &#34;noise2&#34;, function: (x, y) =&gt; noise(params.noise * x, params.noise * y)},
+];
+
+class Genome {
+  constructor(length) {
+    length = length || 10;
+    this.data = [];
+    while (this.data.length &lt; length) {
+      this.data.push(random());
+    }
+  }
+
+  // Apply up to one of each kind of mutation to this genome
+  mutate() {
+    var index;
+
+    if (random() &lt; params.mutationRate_point) mutatePoint();
+    if (random() &lt; params.mutationRate_insertion) mutateInsertion();
+    if (random() &lt; params.mutationRate_deletion) mutateDeletion();
+    if (random() &lt; params.mutationRate_duplication) mutateDuplication();
+  }
+
+  mutatePoint() {
+    var index = Math.floor(random() * this.data.length);
+    this.data[index] = random();
+  }
+
+  mutateInsertion() {
+    var index = Math.floor(random() * this.data.length);
+    this.data.splice(index, 0, random());
+  }
+
+
+  mutateDeletion() {
+    var index = Math.floor(random() * this.data.length);
+    this.data.splice(index, 1);
+  }
+
+
+  mutateDuplication() {
+    var index = Math.floor(random() * this.data.length);
+    this.data.splice(index, 0, this.data[index]);
+  }
+
+  crossover(other) {
+    var child = new Genome();
+    var thisIndex = Math.floor(random() * this.data.length);
+    var otherIndex = Math.floor(random() * other.data.length);
+
+    child.data = this.data.slice(0, thisIndex).concat(other.data.slice(otherIndex));
+    return child;
+  }
+}
+
+class RegisterMachine {
+  constructor(genome) {
+    // Low registers are input, high output, middle are temporary
+    let registers = [&#39;X&#39;, &#39;Y&#39;, &#39;R&#39;, &#39;G&#39;, &#39;B&#39;];
+    while (registers.length &lt; params.registerCount) {
+      registers.splice(2, 0, &#39;T&#39; &#43; (registers.length - 5));
+    }
+
+    // Pull off one command for instruction and then as many args as needed
+    this.program = [];
+    for (var i = 0; i &lt; genome.data.length;) {
+      // Copy the instruction to add params
+      let instruction = {
+        ...gendex(instructions, genome.data[i&#43;&#43;])
+      };
+      instruction.params = []
+      for (var j = 0; j &lt; instruction.function.length &#43; 1; j&#43;&#43;) {
+        instruction.params.push(gendex(registers, genome.data[i&#43;&#43;]));
+      }
+      this.program.push(instruction);
+    }
+  }
+
+  run(X, Y) {
+    let registers = {
+      X: X,
+      Y: Y,
+      R: 0,
+      G: 0,
+      B: 0
+    };
+
+    // Run each command in the program
+    for (var command of this.program) {
+      // Collect input registers (all but the first)
+      let args = [];
+      for (var param of command.params.slice(1)) {
+        args.push(registers[param] || 0);
+      }
+
+      // Run the function, store in the first param
+      var result = command.function.apply(this, args);
+      result = isNaN(result) ? 0 : result;
+      if (params.modeCall === &#34;clamp&#34;) {
+        result = constrain(result, 0, 1);
+      } else if (params.modeCall == &#34;wrap&#34;) {
+        result = result % 1.0;
+      }
+
+      if (params.readonlyXY && (command.params[0] == &#39;X&#39; || command.params[0] == &#39;Y&#39;)) {
+        // Do nothing, trying to write to x/y
+      } else {
+        registers[command.params[0]] = result;
+      }
+    }
+
+    // Return the color from the r/g/b registers
+    return [
+      registers.R,
+      registers.G,
+      registers.B
+    ];
+  }
+
+  transpile() {
+    let patterns = [
+      /^\((.*?)\) =&gt; (.*?)$/,
+      /^function\((.*?)\) {(.*?)}$/,
+    ]
+
+    let registers = [&#39;X&#39;, &#39;Y&#39;, &#39;R&#39;, &#39;G&#39;, &#39;B&#39;];
+    while (registers.length &lt; params.registerCount) {
+      registers.splice(2, 0, &#39;T&#39; &#43; (registers.length - 5));
+    }
+    registers = registers.slice(2);
+    let code = [
+      &#39;this.run = function(X, Y) {&#39;,
+      &#39;  var &#39; &#43; registers.join(&#39;,&#39;) &#43; &#39;;&#39;,
+      &#39;  &#39; &#43; registers.join(&#39; = &#39;) &#43; &#39; = 0;&#39;
+    ];
+
+    for (var command of this.program) {
+      let f = command.function.toString();
+      for (var pattern of patterns) {
+        let out = command.params[0];
+
+        // Match each kind of function
+        let parts = f.match(pattern);
+        if (parts) {
+          // Directly convert it to code
+          var line = `  ${out} = ${parts[2]};`;
+          
+          // We have parameters, replace those in the code
+          if (parts[1]) {
+            parts[1].split(&#39;,&#39;).map((el, i) =&gt; {
+              line = line.replaceAll(
+                new RegExp(&#34;\\b&#34; &#43; el.trim() &#43; &#34;\\b&#34;, &#34;g&#34;),
+                command.params[i &#43; 1]
+              );
+            });
+          }
+          
+          // When x/y are readonly, comment out the line
+          // Otherwise, apply any end of call functions
+          if (params.readonlyXY && (out == &#39;X&#39; || out == &#39;Y&#39;)) {
+            code.push(&#39;  // &#39; &#43; line.trim());
+          } else {
+            code.push(line);
+            if (params.modeCall == &#34;clamp&#34;) {
+              code.push(`  ${out} = ${out} &lt; 0 ? 0 : (${out} &gt; 1 ? 1 : ${out});`);
+            } else if (params.modeCall == &#34;wrap&#34;) {
+              code.push(`  ${out} %= 1.0;`);
+            }
+          }
+        }
+      }
+    }
+    code.push(&#39;  return [R, G, B];&#39;)
+    code.push(&#39;}&#39;);
+    code = code.join(&#39;\n&#39;);
+
+    eval(code);
+  }
+
+  toString() {
+    return this.program.map((cmd) =&gt; cmd.name &#43; &#39; &#39; &#43; cmd.params.join(&#39; &#39;)).join(&#39;\n&#39;);
+  }
+}
+
+var oldSetup = setup;
+setup = () =&gt; {
+    // Load saved settings from the browser&#39;s hash fragment
+    if (parent.location.hash &amp;&amp; typeof params !== &#34;undefined&#34;) {
+        try {
+            var settings = JSON.parse(atob(parent.location.hash.substring(1)));
+            Object.keys(params).forEach((key) =&gt; params[key] = settings[key] || params[key]);
+        } catch(ex) {
+        }
+    }
+
+    oldSetup();
+
+    createButton(&#34;play/pause&#34;).mousePressed(() =&gt; {
+      if (isLooping()) {
+        noLoop();
+      } else {
+        loop();
+      }
+    });
+
+    createButton(&#34;save&#34;).mousePressed(() =&gt; {
+        saveCanvas(&#39;photo&#39;, &#39;png&#39;)
+    });
+
+    createButton(&#34;clear&#34;).mousePressed(() =&gt; {
+        if (typeof reset !== &#39;undefined&#39;) {
+            reset();
+        } else {
+            clear();
+        }
+    });
+
+    if (typeof params !== &#34;undefined&#34;) {
+        for (var el of document.querySelectorAll(&#39;input&#39;)) {
+            if (el.id &amp;&amp; el.id.startsWith(&#39;qs_&#39;)) {
+                el.addEventListener(&#39;change&#39;, () =&gt; {
+                    parent.location.hash = btoa(JSON.stringify(params));
+                });
+            }
+        }
+    }
+}
+</script>
+&lt;noscript&gt;To display this p5.js sketch, JavaScript must be enabled.&lt;/noscript&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"
+></iframe>
+
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">let</span> <span style="color:#a6e22e">gui</span>;
+<span style="color:#66d9ef">let</span> <span style="color:#a6e22e">params</span> <span style="color:#f92672">=</span> {
+  <span style="color:#a6e22e">registerCount</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">7</span>,
+  <span style="color:#a6e22e">registerCountMin</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">5</span>, <span style="color:#75715e">// x, y, ..., r, g, b
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">registerCountMax</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">30</span>,
+  <span style="color:#a6e22e">genomeSize</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">30</span>,
+  <span style="color:#a6e22e">genomeSizeMin</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">10</span>,
+  <span style="color:#a6e22e">genomeSizeMax</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">1000</span>,
+  <span style="color:#a6e22e">modeCall</span><span style="color:#f92672">:</span> [<span style="color:#e6db74">&#34;keep&#34;</span>, <span style="color:#e6db74">&#34;clamp&#34;</span>, <span style="color:#e6db74">&#34;wrap&#34;</span>],
+  <span style="color:#a6e22e">modeEnd</span><span style="color:#f92672">:</span> [<span style="color:#e6db74">&#34;clamp&#34;</span>, <span style="color:#e6db74">&#34;wrap&#34;</span>],
+  <span style="color:#a6e22e">readonlyXY</span><span style="color:#f92672">:</span> <span style="color:#66d9ef">true</span>,
+  <span style="color:#a6e22e">renderPerFrame</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">100</span>,
+  <span style="color:#a6e22e">renderPerFrameMax</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">1000</span>,
+  <span style="color:#a6e22e">noise</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">10</span>,
+  <span style="color:#a6e22e">noiseMin</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">0.01</span>,
+  <span style="color:#a6e22e">noiseMax</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">100</span>,
+  <span style="color:#a6e22e">noiseStep</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">0.01</span>,
+};
+
+<span style="color:#66d9ef">let</span> <span style="color:#a6e22e">g</span>, <span style="color:#a6e22e">p</span>;
+<span style="color:#66d9ef">let</span> <span style="color:#a6e22e">rendering</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span>,
+  <span style="color:#a6e22e">renderingX</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>,
+  <span style="color:#a6e22e">renderingY</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+<span style="color:#66d9ef">let</span> <span style="color:#a6e22e">code</span>;
+
+<span style="color:#66d9ef">function</span> <span style="color:#a6e22e">resetRendering</span>() {
+  <span style="color:#a6e22e">background</span>(<span style="color:#ae81ff">0</span>);
+  <span style="color:#a6e22e">rendering</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span>;
+  <span style="color:#a6e22e">renderingX</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">renderingY</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+}
+
+<span style="color:#66d9ef">function</span> <span style="color:#a6e22e">updateP</span>(<span style="color:#a6e22e">kls</span>) {
+  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">kls</span>) {
+    <span style="color:#a6e22e">p</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">kls</span>(<span style="color:#a6e22e">g</span>);
+  } <span style="color:#66d9ef">else</span> {
+    <span style="color:#a6e22e">p</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">constructor</span>(<span style="color:#a6e22e">g</span>);
+  }
+  <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">value</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">toString</span>());
+  <span style="color:#a6e22e">resetRendering</span>();
+  <span style="color:#a6e22e">rendering</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span>;
+}
+
+<span style="color:#75715e">// Helper function to index an array by a real number
+</span><span style="color:#75715e"></span><span style="color:#a6e22e">gendex</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">arr</span>, <span style="color:#a6e22e">id</span>) =&gt; <span style="color:#a6e22e">arr</span>[<span style="color:#66d9ef">int</span>(<span style="color:#a6e22e">arr</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">id</span>)];
+
+<span style="color:#66d9ef">function</span> <span style="color:#a6e22e">setup</span>() {
+  <span style="color:#a6e22e">createCanvas</span>(<span style="color:#ae81ff">400</span>, <span style="color:#ae81ff">400</span>);
+  <span style="color:#a6e22e">gui</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">createGuiPanel</span>();
+  <span style="color:#a6e22e">gui</span>.<span style="color:#a6e22e">addObject</span>(<span style="color:#a6e22e">params</span>);
+  <span style="color:#a6e22e">gui</span>.<span style="color:#a6e22e">setPosition</span>(<span style="color:#ae81ff">420</span>, <span style="color:#ae81ff">0</span>);
+
+  <span style="color:#a6e22e">background</span>(<span style="color:#ae81ff">0</span>);
+
+  <span style="color:#a6e22e">g</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">Genome</span>(<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">genomeSize</span>);
+  <span style="color:#a6e22e">p</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">RegisterMachine</span>(<span style="color:#a6e22e">g</span>);
+
+  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">divMachine</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">createDiv</span>(<span style="color:#e6db74">&#34;machines&#34;</span>);
+  
+  <span style="color:#a6e22e">divMachine</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">createButton</span>(<span style="color:#e6db74">&#34;registers&#34;</span>).<span style="color:#a6e22e">mousePressed</span>(() =&gt; {
+    <span style="color:#a6e22e">g</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">Genome</span>(<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">genomeSize</span>);
+    <span style="color:#a6e22e">updateP</span>(<span style="color:#a6e22e">RegisterMachine</span>);
+  }));
+
+  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">divMutations</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">createDiv</span>(<span style="color:#e6db74">&#34;mutations&#34;</span>);
+
+  <span style="color:#a6e22e">divMutations</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">createButton</span>(<span style="color:#e6db74">&#34;point&#34;</span>).<span style="color:#a6e22e">mousePressed</span>(() =&gt; {
+    <span style="color:#a6e22e">g</span>.<span style="color:#a6e22e">mutatePoint</span>();
+    <span style="color:#a6e22e">updateP</span>();
+  }));
+
+  <span style="color:#a6e22e">divMutations</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">createButton</span>(<span style="color:#e6db74">&#34;insert&#34;</span>).<span style="color:#a6e22e">mousePressed</span>(() =&gt; {
+    <span style="color:#a6e22e">g</span>.<span style="color:#a6e22e">mutateInsertion</span>();
+    <span style="color:#a6e22e">updateP</span>();
+  }));
+
+  <span style="color:#a6e22e">divMutations</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">createButton</span>(<span style="color:#e6db74">&#34;delete&#34;</span>).<span style="color:#a6e22e">mousePressed</span>(() =&gt; {
+    <span style="color:#a6e22e">g</span>.<span style="color:#a6e22e">mutateDeletion</span>();
+    <span style="color:#a6e22e">updateP</span>();
+  }));
+
+  <span style="color:#a6e22e">divMutations</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">createButton</span>(<span style="color:#e6db74">&#34;duplicate&#34;</span>).<span style="color:#a6e22e">mousePressed</span>(() =&gt; {
+    <span style="color:#a6e22e">g</span>.<span style="color:#a6e22e">mutateDuplication</span>();
+    <span style="color:#a6e22e">updateP</span>();
+  }));
+
+  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">divControl</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">createDiv</span>(<span style="color:#e6db74">&#34;control&#34;</span>);
+
+  <span style="color:#a6e22e">divControl</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">createButton</span>(<span style="color:#e6db74">&#34;rerender&#34;</span>).<span style="color:#a6e22e">mousePressed</span>(() =&gt; {
+    <span style="color:#a6e22e">resetRendering</span>();
+    <span style="color:#a6e22e">rendering</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span>;
+  }));
+
+  <span style="color:#a6e22e">divControl</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">createButton</span>(<span style="color:#e6db74">&#34;transpile&#34;</span>).<span style="color:#a6e22e">mousePressed</span>(() =&gt; {
+    <span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">transpile</span>();
+    <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">value</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">run</span>.<span style="color:#a6e22e">toString</span>());
+    <span style="color:#a6e22e">resetRendering</span>();
+    <span style="color:#a6e22e">rendering</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span>;
+  }));
+
+  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">block</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">createElement</span>(<span style="color:#e6db74">&#39;div&#39;</span>);
+  <span style="color:#a6e22e">code</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">createElement</span>(<span style="color:#e6db74">&#39;textarea&#39;</span>);
+  <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">style</span>(<span style="color:#e6db74">&#39;width&#39;</span>, <span style="color:#e6db74">&#39;400px&#39;</span>);
+  <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">style</span>(<span style="color:#e6db74">&#39;height&#39;</span>, <span style="color:#e6db74">&#39;400px&#39;</span>);
+  <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">value</span>(<span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">toString</span>());
+  <span style="color:#a6e22e">block</span>.<span style="color:#a6e22e">child</span>(<span style="color:#a6e22e">code</span>);
+}
+
+<span style="color:#66d9ef">function</span> <span style="color:#a6e22e">draw</span>() {
+  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">rendering</span>) {
+    <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">f</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">v</span>) =&gt; <span style="color:#a6e22e">v</span>;
+    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeEnd</span> <span style="color:#f92672">===</span> <span style="color:#e6db74">&#34;clamp&#34;</span>) {
+      <span style="color:#a6e22e">f</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">v</span>) =&gt; <span style="color:#a6e22e">constrain</span>(<span style="color:#a6e22e">v</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>);
+    } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeEnd</span> <span style="color:#f92672">===</span> <span style="color:#e6db74">&#34;wrap&#34;</span>) {
+      <span style="color:#a6e22e">f</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">v</span>) =&gt; <span style="color:#a6e22e">v</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+    }
+
+    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">renderPerFrame</span>; <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span>) {
+      <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">p</span>.<span style="color:#a6e22e">run</span>(<span style="color:#ae81ff">1.0</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">renderingX</span> <span style="color:#f92672">/</span> <span style="color:#a6e22e">width</span>, <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">renderingY</span> <span style="color:#f92672">/</span> <span style="color:#a6e22e">height</span>);
+      <span style="color:#a6e22e">c</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">c</span>.<span style="color:#a6e22e">map</span>((<span style="color:#a6e22e">el</span>) =&gt; <span style="color:#66d9ef">int</span>(<span style="color:#ae81ff">255</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">f</span>(<span style="color:#a6e22e">el</span>)));
+
+      <span style="color:#a6e22e">fill</span>(<span style="color:#a6e22e">c</span>);
+      <span style="color:#a6e22e">noStroke</span>();
+      <span style="color:#a6e22e">rect</span>(<span style="color:#a6e22e">renderingX</span>, <span style="color:#a6e22e">renderingY</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>);
+
+      <span style="color:#a6e22e">renderingX</span><span style="color:#f92672">++</span>;
+      <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">renderingX</span> <span style="color:#f92672">&gt;=</span> <span style="color:#a6e22e">width</span>) {
+        <span style="color:#a6e22e">renderingX</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+        <span style="color:#a6e22e">renderingY</span><span style="color:#f92672">++</span>;
+      }
+      <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">renderingY</span> <span style="color:#f92672">&gt;=</span> <span style="color:#a6e22e">height</span>) {
+        <span style="color:#a6e22e">rendering</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span>;
+      }
+    }
+  }
+}
+
+<span style="color:#66d9ef">const</span> <span style="color:#a6e22e">instructions</span> <span style="color:#f92672">=</span> [
+  <span style="color:#75715e">// Basic math
+</span><span style="color:#75715e"></span>  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;id&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; <span style="color:#a6e22e">x</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;add&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">x</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">y</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;sub&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">x</span> <span style="color:#f92672">-</span> <span style="color:#a6e22e">y</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;mul&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">x</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">y</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;div&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">x</span> <span style="color:#f92672">/</span> <span style="color:#a6e22e">y</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;mod&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">x</span> <span style="color:#f92672">%</span> <span style="color:#a6e22e">y</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;max&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; Math.<span style="color:#a6e22e">max</span>(<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;min&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; Math.<span style="color:#a6e22e">min</span>(<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;abs&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; Math.<span style="color:#a6e22e">abs</span>(<span style="color:#a6e22e">x</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;inv&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; <span style="color:#ae81ff">1</span> <span style="color:#f92672">/</span> <span style="color:#a6e22e">x</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;invsub&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; <span style="color:#ae81ff">1</span> <span style="color:#f92672">-</span> <span style="color:#a6e22e">x</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;neg&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; <span style="color:#f92672">-</span><span style="color:#a6e22e">x</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;sin&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; Math.<span style="color:#a6e22e">sin</span>(<span style="color:#a6e22e">x</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;exp&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; Math.<span style="color:#a6e22e">exp</span>(<span style="color:#a6e22e">x</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;log&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; Math.<span style="color:#a6e22e">log</span>(<span style="color:#a6e22e">x</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;sqrt&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; Math.<span style="color:#a6e22e">sqrt</span>(<span style="color:#a6e22e">x</span>)},
+  
+  <span style="color:#75715e">// Polar coordinate conversions
+</span><span style="color:#75715e"></span>  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;polR&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; Math.<span style="color:#a6e22e">sqrt</span>(<span style="color:#a6e22e">x</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">x</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">y</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">y</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;polT&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; Math.<span style="color:#a6e22e">atan2</span>(<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>)},
+  
+  <span style="color:#75715e">// Constants
+</span><span style="color:#75715e"></span>  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;ZERO&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> () =&gt; <span style="color:#ae81ff">0</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;ONE&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> () =&gt; <span style="color:#ae81ff">1</span>},
+  
+  <span style="color:#75715e">// Conditionals
+</span><span style="color:#75715e"></span>  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;zero?&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">c</span>, <span style="color:#a6e22e">t</span>, <span style="color:#a6e22e">f</span>) =&gt; <span style="color:#a6e22e">c</span> <span style="color:#f92672">===</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">?</span> <span style="color:#a6e22e">t</span> <span style="color:#f92672">:</span> <span style="color:#a6e22e">f</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;equal?&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">a</span>, <span style="color:#a6e22e">b</span>, <span style="color:#a6e22e">t</span>, <span style="color:#a6e22e">f</span>) =&gt; <span style="color:#a6e22e">a</span> <span style="color:#f92672">===</span> <span style="color:#a6e22e">b</span> <span style="color:#f92672">?</span> <span style="color:#a6e22e">t</span> <span style="color:#f92672">:</span> <span style="color:#a6e22e">f</span>},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;gt?&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">a</span>, <span style="color:#a6e22e">b</span>, <span style="color:#a6e22e">t</span>, <span style="color:#a6e22e">f</span>) =&gt; <span style="color:#a6e22e">a</span> <span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">b</span> <span style="color:#f92672">?</span> <span style="color:#a6e22e">t</span> <span style="color:#f92672">:</span> <span style="color:#a6e22e">f</span>},
+  
+  <span style="color:#75715e">// Perlin noise
+</span><span style="color:#75715e"></span>  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;noise1&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>) =&gt; <span style="color:#a6e22e">noise</span>(<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">noise</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">x</span>)},
+  {<span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;noise2&#34;</span>, <span style="color:#66d9ef">function</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">y</span>) =&gt; <span style="color:#a6e22e">noise</span>(<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">noise</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">x</span>, <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">noise</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">y</span>)},
+];
+
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Genome</span> {
+  <span style="color:#a6e22e">constructor</span>(<span style="color:#a6e22e">length</span>) {
+    <span style="color:#a6e22e">length</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">length</span> <span style="color:#f92672">||</span> <span style="color:#ae81ff">10</span>;
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span> <span style="color:#f92672">=</span> [];
+    <span style="color:#66d9ef">while</span> (<span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">length</span>) {
+      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">random</span>());
+    }
+  }
+
+  <span style="color:#75715e">// Apply up to one of each kind of mutation to this genome
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">mutate</span>() {
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">index</span>;
+
+    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">random</span>() <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">mutationRate_point</span>) <span style="color:#a6e22e">mutatePoint</span>();
+    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">random</span>() <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">mutationRate_insertion</span>) <span style="color:#a6e22e">mutateInsertion</span>();
+    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">random</span>() <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">mutationRate_deletion</span>) <span style="color:#a6e22e">mutateDeletion</span>();
+    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">random</span>() <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">mutationRate_duplication</span>) <span style="color:#a6e22e">mutateDuplication</span>();
+  }
+
+  <span style="color:#a6e22e">mutatePoint</span>() {
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">index</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">floor</span>(<span style="color:#a6e22e">random</span>() <span style="color:#f92672">*</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span>);
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>[<span style="color:#a6e22e">index</span>] <span style="color:#f92672">=</span> <span style="color:#a6e22e">random</span>();
+  }
+
+  <span style="color:#a6e22e">mutateInsertion</span>() {
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">index</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">floor</span>(<span style="color:#a6e22e">random</span>() <span style="color:#f92672">*</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span>);
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">splice</span>(<span style="color:#a6e22e">index</span>, <span style="color:#ae81ff">0</span>, <span style="color:#a6e22e">random</span>());
+  }
+
+
+  <span style="color:#a6e22e">mutateDeletion</span>() {
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">index</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">floor</span>(<span style="color:#a6e22e">random</span>() <span style="color:#f92672">*</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span>);
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">splice</span>(<span style="color:#a6e22e">index</span>, <span style="color:#ae81ff">1</span>);
+  }
+
+
+  <span style="color:#a6e22e">mutateDuplication</span>() {
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">index</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">floor</span>(<span style="color:#a6e22e">random</span>() <span style="color:#f92672">*</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span>);
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">splice</span>(<span style="color:#a6e22e">index</span>, <span style="color:#ae81ff">0</span>, <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>[<span style="color:#a6e22e">index</span>]);
+  }
+
+  <span style="color:#a6e22e">crossover</span>(<span style="color:#a6e22e">other</span>) {
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">child</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">Genome</span>();
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">thisIndex</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">floor</span>(<span style="color:#a6e22e">random</span>() <span style="color:#f92672">*</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span>);
+    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">otherIndex</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">floor</span>(<span style="color:#a6e22e">random</span>() <span style="color:#f92672">*</span> <span style="color:#a6e22e">other</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span>);
+
+    <span style="color:#a6e22e">child</span>.<span style="color:#a6e22e">data</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">slice</span>(<span style="color:#ae81ff">0</span>, <span style="color:#a6e22e">thisIndex</span>).<span style="color:#a6e22e">concat</span>(<span style="color:#a6e22e">other</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">slice</span>(<span style="color:#a6e22e">otherIndex</span>));
+    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">child</span>;
+  }
+}
+
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">RegisterMachine</span> {
+  <span style="color:#a6e22e">constructor</span>(<span style="color:#a6e22e">genome</span>) {
+    <span style="color:#75715e">// Low registers are input, high output, middle are temporary
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">registers</span> <span style="color:#f92672">=</span> [<span style="color:#e6db74">&#39;X&#39;</span>, <span style="color:#e6db74">&#39;Y&#39;</span>, <span style="color:#e6db74">&#39;R&#39;</span>, <span style="color:#e6db74">&#39;G&#39;</span>, <span style="color:#e6db74">&#39;B&#39;</span>];
+    <span style="color:#66d9ef">while</span> (<span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">registerCount</span>) {
+      <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">splice</span>(<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">0</span>, <span style="color:#e6db74">&#39;T&#39;</span> <span style="color:#f92672">+</span> (<span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">-</span> <span style="color:#ae81ff">5</span>));
+    }
+
+    <span style="color:#75715e">// Pull off one command for instruction and then as many args as needed
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">program</span> <span style="color:#f92672">=</span> [];
+    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">genome</span>.<span style="color:#a6e22e">data</span>.<span style="color:#a6e22e">length</span>;) {
+      <span style="color:#75715e">// Copy the instruction to add params
+</span><span style="color:#75715e"></span>      <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">instruction</span> <span style="color:#f92672">=</span> {
+        ...<span style="color:#a6e22e">gendex</span>(<span style="color:#a6e22e">instructions</span>, <span style="color:#a6e22e">genome</span>.<span style="color:#a6e22e">data</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">++</span>])
+      };
+      <span style="color:#a6e22e">instruction</span>.<span style="color:#a6e22e">params</span> <span style="color:#f92672">=</span> []
+      <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">j</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">j</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">instruction</span>.<span style="color:#66d9ef">function</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>; <span style="color:#a6e22e">j</span><span style="color:#f92672">++</span>) {
+        <span style="color:#a6e22e">instruction</span>.<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">gendex</span>(<span style="color:#a6e22e">registers</span>, <span style="color:#a6e22e">genome</span>.<span style="color:#a6e22e">data</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">++</span>]));
+      }
+      <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">program</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">instruction</span>);
+    }
+  }
+
+  <span style="color:#a6e22e">run</span>(<span style="color:#a6e22e">X</span>, <span style="color:#a6e22e">Y</span>) {
+    <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">registers</span> <span style="color:#f92672">=</span> {
+      <span style="color:#a6e22e">X</span><span style="color:#f92672">:</span> <span style="color:#a6e22e">X</span>,
+      <span style="color:#a6e22e">Y</span><span style="color:#f92672">:</span> <span style="color:#a6e22e">Y</span>,
+      <span style="color:#a6e22e">R</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">0</span>,
+      <span style="color:#a6e22e">G</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">0</span>,
+      <span style="color:#a6e22e">B</span><span style="color:#f92672">:</span> <span style="color:#ae81ff">0</span>
+    };
+
+    <span style="color:#75715e">// Run each command in the program
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">command</span> <span style="color:#66d9ef">of</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">program</span>) {
+      <span style="color:#75715e">// Collect input registers (all but the first)
+</span><span style="color:#75715e"></span>      <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">args</span> <span style="color:#f92672">=</span> [];
+      <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">param</span> <span style="color:#66d9ef">of</span> <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">slice</span>(<span style="color:#ae81ff">1</span>)) {
+        <span style="color:#a6e22e">args</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">registers</span>[<span style="color:#a6e22e">param</span>] <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>);
+      }
+
+      <span style="color:#75715e">// Run the function, store in the first param
+</span><span style="color:#75715e"></span>      <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">command</span>.<span style="color:#66d9ef">function</span>.<span style="color:#a6e22e">apply</span>(<span style="color:#66d9ef">this</span>, <span style="color:#a6e22e">args</span>);
+      <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> isNaN(<span style="color:#a6e22e">result</span>) <span style="color:#f92672">?</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">:</span> <span style="color:#a6e22e">result</span>;
+      <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeCall</span> <span style="color:#f92672">===</span> <span style="color:#e6db74">&#34;clamp&#34;</span>) {
+        <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">constrain</span>(<span style="color:#a6e22e">result</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>);
+      } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeCall</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;wrap&#34;</span>) {
+        <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+      }
+
+      <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">readonlyXY</span> <span style="color:#f92672">&amp;&amp;</span> (<span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;X&#39;</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;Y&#39;</span>)) {
+        <span style="color:#75715e">// Do nothing, trying to write to x/y
+</span><span style="color:#75715e"></span>      } <span style="color:#66d9ef">else</span> {
+        <span style="color:#a6e22e">registers</span>[<span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#ae81ff">0</span>]] <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span>;
+      }
+    }
+
+    <span style="color:#75715e">// Return the color from the r/g/b registers
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">return</span> [
+      <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">R</span>,
+      <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">G</span>,
+      <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">B</span>
+    ];
+  }
+
+  <span style="color:#a6e22e">transpile</span>() {
+    <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">patterns</span> <span style="color:#f92672">=</span> [
+      <span style="color:#e6db74">/^\((.*?)\) =&gt; (.*?)$/</span>,
+      <span style="color:#e6db74">/^function\((.*?)\) {(.*?)}$/</span>,
+    ]
+
+    <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">registers</span> <span style="color:#f92672">=</span> [<span style="color:#e6db74">&#39;X&#39;</span>, <span style="color:#e6db74">&#39;Y&#39;</span>, <span style="color:#e6db74">&#39;R&#39;</span>, <span style="color:#e6db74">&#39;G&#39;</span>, <span style="color:#e6db74">&#39;B&#39;</span>];
+    <span style="color:#66d9ef">while</span> (<span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">registerCount</span>) {
+      <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">splice</span>(<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">0</span>, <span style="color:#e6db74">&#39;T&#39;</span> <span style="color:#f92672">+</span> (<span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">length</span> <span style="color:#f92672">-</span> <span style="color:#ae81ff">5</span>));
+    }
+    <span style="color:#a6e22e">registers</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">slice</span>(<span style="color:#ae81ff">2</span>);
+    <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">code</span> <span style="color:#f92672">=</span> [
+      <span style="color:#e6db74">&#39;this.run = function(X, Y) {&#39;</span>,
+      <span style="color:#e6db74">&#39;  var &#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39;,&#39;</span>) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;;&#39;</span>,
+      <span style="color:#e6db74">&#39;  &#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">registers</span>.<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39; = &#39;</span>) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39; = 0;&#39;</span>
+    ];
+
+    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">command</span> <span style="color:#66d9ef">of</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">program</span>) {
+      <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">f</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">command</span>.<span style="color:#66d9ef">function</span>.<span style="color:#a6e22e">toString</span>();
+      <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">pattern</span> <span style="color:#66d9ef">of</span> <span style="color:#a6e22e">patterns</span>) {
+        <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">out</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#ae81ff">0</span>];
+
+        <span style="color:#75715e">// Match each kind of function
+</span><span style="color:#75715e"></span>        <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">parts</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">match</span>(<span style="color:#a6e22e">pattern</span>);
+        <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">parts</span>) {
+          <span style="color:#75715e">// Directly convert it to code
+</span><span style="color:#75715e"></span>          <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">line</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">`  </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> = </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">2</span>]<span style="color:#e6db74">}</span><span style="color:#e6db74">;`</span>;
+          
+          <span style="color:#75715e">// We have parameters, replace those in the code
+</span><span style="color:#75715e"></span>          <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">1</span>]) {
+            <span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">1</span>].<span style="color:#a6e22e">split</span>(<span style="color:#e6db74">&#39;,&#39;</span>).<span style="color:#a6e22e">map</span>((<span style="color:#a6e22e">el</span>, <span style="color:#a6e22e">i</span>) =&gt; {
+              <span style="color:#a6e22e">line</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">line</span>.<span style="color:#a6e22e">replaceAll</span>(
+                <span style="color:#66d9ef">new</span> RegExp(<span style="color:#e6db74">&#34;\\b&#34;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">trim</span>() <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;\\b&#34;</span>, <span style="color:#e6db74">&#34;g&#34;</span>),
+                <span style="color:#a6e22e">command</span>.<span style="color:#a6e22e">params</span>[<span style="color:#a6e22e">i</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>]
+              );
+            });
+          }
+          
+          <span style="color:#75715e">// When x/y are readonly, comment out the line
+</span><span style="color:#75715e"></span>          <span style="color:#75715e">// Otherwise, apply any end of call functions
+</span><span style="color:#75715e"></span>          <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">readonlyXY</span> <span style="color:#f92672">&amp;&amp;</span> (<span style="color:#a6e22e">out</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;X&#39;</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">out</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;Y&#39;</span>)) {
+            <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">&#39;  // &#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">line</span>.<span style="color:#a6e22e">trim</span>());
+          } <span style="color:#66d9ef">else</span> {
+            <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">line</span>);
+            <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeCall</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;clamp&#34;</span>) {
+              <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">`  </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> = </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> &lt; 0 ? 0 : (</span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> &gt; 1 ? 1 : </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74">);`</span>);
+            } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">modeCall</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;wrap&#34;</span>) {
+              <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">`  </span><span style="color:#e6db74">${</span><span style="color:#a6e22e">out</span><span style="color:#e6db74">}</span><span style="color:#e6db74"> %= 1.0;`</span>);
+            }
+          }
+        }
+      }
+    }
+    <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">&#39;  return [R, G, B];&#39;</span>)
+    <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">push</span>(<span style="color:#e6db74">&#39;}&#39;</span>);
+    <span style="color:#a6e22e">code</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">code</span>.<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39;\n&#39;</span>);
+
+    eval(<span style="color:#a6e22e">code</span>);
+  }
+
+  <span style="color:#a6e22e">toString</span>() {
+    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">program</span>.<span style="color:#a6e22e">map</span>((<span style="color:#a6e22e">cmd</span>) =&gt; <span style="color:#a6e22e">cmd</span>.<span style="color:#a6e22e">name</span> <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39; &#39;</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">cmd</span>.<span style="color:#a6e22e">params</span>.<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39; &#39;</span>)).<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#39;\n&#39;</span>);
+  }
+}
+</code></pre></div>
+
+
+<p>While I was testing it, I came up with these images:</p>
+
+<p><figure>
+    <img src="/embeds/2020/pictogenesis-awesome-noise.png"/> 
+</figure>
+
+<figure>
+    <img src="/embeds/2020/pictogenesis-awesome-noise2.png"/> 
+</figure>
+</p>
+
+<p>Adding <code>noise</code> was a good choice! And you can get some really complicated images with 1000 gene programs&hellip; now that you can actually run them in a reasonable span of time.</p></div>
+</article></div>
+        </div><footer id="page-footer" role="contentinfo">
+    <nav id="footer-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation">
+            <li><a href="/archive-by-date/">All posts: By Date</a></li>
+            <li><a href="/archive-by-tag/">All posts: By Tag</a></li>
+
+            <li>
+                <a href="/atom.xml">
+                    RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li><li>
+                <a href="/programming/atom.xml">
+                    RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li></ul>
+    </nav>
+
+    <div id="page-footer-content">
+        <div class="legal">
+            <p>
+                All posts unless otherwise mentioned are licensed under
+                <a rel="license" href="//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US">
+                    <img alt="Creative Commons License" style="border-width:0" src="//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png">
+                </a>
+            </p>
+
+            <p>
+                Any source code unless otherwise mentioned is licensed under the <a href="//directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+            </p>
+        </div>
+    </div>
+</footer>
+</div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js" integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js" integrity="sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js" integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin="anonymous"></script>
+
+<script src="/custom.js"></script>
+</body>
+</html>
