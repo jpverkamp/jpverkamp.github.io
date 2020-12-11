@@ -50,6 +50,115 @@
     <article class="li">
     	<header>
     		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2020/12/11/pictogenesis-stack-transpiling/" class="clearfix">Pictogenesis: Stack Transpiling</a>
+            </h1>
+
+    		<div class="entry-meta"><span class="entry-date">2020-12-11</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><p>Much like <a href="https://blog.jverkamp.com/2020/12/03/pictogenesis-transpiling/">transpiling register machines</a>, now we have a chance to transpile <a href="https://blog.jverkamp.com/2020/12/09/pictogenesis-stack-machine/">stack machines</a>. Unfortunately, it doesn&rsquo;t actually speed up the code nearly so much (the stack is just not as effective of a memory structure in this case), but it&rsquo;s still an interesting bit of code.</p>
+
+<p>In this case, we turn something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-asm" data-lang="asm"><span style="color:#a6e22e">invsub</span>
+<span style="color:#a6e22e">polT</span>
+<span style="color:#a6e22e">writeG</span>
+<span style="color:#a6e22e">id</span>
+<span style="color:#a6e22e">neg</span>
+<span style="color:#a6e22e">zero</span><span style="color:#960050;background-color:#1e0010">?</span>
+<span style="color:#a6e22e">sin</span>
+<span style="color:#a6e22e">invsub</span>
+<span style="color:#a6e22e">ZERO</span>
+<span style="color:#a6e22e">inv</span></code></pre></div>
+<p>Into this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">function</span>(<span style="color:#a6e22e">X</span>, <span style="color:#a6e22e">Y</span>) {
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">x</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">X</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">y</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">Y</span>;
+
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span> <span style="color:#f92672">=</span> [];
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">r</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">g</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">b</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
+
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">X</span>);
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">Y</span>);
+
+  <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">arg1</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">arg2</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+
+  <span style="color:#75715e">// invsub
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">-</span> <span style="color:#a6e22e">arg0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// polT
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">arg1</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">atan2</span>(<span style="color:#a6e22e">arg0</span>, <span style="color:#a6e22e">arg1</span>);
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// writeG
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">g</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">arg0</span>;
+
+  <span style="color:#75715e">// id
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">arg0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// neg
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#f92672">-</span><span style="color:#a6e22e">arg0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// zero?
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">arg1</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">arg2</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">===</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">?</span> <span style="color:#a6e22e">arg1</span> <span style="color:#f92672">:</span> <span style="color:#a6e22e">arg2</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// sin
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> Math.<span style="color:#a6e22e">sin</span>(<span style="color:#a6e22e">arg0</span>);
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// invsub
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">-</span> <span style="color:#a6e22e">arg0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// ZERO
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+  <span style="color:#75715e">// inv
+</span><span style="color:#75715e"></span>  <span style="color:#a6e22e">arg0</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">/</span> <span style="color:#a6e22e">arg0</span>;
+  <span style="color:#a6e22e">result</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">result</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">1.0</span>;
+  <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">push</span>(<span style="color:#a6e22e">result</span>);
+
+
+  <span style="color:#66d9ef">return</span> [
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">r</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span> <span style="color:#f92672">?</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">r</span>,
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">g</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span> <span style="color:#f92672">?</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">g</span>,
+    <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">b</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span> <span style="color:#f92672">?</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">stack</span>.<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">this</span>.<span style="color:#a6e22e">b</span>,
+  ];
+}
+</code></pre></div><p><a href="/2020/12/11/pictogenesis-stack-transpiling/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
                 <a href="https://blog.jverkamp.com/2020/12/09/pictogenesis-stack-machine/" class="clearfix">Pictogenesis: Stack Machine</a>
             </h1>
 
@@ -259,30 +368,6 @@
                 </div>
     	</header>
     	<div class="entry-content"><p>One thing that I&rsquo;ve been hoping to get into a bit more is the idea of <a href="https://en.wikipedia.org/wiki/Generative%20Art">Generative Art</a>. Essentially, use any of a wide variety of algorithms to generate art. To do that, and so that the art can be generated right in front of you in the browser, I&rsquo;m going to use the <a href="https://p5js.org/">p5js</a> library. It gives you a nice API of graphical primitives and takes a simple <code>setup</code> and <code>draw</code> function and does the rest.</p><p><a href="/2020/11/17/p5js-worms/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2019/05/02/prevent-javascript-links-by-parsing-urls/" class="clearfix">Prevent JavaScript links by parsing URLs</a>
-            </h1>
-
-    		<div class="entry-meta"><span class="entry-date">2019-05-02</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><p>If you have a website that allows users to submit URLs, one of the (many many) things people will try to do to break your site is to submit URLs that use the <code>javascript:</code> protocol (rather than the more expected <code>http:</code> or <code>https:</code>). This is almost never something that you want, since it allows users to submit essentially arbitrary code that other users will run on click in the context of your domain (<a href="https://en.wikipedia.org/wiki/same%20origin%20policy">same origin policy</a>).</p>
-
-<p>So how do you fix it?</p>
-
-<p>First thought would be to try to check the protocol:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">url</span>) =&gt; <span style="color:#f92672">!</span><span style="color:#a6e22e">url</span>.<span style="color:#a6e22e">match</span>(<span style="color:#e6db74">/^javascript:/</span>)
-[Function<span style="color:#f92672">:</span> <span style="color:#a6e22e">safe_url</span>]
-
-<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39;http://www.example.com&#39;</span>)
-<span style="color:#66d9ef">true</span>
-
-<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39;javascript:alert(1)&#39;</span>)
-<span style="color:#66d9ef">false</span>
-</code></pre></div><p><a href="/2019/05/02/prevent-javascript-links-by-parsing-urls/">read more...</a></p></div>
 
         <hr /></article><nav id="pagination-navigation" role="navigation">
 
