@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html onclick >
+<head>
+    <title>yt-cast: Generating podcasts from YouTube URLs – jverkamp.com</title>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8"><link rel="alternate" type="application/atom+xml" title="jverkamp.com (Atom 2.0)" href="//blog.jverkamp.com/feed/">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css" integrity="sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css" integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous" />
+
+<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel="stylesheet">
+
+<link rel="stylesheet" href="/custom.css" defer />
+
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+</head>
+<body>
+    <div id="wrapper"><header id="page-header" role="banner">
+    <h1><a href="/">JP's Blog</a></h1>
+
+    <ul id="page-header-links">
+        <li>
+            <a href="https://github.com/jpverkamp">GitHub</a> *
+            <a href="https://www.flickr.com/photos/jpverkamp">Flickr</a> *
+            <a href="/resume">Resume</a>
+        </li>
+        <li>
+            <form action="//www.google.com/search" method="get" onsubmit="(function(obj){obj.q.value='site:blog.jverkamp.com '+obj.qfront.value;})(this)" class="navbar-form navbar-right" role="search" _lpchecked="1">
+                <div class="form-group">
+                    <input name="q" type="hidden">
+                    <input name="qfront" type="text" class="form-control" placeholder="Search">
+                    <button type="submit" class="btn btn-default" value="Search">Search</button>
+                </div>
+            </form>
+        </li>
+    </ul>
+
+    <nav id="header-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        </ul>
+    </nav>
+</header>
+<div id="page-content-wrapper">
+            <div id="page-content"><article>
+	<header>
+		<h1 class="entry-title">yt-cast: Generating podcasts from YouTube URLs</h1>
+
+        <div class="entry-meta"><span class="entry-date">2021-01-05</span>
+            </div>
+
+        <div class="entry-taxonomies"><div class="entry-tags"><ul class="taxonomy-keys"><li>
+            <a class="taxonomy-key" href="/programming/languages/">Languages</a>
+            <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2020/08/11/extending-my-ec2-script/" class="previous-link"></a><a class="taxonomy-value" href="/programming/languages/python">Python</a></li></ul>
+        </li><li>
+            <a class="taxonomy-key" href="/programming/topics/">Topics</a>
+            <ul class="taxonomy-values"><li><a class="taxonomy-value" href="/programming/topics/podcasts">Podcasts</a></li><li><a class="taxonomy-value" href="/programming/topics/rss">RSS</a></li></ul>
+        </li><li><a class="taxonomy-key" href="/programming">programming</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2020/12/11/pictogenesis-stack-transpiling/" class="previous-link">Prev</a>
+                </ul>
+        </li><li><a class="taxonomy-key" href="/">All Posts</a>
+            <ul>
+                <li><a href="https://blog.jverkamp.com/2021/01/03/the-boys-volume-12-the-bloody-doors-off/" class="previous-link">Prev</a>
+                <a href="https://blog.jverkamp.com/2021/01/05/the-horse-and-his-boy/" class="next-link">Next</a></ul>
+        </li></ul>
+</div>
+</div>
+    </header>
+
+	<div class="entry-content"><p>Today&rsquo;s goal: Turn a collection of YouTube links into a podcast.</p>
+
+<p>Start with a <code>config.json</code> like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">{
+  <span style="color:#f92672">&#34;brandon-sanderson&#34;</span>: [
+    <span style="color:#e6db74">&#34;https://www.youtube.com/watch?v=H4lWbkERlxo&amp;list=PLSH_xM-KC3ZuOZayK68JAAjj5W9ShnFVC&#34;</span>,
+    <span style="color:#e6db74">&#34;https://www.youtube.com/watch?v=YyaC7NmPsc0&amp;list=PLSH_xM-KC3ZtjKTR2z8rPWxv1pP6bOVzZ&#34;</span>,
+    <span style="color:#e6db74">&#34;https://www.youtube.com/watch?v=o3V0Zok_kT0&amp;list=PLSH_xM-KC3ZuteHw3G1ZrCDWQrAVgO0ER&#34;</span>
+  ]
+}</code></pre></div>
+<p>And it will automatically download all referenced YouTube videos, convert them to MP3 (both using <a href="https://ytdl-org.github.io/youtube-dl/index.html">youtube-dl</a>), and serve an RSS feed that&rsquo;s compatible with most podcast programs.</p>
+
+<p>Tested URLs include:</p>
+
+<ul>
+<li>Playlist URLs (like the above)</li>
+<li>Single video URLs</li>
+<li>Channel URLs</li>
+</ul>
+
+<p>Most youtube URLs should work though.</p>
+
+<p>How? With these parts:</p>
+
+<ul>
+<li>The <code>update-thread</code> to download all the playlists and metadata</li>
+<li>The <code>download-thread</code> to download the actual episodes and convert them to mp3s</li>
+<li><a href="https://flask.palletsprojects.com/en/1.1.x/">Flask</a> routes to generate the RSS feed and return the mp3s</li>
+<li>The main function</li>
+</ul>
+
+<h1 id="update-thread">Update thread</h1>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># A thread to download information on the requested URLs periodically</span>
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">update_thread</span>():
+    <span style="color:#75715e"># Update once a minute, but caches will probably mostly be used</span>
+    <span style="color:#66d9ef">while</span> True:
+        <span style="color:#66d9ef">with</span> open(CONFIG_FILE, <span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+            config <span style="color:#f92672">=</span> json<span style="color:#f92672">.</span>load(fin)
+
+        <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> config:
+            <span style="color:#66d9ef">for</span> url <span style="color:#f92672">in</span> config[key]:
+                path <span style="color:#f92672">=</span> path_for(url)
+
+                <span style="color:#75715e"># If we don&#39;t have the metadata (or an update in the last hour), download it</span>
+                <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>exists(path) <span style="color:#f92672">or</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>getmtime(path) <span style="color:#f92672">+</span> CACHE_TTL <span style="color:#f92672">&lt;</span> time<span style="color:#f92672">.</span>time():
+                    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Fetching {url}&#39;</span>)
+                    <span style="color:#66d9ef">try</span>:
+                        <span style="color:#66d9ef">with</span> youtube_dl<span style="color:#f92672">.</span>YoutubeDL(YDL_OPTS) <span style="color:#66d9ef">as</span> ydl:
+                            info <span style="color:#f92672">=</span> ydl<span style="color:#f92672">.</span>extract_info(url, download<span style="color:#f92672">=</span>False)
+                            
+                        <span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
+                            json<span style="color:#f92672">.</span>dump(info, fout)
+
+                        <span style="color:#75715e"># Queue downloads for all videos (existing ones will be skipped)</span>
+                        <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;entries&#39;</span> <span style="color:#f92672">in</span> info:
+                            <span style="color:#66d9ef">for</span> entry <span style="color:#f92672">in</span> info[<span style="color:#e6db74">&#39;entries&#39;</span>]:
+                                <span style="color:#66d9ef">if</span> entry[<span style="color:#e6db74">&#39;upload_date&#39;</span>] <span style="color:#f92672">&gt;=</span> cutoff():
+                                    DOWNLOAD_QUEUE<span style="color:#f92672">.</span>append(entry[<span style="color:#e6db74">&#39;id&#39;</span>])
+                        <span style="color:#66d9ef">else</span>:
+                            <span style="color:#66d9ef">if</span> info[<span style="color:#e6db74">&#39;upload_date&#39;</span>] <span style="color:#f92672">&gt;=</span> cutoff():
+                                DOWNLOAD_QUEUE<span style="color:#f92672">.</span>append(info[<span style="color:#e6db74">&#39;id&#39;</span>])
+
+                    <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">Exception</span> <span style="color:#66d9ef">as</span> ex:
+                        logging<span style="color:#f92672">.</span>error(f<span style="color:#e6db74">&#39;Failed to fetch {url}: {ex}&#39;</span>)
+
+        time<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">60</span>)</code></pre></div>
+<p>Go through the config file and use YouTubeDL to download the info files:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">with</span> youtube_dl<span style="color:#f92672">.</span>YoutubeDL(YDL_OPTS) <span style="color:#66d9ef">as</span> ydl:
+    info <span style="color:#f92672">=</span> ydl<span style="color:#f92672">.</span>extract_info(url, download<span style="color:#f92672">=</span>False)</code></pre></div>
+<p>If there are <code>entries</code>, we have more than one video. Include them all. If not, it&rsquo;s a single video. I did add a cutoff function to make sure I didn&rsquo;t download every video on long feeds:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># When we should return history back to</span>
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">cutoff</span>():
+    <span style="color:#66d9ef">return</span> (datetime<span style="color:#f92672">.</span>date<span style="color:#f92672">.</span>today() <span style="color:#f92672">-</span> datetime<span style="color:#f92672">.</span>timedelta(<span style="color:#f92672">**</span>CUTOFF))<span style="color:#f92672">.</span>strftime(<span style="color:#e6db74">&#39;%Y%m</span><span style="color:#e6db74">%d</span><span style="color:#e6db74">&#39;</span>)</code></pre></div>
+<p>The next thing that we will do is generate a hashed filename for the URL (mostly to make sure unusual filenames etc aren&rsquo;t a problem):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Get the cache file for a url</span>
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">path_for</span>(url):
+    hash <span style="color:#f92672">=</span> hashlib<span style="color:#f92672">.</span>md5(url<span style="color:#f92672">.</span>encode())<span style="color:#f92672">.</span>hexdigest()
+    <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;data/{hash}.json&#39;</span></code></pre></div>
+<p>This also uses the file <code>mtime</code> to make sure that we only download files every so often, even if this update script runs once per minute.</p>
+
+<h1 id="download-thread">Download thread</h1>
+
+<p>Next up, the download thread!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Download a single youtube video</span>
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">download_thread</span>():
+    <span style="color:#75715e"># Prepopulate with any missing videos</span>
+    logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Prepopulating download queue&#39;</span>)
+    <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> config:
+        <span style="color:#66d9ef">for</span> url <span style="color:#f92672">in</span> config[key]:
+            path <span style="color:#f92672">=</span> path_for(url)
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>exists(path):
+                <span style="color:#66d9ef">continue</span>
+
+            <span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+                info <span style="color:#f92672">=</span> json<span style="color:#f92672">.</span>load(fin)
+                <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;entries&#39;</span> <span style="color:#f92672">in</span> info:
+                    <span style="color:#66d9ef">for</span> entry <span style="color:#f92672">in</span> info[<span style="color:#e6db74">&#39;entries&#39;</span>]:
+                        DOWNLOAD_QUEUE<span style="color:#f92672">.</span>append(entry[<span style="color:#e6db74">&#39;id&#39;</span>])
+                <span style="color:#66d9ef">else</span>:
+                    DOWNLOAD_QUEUE<span style="color:#f92672">.</span>append(info[<span style="color:#e6db74">&#39;id&#39;</span>])
+
+    <span style="color:#75715e"># Download loop</span>
+    <span style="color:#66d9ef">while</span> True:
+        <span style="color:#66d9ef">while</span> DOWNLOAD_QUEUE:
+            id <span style="color:#f92672">=</span> DOWNLOAD_QUEUE<span style="color:#f92672">.</span>pop()
+            logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Download queue [{len(DOWNLOAD_QUEUE)}]: {id}&#39;</span>)
+
+            url <span style="color:#f92672">=</span> f<span style="color:#e6db74">&#39;https://www.youtube.com/watch?v={id}&#39;</span>
+            path <span style="color:#f92672">=</span> path_for(url)
+            <span style="color:#66d9ef">if</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>exists(path):
+                <span style="color:#66d9ef">continue</span>
+
+            logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Downloading video at {url}&#39;</span>)
+            <span style="color:#66d9ef">with</span> youtube_dl<span style="color:#f92672">.</span>YoutubeDL(YDL_OPTS) <span style="color:#66d9ef">as</span> ydl:
+                ydl<span style="color:#f92672">.</span>extract_info(url, download<span style="color:#f92672">=</span>True)
+
+        time<span style="color:#f92672">.</span>sleep(<span style="color:#ae81ff">60</span>)</code></pre></div>
+<p>It starts with a single download ahead of time because the mp3 server doesn&rsquo;t like not having files. If files are already updated, it should go very quickly and then go into the main update loop which goes through newly queued videos and downloads them. It&rsquo;s actually the same functionality as getting the info, just for single videos and with <code>download=True</code>. Onwards!</p>
+
+<h1 id="flask-server-generate-podcast-rss-xml">Flask server: generate podcast RSS/XML</h1>
+
+<p>First, let&rsquo;s generate the XML files:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@app.route</span>(<span style="color:#e6db74">&#39;/&lt;key&gt;.xml&#39;</span>)
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">podcast</span>(key):
+    entries <span style="color:#f92672">=</span> []
+
+    <span style="color:#66d9ef">for</span> url <span style="color:#f92672">in</span> config[key]:
+        path <span style="color:#f92672">=</span> path_for(url)
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>exists(path):
+            <span style="color:#66d9ef">continue</span>
+
+        <span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74">&#39;r&#39;</span>) <span style="color:#66d9ef">as</span> fin:
+            info <span style="color:#f92672">=</span> json<span style="color:#f92672">.</span>load(fin)
+            <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;entries&#39;</span> <span style="color:#f92672">in</span> info:
+                <span style="color:#66d9ef">for</span> entry <span style="color:#f92672">in</span> info[<span style="color:#e6db74">&#39;entries&#39;</span>]:
+                    <span style="color:#66d9ef">if</span> entry[<span style="color:#e6db74">&#39;upload_date&#39;</span>] <span style="color:#f92672">&gt;=</span> cutoff():
+                        entries<span style="color:#f92672">.</span>append(entry)
+            <span style="color:#66d9ef">else</span>:
+                <span style="color:#66d9ef">if</span> info[<span style="color:#e6db74">&#39;upload_date&#39;</span>] <span style="color:#f92672">&gt;=</span> cutoff():
+                    entries<span style="color:#f92672">.</span>append(info)
+
+    entries <span style="color:#f92672">=</span> list(reversed(sorted(entries, key<span style="color:#f92672">=</span><span style="color:#66d9ef">lambda</span> entry: entry[<span style="color:#e6db74">&#39;upload_date&#39;</span>])))
+
+    <span style="color:#75715e"># Generate the XML</span>
+    <span style="color:#66d9ef">return</span> flask<span style="color:#f92672">.</span>Response(
+        flask<span style="color:#f92672">.</span>render_template(<span style="color:#e6db74">&#39;podcast.xml&#39;</span>, key <span style="color:#f92672">=</span> key, entries <span style="color:#f92672">=</span> entries, format_date <span style="color:#f92672">=</span> format_date),
+        mimetype<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;application/atom+xml&#39;</span>
+    )</code></pre></div>
+<p>This will filter through videos based on the cutoff (above). Most of the work is done in the <a href="https://jinja.palletsprojects.com/en/2.11.x/">Jinja templates</a>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#75715e">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+<span style="color:#f92672">&lt;rss</span> <span style="color:#a6e22e">xmlns:itunes=</span><span style="color:#e6db74">&#34;http://www.itunes.com/dtds/podcast-1.0.dtd&#34;</span> <span style="color:#a6e22e">version=</span><span style="color:#e6db74">&#34;2.0&#34;</span><span style="color:#f92672">&gt;</span>
+    <span style="color:#f92672">&lt;channel&gt;</span>
+        <span style="color:#f92672">&lt;title&gt;</span>{{ key }}<span style="color:#f92672">&lt;/title&gt;</span>
+        <span style="color:#f92672">&lt;link&gt;</span>{{ request[&#39;url&#39;] }}<span style="color:#f92672">&lt;/link&gt;</span>
+        <span style="color:#f92672">&lt;language&gt;</span>en-us<span style="color:#f92672">&lt;/language&gt;</span>
+        <span style="color:#f92672">&lt;itunes:subtitle&gt;</span>Generated by yt-cast<span style="color:#f92672">&lt;/itunes:subtitle&gt;</span>
+        <span style="color:#f92672">&lt;itunes:author&gt;</span>{{ entries[0][&#39;uploader&#39;] }}<span style="color:#f92672">&lt;/itunes:author&gt;</span>
+        <span style="color:#f92672">&lt;itunes:summary&gt;</span>{{ key }}<span style="color:#f92672">&lt;/itunes:summary&gt;</span>
+        <span style="color:#f92672">&lt;description&gt;</span>{{ key }}<span style="color:#f92672">&lt;/description&gt;</span>
+        <span style="color:#f92672">&lt;itunes:owner&gt;</span>
+            <span style="color:#f92672">&lt;itunes:name&gt;</span>{{ entries[0][&#39;uploader&#39;] }}<span style="color:#f92672">&lt;/itunes:name&gt;</span>
+            <span style="color:#f92672">&lt;itunes:email&gt;</span>me@example.com<span style="color:#f92672">&lt;/itunes:email&gt;</span>
+        <span style="color:#f92672">&lt;/itunes:owner&gt;</span>
+        <span style="color:#f92672">&lt;itunes:explicit&gt;</span>no<span style="color:#f92672">&lt;/itunes:explicit&gt;</span>
+        <span style="color:#f92672">&lt;itunes:image</span> <span style="color:#a6e22e">href=</span><span style="color:#e6db74">&#34;{{ request.host_url }}static/rss.svg&#34;</span> <span style="color:#f92672">/&gt;</span>
+        <span style="color:#f92672">&lt;itunes:category&gt;</span>Comedy<span style="color:#f92672">&lt;/itunes:category&gt;</span>
+        {% for entry in entries %}
+        <span style="color:#f92672">&lt;item&gt;</span>
+            <span style="color:#f92672">&lt;title&gt;</span>{{ entry[&#39;title&#39;] }}<span style="color:#f92672">&lt;/title&gt;</span>
+            <span style="color:#f92672">&lt;itunes:summary&gt;&lt;/itunes:summary&gt;</span>
+            <span style="color:#f92672">&lt;description&gt;</span>{{ entry[&#39;description&#39;] }}<span style="color:#f92672">&lt;/description&gt;</span>
+            <span style="color:#f92672">&lt;link&gt;</span>{{ entry[&#39;webpage_url&#39;] }}<span style="color:#f92672">&lt;/link&gt;</span>
+            <span style="color:#f92672">&lt;enclosure</span> <span style="color:#a6e22e">url=</span><span style="color:#e6db74">&#34;{{ request.host_url }}{{ entry[&#39;id&#39;] }}.mp3&#34;</span> <span style="color:#a6e22e">type=</span><span style="color:#e6db74">&#34;audio/mpeg&#34;</span> <span style="color:#a6e22e">length=</span><span style="color:#e6db74">&#34;1024&#34;</span><span style="color:#f92672">&gt;&lt;/enclosure&gt;</span>
+            <span style="color:#f92672">&lt;pubDate&gt;</span>{{ format_date(entry[&#39;upload_date&#39;]) }}<span style="color:#f92672">&lt;/pubDate&gt;</span>
+            <span style="color:#f92672">&lt;itunes:author&gt;&lt;/itunes:author&gt;</span>
+            <span style="color:#f92672">&lt;itunes:duration&gt;</span>00:00:01<span style="color:#f92672">&lt;/itunes:duration&gt;</span>
+            <span style="color:#f92672">&lt;itunes:explicit&gt;</span>no<span style="color:#f92672">&lt;/itunes:explicit&gt;</span>
+            <span style="color:#f92672">&lt;guid&gt;</span>{{ path }}<span style="color:#f92672">&lt;/guid&gt;</span>
+        <span style="color:#f92672">&lt;/item&gt;</span> 
+        {% endfor %}
+    <span style="color:#f92672">&lt;/channel&gt;</span>
+<span style="color:#f92672">&lt;/rss&gt;</span></code></pre></div>
+<p>It&rsquo;s half incomplete, but it&rsquo;s at least functional. One interesting thing I did learn was that the <code>itunes:duration</code> and <code>enclosure@length</code> don&rsquo;t actually have to be realistic values, but for many programs they do have to be set. Legacy!</p>
+
+<h1 id="flask-server-serve-mp3s">Flask server: serve mp3s</h1>
+
+<p>This one is really quick. It does require that the <code>id</code> file actually look like an ID (primarily to prevent a <a href="https://en.wikipedia.org/wiki/directory%20traversal%20attack">directory traversal attack</a>, although Flask should do that). Then just <code>send_file</code> it back. This could be much more efficient by using a reverse proxy (nginx etc) in front of Flask to actually serve the static files, but in practice it seems to be working well enough.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@app.route</span>(<span style="color:#e6db74">&#39;/&lt;id&gt;.mp3&#39;</span>)
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">episode</span>(id):
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> re<span style="color:#f92672">.</span>match(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;^[a-zA-Z0-9_-]+$&#39;</span>, id):
+        <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">Exception</span>(<span style="color:#e6db74">&#39;Close but no cigar&#39;</span>)
+
+    <span style="color:#66d9ef">return</span> flask<span style="color:#f92672">.</span>send_file(f<span style="color:#e6db74">&#39;data/{id}.mp3&#39;</span>)</code></pre></div>
+<h1 id="main">Main</h1>
+
+<p>Start it all up and we&rsquo;re good to go:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">if</span> __name__ <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;__main__&#39;</span>:
+    threading<span style="color:#f92672">.</span>Thread(target<span style="color:#f92672">=</span>download_thread, daemon<span style="color:#f92672">=</span>True)<span style="color:#f92672">.</span>start()
+    threading<span style="color:#f92672">.</span>Thread(target<span style="color:#f92672">=</span>update_thread, daemon<span style="color:#f92672">=</span>True)<span style="color:#f92672">.</span>start()
+
+    app<span style="color:#f92672">.</span>run(host <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;0.0.0.0&#39;</span>)</code></pre></div>
+<p>Setting this as <code>daemon</code> threads means that when the server is shut down, the threads will go with it.</p>
+
+<h1 id="todos">TODOs</h1>
+
+<ul>
+<li>Automatically remove files that have passed the cutoff date</li>
+</ul>
+
+<h1 id="source">Source</h1>
+
+<p>Full source: <a href="https://github.com/jpverkamp/yt-cast">https://github.com/jpverkamp/yt-cast</a></p>
+
+<p>If you have any ideas, send in a pull request or shoot me <a href="mailto:blog@jverkamp.com">an email</a>.</p></div>
+</article></div>
+        </div><footer id="page-footer" role="contentinfo">
+    <nav id="footer-navigation" role="navigation" class="ribbon">
+        <ul class="main-navigation">
+            <li><a href="/archive-by-date/">All posts: By Date</a></li>
+            <li><a href="/archive-by-tag/">All posts: By Tag</a></li>
+
+            <li>
+                <a href="/atom.xml">
+                    RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li><li>
+                <a href="/programming/atom.xml">
+                    RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24">
+    <path fill="white" d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.71-7.118-15.758-15.839-15.82zm0-3.368c10.58.046 19.152 8.594 19.183 19.188h4.817c-.03-13.231-10.755-23.954-24-24v4.812z" />
+</svg>
+</sup>
+                </a>
+            </li></ul>
+    </nav>
+
+    <div id="page-footer-content">
+        <div class="legal">
+            <p>
+                All posts unless otherwise mentioned are licensed under
+                <a rel="license" href="//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US">
+                    <img alt="Creative Commons License" style="border-width:0" src="//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png">
+                </a>
+            </p>
+
+            <p>
+                Any source code unless otherwise mentioned is licensed under the <a href="//directory.fsf.org/wiki/License:BSD_3Clause">3 clause BSD license</a>
+            </p>
+        </div>
+    </div>
+</footer>
+</div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js" integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js" integrity="sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js" integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin="anonymous"></script>
+
+<script src="/custom.js"></script>
+</body>
+</html>
