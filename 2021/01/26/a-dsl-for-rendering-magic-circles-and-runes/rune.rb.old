@@ -1,0 +1,214 @@
+def rune
+    puts %(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200">
+<g  transform="rotate(180)"
+    stroke="black" fill="white"
+    text-anchor="middle" dominant-baseline="central"
+>
+)
+    yield
+    puts %(
+</g>
+</svg>
+)
+end
+
+def circle(width: 0.1)
+    # TODO: Other modes
+    puts %(<circle vector-effect="non-scaling-stroke" cx="0" cy="0" r="100" />)
+end
+
+def calculateArc(min, max)
+    # https://stackoverflow.com/questions/5736398/how-to-calculate-the-svg-path-for-an-arc-of-a-circle
+    puts %(<!-- calculateArc(#{min}, #{max}) -->)
+
+    # Rotate so 0 is the top
+    min += Math::PI / 2
+    max += Math::PI / 2
+
+    startX = 100 * Math.cos(max)
+    startY = 100 * Math.sin(max)
+    endX = 100 * Math.cos(min)
+    endY = 100 * Math.sin(min)
+    largeArcFlag = max - min <= 180 ? "0" : "1"
+
+    return startX, startY, endX, endY, largeArcFlag
+end
+
+def arc(min: 0, max: 360, width: 0.1)
+    x1, y1, x2, y2, flag = calculateArc(2 * Math::PI * min / 360, 2 * Math::PI * max / 360)
+    puts %(
+        <!-- arc from #{min} to #{max} -->
+        <g fill="none">
+        <path vector-effect="non-scaling-stroke" d="
+            M #{x1} #{y1}
+            A 100 100, 0, #{flag}, 0, #{x2} #{y2}
+        " />
+        </g>
+    )
+end
+
+def moon(phase)
+    puts %(<!-- todo moon of phase #{phase} -->)
+
+    x1, y1, x2, y2, f1 = calculateArc(Math::PI * phase, -Math::PI * phase)
+    flip = phase < 0.5 ? 1 : 0
+
+    rotate 90 do 
+        puts %(
+            <path vector-effect="non-scaling-stroke" d="
+                M #{x1} #{y1}
+                A 100 100, 0, #{flip}, #{1-flip}, #{x2} #{y2}
+                A 100 100, 0, #{1-flip}, #{flip}, #{x1} #{y1}
+            " />
+        )
+    end
+
+    style fill: "none" do circle end
+end
+
+def dividedCircle(divisions, width: 1)
+    circle
+    style width: 1 do
+        children divisions do line min: 1-width end 
+    end
+    scale 1-width do circle end
+end
+
+def line(min: 0, max: 1)
+    puts %(<line x1="0" y1="#{100*min.to_f}" x2="0" y2="#{100*max.to_f}" />)
+end
+
+def triangle
+    polygon 3
+end
+
+def polygon(points)
+    star points, 1
+end
+
+def star(points, skip)
+    pstring = points.times.map do |i|
+        r = 100
+        theta = Math::PI/2 + 2 * Math::PI / points * (i * skip % points)
+        x = r * Math.cos(theta)
+        y = r * Math.sin(theta)
+        %(#{x},#{y})
+    end
+    puts %(<polygon vector-effect="non-scaling-stroke" points="#{pstring.join " "}" />)
+end
+
+def inverted(&block)
+    rotate 180, &block
+end
+
+def rotate(degrees)
+    puts %(<g transform="rotate(#{degrees})">)
+    yield
+    puts %(</g>)
+end
+
+def scale(scale)
+    puts %(<g transform="scale(#{scale.to_f})">)
+    yield
+    puts %(</g>)
+end
+
+def translate(x, y)
+    puts %(<g transform="translate(#{100*x.to_f},#{100*y.to_f})">)
+    yield
+    puts %(</g>)
+end
+
+def style(width: nil, color: nil, fill: nil)
+    attributes = []
+    attributes.push(%(stroke-width="#{width}")) if width
+    attributes.push(%(stroke="#{color}")) if color
+    attributes.push(%(fill="#{fill}")) if fill
+
+    puts %(<g #{attributes.join(" ")}>)
+    yield
+    puts %(</g>)
+end
+
+def children(ls, scale: 1, offset: 0)
+    puts %(<!-- children: #{ls} -->)
+    ls = *(0..ls-1) if ls.is_a? Integer
+    ls.each_with_index do |el, i|
+        puts %(<g transform="rotate(#{i*360.0/ls.length}) translate(0 #{100*offset.to_f}) scale(#{scale.to_f})">)
+        yield el
+        puts %(</g>)
+    end
+    puts ls.length
+end
+
+def text(s)
+    puts %(<g fill="black"><text  font-size="100px">#{s}</text></g>)
+end
+
+def double(width) 
+    yield 
+    puts %(<g transform="scale(#{1-width.to_f})">)
+    yield
+    puts %(</g>)
+end
+
+if true
+    rune do
+        scale 0.5 do 
+            circle
+            polygon 7
+            star 14, 3
+            star 7, 2
+            children 7, scale: 1/8r, offset: 1 do |i|
+                circle
+                inverted do
+                    text (0x2641 + i).chr Encoding::UTF_8
+                end
+            end
+        end
+        scale 0.1 do
+            translate -2, 0 do circle; moon 0.45 end
+            circle
+            translate 2, 0 do circle; moon 0.55 end
+        end
+    end
+else
+    rune do
+        style width:4 do
+            dividedCircle 26, width: 1/6r
+            triangle
+
+            inverted do
+                children %w[𓀇 𓁻 𓆣], scale:0.21, offset:5/7r do |s| # ♌ ♊ ♉
+                    double 1/10r do circle end
+                    inverted do 
+                        text s
+                    end
+                end
+            end
+            children 3, scale:1/3r, offset:11/12r do
+                double 1/5r do arc min: 115, max: 245, width: 0.2 end
+            end
+
+            scale 0.5 do
+                circle
+                translate 0, 0 do
+                    dividedCircle 60, width: 2/3r
+                end
+                style width:2 do
+                    scale 1/6r do
+                        circle
+                        star 10, 3
+                        scale 1/3r do
+                            inverted do triangle end
+                        end
+                    end
+                end
+                rotate 0 do
+                    moon 0.45
+                end
+            end
+        end
+    end
+end

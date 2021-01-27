@@ -1,0 +1,114 @@
+{{ $width := mul 1.1 (int (or ($.Get "width") 400)) }}
+{{ $height := mul 1.1 (int (or ($.Get "height") 400)) }}
+{{ $id := or ($.Get "id") (substr (.Inner | md5) 0 4) }}
+
+{{ $header := `
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js" integrity="sha512-WIklPM6qPCIp6d3fSSr90j+1unQHUOoWDS4sdTiR8gxUTnyZ8S2Mr8e10sKKJ/bhJgpAa/qG068RDkg6fIlNFA==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js" integrity="sha512-wM+t5MzLiNHl2fwT5rWSXr2JMeymTtixiw2lWyVk1JK/jDM4RBSFoH4J8LjucwlDdY6Mu84Kj0gPXp7rLGaDyA==" crossorigin="anonymous"></script>    
+    
+    <script src="https://unpkg.com/p5.gui.variables@1.0.1/libraries/quicksettings.js" integrity="sha384-XlyRxqW2TTF2gFC0VpBI8OqnCTsZOdgrhBFikxYD4hEu68QdNQ64kiej07hCAiJq" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/p5.gui.variables@1.0.1/libraries/p5.gui.js" integrity="sha384-/Uy+8NNvYJjG164REYQP/RnqVcrnsFTtnoCJcLg/tVBKaHUaovtr+ZJgKQKHGAPW" crossorigin="anonymous"></script>
+
+    <style>canvas { border: 1px solid black; border-radius: 1em; }</style>
+</head>
+<body>
+` }}
+
+{{ $footer := `
+<noscript>To display this p5.js sketch, JavaScript must be enabled.</noscript>
+</body>
+</html>
+`}}
+
+{{ $additionalScript := `
+var oldSetup = setup;
+setup = () => {
+    // Load saved settings from the browser hash fragment
+    if (parent.location.hash && typeof params !== "undefined") {
+        try {
+            var settings = JSON.parse(atob(parent.location.hash.substring(1)));
+            Object.keys(params).forEach((key) => params[key] = settings[key] || params[key]);
+        } catch(ex) {
+        }
+    }
+
+    oldSetup();
+
+    createButton("play/pause").mousePressed(() => {
+        if (isLooping()) {
+        noLoop();
+        } else {
+        loop();
+        }
+    });
+
+    createButton("save").mousePressed(() => {
+        saveCanvas('photo', 'png')
+    });
+
+    createButton("clear").mousePressed(() => {
+        if (typeof reset !== 'undefined') {
+            reset();
+        } else {
+            clear();
+        }
+    });
+
+    if (typeof params !== "undefined") {
+        for (var el of document.querySelectorAll('input')) {
+            if (el.id && el.id.startsWith('qs_')) {
+                el.addEventListener('change', () => {
+                    parent.location.hash = btoa(JSON.stringify(params));
+                });
+            }
+        }
+    }
+}
+`}}
+
+<div class="tab">
+    <button class="tablinks default" data-tabset="{{ $id }}" onclick="changeTab(event, '{{ $id }}', 'iframedemo')">Demo</button>
+    {{ if (.Scratch.Get "tabs") }}
+        {{ range $title, $content := .Scratch.Get "tabs" }}
+        <button class="tablinks" data-tabset="{{ $id }}" onclick="changeTab(event, '{{ $id }}', '{{ $title }}')">{{ $title }}</button>
+        {{ end }}
+    {{ else }}
+        <button class="tablinks" data-tabset="{{ $id }}" onclick="changeTab(event, '{{ $id }}', 'defaultscript')">Script</button>
+    {{ end }}
+</div>
+
+<div class="tabcontent" data-tabset="{{ $id }}" id="iframedemo">
+    <iframe 
+        width="{{ $width }}" height="{{ $height }}" frameBorder="0"
+        srcdoc="
+            {{ $header }}
+            <script>
+
+            {{ if (.Scratch.Get "tabs") }}
+                {{ range $title, $content := .Scratch.Get "tabs" }}
+                    {{ $content }}
+                {{ end }}
+            {{ else }}
+                {{ .Inner }}
+            {{ end }}
+
+            {{ $additionalScript }}
+            </script>
+            {{ $footer }}
+        "
+    ></iframe>
+</div>
+
+{{ if (.Scratch.Get "tabs") }}
+    {{ range $title, $content := .Scratch.Get "tabs" }}
+        <div class="tabcontent" data-tabset="{{ $id }}" id="{{ $title }}">
+        {{ (printf "```javascript\n%s\n```" $content) | markdownify }}
+        </div>
+    {{ end }}
+{{ else }}
+    <div class="tabcontent" data-tabset="{{ $id }}" id="defaultscript">
+    {{ (printf "```javascript\n%s\n```" .Inner) | markdownify }}
+    </div>
+{{ end }}

@@ -32,18 +32,18 @@ Tabs
 Source: https://www.w3schools.com/howto/howto_js_tabs.asp
 */
 
-function changeTab(evt, tabName) {
+function changeTab(evt, tabset, tabName) {
     // Declare all variables
     var i, tabcontent, tablinks;
 
     // Get all elements with class="tabcontent" and hide them
-    tabcontent = document.getElementsByClassName("tabcontent");
+    tabcontent = document.querySelectorAll('.tabcontent[data-tabset="' + tabset + '"]');
     for (i = 0; i < tabcontent.length; i++) {
         tabcontent[i].style.display = "none";
     }
 
     // Get all elements with class="tablinks" and remove the class "active"
-    tablinks = document.getElementsByClassName("tablinks");
+    tablinks = document.querySelectorAll('.tablinks[data-tabset="' + tabset + '"]');
     for (i = 0; i < tablinks.length; i++) {
         tablinks[i].className = tablinks[i].className.replace(" active", "");
     }
@@ -54,5 +54,13 @@ function changeTab(evt, tabName) {
 } 
 
 $(function() {
-    document.querySelectorAll('.tablinks.default').forEach((el) => el.click());
+    let tabsetset = [];
+
+    document.querySelectorAll('.tablinks').forEach((el) => {
+        let attr = el.attributes['data-tabset'].value;
+        if (!tabsetset.includes(attr)) {
+            tabsetset.push(attr);
+            el.click();
+        }
+    })
 });
