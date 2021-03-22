@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,63 +71,56 @@
     </header>
 
 	<div class="entry-content"><p>Here&rsquo;s <a href="http://www.reddit.com/r/dailyprogrammer/comments/1tj0kl/122313_challenge_130_hard_coloring_frances/">another one</a> from /r/dailyprogrammer:</p>
-
 <blockquote>
 <p>&hellip; Your goal is to color a map of these regions with two requirements: 1) make sure that each adjacent department do not share a color, so you can clearly distinguish each department, and 2) minimize these numbers of colors.</p>
 </blockquote>
-
 <p>Essentially, <a href="https://en.wikipedia.org/wiki/graph%20coloring">graph coloring</a>.</p>
-
 <p>Of course we&rsquo;ll go ahead and use the <a href="https://blog.jverkamp.com/2014/01/14/graph-radius/">yesterday&rsquo;s post</a>. The input format is a little different this time, where each line contains a node then all of the neighbors, but that shouldn&rsquo;t be an issue. We just need a slightly different <code>read-graph</code> function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Given a string or input port, read a graph</span>
 <span style="color:#75715e">; First line is number of following lines</span>
 <span style="color:#75715e">; The rest of the lines have a node id than one or more ids of that node&#39;s neighbors</span>
-(<span style="color:#66d9ef">define </span>(read-graph [str/in (current-input-port)])
-  (<span style="color:#66d9ef">define </span>in (<span style="color:#66d9ef">if </span>(string? str/in) (open-input-string str/in) str/in))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">read-graph</span> [str/in (<span style="color:#a6e22e">current-input-port</span>)])
+  (<span style="color:#66d9ef">define </span>in (<span style="color:#66d9ef">if </span>(string? str/in) (<span style="color:#a6e22e">open-input-string</span> str/in) str/in))
   (<span style="color:#66d9ef">define </span>node-count (read in))
 
-  (<span style="color:#66d9ef">define </span>g (unweighted-graph/undirected <span style="color:#f92672">&#39;</span>()))
+  (<span style="color:#66d9ef">define </span>g (<span style="color:#a6e22e">unweighted-graph/undirected</span> <span style="color:#f92672">&#39;</span>()))
 
-  (for* ([i (in-range node-count)]
-         [line (in-lines in)])
-    (<span style="color:#66d9ef">define </span>nums (map string-&gt;number (string-split line)))
-    (when (&gt; (length nums) <span style="color:#ae81ff">1</span>)
-      (for ([n (in-list (rest nums))])
-        (add-edge! g (first nums) n))))
+  (<span style="color:#a6e22e">for*</span> ([i (<span style="color:#a6e22e">in-range</span> node-count)]
+         [line (<span style="color:#a6e22e">in-lines</span> in)])
+    (<span style="color:#66d9ef">define </span>nums (map string-&gt;number (<span style="color:#a6e22e">string-split</span> line)))
+    (<span style="color:#a6e22e">when</span> (&gt; (length nums) <span style="color:#ae81ff">1</span>)
+      (<span style="color:#a6e22e">for</span> ([n (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">rest</span> nums))])
+        (<span style="color:#a6e22e">add-edge!</span> g (<span style="color:#a6e22e">first</span> nums) n))))
 
-  g)</code></pre></div>
-<p>After that, we have to figure out what strategy we want to use to color the graph. It turns out that even determining how many colors the best coloring would need is hard<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. That means that a perfect solution is going to be slow, especially as the problem gets bigger. So how about instead we start out with a very basic <a href="https://en.wikipedia.org/wiki/greedy%20algorithm">greedy algorithm</a> and go from there.</p>
-
+  g)
+</code></pre></div><p>After that, we have to figure out what strategy we want to use to color the graph. It turns out that even determining how many colors the best coloring would need is hard<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. That means that a perfect solution is going to be slow, especially as the problem gets bigger. So how about instead we start out with a very basic <a href="https://en.wikipedia.org/wiki/greedy%20algorithm">greedy algorithm</a> and go from there.</p>
 <p>Idea the first: Iterate through the nodes of the graph, coloring each one in turn. Use the first available color that hasn&rsquo;t already been assigned.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Assign a color given a graph, color hash, and node</span>
-(<span style="color:#66d9ef">define </span>(assign-first-color! g cs n)
-  (for/first ([i (in-naturals)]
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">assign-first-color!</span> g cs n)
+  (<span style="color:#a6e22e">for/first</span> ([i (<span style="color:#a6e22e">in-naturals</span>)]
               <span style="color:#f92672">#</span>:unless 
-              (member i (map (λ (n) (hash-ref cs n <span style="color:#66d9ef">#f</span>))
-                               (neighbors g n))))
-      (hash-set! cs n i)))
+              (member i (map (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">n</span>) (<span style="color:#a6e22e">hash-ref</span> cs n <span style="color:#66d9ef">#f</span>))
+                               (<span style="color:#a6e22e">neighbors</span> g n))))
+      (<span style="color:#a6e22e">hash-set!</span> cs n i)))
 
 <span style="color:#75715e">; Basic greedy coloring: color each node in turn with the first available color</span>
-(<span style="color:#66d9ef">define </span>(greedy-coloring g [node-order (in-vertices g)])
-  (<span style="color:#66d9ef">define </span>colors (make-hash))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">greedy-coloring</span> g [node-order (<span style="color:#a6e22e">in-vertices</span> g)])
+  (<span style="color:#66d9ef">define </span>colors (<span style="color:#a6e22e">make-hash</span>))
 
   <span style="color:#75715e">; For each node, try each color</span>
   <span style="color:#75715e">; for/first will bail as soon as it is execute once</span>
-  (for ([n (in-list node-order)])
-    (assign-first-color! g colors n))
+  (<span style="color:#a6e22e">for</span> ([n (<span style="color:#a6e22e">in-list</span> node-order)])
+    (<span style="color:#a6e22e">assign-first-color!</span> g colors n))
 
-  colors)</code></pre></div>
-<p>There&rsquo;s a bit of voodoo magic in the first method, but basically I&rsquo;m using <code>for/first</code> to short circuit the loop. Previously, I&rsquo;ve done much the same thing with <code>let/ec</code>, but this feels more &lsquo;Rackety&rsquo;. Essentially, we run through the colors (represented as numbers) until we find one that isn&rsquo;t a <code>member</code> of the list of all neighboring colors. As soon as we see that, we assign the color and bail out of the loop.</p>
-
+  colors)
+</code></pre></div><p>There&rsquo;s a bit of voodoo magic in the first method, but basically I&rsquo;m using <code>for/first</code> to short circuit the loop. Previously, I&rsquo;ve done much the same thing with <code>let/ec</code>, but this feels more &lsquo;Rackety&rsquo;. Essentially, we run through the colors (represented as numbers) until we find one that isn&rsquo;t a <code>member</code> of the list of all neighboring colors. As soon as we see that, we assign the color and bail out of the loop.</p>
 <p>The second function takes the graph and a node ordering (which defaults to whatever is being internally stored in the graph) and repeatedly uses the assignment function to color nodes. To test it out, let&rsquo;s use that same Butterfly graph as yesterday:</p>
-
 <figure>
     <img src="/embeds/2014/butterfly.png"/> 
 </figure>
 
-
 <p>Assigning the nodes left to right then top to bottom, we have:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>butterfly (read-graph <span style="color:#e6db74">&#34;
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>butterfly (<span style="color:#a6e22e">read-graph</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">5
 </span><span style="color:#e6db74">1 2 3
 </span><span style="color:#e6db74">2 1 3
@@ -136,15 +129,14 @@
 </span><span style="color:#e6db74">5 3 4
 </span><span style="color:#e6db74">&#34;</span>))
 
-&gt; (greedy-coloring butterfly)
-<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))</code></pre></div>
-<figure>
+&gt; (<span style="color:#a6e22e">greedy-coloring</span> butterfly)
+<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))
+</code></pre></div><figure>
     <img src="/embeds/2014/butterfly-greedy.png"/> 
 </figure>
 
-
 <p>So we assigned the central node a color (3) and then each side two colors (0/1). For this particular case, it turns out that&rsquo;s actually optimal. But we can come up with a graph where a simple greedy coloring doesn&rsquo;t work:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>loop (read-graph <span style="color:#e6db74">&#34;
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>loop (<span style="color:#a6e22e">read-graph</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">6
 </span><span style="color:#e6db74">1 4 6
 </span><span style="color:#e6db74">2 3 5
@@ -154,96 +146,87 @@
 </span><span style="color:#e6db74">6 1 3
 </span><span style="color:#e6db74">&#34;</span>))
 
-&gt; (greedy-coloring loop)
-<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">6</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))</code></pre></div>
-<figure>
+&gt; (<span style="color:#a6e22e">greedy-coloring</span> loop)
+<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">6</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))
+</code></pre></div><figure>
     <img src="/embeds/2014/loop-greedy.png"/> 
 </figure>
 
-
 <p>Here, we have three different colors for each of the pairs. The problem is, it&rsquo;s fairly obvious that there should be a two coloring. Just color every other node:</p>
-
 <figure>
     <img src="/embeds/2014/loop-random.png"/> 
 </figure>
 
-
-<p>So how should we do it? Well one interesting thing about the greedy coloring is that while the default node order doesn&rsquo;t give an optimal coloring, there does exist an ordering that does<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>. So how about we try a bunch of random orderings and take the best? Something like this:</p>
+<p>So how should we do it? Well one interesting thing about the greedy coloring is that while the default node order doesn&rsquo;t give an optimal coloring, there does exist an ordering that does<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>. So how about we try a bunch of random orderings and take the best? Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Try a bunch of random colorings, keeping the best</span>
-(<span style="color:#66d9ef">define </span>(random-coloring g <span style="color:#f92672">#</span>:iterations [iterations <span style="color:#ae81ff">1</span>e6])
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">random-coloring</span> g <span style="color:#f92672">#</span>:iterations [iterations <span style="color:#ae81ff">1</span>e6])
 
-  (define-values (coloring count)
-    (for/fold ([best-coloring <span style="color:#66d9ef">#f</span>] [best-count +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>])
-              ([i (in-range iterations)])
-      (<span style="color:#66d9ef">define </span>new-coloring (greedy-coloring g (shuffle (in-vertices g))))
-      (<span style="color:#66d9ef">define </span>new-count (set-count (list-&gt;set (hash-values new-coloring))))
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">coloring</span> count)
+    (<span style="color:#a6e22e">for/fold</span> ([best-coloring <span style="color:#66d9ef">#f</span>] [best-count +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>])
+              ([i (<span style="color:#a6e22e">in-range</span> iterations)])
+      (<span style="color:#66d9ef">define </span>new-coloring (<span style="color:#a6e22e">greedy-coloring</span> g (<span style="color:#a6e22e">shuffle</span> (<span style="color:#a6e22e">in-vertices</span> g))))
+      (<span style="color:#66d9ef">define </span>new-count (<span style="color:#a6e22e">set-count</span> (<span style="color:#a6e22e">list-&gt;set</span> (<span style="color:#a6e22e">hash-values</span> new-coloring))))
 
       (<span style="color:#66d9ef">if </span>(&lt; new-count best-count)
           (values new-coloring new-count)
           (values best-coloring best-count))))
 
-  coloring)</code></pre></div>
-<p>Give it a try:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (random-coloring loop <span style="color:#f92672">#</span>:iterations <span style="color:#ae81ff">100</span>)
-<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">6</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))</code></pre></div>
-<p>That&rsquo;s pretty shiny. With just a hundred random trials, we&rsquo;ve found a two coloring. Granted, there are only 720 possible permutations for this particularly graph (<span class="latex-inline">6!</span>
+  coloring)
+</code></pre></div><p>Give it a try:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">random-coloring</span> loop <span style="color:#f92672">#</span>:iterations <span style="color:#ae81ff">100</span>)
+<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">6</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))
+</code></pre></div><p>That&rsquo;s pretty shiny. With just a hundred random trials, we&rsquo;ve found a two coloring. Granted, there are only 720 possible permutations for this particularly graph (<span class="latex-inline">6!</span>
 ), but you could play with the number of iterations.</p>
-
 <p>Still, we should be able to do better.</p>
-
 <p><a href="http://www.reddit.com/r/dailyprogrammer/comments/1tj0kl/122313_challenge_130_hard_coloring_frances/ceb58ch">One interesting comment</a> from the original problem brings up some work from <a href="https://en.wikipedia.org/wiki/Daniel%20Br%c3%a9laz">Daniel Brélaz</a>. Essentially, you repeatedly pick the node that has the most already colored neighbors (those will be the hardest to color), breaking ties by the most uncolored neighbors (most likely to need a new color). The way I&rsquo;ll be implementing that is by assigning a &lsquo;brélaz-number&rsquo; to each node:</p>
-
 <div class="latex-block">brelaz(n) = |G| coloredNeighbors(n) + uncoloredNeighbors(n)</div>
 
-
 <p>Basically, we have a two digit number, using the size of the graph as the base. If that doesn&rsquo;t make sense, we could certainly make a more direct two stage sorting function, but I think it&rsquo;s sort of elegant. 😄</p>
-
 <p>Anyways, here&rsquo;s the entire function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Use a Brélaz coloring: </span>
 <span style="color:#75715e">;   Choose the vertex with the most colored neighbors,</span>
 <span style="color:#75715e">;   breaking ties by most uncolored neighbors</span>
-(<span style="color:#66d9ef">define </span>(brélaz-coloring g)
-  (<span style="color:#66d9ef">define </span>colors (make-hash))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">brélaz-coloring</span> g)
+  (<span style="color:#66d9ef">define </span>colors (<span style="color:#a6e22e">make-hash</span>))
 
   <span style="color:#75715e">; Used to break ties as mentioned above</span>
-  (<span style="color:#66d9ef">define </span>(count-colored-neighbors n)
-    (length (filter (curry hash-has-key? colors) (neighbors g n))))
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">count-colored-neighbors</span> n)
+    (length (<span style="color:#a6e22e">filter</span> (<span style="color:#a6e22e">curry</span> hash-has-key? colors) (<span style="color:#a6e22e">neighbors</span> g n))))
 
-  (<span style="color:#66d9ef">define </span>(count-uncolored-neighbors n)
-    (length (filter (negate (curry hash-has-key? colors)) (neighbors g n))))
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">count-uncolored-neighbors</span> n)
+    (length (<span style="color:#a6e22e">filter</span> (<span style="color:#a6e22e">negate</span> (<span style="color:#a6e22e">curry</span> hash-has-key? colors)) (<span style="color:#a6e22e">neighbors</span> g n))))
 
-  (<span style="color:#66d9ef">define </span>graph-size (length (in-vertices g)))
-  (<span style="color:#66d9ef">define </span>(brélaz-number n)
-    (+ (* (count-colored-neighbors n) graph-size)
-       (count-uncolored-neighbors n)))
+  (<span style="color:#66d9ef">define </span>graph-size (length (<span style="color:#a6e22e">in-vertices</span> g)))
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">brélaz-number</span> n)
+    (+ (* (<span style="color:#a6e22e">count-colored-neighbors</span> n) graph-size)
+       (<span style="color:#a6e22e">count-uncolored-neighbors</span> n)))
 
   <span style="color:#75715e">; Each time, color the node with the highest current brélaz-number (see above)</span>
-  (for ([i (in-range graph-size)])
-    (assign-first-color! 
+  (<span style="color:#a6e22e">for</span> ([i (<span style="color:#a6e22e">in-range</span> graph-size)])
+    (<span style="color:#a6e22e">assign-first-color!</span> 
      g 
      colors 
-     (first
-      (sort
-       (filter (negate (curry hash-has-key? colors)) (in-vertices g))
-       (λ (n1 n2) (&gt; (brélaz-number n1) (brélaz-number n2)))))))
+     (<span style="color:#a6e22e">first</span>
+      (<span style="color:#a6e22e">sort</span>
+       (<span style="color:#a6e22e">filter</span> (<span style="color:#a6e22e">negate</span> (<span style="color:#a6e22e">curry</span> hash-has-key? colors)) (<span style="color:#a6e22e">in-vertices</span> g))
+       (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">n1</span> n2) (&gt; (<span style="color:#a6e22e">brélaz-number</span> n1) (<span style="color:#a6e22e">brélaz-number</span> n2)))))))
 
   colors)
 
-(<span style="color:#66d9ef">define </span>brelaz-coloring brélaz-coloring)</code></pre></div>
-<p>How does that do on the previous problem?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (brélaz-coloring loop)
-<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">6</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))</code></pre></div>
-<figure>
+(<span style="color:#66d9ef">define </span>brelaz-coloring brélaz-coloring)
+</code></pre></div><p>How does that do on the previous problem?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">brélaz-coloring</span> loop)
+<span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">6</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">5</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">4</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">2</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">1</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))
+</code></pre></div><figure>
     <img src="/embeds/2014/loop-brelaz.png"/> 
 </figure>
-
 
 <p>Much better, although either runs quickly enough that on my machine at least you can&rsquo;t even tell the difference. It will make a difference on much bigger graphs though. For example, let&rsquo;s try running the various scans on the actual original problem (a coloring of French regions, available <figure><a href="france.txt">
     <img src="/embeds/2014/here"/> </a>
 </figure>
 ):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>france (with-input-from-file <span style="color:#e6db74">&#34;france.txt&#34;</span> read-graph))
-&gt; (greedy-coloring france)
+&gt; (<span style="color:#a6e22e">greedy-coloring</span> france)
 <span style="color:#f92672">&#39;#</span>hash((<span style="color:#ae81ff">46</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>) (<span style="color:#ae81ff">29</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">12</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">3</span>) (<span style="color:#ae81ff">72</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>) (<span style="color:#ae81ff">89</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">5</span>) (<span style="color:#ae81ff">94</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>) (<span style="color:#ae81ff">79</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>)
        (<span style="color:#ae81ff">11</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">26</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>) (<span style="color:#ae81ff">41</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">3</span>) (<span style="color:#ae81ff">56</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">78</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">3</span>) (<span style="color:#ae81ff">95</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>) (<span style="color:#ae81ff">27</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>)
        (<span style="color:#ae81ff">10</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">57</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">40</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">92</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">77</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">3</span>) (<span style="color:#ae81ff">43</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>) (<span style="color:#ae81ff">58</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">4</span>)
@@ -257,109 +240,105 @@
        (<span style="color:#ae81ff">68</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">85</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">51</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">34</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">17</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">15</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">30</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>)
        (<span style="color:#ae81ff">45</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">2</span>) (<span style="color:#ae81ff">60</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">90</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">75</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">31</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">14</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">61</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>)
        (<span style="color:#ae81ff">44</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">74</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">91</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">1</span>)  (<span style="color:#ae81ff">0</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">47</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">62</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">13</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>)
-       (<span style="color:#ae81ff">28</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">88</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">73</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">63</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))</code></pre></div>
-<figure>
+       (<span style="color:#ae81ff">28</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">88</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">73</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">63</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">0</span>))
+</code></pre></div><figure>
     <img src="/embeds/2014/france-greedy.png"/> 
 </figure>
 
-
 <p>A little messy down there towards the bottom, and not that easy to tell how many colors we have. Looks like six. Let&rsquo;s go ahead and write a function to tell us how many we actually used:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Calculate the chromatic number of a graph, potentially given a coloring function</span>
-(<span style="color:#66d9ef">define </span>(chromatic-number g <span style="color:#f92672">#</span>:coloring-function [coloring perfect-coloring])
-  (add1 (apply max (hash-values (coloring g)))))</code></pre></div>
-<p>With the greedy coloring algorithm:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (chromatic-number france <span style="color:#f92672">#</span>:coloring-function greedy-coloring)
-<span style="color:#ae81ff">6</span></code></pre></div>
-<p>Hmm. Let&rsquo;s see if Brélaz can do better:</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">chromatic-number</span> g <span style="color:#f92672">#</span>:coloring-function [coloring perfect-coloring])
+  (<span style="color:#a6e22e">add1</span> (apply max (<span style="color:#a6e22e">hash-values</span> (<span style="color:#a6e22e">coloring</span> g)))))
+</code></pre></div><p>With the greedy coloring algorithm:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">chromatic-number</span> france <span style="color:#f92672">#</span>:coloring-function greedy-coloring)
+<span style="color:#ae81ff">6</span>
+</code></pre></div><p>Hmm. Let&rsquo;s see if Brélaz can do better:</p>
 <figure>
     <img src="/embeds/2014/france-brelaz.png"/> 
 </figure>
 
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (chromatic-number france <span style="color:#f92672">#</span>:coloring-function brélaz-coloring)
-<span style="color:#ae81ff">4</span></code></pre></div>
-<p>That&rsquo;s much better! And given the <a href="https://en.wikipedia.org/wiki/four%20color%20theorem">four color theorem</a><sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>, that should be an upper bound. Unfortunately, it doesn&rsquo;t seem that the random coloring is doing any better (at least with my random number generator). Even with 100,000 iterations, the best that it found was 5.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">chromatic-number</span> france <span style="color:#f92672">#</span>:coloring-function brélaz-coloring)
+<span style="color:#ae81ff">4</span>
+</code></pre></div><p>That&rsquo;s much better! And given the <a href="https://en.wikipedia.org/wiki/four%20color%20theorem">four color theorem</a><sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup>, that should be an upper bound. Unfortunately, it doesn&rsquo;t seem that the random coloring is doing any better (at least with my random number generator). Even with 100,000 iterations, the best that it found was 5.</p>
 <p>But&hellip; what if we want to do it perfectly? Well, if we go through <em>every</em> coloring, we&rsquo;re guaranteed to find a correctly solution. Of course in <a href="https://en.wikipedia.org/wiki/Big-oh">Big O notation</a>, that&rsquo;s <span class="latex-inline">O(n!)</span>
  which basically is as good as forever&hellip; Still, we might as well write the code<footnote>Plus it gives me an excuse to play with Racket&rsquo;s <code><a href="http://docs.racket-lang.org/search/index.html?q=generators">generators</a></code>
 !). 😄</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Try every possible coloring (this is crazy slow)</span>
-(<span style="color:#66d9ef">define </span>(perfect-coloring g)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">perfect-coloring</span> g)
   <span style="color:#75715e">; Return all permutations of a given list as a sequence</span>
-  (<span style="color:#66d9ef">define </span>(in-permutations ls)
-    (local-require racket/generator)
-    (in-generator
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">in-permutations</span> ls)
+    (<span style="color:#a6e22e">local-require</span> racket/generator)
+    (<span style="color:#a6e22e">in-generator</span>
      (<span style="color:#66d9ef">let </span>loop ([ls ls] [acc <span style="color:#f92672">&#39;</span>()])
-       (cond
+       (<span style="color:#a6e22e">cond</span>
          [(null? ls) 
-          (yield acc)]
+          (<span style="color:#a6e22e">yield</span> acc)]
          [else
-          (for ([a (in-list ls)])
-            (loop (remove a ls) (cons a acc)))]))))
+          (<span style="color:#a6e22e">for</span> ([a (<span style="color:#a6e22e">in-list</span> ls)])
+            (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">remove</span> a ls) (cons a acc)))]))))
 
   <span style="color:#75715e">; Try each coloring in turn</span>
-  (define-values (coloring count)
-    (for/fold ([best-coloring <span style="color:#66d9ef">#f</span>] [best-count +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>])
-              ([coloring-order (in-permutations (in-vertices g))])
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">coloring</span> count)
+    (<span style="color:#a6e22e">for/fold</span> ([best-coloring <span style="color:#66d9ef">#f</span>] [best-count +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>])
+              ([coloring-order (<span style="color:#a6e22e">in-permutations</span> (<span style="color:#a6e22e">in-vertices</span> g))])
 
-      (<span style="color:#66d9ef">define </span>new-coloring (greedy-coloring g coloring-order))
-      (<span style="color:#66d9ef">define </span>new-count (set-count (list-&gt;set (hash-values new-coloring))))
+      (<span style="color:#66d9ef">define </span>new-coloring (<span style="color:#a6e22e">greedy-coloring</span> g coloring-order))
+      (<span style="color:#66d9ef">define </span>new-count (<span style="color:#a6e22e">set-count</span> (<span style="color:#a6e22e">list-&gt;set</span> (<span style="color:#a6e22e">hash-values</span> new-coloring))))
 
       (<span style="color:#66d9ef">if </span>(&lt; new-count best-count)
           (values new-coloring new-count)
           (values best-coloring best-count))))
 
-  coloring)</code></pre></div>
-<p>Basically, we use a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code>
+  coloring)
+</code></pre></div><p>Basically, we use a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code>
  to create all of the permutations recursively. With that, we keep going until we have a best coloring. For the loop or butterfly, it works fine:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (chromatic-number loop <span style="color:#f92672">#</span>:coloring-function perfect-coloring)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">chromatic-number</span> loop <span style="color:#f92672">#</span>:coloring-function perfect-coloring)
 <span style="color:#ae81ff">2</span>
-&gt; (chromatic-number butterfly <span style="color:#f92672">#</span>:coloring-function perfect-coloring)
-<span style="color:#ae81ff">3</span></code></pre></div>
-<p>Anything bigger&hellip; be prepared for a wait.</p>
-
+&gt; (<span style="color:#a6e22e">chromatic-number</span> butterfly <span style="color:#f92672">#</span>:coloring-function perfect-coloring)
+<span style="color:#ae81ff">3</span>
+</code></pre></div><p>Anything bigger&hellip; be prepared for a wait.</p>
 <p>And that&rsquo;s pretty much it. I did want to show off one more neat bit of code, designed to output graph files in the format Graphviz expects in order to generate all of the visualizations on this page. Pretty neat stuff and fairly easy to write:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Output a graph in graphviz / dot format, potentially with coloring</span>
-(<span style="color:#66d9ef">define </span>(graphviz g
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">graphviz</span> g
                   <span style="color:#f92672">#</span>:coloring-function [coloring <span style="color:#66d9ef">#f</span>] 
                   <span style="color:#f92672">#</span>:horizontal [horizontal <span style="color:#66d9ef">#f</span>]
                   <span style="color:#f92672">#</span>:save-as-png [save-as-png <span style="color:#66d9ef">#f</span>])
   <span style="color:#75715e">; Generate the dot file</span>
   (<span style="color:#66d9ef">define </span>dot-file
-    (with-output-to-string
-      (thunk
-        (printf <span style="color:#e6db74">&#34;graph G {\n&#34;</span>)
+    (<span style="color:#a6e22e">with-output-to-string</span>
+      (<span style="color:#a6e22e">thunk</span>
+        (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;graph G {\n&#34;</span>)
 
         <span style="color:#75715e">; Prefer horizontal layout to vertical</span>
-        (when horizontal
-          (printf <span style="color:#e6db74">&#34;\trankdir=LR;\n&#34;</span>))
+        (<span style="color:#a6e22e">when</span> horizontal
+          (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;\trankdir=LR;\n&#34;</span>))
 
         <span style="color:#75715e">; Color nodes using evenly spaced HSV colors</span>
-        (when coloring
-          (<span style="color:#66d9ef">define </span>colors (coloring g))
-          (<span style="color:#66d9ef">define </span>color-count (add1 (apply max (hash-values colors))))
+        (<span style="color:#a6e22e">when</span> coloring
+          (<span style="color:#66d9ef">define </span>colors (<span style="color:#a6e22e">coloring</span> g))
+          (<span style="color:#66d9ef">define </span>color-count (<span style="color:#a6e22e">add1</span> (apply max (<span style="color:#a6e22e">hash-values</span> colors))))
 
-          (for ([(node color) (in-hash colors)])
-            (printf <span style="color:#e6db74">&#34;\t~a [color=\&#34;~a 1.0 1.0\&#34;];\n&#34;</span>
+          (<span style="color:#a6e22e">for</span> ([(<span style="color:#a6e22e">node</span> color) (<span style="color:#a6e22e">in-hash</span> colors)])
+            (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;\t~a [color=\&#34;~a 1.0 1.0\&#34;];\n&#34;</span>
                     node 
-                    (~a <span style="color:#f92672">#</span>:max-width <span style="color:#ae81ff">5</span> (exact-&gt;inexact (/ color color-count))))))
+                    (<span style="color:#a6e22e">~a</span> <span style="color:#f92672">#</span>:max-width <span style="color:#ae81ff">5</span> (exact-&gt;inexact (/ color color-count))))))
 
         <span style="color:#75715e">; Write out all edges (directional, so only if sorted)</span>
-        (for ([edge (in-edges g)])
-          (when (&lt; (first edge) (second edge))
-            (printf <span style="color:#e6db74">&#34;\t~a -- ~a;\n&#34;</span> (first edge) (second edge))))
+        (<span style="color:#a6e22e">for</span> ([edge (<span style="color:#a6e22e">in-edges</span> g)])
+          (<span style="color:#a6e22e">when</span> (&lt; (<span style="color:#a6e22e">first</span> edge) (<span style="color:#a6e22e">second</span> edge))
+            (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;\t~a -- ~a;\n&#34;</span> (<span style="color:#a6e22e">first</span> edge) (<span style="color:#a6e22e">second</span> edge))))
 
-        (printf <span style="color:#e6db74">&#34;}\n&#34;</span>))))
+        (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;}\n&#34;</span>))))
 
   <span style="color:#75715e">; Either save via buffer file or just return the dot file text</span>
-  (cond
+  (<span style="color:#a6e22e">cond</span>
     [save-as-png
-     (with-output-to-file <span style="color:#f92672">#</span>:exists <span style="color:#e6db74">&#39;replace</span> <span style="color:#e6db74">&#34;output.dot&#34;</span> (thunk (display dot-file)))
-     (system (format <span style="color:#e6db74">&#34;dot output.dot -Kneato -Tpng -s0.5 -o ~a&#34;</span> save-as-png))]
+     (with-output-to-file <span style="color:#f92672">#</span>:exists <span style="color:#e6db74">&#39;replace</span> <span style="color:#e6db74">&#34;output.dot&#34;</span> (<span style="color:#a6e22e">thunk</span> (display dot-file)))
+     (<span style="color:#a6e22e">system</span> (<span style="color:#a6e22e">format</span> <span style="color:#e6db74">&#34;dot output.dot -Kneato -Tpng -s0.5 -o ~a&#34;</span> save-as-png))]
     [else
-     dot-file]))</code></pre></div>
-<p>If you don&rsquo;t supply a <code>#:save-as-png</code> parameter, you get the graph. Something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (display (graphviz butterfly <span style="color:#f92672">#</span>:coloring-function brelaz-coloring))
+     dot-file]))
+</code></pre></div><p>If you don&rsquo;t supply a <code>#:save-as-png</code> parameter, you get the graph. Something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (display (<span style="color:#a6e22e">graphviz</span> butterfly <span style="color:#f92672">#</span>:coloring-function brelaz-coloring))
 graph G <span style="color:#960050;background-color:#1e0010">{</span>
 	<span style="color:#ae81ff">1</span> [color=<span style="color:#e6db74">&#34;0.333 1.0 1.0&#34;</span>]<span style="color:#75715e">;</span>
 	<span style="color:#ae81ff">2</span> [color=<span style="color:#e6db74">&#34;0.666 1.0 1.0&#34;</span>]<span style="color:#75715e">;</span>
@@ -372,25 +351,24 @@ graph G <span style="color:#960050;background-color:#1e0010">{</span>
 	<span style="color:#ae81ff">3</span> -- <span style="color:#ae81ff">4</span><span style="color:#75715e">;</span>
 	<span style="color:#ae81ff">3</span> -- <span style="color:#ae81ff">5</span><span style="color:#75715e">;</span>
 	<span style="color:#ae81ff">4</span> -- <span style="color:#ae81ff">5</span><span style="color:#75715e">;</span>
-<span style="color:#960050;background-color:#1e0010">}</span></code></pre></div>
-<p>That&rsquo;s one of the things I love about the HSV color space. You can just evenly divide the H parameter and you&rsquo;ll get a bunch of unique colors.</p>
-
+<span style="color:#960050;background-color:#1e0010">}</span>
+</code></pre></div><p>That&rsquo;s one of the things I love about the HSV color space. You can just evenly divide the H parameter and you&rsquo;ll get a bunch of unique colors.</p>
 <p>And there you have it. Graph coloring / visualization. I think it&rsquo;s one of my favorite branches of mathematics. There are just so many interesting things you can do with graphs.</p>
-
 <p>The source code is on GitHub, if you&rsquo;d like to check it out: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/graph-coloring.rkt">graph-coloring.rkt</a></p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Technically, <a href="https://en.wikipedia.org/wiki/NP-complete">NP-complete</a>, as noted in <a href="https://en.wikipedia.org/wiki/Karp%27s%2021%20NP-complete%20problems">Karp&#39;s 1972 list of 21 NP-complete problems</a>
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">Exercise for the reader: prove this 😄
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
-<li id="fn:3">And assuming that there aren&rsquo;t any discontinuous regions, which I don&rsquo;t think is actually the case&hellip;
- <a class="footnote-return" href="#fnref:3"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Technically, <a href="https://en.wikipedia.org/wiki/NP-complete">NP-complete</a>, as noted in <a href="https://en.wikipedia.org/wiki/Karp%27s%2021%20NP-complete%20problems">Karp&#39;s 1972 list of 21 NP-complete problems</a> <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>Exercise for the reader: prove this 😄 <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3" role="doc-endnote">
+<p>And assuming that there aren&rsquo;t any discontinuous regions, which I don&rsquo;t think is actually the case&hellip; <a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

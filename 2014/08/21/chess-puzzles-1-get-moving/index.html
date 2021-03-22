@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -73,35 +73,30 @@
 </div>
     </header>
 
-	<div class="entry-content"><p>Here&rsquo;s something I haven&rsquo;t done much<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>: chess puzzles! I&rsquo;m still not sure entirely what I think about the game in general. There is certainly quite a lot of strategy, which I like, but to really get good at chess, there&rsquo;s also some amount of memorizing openings and closings. That&rsquo;s something I&rsquo;m a little less thrilled with.</p>
-
-<p>Still, it&rsquo;s the perfect sort of came to work out programming exercises with. It&rsquo;s a game of <a href="https://en.wikipedia.org/wiki/perfect%20information">perfect information</a>, so you don&rsquo;t have to deal with what a player knows and doesn&rsquo;t. The pieces have well defined, regular moves<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup> There&rsquo;s a fairly intense branching factor, but not insurmountable&ndash;<a href="https://en.wikipedia.org/wiki/Deep%20Blue">Deep Blue (chess computer)</a> proved that.</p>
-
+	<div class="entry-content"><p>Here&rsquo;s something I haven&rsquo;t done much<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>: chess puzzles! I&rsquo;m still not sure entirely what I think about the game in general. There is certainly quite a lot of strategy, which I like, but to really get good at chess, there&rsquo;s also some amount of memorizing openings and closings. That&rsquo;s something I&rsquo;m a little less thrilled with.</p>
+<p>Still, it&rsquo;s the perfect sort of came to work out programming exercises with. It&rsquo;s a game of <a href="https://en.wikipedia.org/wiki/perfect%20information">perfect information</a>, so you don&rsquo;t have to deal with what a player knows and doesn&rsquo;t. The pieces have well defined, regular moves<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup> There&rsquo;s a fairly intense branching factor, but not insurmountable&ndash;<a href="https://en.wikipedia.org/wiki/Deep%20Blue">Deep Blue (chess computer)</a> proved that.</p>
 <p>Anyways, enough chatter. Let&rsquo;s play some chess!</p>
-
 <p>Okay, first things first, we&rsquo;re going to have to lay some ground work. Despite how straight forward chess pieces are, it will still take a bit of effort to turn that into something that a computer can deal with. So first, let&rsquo;s work out a way of defining chess piece movement.</p>
-
 <p>Here, I&rsquo;m going a little ambitious. I want to be able to support arbitrary <a href="https://en.wikipedia.org/wiki/fairy%20chess%20pieces">fairy chess pieces</a>. In addition to the more standard pieces, we have  strictly more powerful pieces like the Princess (Knight + Bishop) or the Empress (Knight + Rook). Or we have alternatives, like the Camel (like the Knight, only 3:1 instead of 2:1). Or the Nightrider, which moves like the Knight, but keeps on going. I want to be able to support all of these&hellip;</p>
-
 <p>Okay, first things first. A basic struct for points and another to use for a <code>move-sequence</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Points, with associated methods; can also be used as offsets</span>
-(struct pt (x y) <span style="color:#f92672">#</span>:transparent)
+(<span style="color:#a6e22e">struct</span> pt (<span style="color:#a6e22e">x</span> y) <span style="color:#f92672">#</span>:transparent)
 
 <span style="color:#75715e">; Move sequences for a piece; used for special flags (eg initial, capturing)</span>
-(struct move-sequence (tag moves) <span style="color:#f92672">#</span>:transparent)</code></pre></div>
-<p>The tags are mostly used for Pawns or the like, since they move one way when capturing and another when not. The rest is going to be a list of moves. So for something like the Rook, we&rsquo;ll have something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(list
- (move-sequence (set) (list (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">4</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">5</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">6</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">7</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">8</span>)))
- (move-sequence (set) (list (pt <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">-2</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">-3</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">-4</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">-5</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">-6</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">-7</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">-8</span> <span style="color:#ae81ff">0</span>)))
- (move-sequence (set) (list (pt <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">0</span>) (pt <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">0</span>)))
- (move-sequence (set) (list (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-1</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-2</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-3</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-4</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-5</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-6</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-7</span>) (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-8</span>))))</code></pre></div>
-<p>When we get around to it, the idea is we can run down any of these lists until we run into something. If we run into an enemy piece, we&rsquo;ll allow the move; if not, we won&rsquo;t. Similarly, the Pawn:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(list
- (move-sequence (set <span style="color:#e6db74">&#39;initial-only</span> <span style="color:#e6db74">&#39;non-capture</span>) (list (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>)))
- (move-sequence (set <span style="color:#e6db74">&#39;non-capture</span>) (list (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)))
- (move-sequence (set <span style="color:#e6db74">&#39;capture-only</span>) (list (pt <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">1</span>)))
- (move-sequence (set <span style="color:#e6db74">&#39;capture-only</span>) (list (pt <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))))</code></pre></div>
-<p>On the other hand though, these are kind of a pain to type in by hand. Let&rsquo;s make some helper functions. First, basic movement:</p>
+(<span style="color:#a6e22e">struct</span> move-sequence (<span style="color:#a6e22e">tag</span> moves) <span style="color:#f92672">#</span>:transparent)
+</code></pre></div><p>The tags are mostly used for Pawns or the like, since they move one way when capturing and another when not. The rest is going to be a list of moves. So for something like the Rook, we&rsquo;ll have something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">list</span>
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">4</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">5</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">6</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">7</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">8</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-2</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-3</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-4</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-5</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-6</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-7</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-8</span> <span style="color:#ae81ff">0</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">0</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-1</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-2</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-3</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-4</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-5</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-6</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-7</span>) (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-8</span>))))
+</code></pre></div><p>When we get around to it, the idea is we can run down any of these lists until we run into something. If we run into an enemy piece, we&rsquo;ll allow the move; if not, we won&rsquo;t. Similarly, the Pawn:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">list</span>
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;initial-only</span> <span style="color:#e6db74">&#39;non-capture</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;non-capture</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;capture-only</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">1</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;capture-only</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))))
+</code></pre></div><p>On the other hand though, these are kind of a pain to type in by hand. Let&rsquo;s make some helper functions. First, basic movement:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; A sequence of moves along a specific direction</span>
 <span style="color:#75715e">; Distance is either not specified (exactly 1)</span>
 <span style="color:#75715e">;   a number (exactly that number), n (unlimited)</span>
@@ -109,32 +104,29 @@
 <span style="color:#75715e">; Direction is either from the list &#39;(* + &gt; &lt; &lt;&gt; = &gt;= &lt;= X X&gt; X&lt;)</span>
 <span style="color:#75715e">;   or a list of possible single offsets</span>
 (<span style="color:#66d9ef">define </span>move
-  (case-lambda
-    [(direction)
-     (move <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> direction)]
-    [(distance direction)
+  (<span style="color:#a6e22e">case-lambda</span>
+    [(<span style="color:#a6e22e">direction</span>)
+     (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> direction)]
+    [(<span style="color:#a6e22e">distance</span> direction)
      (<span style="color:#66d9ef">if </span>(eq? distance <span style="color:#e6db74">&#39;n</span>)
-         (move <span style="color:#ae81ff">1</span>        +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>   direction)
-         (move distance distance direction))]
-    [(minimum-distance maximum-distance direction)
-     (for/list ([offset (in-list (offsets-by-direction direction))])
-       (move-sequence
-        (set)
-        (for*/list ([distance (in-range minimum-distance (+ maximum-distance <span style="color:#ae81ff">1</span>))]
-                    [p (in-value (pt* distance offset))])
-                    <span style="color:#f92672">#</span>:break (<span style="color:#66d9ef">or </span>(&gt; (abs (pt-x p)) (current-board-size))
-                                (&gt; (abs (pt-y p)) (current-board-size)))
-          p)))]))</code></pre></div>
-<p>Basically, we have three different ways of specifying moves:</p>
-
+         (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span>        +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>   direction)
+         (<span style="color:#a6e22e">move</span> distance distance direction))]
+    [(<span style="color:#a6e22e">minimum-distance</span> maximum-distance direction)
+     (<span style="color:#a6e22e">for/list</span> ([offset (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">offsets-by-direction</span> direction))])
+       (<span style="color:#a6e22e">move-sequence</span>
+        (<span style="color:#a6e22e">set</span>)
+        (<span style="color:#a6e22e">for*/list</span> ([distance (<span style="color:#a6e22e">in-range</span> minimum-distance (+ maximum-distance <span style="color:#ae81ff">1</span>))]
+                    [p (<span style="color:#a6e22e">in-value</span> (<span style="color:#a6e22e">pt*</span> distance offset))])
+                    <span style="color:#f92672">#</span>:break (<span style="color:#66d9ef">or </span>(&gt; (abs (<span style="color:#a6e22e">pt-x</span> p)) (<span style="color:#a6e22e">current-board-size</span>))
+                                (&gt; (abs (<span style="color:#a6e22e">pt-y</span> p)) (<span style="color:#a6e22e">current-board-size</span>)))
+          p)))]))
+</code></pre></div><p>Basically, we have three different ways of specifying moves:</p>
 <ul>
 <li><code>(move direction)</code> - moves one square in a given direction (like a pawn)</li>
 <li><code>(move distance direction)</code> - moves either exactly a specific number of tiles or an unlimited number (if <code>distance</code> is <code>n</code>)</li>
 <li><code>(move minimum-distance maximum-distance direction)</code> - a range of movement, so you can move between the minimum and maximum inclusive but no more or less</li>
 </ul>
-
 <p>But what does direction mean? If it&rsquo;s specified as a point, that&rsquo;s straight forward enough, but still, we want to be able to specify these things more simply. Let&rsquo;s take a page out of <a href="https://en.wikipedia.org/wiki/Parlett%27s%20movement%20notation">Fairy_chess_piece#Parlett.27s_movement_notation</a>. Specifically the direction specifications:</p>
-
 <ul>
 <li><code>*</code> – orthogonally or diagonally (all eight possible directions)</li>
 <li><code>+</code> – orthogonally (four possible directions)</li>
@@ -148,139 +140,131 @@
 <li><code>X&gt;</code> – diagonally forwards</li>
 <li><code>X&lt;</code> – diagonally backwards</li>
 </ul>
-
 <p>Turn it into code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Return a sequence of all possible offsets for a given direction</span>
 <span style="color:#75715e">; Order specified front to back, left to right</span>
-(<span style="color:#66d9ef">define </span>(offsets-by-direction direction)
-  <span style="color:#f92672">`</span>(<span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X X&gt;   )) (list (pt <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">1</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* + &gt;   &lt;&gt;   &gt;=           )) (list (pt  <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">1</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X X&gt;   )) (list (pt  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">1</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* +        = &gt;= &lt;=        )) (list (pt <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">0</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* +        = &gt;= &lt;=        )) (list (pt  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">0</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X    X&lt;)) (list (pt <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">-1</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* +   &lt; &lt;&gt;      &lt;=        )) (list (pt  <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-1</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X    X&lt;)) (list (pt  <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">-1</span>)) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(pt? direction)   (list direction) <span style="color:#f92672">&#39;</span>())
-    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(list? direction) direction        <span style="color:#f92672">&#39;</span>())))</code></pre></div>
-<p>We&rsquo;re going to set it out now: <code>pt</code> is specified as <code>x, y</code>, not <code>row, column</code>. That&rsquo;s something that will bite you if you don&rsquo;t pay attention, so make sure to be consistent.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">offsets-by-direction</span> direction)
+  <span style="color:#f92672">`</span>(<span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X X&gt;   )) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">1</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* + &gt;   &lt;&gt;   &gt;=           )) (list (<span style="color:#a6e22e">pt</span>  <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">1</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X X&gt;   )) (list (<span style="color:#a6e22e">pt</span>  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">1</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* +        = &gt;= &lt;=        )) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">0</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* +        = &gt;= &lt;=        )) (list (<span style="color:#a6e22e">pt</span>  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">0</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X    X&lt;)) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">-1</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(* +   &lt; &lt;&gt;      &lt;=        )) (list (<span style="color:#a6e22e">pt</span>  <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-1</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(member direction <span style="color:#f92672">&#39;</span>(*                  X    X&lt;)) (list (<span style="color:#a6e22e">pt</span>  <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">-1</span>)) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">pt?</span> direction)   (list direction) <span style="color:#f92672">&#39;</span>())
+    <span style="color:#f92672">,@</span>(<span style="color:#66d9ef">if </span>(list? direction) direction        <span style="color:#f92672">&#39;</span>())))
+</code></pre></div><p>We&rsquo;re going to set it out now: <code>pt</code> is specified as <code>x, y</code>, not <code>row, column</code>. That&rsquo;s something that will bite you if you don&rsquo;t pay attention, so make sure to be consistent.</p>
 <p>That&rsquo;s enough to define most of the pieces we want.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>King   (move  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;*</span>))
-(<span style="color:#66d9ef">define </span>Queen  (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;*</span>))
-(<span style="color:#66d9ef">define </span>Rook   (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;+</span>))
-(<span style="color:#66d9ef">define </span>Bishop (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>))</code></pre></div>
-<p>Two are still left: the Knight and the Pawn. For the Knight, we need to specify something that will let us jump in arbitrary directions:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>King   (<span style="color:#a6e22e">move</span>  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;*</span>))
+(<span style="color:#66d9ef">define </span>Queen  (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;*</span>))
+(<span style="color:#66d9ef">define </span>Rook   (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;+</span>))
+(<span style="color:#66d9ef">define </span>Bishop (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>))
+</code></pre></div><p>Two are still left: the Knight and the Pawn. For the Knight, we need to specify something that will let us jump in arbitrary directions:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Make a leaper from a given offset</span>
-(<span style="color:#66d9ef">define </span>(leaper xΔ yΔ)
-  (set-&gt;list
-   (list-&gt;set
-    <span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>(pt    xΔ     yΔ )
-      <span style="color:#f92672">,</span>(pt (- xΔ)    yΔ )
-      <span style="color:#f92672">,</span>(pt    xΔ  (- yΔ))
-      <span style="color:#f92672">,</span>(pt (- xΔ) (- yΔ))
-      <span style="color:#f92672">,</span>(pt    yΔ     xΔ )
-      <span style="color:#f92672">,</span>(pt (- yΔ)    xΔ )
-      <span style="color:#f92672">,</span>(pt    yΔ  (- xΔ))
-      <span style="color:#f92672">,</span>(pt (- yΔ) (- xΔ))))))</code></pre></div>
-<p>The <code>list-&amp;gt;set</code> and set-&gt;list` calls are to avoid duplicates. Otherwise, it&rsquo;s every combination of leaps in a given ratio. So if you want to define a Knight:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>Knight (move <span style="color:#ae81ff">1</span> (leaper <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))</code></pre></div>
-<p>If you want to define the Nightrider though, it&rsquo;s just as simple:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>Nightrider (move <span style="color:#e6db74">&#39;n</span> (leaper <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))</code></pre></div>
-<p>And&hellip; that leaves us the Pawn. It&rsquo;s funny how perhaps the simplest of the pieces is the most complicated to define. But if you think about it, the behavior is also the longest to describe. You can move two spaces on the first move, one space any other move, but only capture diagonally. Something like this:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">leaper</span> xΔ yΔ)
+  (<span style="color:#a6e22e">set-&gt;list</span>
+   (<span style="color:#a6e22e">list-&gt;set</span>
+    <span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span>    xΔ     yΔ )
+      <span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span> (- xΔ)    yΔ )
+      <span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span>    xΔ  (- yΔ))
+      <span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span> (- xΔ) (- yΔ))
+      <span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span>    yΔ     xΔ )
+      <span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span> (- yΔ)    xΔ )
+      <span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span>    yΔ  (- xΔ))
+      <span style="color:#f92672">,</span>(<span style="color:#a6e22e">pt</span> (- yΔ) (- xΔ))))))
+</code></pre></div><p>The <code>list-&amp;gt;set</code> and set-&gt;list` calls are to avoid duplicates. Otherwise, it&rsquo;s every combination of leaps in a given ratio. So if you want to define a Knight:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>Knight (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))
+</code></pre></div><p>If you want to define the Nightrider though, it&rsquo;s just as simple:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>Nightrider (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))
+</code></pre></div><p>And&hellip; that leaves us the Pawn. It&rsquo;s funny how perhaps the simplest of the pieces is the most complicated to define. But if you think about it, the behavior is also the longest to describe. You can move two spaces on the first move, one space any other move, but only capture diagonally. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>Pawn
-  (alternatives
-   (on-non-capture (on-initial (move <span style="color:#ae81ff">2</span> <span style="color:#e6db74">&#39;&gt;</span>)))
-   (on-non-capture             (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&gt;</span>))
-   (on-capture                 (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X&gt;</span>))))</code></pre></div>
-<p>What&rsquo;s that? We don&rsquo;t have <code>on-non-capture</code> / <code>on-capture</code> functions defined? Well, all we have to do is set the <code>tag</code> field we defined earlier. Something like this:</p>
+  (<span style="color:#a6e22e">alternatives</span>
+   (<span style="color:#a6e22e">on-non-capture</span> (<span style="color:#a6e22e">on-initial</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">2</span> <span style="color:#e6db74">&#39;&gt;</span>)))
+   (<span style="color:#a6e22e">on-non-capture</span>             (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&gt;</span>))
+   (<span style="color:#a6e22e">on-capture</span>                 (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X&gt;</span>))))
+</code></pre></div><p>What&rsquo;s that? We don&rsquo;t have <code>on-non-capture</code> / <code>on-capture</code> functions defined? Well, all we have to do is set the <code>tag</code> field we defined earlier. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Set special flags for move lists</span>
-(<span style="color:#66d9ef">define </span>(set-flag flag movelist*)
-  (for/list ([movelist (in-list movelist*)])
-    (match-define (move-sequence flags moves) movelist)
-    (move-sequence (set-add flags flag) moves)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">set-flag</span> flag movelist*)
+  (<span style="color:#a6e22e">for/list</span> ([movelist (<span style="color:#a6e22e">in-list</span> movelist*)])
+    (<span style="color:#a6e22e">match-define</span> (<span style="color:#a6e22e">move-sequence</span> flags moves) movelist)
+    (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set-add</span> flags flag) moves)))
 
-(<span style="color:#66d9ef">define </span>(on-initial     movelist*) (set-flag <span style="color:#e6db74">&#39;initial-only</span> movelist*))
-(<span style="color:#66d9ef">define </span>(on-capture     movelist*) (set-flag <span style="color:#e6db74">&#39;capture-only</span> movelist*))
-(<span style="color:#66d9ef">define </span>(on-non-capture movelist*) (set-flag <span style="color:#e6db74">&#39;non-capture</span>  movelist*))
-(<span style="color:#66d9ef">define </span>(as-locust      movelist*) (set-flag <span style="color:#e6db74">&#39;locust</span>       movelist*))</code></pre></div>
-<p>Locusts are something we&rsquo;ll get to eventually. Those are pieces that move like checkers: they capture by jumping. Other than that, we just need the <code>alternatives</code>:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">on-initial</span>     movelist*) (<span style="color:#a6e22e">set-flag</span> <span style="color:#e6db74">&#39;initial-only</span> movelist*))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">on-capture</span>     movelist*) (<span style="color:#a6e22e">set-flag</span> <span style="color:#e6db74">&#39;capture-only</span> movelist*))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">on-non-capture</span> movelist*) (<span style="color:#a6e22e">set-flag</span> <span style="color:#e6db74">&#39;non-capture</span>  movelist*))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">as-locust</span>      movelist*) (<span style="color:#a6e22e">set-flag</span> <span style="color:#e6db74">&#39;locust</span>       movelist*))
+</code></pre></div><p>Locusts are something we&rsquo;ll get to eventually. Those are pieces that move like checkers: they capture by jumping. Other than that, we just need the <code>alternatives</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Merge multiple move lists by allowing any of them</span>
-(<span style="color:#66d9ef">define </span>(alternatives <span style="color:#f92672">.</span> list*)
-  (apply append list*))</code></pre></div>
-<p>Feels like cheating. And there we have the pawn:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">alternatives</span> <span style="color:#f92672">.</span> list*)
+  (apply append list*))
+</code></pre></div><p>Feels like cheating. And there we have the pawn:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; Pawn
-(list
- (move-sequence (set <span style="color:#e6db74">&#39;initial-only</span> <span style="color:#e6db74">&#39;non-capture</span>) (list (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>)))
- (move-sequence (set <span style="color:#e6db74">&#39;non-capture</span>) (list (pt <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)))
- (move-sequence (set <span style="color:#e6db74">&#39;capture-only</span>) (list (pt <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">1</span>)))
- (move-sequence (set <span style="color:#e6db74">&#39;capture-only</span>) (list (pt <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))))</code></pre></div>
-<p>Sweet.</p>
-
+(<span style="color:#a6e22e">list</span>
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;initial-only</span> <span style="color:#e6db74">&#39;non-capture</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;non-capture</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;capture-only</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">1</span>)))
+ (<span style="color:#a6e22e">move-sequence</span> (<span style="color:#a6e22e">set</span> <span style="color:#e6db74">&#39;capture-only</span>) (list (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))))
+</code></pre></div><p>Sweet.</p>
 <p>Okay, what about other kinds of pieces. Say&hellip; the Aanca. That&rsquo;s a piece that moves one square orthogonally than diagonally outwards. It&rsquo;s a bit complicated by the fact that we don&rsquo;t want to double back with the diagonals and we need one more function. A sequencer:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Merge multiple move lists by doing one and then the next, each relative to the previous endpoint</span>
-(<span style="color:#66d9ef">define </span>(and-then first* rest*)
-  (for*/list ([first (in-list first*)]
-              [rest  (in-list rest*)])
-    (match-define (move-sequence first-flags first-moves) first)
-    (match-define (move-sequence rest-flags  rest-moves)  rest)
-    (<span style="color:#66d9ef">define </span>offset (last first-moves))
-    (move-sequence
-     (set-union first-flags rest-flags)
-     (append first-moves (map (λ (each) (pt+ offset each)) rest-moves)))))</code></pre></div>
-<p>Now we can have the Aanca:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">and-then</span> first* rest*)
+  (<span style="color:#a6e22e">for*/list</span> ([first (<span style="color:#a6e22e">in-list</span> first*)]
+              [rest  (<span style="color:#a6e22e">in-list</span> rest*)])
+    (<span style="color:#a6e22e">match-define</span> (<span style="color:#a6e22e">move-sequence</span> first-flags first-moves) first)
+    (<span style="color:#a6e22e">match-define</span> (<span style="color:#a6e22e">move-sequence</span> rest-flags  rest-moves)  rest)
+    (<span style="color:#66d9ef">define </span>offset (<span style="color:#a6e22e">last</span> first-moves))
+    (<span style="color:#a6e22e">move-sequence</span>
+     (<span style="color:#a6e22e">set-union</span> first-flags rest-flags)
+     (append first-moves (map (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">each</span>) (<span style="color:#a6e22e">pt+</span> offset each)) rest-moves)))))
+</code></pre></div><p>Now we can have the Aanca:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Move one square like a rook, followed by any number of spaces diagonally outwards</span>
 (<span style="color:#66d9ef">define </span>Aanca
-  (alternatives
-   (and-then (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&gt;</span>) (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X&gt;</span>))
-   (and-then (move <span style="color:#ae81ff">1</span> (pt <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>))  (alternatives (move <span style="color:#e6db74">&#39;n</span> (pt  <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">-1</span>))
-                                              (move <span style="color:#e6db74">&#39;n</span> (pt  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">1</span>))))
-   (and-then (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&lt;</span>) (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X&lt;</span>))
-   (and-then (move <span style="color:#ae81ff">1</span> (pt <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">0</span>)) (alternatives (move <span style="color:#e6db74">&#39;n</span> (pt <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">-1</span>))
-                                              (move <span style="color:#e6db74">&#39;n</span> (pt <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">1</span>))))))</code></pre></div>
-<p>And that&rsquo;s it. We can define a whole pile of the other <a href="https://en.wikipedia.org/wiki/Fairy%20chess%20pieces">Fairy chess pieces</a>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>Adjutant     (move  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&lt;&gt;</span>))
-(<span style="color:#66d9ef">define </span>Advisor      (move  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X</span>))
-(<span style="color:#66d9ef">define </span>Alfil        (move  <span style="color:#ae81ff">1</span> (leaper <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)))
-(<span style="color:#66d9ef">define </span>Afilrider    (move <span style="color:#e6db74">&#39;n</span> (leaper <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)))
-(<span style="color:#66d9ef">define </span>Alibaba      (alternatives (move <span style="color:#e6db74">&#39;n</span> (leaper <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)) (move <span style="color:#e6db74">&#39;n</span> (leaper <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>))))
-(<span style="color:#66d9ef">define </span>Amazon       (alternatives (move <span style="color:#ae81ff">1</span> (leaper <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)) (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;*</span>)))
-(<span style="color:#66d9ef">define </span>Antelope     (move  <span style="color:#ae81ff">1</span> (leaper <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>)))
-(<span style="color:#66d9ef">define </span>Archbishop   (alternatives (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>) (move <span style="color:#ae81ff">1</span> (leaper <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))))
-(<span style="color:#66d9ef">define </span>ArrowPawn    (alternatives (on-non-capture (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;+</span>))
-                                   (on-capture (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X</span>))))
-(<span style="color:#66d9ef">define </span>Backslider   (move  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&lt;</span>))
-(<span style="color:#66d9ef">define </span>Banshee      (alternatives (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>) (move <span style="color:#e6db74">&#39;n</span> (leaper <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))))
-(<span style="color:#66d9ef">define </span>Bede         (alternatives (move <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>) (move <span style="color:#e6db74">&#39;n</span> (leaper <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>))))
-(<span style="color:#66d9ef">define </span>BerolinaPawn (alternatives (on-non-capture (on-initial (move <span style="color:#ae81ff">2</span> <span style="color:#e6db74">&#39;X&gt;</span>)))
-                                   (on-non-capture (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X&gt;</span>))
-                                   (on-capture (move <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&gt;</span>))))
-<span style="color:#f92672">...</span></code></pre></div>
-<p>(Feel free to submit a <a href="https://github.com/jpverkamp/chess-puzzles/pulls">pull request</a> if you want to add more. 😄)</p>
-
+  (<span style="color:#a6e22e">alternatives</span>
+   (<span style="color:#a6e22e">and-then</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&gt;</span>) (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X&gt;</span>))
+   (<span style="color:#a6e22e">and-then</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>))  (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">pt</span>  <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">-1</span>))
+                                              (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">pt</span>  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">1</span>))))
+   (<span style="color:#a6e22e">and-then</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&lt;</span>) (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X&lt;</span>))
+   (<span style="color:#a6e22e">and-then</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">0</span>)) (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">-1</span>))
+                                              (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">pt</span> <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">1</span>))))))
+</code></pre></div><p>And that&rsquo;s it. We can define a whole pile of the other <a href="https://en.wikipedia.org/wiki/Fairy%20chess%20pieces">Fairy chess pieces</a>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>Adjutant     (<span style="color:#a6e22e">move</span>  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&lt;&gt;</span>))
+(<span style="color:#66d9ef">define </span>Advisor      (<span style="color:#a6e22e">move</span>  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X</span>))
+(<span style="color:#66d9ef">define </span>Alfil        (<span style="color:#a6e22e">move</span>  <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)))
+(<span style="color:#66d9ef">define </span>Afilrider    (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)))
+(<span style="color:#66d9ef">define </span>Alibaba      (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)) (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>))))
+(<span style="color:#66d9ef">define </span>Amazon       (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)) (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;*</span>)))
+(<span style="color:#66d9ef">define </span>Antelope     (<span style="color:#a6e22e">move</span>  <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>)))
+(<span style="color:#66d9ef">define </span>Archbishop   (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>) (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))))
+(<span style="color:#66d9ef">define </span>ArrowPawn    (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">on-non-capture</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;+</span>))
+                                   (<span style="color:#a6e22e">on-capture</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X</span>))))
+(<span style="color:#66d9ef">define </span>Backslider   (<span style="color:#a6e22e">move</span>  <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&lt;</span>))
+(<span style="color:#66d9ef">define </span>Banshee      (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>) (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))))
+(<span style="color:#66d9ef">define </span>Bede         (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> <span style="color:#e6db74">&#39;X</span>) (<span style="color:#a6e22e">move</span> <span style="color:#e6db74">&#39;n</span> (<span style="color:#a6e22e">leaper</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">2</span>))))
+(<span style="color:#66d9ef">define </span>BerolinaPawn (<span style="color:#a6e22e">alternatives</span> (<span style="color:#a6e22e">on-non-capture</span> (<span style="color:#a6e22e">on-initial</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">2</span> <span style="color:#e6db74">&#39;X&gt;</span>)))
+                                   (<span style="color:#a6e22e">on-non-capture</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;X&gt;</span>))
+                                   (<span style="color:#a6e22e">on-capture</span> (<span style="color:#a6e22e">move</span> <span style="color:#ae81ff">1</span> <span style="color:#e6db74">&#39;&gt;</span>))))
+<span style="color:#f92672">...</span>
+</code></pre></div><p>(Feel free to submit a <a href="https://github.com/jpverkamp/chess-puzzles/pulls">pull request</a> if you want to add more. 😄)</p>
 <p>Oof. That&rsquo;s a lot of code. I think that&rsquo;s about enough for today.</p>
-
 <p>You can see the full code on GitHub: <a href="https://github.com/jpverkamp/chess-puzzles">jpverkamp/chess-puzzles</a>. Warning though: I&rsquo;m a bit further ahead code-wise than blog-wise. That way lies spoilers&hellip;</p>
-
 <p>Speaking of which:</p>
-
 <figure>
     <img src="/embeds/2014/chessboard.png"/> 
 </figure>
 
-
 <p>😄</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Okay, <a href="https://blog.jverkamp.com/2013/02/01/#1gam-chesslike-1.0-did-it/">a little</a>.
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">For the moment, we&rsquo;ll ignore castling and <a href="https://en.wikipedia.org/wiki/en%20passant">en passant</a>.
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Okay, <a href="https://blog.jverkamp.com/2013/02/01/#1gam-chesslike-1.0-did-it/">a little</a>. <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>For the moment, we&rsquo;ll ignore castling and <a href="https://en.wikipedia.org/wiki/en%20passant">en passant</a>. <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

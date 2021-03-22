@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -76,93 +76,19 @@
 </div>
     </header>
 
-	<div class="entry-content"><h3 id="source-spiral-memory-http-adventofcode-com-2017-day-3">Source: <a href="http://adventofcode.com/2017/day/3">Spiral Memory</a></h3>
-
+	<div class="entry-content"><h3 id="source-spiral-memoryhttpadventofcodecom2017day3">Source: <a href="http://adventofcode.com/2017/day/3">Spiral Memory</a></h3>
 <blockquote>
 <p><strong>Part 1:</strong> Create a grid in a spiral pattern like so:</p>
-
-<pre><code>17  16  15  14  13
+</blockquote>
+<blockquote>
+<pre><code></code></pre></blockquote>
+<p>17  16  15  14  13
 18   5   4   3  12
 19   6   1   2  11
 20   7   8   9  10
-21  22  23---&gt; ...
-</code></pre>
-
-<p>Given a specific index, what is the <a href="https://en.wikipedia.org/wiki/Manhattan%20Distance">Manhattan Distance</a> from that point to the origin (<code>1</code>)?</p>
-</blockquote>
-
-<p>This same sort of structure comes up from time to time in <a href="/programming/sources/project-euler/">Project Euler</a> as well. I&rsquo;m going to guess we&rsquo;ll see this again. Seems like a fine contender for a <a href="https://blog.jverkamp.com/2017/12/01/aoc-2017-library-functions/">library function</a>.</p>
-
-<p>Specifically, we&rsquo;ll create a <code>SpiralGrid</code> class that can be used to automatically generate as large of a grid as we want lazily (it won&rsquo;t generate more of the grid until we need it).</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SpiralGrid</span>():
-    <span style="color:#e6db74">&#39;&#39;&#39;
-</span><span style="color:#e6db74">    Generate a spiral grid that looks like this:
-</span><span style="color:#e6db74">    17  16  15  14  13
-</span><span style="color:#e6db74">    18   5   4   3  12
-</span><span style="color:#e6db74">    19   6   1   2  11
-</span><span style="color:#e6db74">    20   7   8   9  10
-</span><span style="color:#e6db74">    21  22  23---&gt; ...
-</span><span style="color:#e6db74">
-</span><span style="color:#e6db74">    The point (0, 0) is 1. x runs left to right, y from top to bottom. So the
-</span><span style="color:#e6db74">    point 12 is at (2, -1).
-</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
-
-    <span style="color:#66d9ef">def</span> __init__(self):
-        self<span style="color:#f92672">.</span>_indexes <span style="color:#f92672">=</span> {}
-        self<span style="color:#f92672">.</span>_points <span style="color:#f92672">=</span> {}
-
-        <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">make_spiral</span>():
-            index <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
-            (x, y) <span style="color:#f92672">=</span> (<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>)
-
-            <span style="color:#66d9ef">yield</span> index, (x, y)
-
-            <span style="color:#75715e"># Build the layers outwards</span>
-            <span style="color:#66d9ef">for</span> layer <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>count(<span style="color:#ae81ff">1</span>):
-                <span style="color:#75715e"># Each layer starts by going right and down one (we&#39;ll go back up before yielding)</span>
-                x <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-                y <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-
-                <span style="color:#75715e"># Go through the four sides, up then left then down then right</span>
-                <span style="color:#75715e"># Repeat 2*layer times per side</span>
-                <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> [(<span style="color:#ae81ff">0</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>), (<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>)]:
-                    <span style="color:#66d9ef">for</span> step <span style="color:#f92672">in</span> range(<span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> layer):
-                        index <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-                        x <span style="color:#f92672">+=</span> xd
-                        y <span style="color:#f92672">+=</span> yd
-                        <span style="color:#66d9ef">yield</span> index, (x, y)
-
-        self<span style="color:#f92672">.</span>_generator <span style="color:#f92672">=</span> make_spiral()
-
-    <span style="color:#66d9ef">def</span> __getitem__(self, key):
-        <span style="color:#e6db74">&#39;&#39;&#39;
-</span><span style="color:#e6db74">        Given an index or point return the other.
-</span><span style="color:#e6db74">
-</span><span style="color:#e6db74">        If we&#39;re given an integer, it&#39;s an index, return the point.
-</span><span style="color:#e6db74">        If we&#39;re given a tuple, it&#39;s a point, return the index.
-</span><span style="color:#e6db74">
-</span><span style="color:#e6db74">        Either way, generate as much data as we need and don&#39;t have.
-</span><span style="color:#e6db74">        &#39;&#39;&#39;</span>
-
-        <span style="color:#66d9ef">if</span> isinstance(key, int):
-            field <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>_indexes
-        <span style="color:#66d9ef">elif</span> isinstance(key, str):
-            key <span style="color:#f92672">=</span> int(key)
-            field <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>_indexes
-        <span style="color:#66d9ef">elif</span> isinstance(key, tuple) <span style="color:#f92672">and</span> len(key) <span style="color:#f92672">==</span> <span style="color:#ae81ff">2</span>:
-            field <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>_points
-        <span style="color:#66d9ef">else</span>:
-            <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">ValueError</span>
-
-        <span style="color:#66d9ef">while</span> key <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> field:
-            index, point <span style="color:#f92672">=</span> next(self<span style="color:#f92672">.</span>_generator)
-            self<span style="color:#f92672">.</span>_indexes[index] <span style="color:#f92672">=</span> point
-            self<span style="color:#f92672">.</span>_points[point] <span style="color:#f92672">=</span> index
-
-        <span style="color:#66d9ef">return</span> field[key]</code></pre></div>
-<p>The neat part here is using a <code><a href="https://docs.python.org/3/search.html?q=generator">generator</a></code>
+21  22  23&mdash;&gt; &hellip;</p>
+e><p>The neat part here is using a <code><a href="https://docs.python.org/3/search.html?q=generator">generator</a></code>
  to generate the coordinates of points. That way, we can run the generator until we find the point we&rsquo;re looking for and cache any results for later.</p>
-
 <p>I&rsquo;m also using a trick I&rsquo;ve used before where I&rsquo;m indexing with a tuple. So we can do things like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> <span style="color:#f92672">import</span> lib
 
@@ -178,70 +104,70 @@
 <span style="color:#ae81ff">80</span>
 
 <span style="color:#f92672">&gt;&gt;&gt;</span> grid[<span style="color:#ae81ff">80</span>]
-(<span style="color:#ae81ff">3</span>, <span style="color:#ae81ff">4</span>)</code></pre></div>
-<p>That&rsquo;s pretty cool if I do say so myself<sup class="footnote-ref" id="fnref:ido"><a href="#fn:ido">1</a></sup>. :)</p>
-
+(<span style="color:#ae81ff">3</span>, <span style="color:#ae81ff">4</span>)
+</code></pre></div><p>That&rsquo;s pretty cool if I do say so myself<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. :)</p>
 <p>Now that we have the grid, we can get any point we want and then calculate the distance:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">lib<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;index&#39;</span>)
 
 grid <span style="color:#f92672">=</span> lib<span style="color:#f92672">.</span>SpiralGrid()
 
 x, y <span style="color:#f92672">=</span> grid[lib<span style="color:#f92672">.</span>param(<span style="color:#e6db74">&#39;index&#39;</span>)]
-<span style="color:#66d9ef">print</span>(abs(x) <span style="color:#f92672">+</span> abs(y))</code></pre></div>
-<p>Coolio.</p>
-
+<span style="color:#66d9ef">print</span>(abs(x) <span style="color:#f92672">+</span> abs(y))
+</code></pre></div><p>Coolio.</p>
 <blockquote>
 <p><strong>Part 2:</strong> Rather than numbering the grid <code>1, 2, 3...</code>, assign each grid point a value equal to the sum of neighbors already assigned. As an example, the center of the grid would look like this:</p>
-
-<pre><code>17  16  15  14  13
+</blockquote>
+<blockquote>
+<pre><code></code></pre></blockquote>
+<p>17  16  15  14  13
 18   5   4   3  12
 19   6   1   2  11
 20   7   8   9  10
-21  22  23---&gt; ...
-</code></pre>
-</blockquote>
+21  22  23&mdash;&gt; &hellip;</p>
+<pre><code>
+... well that's fun. I made my cool abstract spiral, but it doesn't support this (there's no way to know specifically what order it's generating points in). We can be a bit creative though, since we do know it will generate points in order. Start with the center point and calculate our `sum_of_neighbors` ourselves.
 
-<p>&hellip; well that&rsquo;s fun. I made my cool abstract spiral, but it doesn&rsquo;t support this (there&rsquo;s no way to know specifically what order it&rsquo;s generating points in). We can be a bit creative though, since we do know it will generate points in order. Start with the center point and calculate our <code>sum_of_neighbors</code> ourselves.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">grid <span style="color:#f92672">=</span> lib<span style="color:#f92672">.</span>SpiralGrid()
 
-values <span style="color:#f92672">=</span> {}
-values[<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+```python
+grid = lib.SpiralGrid()
 
-<span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>count(<span style="color:#ae81ff">2</span>):
-    x, y <span style="color:#f92672">=</span> grid[i]
+values = {}
+values[0, 0] = 1
 
-    <span style="color:#75715e"># Calculate sum of neighbor values we&#39;ve already calculated for the new value</span>
-    sum_of_neighbors <span style="color:#f92672">=</span> sum(
-        values[x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd]
-        <span style="color:#66d9ef">for</span> xd <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>)
-        <span style="color:#66d9ef">for</span> yd <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>)
-        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">not</span> xd <span style="color:#f92672">==</span> yd <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">and</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd) <span style="color:#f92672">in</span> values
+for i in itertools.count(2):
+    x, y = grid[i]
+
+    # Calculate sum of neighbor values we've already calculated for the new value
+    sum_of_neighbors = sum(
+        values[x + xd, y + yd]
+        for xd in (-1, 0, 1)
+        for yd in (-1, 0, 1)
+        if (not xd == yd == 0) and (x + xd, y + yd) in values
     )
-    values[x, y] <span style="color:#f92672">=</span> sum_of_neighbors
+    values[x, y] = sum_of_neighbors
 
-    <span style="color:#75715e"># As soon as we see one bigger than the given index, bail out</span>
-    <span style="color:#66d9ef">if</span> sum_of_neighbors <span style="color:#f92672">&gt;</span> int(lib<span style="color:#f92672">.</span>param(<span style="color:#e6db74">&#39;index&#39;</span>)):
-        <span style="color:#66d9ef">print</span>(sum_of_neighbors)
-        <span style="color:#66d9ef">break</span></code></pre></div>
-<p>It&rsquo;s a bit ugly, but it works.</p>
-
-<p>Now I just hope we do actually use that <code>SpiralGrid</code> again later&hellip;<sup class="footnote-ref" id="fnref:nope"><a href="#fn:nope">2</a></sup></p>
-
+    # As soon as we see one bigger than the given index, bail out
+    if sum_of_neighbors &gt; int(lib.param('index')):
+        print(sum_of_neighbors)
+        break
+</code></pre><p>It&rsquo;s a bit ugly, but it works.</p>
+<p>Now I just hope we do actually use that <code>SpiralGrid</code> again later&hellip;<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup></p>
 <p>It&rsquo;s cool how quick this is for something that seems like it could be relatively complicated:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 run-all.py day-03
 
-day-03  python3 spiraly.py <span style="color:#ae81ff">347991</span> --part <span style="color:#ae81ff">1</span>      <span style="color:#ae81ff">0</span>.6469540596008301      <span style="color:#ae81ff">480</span>
-day-03  python3 spiraly.py <span style="color:#ae81ff">347991</span> --part <span style="color:#ae81ff">2</span>      <span style="color:#ae81ff">0</span>.0639350414276123      <span style="color:#ae81ff">349975</span></code></pre></div><div class="footnotes">
-
-<hr />
-
+day-03  python3 spiraly.py <span style="color:#ae81ff">347991</span> --part <span style="color:#ae81ff">1</span>      0.6469540596008301      <span style="color:#ae81ff">480</span>
+day-03  python3 spiraly.py <span style="color:#ae81ff">347991</span> --part <span style="color:#ae81ff">2</span>      0.0639350414276123      <span style="color:#ae81ff">349975</span>
+</code></pre></div><section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:ido">And I do. That&rsquo;s pretty cool<sup class="footnote-ref" id="fnref:ido"><a href="#fn:ido">1</a></sup>.
- <a class="footnote-return" href="#fnref:ido"><sup>[return]</sup></a></li>
-<li id="fn:nope">Hint: We don&rsquo;t.
- <a class="footnote-return" href="#fnref:nope"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>And I do. That&rsquo;s pretty cool<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>Hint: We don&rsquo;t. <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

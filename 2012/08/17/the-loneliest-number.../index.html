@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,9 +71,7 @@
     </header>
 
 	<div class="entry-content"><p>I was reading the io9 article <a title="Why four is the nemesis of happy numbers" href="http://io9.com/5934819/why-four-is-the-nemesis-of-happy-numbers">Why four is the nemesis of happy numbers</a> and it got me thinking. Are there actually any cycles other than the one stated in the article? Why or why not?</p>
-
 <p>As a bit of background, the article is talking about &ldquo;happy&rdquo; numbers. Essentially, if you repeatedly sum the square of the digits in a number and eventually reach 1, you&rsquo;re a happy number. The example given in the article is 82:</p>
-
 <table>
 <thead>
 <tr>
@@ -82,14 +80,12 @@
 <th>64 + 4 = 68</th>
 </tr>
 </thead>
-
 <tbody>
 <tr>
 <td>68</td>
 <td>6, 8</td>
 <td>36 + 64 = 100</td>
 </tr>
-
 <tr>
 <td>100</td>
 <td>1, 0, 0</td>
@@ -97,52 +93,43 @@
 </tr>
 </tbody>
 </table>
-
 <p>So 82 is in fact happy. Any number that isn&rsquo;t happy is considered unhappy. Theoretically, the numbers have to either terminate at 1 or enter into a cycle, although at the moment, I don&rsquo;t have a proof for that. But it&rsquo;s actually even stranger than that. It turns out that (theoretically) all unhappy numbers eventually enter this cycle:</p>
-
 <p>4, 16, 37, 58, 89, 145, 42, 20, 4</p>
-
 <p>Why? Perhaps because eventually all numbers will be reduced to a single digit and 4 is the only one that loops.</p>
-
 <p>But I was curious and I like writing scripts to test things like this. So I wrote up a bit of Scheme code (it runs just fine on <a title="(chez (chez scheme))" href="http://www.scheme.com/">Chez Scheme</a> and should work with only minimal modifications if any on other Schemes):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert a number into a list of digits</span>
-(<span style="color:#66d9ef">define </span>(digits n)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">digits</span> n)
   (<span style="color:#66d9ef">if </span>(zero? n)
       <span style="color:#f92672">&#39;</span>()
-      (cons (mod n <span style="color:#ae81ff">10</span>) (digits (div n <span style="color:#ae81ff">10</span>)))))
+      (cons (<span style="color:#a6e22e">mod</span> n <span style="color:#ae81ff">10</span>) (<span style="color:#a6e22e">digits</span> (<span style="color:#a6e22e">div</span> n <span style="color:#ae81ff">10</span>)))))
 
 <span style="color:#75715e">; square a number</span>
-(<span style="color:#66d9ef">define </span>(sqr n)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">sqr</span> n)
   (* n n))
 
 <span style="color:#75715e">; return either the terminal number (should be 1)</span>
 <span style="color:#75715e">; or the point at which a cycle is detected</span>
-(<span style="color:#66d9ef">define </span>(happy n)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">happy</span> n)
   (<span style="color:#66d9ef">let </span>^ ([n n] [ns <span style="color:#f92672">&#39;</span>()])
     (<span style="color:#66d9ef">if </span>(member n ns)
         n
-        (^ (apply + (map sqr (digits n))) (cons n ns)))))
+        (<span style="color:#a6e22e">^</span> (apply + (map sqr (<span style="color:#a6e22e">digits</span> n))) (cons n ns)))))
 
 <span style="color:#75715e">; go through all of the numbers, check if we have the cycle or 1</span>
 <span style="color:#75715e">; print and exit if we find a counter example</span>
-(<span style="color:#66d9ef">define </span>(test)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">test</span>)
   (<span style="color:#66d9ef">let </span>([cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">16</span> <span style="color:#ae81ff">37</span> <span style="color:#ae81ff">58</span> <span style="color:#ae81ff">89</span> <span style="color:#ae81ff">145</span> <span style="color:#ae81ff">42</span> <span style="color:#ae81ff">20</span>)])
     (<span style="color:#66d9ef">let </span>^ ([i <span style="color:#ae81ff">1</span>])
-      (<span style="color:#66d9ef">let </span>([res (happy i)])
-        (when (not (member res cycle))
-              (printf <span style="color:#e6db74">&#34;~s\t~s\n&#34;</span> i res)
-              (exit))
-        (^ (add1 i))))))</code></pre></div>
-<p>Basically, it terminates whenever it sees a number that has already been calculated (so in the case of 1, it will repeat on 1 and stop; on any other loop it will eventually get back to the entry point).</p>
-
+      (<span style="color:#66d9ef">let </span>([res (<span style="color:#a6e22e">happy</span> i)])
+        (<span style="color:#a6e22e">when</span> (not (member res cycle))
+              (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;~s\t~s\n&#34;</span> i res)
+              (<span style="color:#a6e22e">exit</span>))
+        (<span style="color:#a6e22e">^</span> (<span style="color:#a6e22e">add1</span> i))))))
+</code></pre></div><p>Basically, it terminates whenever it sees a number that has already been calculated (so in the case of 1, it will repeat on 1 and stop; on any other loop it will eventually get back to the entry point).</p>
 <p>I let the code crunch for a while and it&rsquo;s been running at an average of 1.66 kHz (1660 numbers per second). It&rsquo;s not perfect and I&rsquo;m sure I could optimize it a bit with some <a href="https://en.wikipedia.org/wiki/memoization">memoization</a>, but I&rsquo;ve still checked the first 1.5 billion numbers. So far, everything is either happy or unhappy and goes through 4. I&rsquo;ll let it run for a while more and update this if it happens to find anything, but I doubt it.</p>
-
 <p>Another interesting tidbit comes up with a <a href="http://io9.com/5934819/why-four-is-the-nemesis-of-happy-numbers?comment=51954505" title="io9 Comment">one of the comments</a>, showing that there are difference cycles in different bases. For example, hexadecimal has a loop around D:</p>
-
 <p>D, A9, B5, 92, 55, 32, D</p>
-
 <p>It turns out that at least bases 2 and 4 have no unhappy numbers (all sequences end in 1). Binary makes sense as it will always reduce down to one digit which would have to be 1 and 4 seems like it might be related to 4 looping in base 10. Maybe. And now I&rsquo;m curious if there are any others. Another script to write if I have time.</p>
-
 <p>If you&rsquo;d like to download the source, you can do so here: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/lonely-number.ss">lonely number source</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

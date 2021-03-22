@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -73,37 +73,33 @@
 </div>
     </header>
 
-	<div class="entry-content"><p><a title="Programming Praxis: Chopping Words" href="http://programmingpraxis.com/2012/07/03/chopping-words/">One more challenge</a> from Programming Praxis&rsquo; <a title="Programming Praxis: Themes: Word Games" href="http://programmingpraxis.com/contents/themes/#Word Games">Word Games</a> today (there are only a few left!). This time we have the challenge of cutting off bits of words, one letter at a time, such that each step is still a word.</p>
-
+	<div class="entry-content"><p><a title="Programming Praxis: Chopping Words" href="http://programmingpraxis.com/2012/07/03/chopping-words/">One more challenge</a> from Programming Praxis' <a title="Programming Praxis: Themes: Word Games" href="http://programmingpraxis.com/contents/themes/#Word Games">Word Games</a> today (there are only a few left!). This time we have the challenge of cutting off bits of words, one letter at a time, such that each step is still a word.</p>
 <p>The example given in their post is <code>planet → plane → plan → pan → an → a</code>, although surely many such examples exist.</p>
-
 <p>This one looks really simple on the surface&ndash;use the same backtracking algorithms that we&rsquo;ve been using all along with the <a href="https://blog.jverkamp.com/2012/10/11/dictionary-tries-in-racket/">dictionary code</a> previously described to verify words at each step. Let&rsquo;s see if it really is that simple.</p>
-
 <p>First, we want to be able to cut a single character out of a string, leaving the rest untouched. Basically, choose a random character in the string. Then make a new string, copying letters from before the random character directly and those after offset by one:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; chop a given character from a string</span>
-(<span style="color:#66d9ef">define </span>(chop s i)
-  (list-&gt;string
-   (for/list ([n (string-length r)])
-     (string-ref s (<span style="color:#66d9ef">if </span>(&lt; n i) n (+ n <span style="color:#ae81ff">1</span>))))))</code></pre></div>
-<p>Now we can solve the problem. I&rsquo;m going for a slightly more in depth problem; rather than just finding one such chain of words, I want to find all of them. The idea is to start at each level by finding the strings with one letter chopped that are still words. For each of those recur. By the power of recursion, you should either get a tree of chopped words from that point or an empty list. If you get the former, add our word to it; the latter, pass the empty list along.</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">chop</span> s i)
+  (<span style="color:#a6e22e">list-&gt;string</span>
+   (<span style="color:#a6e22e">for/list</span> ([n (string-length r)])
+     (string-ref s (<span style="color:#66d9ef">if </span>(&lt; n i) n (+ n <span style="color:#ae81ff">1</span>))))))
+</code></pre></div><p>Now we can solve the problem. I&rsquo;m going for a slightly more in depth problem; rather than just finding one such chain of words, I want to find all of them. The idea is to start at each level by finding the strings with one letter chopped that are still words. For each of those recur. By the power of recursion, you should either get a tree of chopped words from that point or an empty list. If you get the former, add our word to it; the latter, pass the empty list along.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; repeatedly chop so long as all chops are words</span>
-(<span style="color:#66d9ef">define </span>(chopping-words dict word)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">chopping-words</span> dict word)
   (<span style="color:#66d9ef">if </span>(= <span style="color:#ae81ff">1</span> (string-length word))
       (list word)
-      (<span style="color:#66d9ef">let </span>([recur (for/fold ([ans <span style="color:#f92672">&#39;</span>()])
+      (<span style="color:#66d9ef">let </span>([recur (<span style="color:#a6e22e">for/fold</span> ([ans <span style="color:#f92672">&#39;</span>()])
                              ([i (string-length word)]
-                              <span style="color:#f92672">#</span>:when (contains? dict (chop word i)))
-                     (<span style="color:#66d9ef">let </span>([each (chopping-words dict (chop word i))])
+                              <span style="color:#f92672">#</span>:when (<span style="color:#a6e22e">contains?</span> dict (<span style="color:#a6e22e">chop</span> word i)))
+                     (<span style="color:#66d9ef">let </span>([each (<span style="color:#a6e22e">chopping-words</span> dict (<span style="color:#a6e22e">chop</span> word i))])
                        (<span style="color:#66d9ef">if </span>(null? each)
                            ans
                            (cons each ans))))])
         (<span style="color:#66d9ef">if </span>(null? recur)
             <span style="color:#f92672">&#39;</span>()
-            (cons word recur)))))</code></pre></div>
-<p>Seems sensible enough. The <code>for/fold</code> is an interesting construct that I hadn&rsquo;t used before, but it&rsquo;s not too bad. Basically, instead of just the looping variables of a normal <code>for</code>, you have a first block storing the accumulators&ndash;in this case <code>ans</code>. Each iteration of the loop should return the next value (or <code>values</code>) for the accumulators(s). Add in the case at the end for either building the tree or passing the empty list up the chain and you&rsquo;re good to go.</p>
-
+            (cons word recur)))))
+</code></pre></div><p>Seems sensible enough. The <code>for/fold</code> is an interesting construct that I hadn&rsquo;t used before, but it&rsquo;s not too bad. Basically, instead of just the looping variables of a normal <code>for</code>, you have a first block storing the accumulators&ndash;in this case <code>ans</code>. Each iteration of the loop should return the next value (or <code>values</code>) for the accumulators(s). Add in the case at the end for either building the tree or passing the empty list up the chain and you&rsquo;re good to go.</p>
 <p>Let&rsquo;s try it out:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (chopping-words dict <span style="color:#e6db74">&#34;PLANET&#34;</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">chopping-words</span> dict <span style="color:#e6db74">&#34;PLANET&#34;</span>)
 <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;PLANET&#34;</span>
   (<span style="color:#e6db74">&#34;PLANE&#34;</span>
    (<span style="color:#e6db74">&#34;PLAN&#34;</span> (<span style="color:#e6db74">&#34;PAN&#34;</span> (<span style="color:#e6db74">&#34;PA&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>)) (<span style="color:#e6db74">&#34;AN&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>))))
@@ -114,9 +110,8 @@
    (<span style="color:#e6db74">&#34;PANT&#34;</span>
     (<span style="color:#e6db74">&#34;PAN&#34;</span> (<span style="color:#e6db74">&#34;PA&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>)) (<span style="color:#e6db74">&#34;AN&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>)))
     (<span style="color:#e6db74">&#34;PAT&#34;</span> (<span style="color:#e6db74">&#34;PA&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>)) (<span style="color:#e6db74">&#34;AT&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>)))
-    (<span style="color:#e6db74">&#34;ANT&#34;</span> (<span style="color:#e6db74">&#34;AN&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>)) (<span style="color:#e6db74">&#34;AT&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>))))))</code></pre></div>
-<p>Looks pretty good. 😄 As you may have guessed, you&rsquo;re going to need a word containing either <code>A</code> or <code>I</code> for there to be a valid tree at all. Still, pretty neat though. An even more interesting trick would be to generate a graph rather than a tree, branching out from the initial word and eventually collapsing back into the one or two final states. In this case, there would be a single final state and only three states before that: <code>PA</code>, <code>AN</code>, and <code>AT</code>. Perhaps we&rsquo;ll leave that for another day.</p>
-
+    (<span style="color:#e6db74">&#34;ANT&#34;</span> (<span style="color:#e6db74">&#34;AN&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>)) (<span style="color:#e6db74">&#34;AT&#34;</span> (<span style="color:#e6db74">&#34;A&#34;</span>))))))
+</code></pre></div><p>Looks pretty good. 😄 As you may have guessed, you&rsquo;re going to need a word containing either <code>A</code> or <code>I</code> for there to be a valid tree at all. Still, pretty neat though. An even more interesting trick would be to generate a graph rather than a tree, branching out from the initial word and eventually collapsing back into the one or two final states. In this case, there would be a single final state and only three states before that: <code>PA</code>, <code>AN</code>, and <code>AT</code>. Perhaps we&rsquo;ll leave that for another day.</p>
 <p>The code is short enough today that I don&rsquo;t have a full source code download. You can just copy/paste the code into Racket to try it out for yourself. Don&rsquo;t forget the <code>(require &quot;[dictionary.rkt](https://blog.jverkamp.com/2012/10/11/dictionary-tries-in-racket/)&quot;)</code> line though, otherwise <code>contains?</code> isn&rsquo;t likely to work so well. 😄</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -77,45 +77,31 @@
     </header>
 
 	<div class="entry-content"><p>It&rsquo;s so squish!</p>
-
-<video controls src="/embeds/2020/ludum-dare-46-squishy.mp4"></video>
-
+<p><video controls src="/embeds/2020/ludum-dare-46-squishy.mp4"></video></p>
 <p>That is not at all what I intended, but I kind of love it, so for the moment, it stays in.</p>
-
 <p>To get this far, I had a heck of a time trying to figure out Godot&rsquo;s physics engine, but I&rsquo;m learning quickly!</p>
-
 <h1 id="define-the-blocks">Define the blocks</h1>
-
 <p>First, we have to figure out what the blocks look like. From Wikipedia:</p>
-
 <figure>
     <img src="/embeds/2020/ludum-dare-46-shapes-wiki.png"/> 
 </figure>
 
-
 <p>So I have 7 shapes to define, each of which has four &lsquo;blocks&rsquo; inside of it. So first I layed out a graphic:</p>
-
 <figure>
     <img src="/embeds/2020/ludum-dare-46-tetris-shapes.jpg"/> 
 </figure>
 
-
 <p>Now I need to define how they relate in code. First, I was going to define what the neighbors of each was:</p>
-
 <figure>
     <img src="/embeds/2020/ludum-dare-46-neighbors-1.jpg"/> 
 </figure>
 
-
 <p>In this case, that means that in an <code>I</code> block, <code>1</code> has top, right, bottom, left neighbors of <code>_</code> (none), <code>_</code>, <code>2</code>, <code>_</code> and so on. Seems verbose. So then I realized that I can calculate the neighbors myself. I just need to determine where they all are:</p>
-
 <figure>
     <img src="/embeds/2020/ludum-dare-46-neighbors-2.jpg"/> 
 </figure>
 
-
 <p>That&rsquo;s much cleaner. It also includes the &lsquo;central point&rsquo; of the shape that I will rotate around (which I don&rsquo;t end up using).</p>
-
 <p>Turning that into code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Tetromino.gd</span>
 
@@ -128,8 +114,8 @@ const SHAPES <span style="color:#f92672">=</span> {
 	<span style="color:#e6db74">&#39;L&#39;</span>: [Vector2(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>), Vector2(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>), Vector2(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">2</span>), Vector2(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>), Vector2(<span style="color:#ae81ff">0.5</span>, <span style="color:#ae81ff">2.5</span>)],
 	<span style="color:#e6db74">&#39;S&#39;</span>: [Vector2(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>), Vector2(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>), Vector2(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>), Vector2(<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">0</span>), Vector2(<span style="color:#ae81ff">1.5</span>, <span style="color:#ae81ff">0.5</span>)],
 	<span style="color:#e6db74">&#39;Z&#39;</span>: [Vector2(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>), Vector2(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>), Vector2(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>), Vector2(<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">0</span>), Vector2(<span style="color:#ae81ff">1.5</span>, <span style="color:#ae81ff">0.5</span>)]
-}</code></pre></div>
-<p>From there, the actual hard part. I have the 4 Blocks already created (in the [previous post]https://blog.jverkamp.com/2020/04/18/ld46-tetris-is-working-sort-of/), but I have to move them around and stick them together:</p>
+}
+</code></pre></div><p>From there, the actual hard part. I have the 4 Blocks already created (in the [previous post]https://blog.jverkamp.com/2020/04/18/ld46-tetris-is-working-sort-of/), but I have to move them around and stick them together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Tetromonio.gd</span>
 
 onready var bodies <span style="color:#f92672">=</span> [
@@ -201,13 +187,11 @@ func init(shape):
 
 					add_child(joint)
 					joint<span style="color:#f92672">.</span>node_a <span style="color:#f92672">=</span> joint<span style="color:#f92672">.</span>get_path_to(bi<span style="color:#f92672">.</span>get_node(<span style="color:#e6db74">&#34;Body&#34;</span>))
-					joint<span style="color:#f92672">.</span>node_b <span style="color:#f92672">=</span> joint<span style="color:#f92672">.</span>get_path_to(bj<span style="color:#f92672">.</span>get_node(<span style="color:#e6db74">&#34;Body&#34;</span>))</code></pre></div>
-<p>I know right?</p>
-
+					joint<span style="color:#f92672">.</span>node_b <span style="color:#f92672">=</span> joint<span style="color:#f92672">.</span>get_path_to(bj<span style="color:#f92672">.</span>get_node(<span style="color:#e6db74">&#34;Body&#34;</span>))
+</code></pre></div><p>I know right?</p>
 <p>It&rsquo;s some pretty wacky code. Except for the joints, it came together pretty quickly. The joints proved to be quite the headache though. First, I was using a <code><a href="https://docs.godotengine.org/en/stable/search.html?q=KinematicBody2D&amp;check_keywords=yes&amp;area=default">KinematicBody2D</a></code>
  for the block, which &hellip; doesn&rsquo;t really work with joints at all? So I switched to <code><a href="https://docs.godotengine.org/en/stable/search.html?q=RigidBody2D&amp;check_keywords=yes&amp;area=default">RigidBody2D</a></code>
 . But that means I have to change the physics system (more on that in a bit). Then I made the joints, but with only one pin, so they rotated all over the place. It turns out what I really want is to join each pair of blocks on the two corners touching.</p>
-
 <p>So, rewriting the input/physics engine. In a nutshell:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Tetromino.gd</span>
 
@@ -241,39 +225,29 @@ func _physics_process(delta):
 			emit_signal(<span style="color:#e6db74">&#34;on_lock&#34;</span>)
 			
 	<span style="color:#66d9ef">else</span>:
-		stuck_time <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span></code></pre></div>
-<p>I actually really like how <code><a href="https://docs.godotengine.org/en/stable/search.html?q=RigidBody2D&amp;check_keywords=yes&amp;area=default">RigidBody2D</a></code>
+		stuck_time <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</code></pre></div><p>I actually really like how <code><a href="https://docs.godotengine.org/en/stable/search.html?q=RigidBody2D&amp;check_keywords=yes&amp;area=default">RigidBody2D</a></code>
 s work. I should play with those more. I do have to apply the forces to all of the 4 blocks, otherwise they start rotating like mad when you don&rsquo;t want them to (I mean, I do want them to, but not by themselves!).</p>
-
-<p>The <code>body.sleeping</code> actually works pretty well. Sometimes it gets stuck, but I can push that down the road a bit. I think I&rsquo;ll add a keybinding to Let It Go<sup class="footnote-ref" id="fnref:frozen"><a href="#fn:frozen">1</a></sup> and move on to the next block without waiting.</p>
-
+<p>The <code>body.sleeping</code> actually works pretty well. Sometimes it gets stuck, but I can push that down the road a bit. I think I&rsquo;ll add a keybinding to Let It Go<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup> and move on to the next block without waiting.</p>
 <p>It&hellip; works?</p>
-
 <p>What we do end up getting though is amusingly squishy, which I love. I&rsquo;m totally going to keep it for now.</p>
-
-<video controls src="/embeds/2020/ludum-dare-46-squishy-2.mp4"></video>
-
+<p><video controls src="/embeds/2020/ludum-dare-46-squishy-2.mp4"></video></p>
 <figure>
     <img src="/embeds/2020/my-squishy.gif"/> 
 </figure>
 
-
 <p>Anyways, off to a block, and then it&rsquo;s time to actually add some falling sand!</p>
-
 <p>EDIT: I was working on adding a few keybindings (ESC restarts and ENTER forces you to the next tile) and this happened:</p>
-
-<video controls src="/embeds/2020/ludum-dare-46-oops.mp4"></video>
-
+<p><video controls src="/embeds/2020/ludum-dare-46-oops.mp4"></video></p>
 <p><code>is_action_**just**_pressed</code> y&rsquo;all. That is all.</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:frozen">I finally got around to watching Frozen 2. The movie is insane, but I actually realy enjoy the music. Man it&rsquo;s stuck in my head.
- <a class="footnote-return" href="#fnref:frozen"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>I finally got around to watching Frozen 2. The movie is insane, but I actually realy enjoy the music. Man it&rsquo;s stuck in my head. <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

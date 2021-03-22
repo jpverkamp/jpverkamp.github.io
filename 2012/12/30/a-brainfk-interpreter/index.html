@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,18 +74,14 @@
     </header>
 
 	<div class="entry-content"><p>The <a title="PLT Games" href="http://www.pltgames.com/">PLT Games</a> website has a competition going where each month there will be some sort of theme for a completely new program. The <a title="PLT Games: December 2012" href="http://www.pltgames.com/competition/2012/12">first theme</a> is a <a href="https://en.wikipedia.org/wiki/Turing%20Tarpit">Turing Tarpit</a>&ndash;a language that is technically Turing complete and thus can do anything any other Turing complete language can, but is so minimal as to make doing anything worthwhile overly difficult.</p>
-
 <blockquote>
-<ol>
+<ol start="54">
 <li>Beware of the Turing tar-pit in which everything is possible but nothing of interest is easy.
 &ndash; Alan Perlis, <cite><strong><a href="https://en.wikipedia.org/wiki/Epigrams%20on%20Programming">Epigrams on Programming</a></strong></cite></li>
 </ol>
 </blockquote>
-
 <p>To that end, I&rsquo;ve been working on a little something special which I may or may not finish by the end of the month (yes, I know that&rsquo;s tomorrow). But while I was working on it, I put together a Brainf**k (BF) interpreter which I found pretty interesting to play with.</p>
-
 <p>The virtual machine that BF is designed to run on is made of a tape / series of cells, a pointer to a current location on that tape / current cell, and a sequence of instructions (8 plus 1 for debugging):</p>
-
 <table>
 <thead>
 <tr>
@@ -93,165 +89,144 @@
 <th>Move the cell pointer to the right</th>
 </tr>
 </thead>
-
 <tbody>
 <tr>
 <td>&lt;</td>
 <td>Move the cell pointer to the left</td>
 </tr>
-
 <tr>
 <td>+</td>
 <td>Add one to the current cell</td>
 </tr>
-
 <tr>
 <td>-</td>
 <td>Subtract one from the current cell</td>
 </tr>
-
 <tr>
 <td>,</td>
 <td>Read a value and store it in the current cell</td>
 </tr>
-
 <tr>
 <td>.</td>
 <td>Output the value stored in the current cell</td>
 </tr>
-
 <tr>
 <td>[</td>
 <td>If the current cell is 0, jump past the matching ]</td>
 </tr>
-
 <tr>
 <td>]</td>
 <td>If the current cell is not 0, jump back to the matching [</td>
 </tr>
-
 <tr>
 <td>#</td>
 <td><em>DEBUG</em>: Output the current values on the tape</td>
 </tr>
 </tbody>
 </table>
-
 <p>Believe it or not, the first 8 instructions are all that you need to make a fully Turing complete language (just so long as either the tape is unbounded or the values that you can store in each cell are and you have at least 5). There are actually some really interesting proofs (if you&rsquo;re in to that sort of thing) available on the <a title="Esolang: Brainf**k" href="http://esolangs.org/wiki/Brainfuck#Computational_class">Esolang wiki</a>.</p>
-
 <p>There are still a few choices to make if you&rsquo;re going to implement a BF interpreter: specifically how large your tape is, how large each value that you can store in a cell is, and how you treat reading an EOF character. For the sample implementation that I&rsquo;m going to include below, the answers are unbounded, unbounded, and store a 0, although it would be easy enough to implement other options.</p>
-
 <p>Speaking of implementation&hellip;</p>
-
 <p>The first thing to do is set up the system. I&rsquo;ve implemented two versions, either of which will allow the tape to grow in an unbounded manner. You can see the full source for both of them on <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bf.rkt" title="GitHub: BF interpreter in Racket">my GitHub</a> if you&rsquo;d like to follow along.</p>
-
 <p>In this post, I&rsquo;ll be describing the second one that I wrote, which uses two lists for the values on the tape to the left and right, and a value between them for the current cell. For example, if the current tape has the values &hellip; 0 0 1 2 3 4 5 0 0 &hellip; and the pointer is at the 3, then the values of those variables would be:</p>
-
 <table>
 <thead>
 <tr>
 <th>tape-left</th>
-<th>&rsquo;(2 1)</th>
+<th>&lsquo;(2 1)</th>
 </tr>
 </thead>
-
 <tbody>
 <tr>
 <td>tape-cell</td>
 <td>3</td>
 </tr>
-
 <tr>
 <td>tape-right</td>
-<td>&rsquo;(4 5)</td>
+<td>&lsquo;(4 5)</td>
 </tr>
 </tbody>
 </table>
-
 <p>Note how the 0s that stretch off indefinitely in either direction are not stored. I&rsquo;ve made the interface for this somewhat clearer by defining the functions <code>car+</code> and <code>cdr+</code> which will act just as the normal <code>car</code> and <code>cdr</code>, except on <code>null?</code> lists will treat is as an infinite list of 0s.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt;<span style="color:#75715e">; special cdr and car that make infinite lists of 0s</span>
-(<span style="color:#66d9ef">define </span>(cdr+ ls) (<span style="color:#66d9ef">if </span>(null? ls) ls (cdr ls)))
-(<span style="color:#66d9ef">define </span>(car+ ls) (<span style="color:#66d9ef">if </span>(null? ls) <span style="color:#ae81ff">0</span> (car ls)))</code></pre></div>
-<p>With that all out of the way, here&rsquo;s the start of our code. The first thing we need is the main loop:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cdr+</span> ls) (<span style="color:#66d9ef">if </span>(null? ls) ls (cdr ls)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">car+</span> ls) (<span style="color:#66d9ef">if </span>(null? ls) <span style="color:#ae81ff">0</span> (car ls)))
+</code></pre></div><p>With that all out of the way, here&rsquo;s the start of our code. The first thing we need is the main loop:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; loop across the tape </span>
 (<span style="color:#66d9ef">let </span>loop ([pc <span style="color:#ae81ff">0</span>]            <span style="color:#75715e">; current instructions</span>
            [tape-left <span style="color:#f92672">&#39;</span>()]   <span style="color:#75715e">; values on the tape to the left</span>
            [tape-cell <span style="color:#ae81ff">0</span>]     <span style="color:#75715e">; current cell on the tape</span>
            [tape-right <span style="color:#f92672">&#39;</span>()]) <span style="color:#75715e">; values on the tape to the right</span>
-  <span style="color:#f92672">...</span>)</code></pre></div>
-<p>As mentioned, we&rsquo;re keeping track of the current program counter (<code>pc</code>) and the three variables that determine the tape. The tape starts with infinitely many 0s in either direction.</p>
-
+  <span style="color:#f92672">...</span>)
+</code></pre></div><p>As mentioned, we&rsquo;re keeping track of the current program counter (<code>pc</code>) and the three variables that determine the tape. The tape starts with infinitely many 0s in either direction.</p>
 <p>The next step will be to dispatch on each character in the input in turn. We&rsquo;ll use a <code>case</code> statement for this. There&rsquo;s also the code to exit when we reach the end of the input.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; only keep running so long as we have more program to run</span>
-(when (&lt; pc (string-length in))
+(<span style="color:#a6e22e">when</span> (&lt; pc (string-length in))
   <span style="color:#75715e">; dispatch based on the current input</span>
   (<span style="color:#66d9ef">case </span>(string-ref in pc)
-     <span style="color:#f92672">...</span>))</code></pre></div>
-<p>Next, the first two commands which move the current tape pointer either to the left (&lt;) or to the right (&gt;). For these, it&rsquo;s just a matter of using <code>cons</code>, <code>car+</code>, and <code>cdr+</code> to shift a value off one of the tape lists and put the current cell onto the other.</p>
+     <span style="color:#f92672">...</span>))
+</code></pre></div><p>Next, the first two commands which move the current tape pointer either to the left (&lt;) or to the right (&gt;). For these, it&rsquo;s just a matter of using <code>cons</code>, <code>car+</code>, and <code>cdr+</code> to shift a value off one of the tape lists and put the current cell onto the other.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; move the tape pointer to the left</span>
 [(<span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>&lt;)
- (loop (+ pc <span style="color:#ae81ff">1</span>)
-       (cdr+ tape-left)
-       (car+ tape-left)
-       (cons tape-cell tape-right))]</code></pre></div>
-<p>Of course, the command to shift right would be much the same.</p>
-
+ (<span style="color:#a6e22e">loop</span> (+ pc <span style="color:#ae81ff">1</span>)
+       (<span style="color:#a6e22e">cdr+</span> tape-left)
+       (<span style="color:#a6e22e">car+</span> tape-left)
+       (cons tape-cell tape-right))]
+</code></pre></div><p>Of course, the command to shift right would be much the same.</p>
 <p>Next, we have to be able to increment or decrement the current. Since that&rsquo;s just one of the looping variables, the code is also pretty straight forward:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; increment the current cell</span>
 [(<span style="color:#e6db74">#\+</span>)
- (loop (+ pc <span style="color:#ae81ff">1</span>)
+ (<span style="color:#a6e22e">loop</span> (+ pc <span style="color:#ae81ff">1</span>)
        tape-left
        (+ tape-cell <span style="color:#ae81ff">1</span>)
-       tape-right)]</code></pre></div>
-<p>The next two are a little more tricky since I wanted to either deal with numeric or character input. This will be controlled by the parameter <code>current-i/o-mode</code> which will either have the value <code>numeric</code> or <code>unicode</code>. There&rsquo;s a bit of code to choose the correct input and output functions and to deal with <code>eof-object</code>s, but it&rsquo;s still not too bad:</p>
+       tape-right)]
+</code></pre></div><p>The next two are a little more tricky since I wanted to either deal with numeric or character input. This will be controlled by the parameter <code>current-i/o-mode</code> which will either have the value <code>numeric</code> or <code>unicode</code>. There&rsquo;s a bit of code to choose the correct input and output functions and to deal with <code>eof-object</code>s, but it&rsquo;s still not too bad:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; output the current cell</span>
 [(<span style="color:#e6db74">#\.</span>)
- (<span style="color:#66d9ef">case </span>(current-i/o-mode)
-   [(numeric) (display tape-cell) (display <span style="color:#e6db74">&#34; &#34;</span>)]
-   [(unicode) (display (integer-&gt;char tape-cell))]
-   [<span style="color:#66d9ef">else </span>(error <span style="color:#e6db74">&#39;bf</span> (format <span style="color:#e6db74">&#34;invalid i/o mode: ~s&#34;</span> (current-i/o-mode)))])
+ (<span style="color:#66d9ef">case </span>(<span style="color:#a6e22e">current-i/o-mode</span>)
+   [(<span style="color:#a6e22e">numeric</span>) (display tape-cell) (display <span style="color:#e6db74">&#34; &#34;</span>)]
+   [(<span style="color:#a6e22e">unicode</span>) (display (integer-&gt;char tape-cell))]
+   [<span style="color:#66d9ef">else </span>(<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;bf</span> (<span style="color:#a6e22e">format</span> <span style="color:#e6db74">&#34;invalid i/o mode: ~s&#34;</span> (<span style="color:#a6e22e">current-i/o-mode</span>)))])
 
- (loop (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)]
+ (<span style="color:#a6e22e">loop</span> (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)]
 
 <span style="color:#75715e">; input into the current cell</span>
 <span style="color:#75715e">; on eof, write 0</span>
 [(<span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span><span style="color:#f92672">,</span>)
  (<span style="color:#66d9ef">define </span>cin
-   (<span style="color:#66d9ef">case </span>(current-i/o-mode)
-     [(numeric) (read)]
-     [(unicode) (read-char)]
-     [<span style="color:#66d9ef">else </span>(error <span style="color:#e6db74">&#39;bf</span> (format <span style="color:#e6db74">&#34;invalid i/o mode: ~s&#34;</span> (current-i/o-mode)))]))
+   (<span style="color:#66d9ef">case </span>(<span style="color:#a6e22e">current-i/o-mode</span>)
+     [(<span style="color:#a6e22e">numeric</span>) (<span style="color:#a6e22e">read</span>)]
+     [(<span style="color:#a6e22e">unicode</span>) (<span style="color:#a6e22e">read-char</span>)]
+     [<span style="color:#66d9ef">else </span>(<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;bf</span> (<span style="color:#a6e22e">format</span> <span style="color:#e6db74">&#34;invalid i/o mode: ~s&#34;</span> (<span style="color:#a6e22e">current-i/o-mode</span>)))]))
 
- (loop (+ pc <span style="color:#ae81ff">1</span>) 
+ (<span style="color:#a6e22e">loop</span> (+ pc <span style="color:#ae81ff">1</span>) 
        tape-left
-       (cond
+       (<span style="color:#a6e22e">cond</span>
          [(eof-object? cin) <span style="color:#ae81ff">0</span>]
-         [(eq? (current-i/o-mode) <span style="color:#e6db74">&#39;unicode</span>) (char-&gt;integer cin)]
+         [(eq? (<span style="color:#a6e22e">current-i/o-mode</span>) <span style="color:#e6db74">&#39;unicode</span>) (char-&gt;integer cin)]
          [<span style="color:#66d9ef">else </span>cin])
-       tape-right)]</code></pre></div>
-<p>Finally, we come to by far the most powerful part of the language, the branching/looping construct. The code for the two of these is actually pretty similar, but it&rsquo;s still non-trivial to write, basically requiring a loop to find the next <strong>matching</strong> bracket.</p>
+       tape-right)]
+</code></pre></div><p>Finally, we come to by far the most powerful part of the language, the branching/looping construct. The code for the two of these is actually pretty similar, but it&rsquo;s still non-trivial to write, basically requiring a loop to find the next <strong>matching</strong> bracket.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; jump past the matching ] if the cell under the pointer is 0</span>
 [(<span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>[)
  (<span style="color:#66d9ef">if </span>(= tape-cell <span style="color:#ae81ff">0</span>)
      <span style="color:#75715e">; find the matching ]</span>
      (<span style="color:#66d9ef">let </span>bracket-loop ([pc (+ pc <span style="color:#ae81ff">1</span>)] [stk <span style="color:#ae81ff">1</span>])
        (<span style="color:#66d9ef">case </span>(string-ref in pc)
-         [(<span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>[) (bracket-loop (+ pc <span style="color:#ae81ff">1</span>) (+ stk <span style="color:#ae81ff">1</span>))]
+         [(<span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>[) (<span style="color:#a6e22e">bracket-loop</span> (+ pc <span style="color:#ae81ff">1</span>) (+ stk <span style="color:#ae81ff">1</span>))]
          [(<span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>])
           (<span style="color:#66d9ef">if </span>(= stk <span style="color:#ae81ff">1</span>)
-              (loop (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)
-              (bracket-loop (+ pc <span style="color:#ae81ff">1</span>) (- stk <span style="color:#ae81ff">1</span>)))]
+              (<span style="color:#a6e22e">loop</span> (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)
+              (<span style="color:#a6e22e">bracket-loop</span> (+ pc <span style="color:#ae81ff">1</span>) (- stk <span style="color:#ae81ff">1</span>)))]
          [else
-          (bracket-loop (+ pc <span style="color:#ae81ff">1</span>) stk)]))
+          (<span style="color:#a6e22e">bracket-loop</span> (+ pc <span style="color:#ae81ff">1</span>) stk)]))
 
      <span style="color:#75715e">; otherwise, just skip</span>
-     (loop (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right))]</code></pre></div>
-<p>And that&rsquo;s pretty much it. There&rsquo;s still the debugging output, but that&rsquo;s pretty straightforward. If you&rsquo;d like to see it, you can do so <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bf.rkt" title="GitHub: BF interpreter in Racket">on GitHub</a>.</p>
-
+     (<span style="color:#a6e22e">loop</span> (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right))]
+</code></pre></div><p>And that&rsquo;s pretty much it. There&rsquo;s still the debugging output, but that&rsquo;s pretty straightforward. If you&rsquo;d like to see it, you can do so <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bf.rkt" title="GitHub: BF interpreter in Racket">on GitHub</a>.</p>
 <p>All that being said, how does it actually work? Well, all we have is a new function <code>bf</code> that takes a string of BF code and interprets it. So let&rsquo;s try a few examples.</p>
-
 <p>First, how about a simple cat program (copy the input to the output until we get an EOF):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (bf <span style="color:#e6db74">&#34;
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">bf</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">,   read the first character
 </span><span style="color:#e6db74">[   loop while not eof (0)
 </span><span style="color:#e6db74"> .  output the current character we just read
@@ -259,10 +234,10 @@
 </span><span style="color:#e6db74">]
 </span><span style="color:#e6db74">&#34;</span>)
 Hello World!
-Hello World!</code></pre></div>
-<p>That was easy enough, how about a function to add two numbers:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (current-i/o-mode <span style="color:#e6db74">&#39;numeric</span>)
-&gt; (bf <span style="color:#e6db74">&#34;
+Hello World!
+</code></pre></div><p>That was easy enough, how about a function to add two numbers:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">current-i/o-mode</span> <span style="color:#e6db74">&#39;numeric</span>)
+&gt; (<span style="color:#a6e22e">bf</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">,   read the first number into cell 0
 </span><span style="color:#e6db74">&gt;,  read the second number into cell 1
 </span><span style="color:#e6db74">[   loop while cell 1 is not 0
@@ -271,10 +246,10 @@ Hello World!</code></pre></div>
 </span><span style="color:#e6db74">&lt;.  move back to cell 0 and output
 </span><span style="color:#e6db74">&#34;</span>)
 <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">27</span>
-<span style="color:#ae81ff">42</span></code></pre></div>
-<p>Or we can go with the ever-loved Hello World program (original code form the <a href="http://esolangs.org/wiki/Brainfuck#Hello.2C_World.21" title="Esolang Wiki: Brainf**k: Hello World!">Esolang Wiki</a>, comments added by me):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (current-i/o-mode <span style="color:#e6db74">&#39;unicode</span>)
-&gt; (bf <span style="color:#e6db74">&#34;
+<span style="color:#ae81ff">42</span>
+</code></pre></div><p>Or we can go with the ever-loved Hello World program (original code form the <a href="http://esolangs.org/wiki/Brainfuck#Hello.2C_World.21" title="Esolang Wiki: Brainf**k: Hello World!">Esolang Wiki</a>, comments added by me):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">current-i/o-mode</span> <span style="color:#e6db74">&#39;unicode</span>)
+&gt; (<span style="color:#a6e22e">bf</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">&gt;           go to box 1
 </span><span style="color:#e6db74">+++++++++   set box 1 to 9
 </span><span style="color:#e6db74">[           if box 1 is 0 skip ahead
@@ -315,17 +290,18 @@ Hello World!</code></pre></div>
 </span><span style="color:#e6db74">--------.   subtract 8 and output (100 = &#39;d&#39;)
 </span><span style="color:#e6db74">&gt;&gt;+.        go to box 2 (which had 32) and add 1 (33 = &#39;!&#39;) and output
 </span><span style="color:#e6db74">&#34;</span>)
-Hello World!</code></pre></div>
-<p>If you don&rsquo;t want all of the comments, here&rsquo;s just the code:</p>
+Hello World!
+</code></pre></div><p>If you don&rsquo;t want all of the comments, here&rsquo;s just the code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#f92672">&gt;+++++++++[&lt;++++++++&gt;-]&lt;.&gt;+++++++[&lt;++++&gt;</span>
 <span style="color:#f92672">-]&lt;+.+++++++..+++.&gt;&gt;&gt;++++++++[&lt;++++&gt;-]&lt;.</span>
 <span style="color:#f92672">&gt;&gt;&gt;++++++++++[&lt;+++++++++&gt;-]&lt;---.&lt;&lt;&lt;&lt;.+++</span>
-<span style="color:#f92672">.------.--------.&gt;&gt;+.</span></code></pre></div>
-<p>And that&rsquo;s about all I have for today. Hopefully I&rsquo;ll have my own Turing Tarpit up tomorrow (just in time!)</p>
-
-<p>If you&rsquo;d like to download the source code for today (with both this version and my first version using a hash table rather than lists for the tape), you can do so here:
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bf.rkt" title="GitHub: BF interpreter in Racket">BF interpreter</a>
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/hello.bf.rkt" title="GitHub: Hello world in BF">Hello World in BF</a></p></div>
+<span style="color:#f92672">.------.--------.&gt;&gt;+.</span>
+</code></pre></div><p>And that&rsquo;s about all I have for today. Hopefully I&rsquo;ll have my own Turing Tarpit up tomorrow (just in time!)</p>
+<p>If you&rsquo;d like to download the source code for today (with both this version and my first version using a hash table rather than lists for the tape), you can do so here:</p>
+<ul>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bf.rkt" title="GitHub: BF interpreter in Racket">BF interpreter</a></li>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/hello.bf.rkt" title="GitHub: Hello world in BF">Hello World in BF</a></li>
+</ul></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

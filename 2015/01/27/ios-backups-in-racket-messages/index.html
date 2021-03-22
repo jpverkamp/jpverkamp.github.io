@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,17 +74,16 @@
     </header>
 
 	<div class="entry-content"><p>So far we&rsquo;ve <a href="https://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork/">laid the groundwork</a>, loading local iOS backups and parsed out <a href="https://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts/">contacts</a>. Today let&rsquo;s take another step down the rabbit hole and figure out how messages are stored.</p>
-
 <p>Okay, first things first, we need to find the database(s) that messages are stored in. Using the <a href="https://theiphonewiki.com/wiki/ITunes_Backup#Files">same source</a> as last time, we have:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (hash-filename <span style="color:#e6db74">&#34;Library/SMS/sms.db&#34;</span> <span style="color:#e6db74">&#34;HomeDomain&#34;</span>)
-<span style="color:#e6db74">&#34;3d0d7e5fb2ce288813306e4d4636395e047a3d28&#34;</span></code></pre></div>
-<p>Interesting. What&rsquo;s in there?</p>
+<span style="color:#e6db74">&#34;3d0d7e5fb2ce288813306e4d4636395e047a3d28&#34;</span><span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Interesting. What&rsquo;s in there?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">sqlite<span style="color:#f92672">&gt;</span> .tables
 _SqliteDatabaseProperties  chat_message_join
 attachment                 handle
 chat                       message
-chat_handle_join           message_attachment_join</code></pre></div>
-<p>Dang. That&rsquo;s rather less than there was when dealing with contacts. From a first guess, I would say that <code>message</code> contains the text itself, <code>chat</code> is a group of messages with the same people, and <code>*_join</code> are tables that related those. <code>handle</code> could perhaps be a way of relating who is in a chat to the information in contacts from last week. Let&rsquo;s see how I did:</p>
+chat_handle_join           message_attachment_join
+</code></pre></div><p>Dang. That&rsquo;s rather less than there was when dealing with contacts. From a first guess, I would say that <code>message</code> contains the text itself, <code>chat</code> is a group of messages with the same people, and <code>*_join</code> are tables that related those. <code>handle</code> could perhaps be a way of relating who is in a chat to the information in contacts from last week. Let&rsquo;s see how I did:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> message (ROWID INTEGER <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> AUTOINCREMENT,
     guid TEXT <span style="color:#66d9ef">UNIQUE</span> <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
     text TEXT,
@@ -136,9 +135,8 @@ chat_handle_join           message_attachment_join</code></pre></div>
     expire_state INTEGER <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span>,
     message_action_type INTEGER <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span>,
     message_source INTEGER <span style="color:#66d9ef">DEFAULT</span> <span style="color:#ae81ff">0</span>
- );</code></pre></div>
-<p>Oof. Okay, that&rsquo;s more like what I was expecting. In particular though, it looks like we don&rsquo;t care about most of those fields. In particular, I think the interesting fields will be <code>guid</code>, <code>text</code>, <code>handle_id</code> (it looks like we will need the <code>handle</code> table), <code>date</code>, and <code>is_from_me</code>.</p>
-
+ );
+</code></pre></div><p>Oof. Okay, that&rsquo;s more like what I was expecting. In particular though, it looks like we don&rsquo;t care about most of those fields. In particular, I think the interesting fields will be <code>guid</code>, <code>text</code>, <code>handle_id</code> (it looks like we will need the <code>handle</code> table), <code>date</code>, and <code>is_from_me</code>.</p>
 <p>Next, <code>chat</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">sqlite<span style="color:#f92672">&gt;</span> .<span style="color:#66d9ef">schema</span> chat
 <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> chat (ROWID INTEGER <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> AUTOINCREMENT,
@@ -155,15 +153,15 @@ chat_handle_join           message_attachment_join</code></pre></div>
     last_addressed_handle TEXT,
     display_name TEXT,
     group_id TEXT
-);</code></pre></div>
-<p>Hmm. It turns out that we don&rsquo;t actually need anything there. All that we need to know about chats is which ID we need, which because it&rsquo;s a join table, that will be in <code>chat_message_join</code>:</p>
+);
+</code></pre></div><p>Hmm. It turns out that we don&rsquo;t actually need anything there. All that we need to know about chats is which ID we need, which because it&rsquo;s a join table, that will be in <code>chat_message_join</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">sqlite<span style="color:#f92672">&gt;</span> .<span style="color:#66d9ef">schema</span> chat_message_join
 <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> chat_message_join (
     chat_id INTEGER <span style="color:#66d9ef">REFERENCES</span> chat (ROWID) <span style="color:#66d9ef">ON</span> <span style="color:#66d9ef">DELETE</span> <span style="color:#66d9ef">CASCADE</span>,
     message_id INTEGER <span style="color:#66d9ef">REFERENCES</span> message (ROWID) <span style="color:#66d9ef">ON</span> <span style="color:#66d9ef">DELETE</span> <span style="color:#66d9ef">CASCADE</span>,
     <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (chat_id, message_id)
-);</code></pre></div>
-<p>So if we have a chat ID, we can get all of that information:</p>
+);
+</code></pre></div><p>So if we have a chat ID, we can get all of that information:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span>
   message.ROWID <span style="color:#66d9ef">as</span> message_id,
   message.date,
@@ -177,9 +175,8 @@ chat_handle_join           message_attachment_join</code></pre></div>
 <span style="color:#66d9ef">WHERE</span>
   chat_id <span style="color:#f92672">=</span> <span style="color:#f92672">?</span>
   <span style="color:#66d9ef">AND</span> message_id <span style="color:#f92672">=</span> message.ROWID
-<span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> date <span style="color:#66d9ef">ASC</span></code></pre></div>
-<p>The conversion from <code>NULL</code> to an empty string is mostly for later. I know that I&rsquo;ll want to serialize these, most likely to JSON and I don&rsquo;t particularly care about the difference between a <code>NULL</code> entry and an empty string.</p>
-
+<span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> date <span style="color:#66d9ef">ASC</span>
+</code></pre></div><p>The conversion from <code>NULL</code> to an empty string is mostly for later. I know that I&rsquo;ll want to serialize these, most likely to JSON and I don&rsquo;t particularly care about the difference between a <code>NULL</code> entry and an empty string.</p>
 <p>That&rsquo;s a good start. We still need to know who they&rsquo;re from though.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">sqlite<span style="color:#f92672">&gt;</span> .<span style="color:#66d9ef">schema</span> handle
 <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> handle (
@@ -190,9 +187,8 @@ chat_handle_join           message_attachment_join</code></pre></div>
     uncanonicalized_id TEXT,
     <span style="color:#66d9ef">UNIQUE</span> (id,
     service)
-);</code></pre></div>
-<p>Looking at some of the values, it seems that <code>id</code> is either an email or a phone number, while service is either SMS or iMessage (at least in my case). Country might be interesting later, but we&rsquo;ll ignore it for the moment.</p>
-
+);
+</code></pre></div><p>Looking at some of the values, it seems that <code>id</code> is either an email or a phone number, while service is either SMS or iMessage (at least in my case). Country might be interesting later, but we&rsquo;ll ignore it for the moment.</p>
 <p>So let&rsquo;s expand the query to include that information:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span>
   message.ROWID <span style="color:#66d9ef">as</span> message_id,
@@ -210,8 +206,8 @@ chat_handle_join           message_attachment_join</code></pre></div>
   chat_id <span style="color:#f92672">=</span> <span style="color:#f92672">?</span>
   <span style="color:#66d9ef">AND</span> message_id <span style="color:#f92672">=</span> message.ROWID
   <span style="color:#66d9ef">AND</span> handle_id <span style="color:#f92672">=</span> handle.ROWID
-<span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> date <span style="color:#66d9ef">ASC</span></code></pre></div>
-<p>Cool. One last thing. Remember that <code>attachment</code> table? Let&rsquo;s go ahead and add that in, just loading the attachments as a single string:</p>
+<span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> date <span style="color:#66d9ef">ASC</span>
+</code></pre></div><p>Cool. One last thing. Remember that <code>attachment</code> table? Let&rsquo;s go ahead and add that in, just loading the attachments as a single string:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span>
   message.ROWID <span style="color:#66d9ef">as</span> message_id,
   message.date,
@@ -232,8 +228,8 @@ chat_handle_join           message_attachment_join</code></pre></div>
   chat_id <span style="color:#f92672">=</span> <span style="color:#f92672">?</span>
   <span style="color:#66d9ef">AND</span> message_id <span style="color:#f92672">=</span> message.ROWID
   <span style="color:#66d9ef">AND</span> handle_id <span style="color:#f92672">=</span> handle.ROWID
-<span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> date <span style="color:#66d9ef">ASC</span></code></pre></div>
-<p>Okay. They say that <figure><a href="https://www.youtube.com/watch?v=pele5vptVgc">
+<span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> date <span style="color:#66d9ef">ASC</span>
+</code></pre></div><p>Okay. They say that <figure><a href="https://www.youtube.com/watch?v=pele5vptVgc">
     <img src="/embeds/2015/knowing%20is%20half%20the%20battle"/> </a>
 </figure>
 , so having all of the structure and that SQL query should translate pretty directly to code:</p>
@@ -320,9 +316,8 @@ chat_handle_join           message_attachment_join</code></pre></div>
              (message date service sender subject text attachments)))
 
          <span style="color:#75715e">; Create the chat object</span>
-         (chat contacts messages))))))</code></pre></div>
-<p>Theoretically, that should be a fairly direct translation. One interesting bit is the format of <code>date</code>. It&rsquo;s actually a timestamp, but not a normal <a href="https://en.wikipedia.org/wiki/Unix%20timestamp">Unix timestamp</a>. So I have a bit of a <a href="https://en.wikipedia.org/wiki/magic%20number">magic number</a>, but it works correctly for my backups, so we&rsquo;ll just leave it for the moment. Other than that, we use the <code>hash-filename</code> function from last time to get a local path for any <code>attachment</code> and we&rsquo;ve got everything pretty much written.</p>
-
+         (chat contacts messages))))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Theoretically, that should be a fairly direct translation. One interesting bit is the format of <code>date</code>. It&rsquo;s actually a timestamp, but not a normal <a href="https://en.wikipedia.org/wiki/Unix%20timestamp">Unix timestamp</a>. So I have a bit of a <a href="https://en.wikipedia.org/wiki/magic%20number">magic number</a>, but it works correctly for my backups, so we&rsquo;ll just leave it for the moment. Other than that, we use the <code>hash-filename</code> function from last time to get a local path for any <code>attachment</code> and we&rsquo;ve got everything pretty much written.</p>
 <p>And that&rsquo;s really all we need. One thing that would be nice to be able to do though is, given a contact, filter for only the messages with that contact (either directly or in group chats as well):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Get all chats involving a specific chat</span>
 (<span style="color:#66d9ef">define</span> (find-chats-by-contact contact <span style="color:#66d9ef">#:direct?</span> [direct? <span style="color:#66d9ef">#f</span>])
@@ -335,23 +330,21 @@ chat_handle_join           message_attachment_join</code></pre></div>
              <span style="color:#66d9ef">#:when</span> (<span style="color:#66d9ef">if</span> direct?
                         (equal? (list contact) (chat-contacts chat))
                         (member contact (chat-contacts chat))))
-    chat))</code></pre></div>
-<p>If you have an iOS device, check it out. It makes certain things really easy. For example, if I want to have a log of every word that I&rsquo;ve ever said in a conversation with Jenny:</p>
+    chat))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>If you have an iOS device, check it out. It makes certain things really easy. For example, if I want to have a log of every word that I&rsquo;ve ever said in a conversation with Jenny:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (with-backup <span style="color:#e6db74">&#34;86b18...aa36&#34;</span>
     (<span style="color:#66d9ef">for*/list</span> ([chat (in-list (find-chats-by-contact <span style="color:#e6db74">&#34;Jenny&#34;</span> <span style="color:#66d9ef">#:direct?</span> <span style="color:#66d9ef">#t</span>))]
                 [message (in-list (chat-messages chat))])
       (message-text message)))
 <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;Jenny, Jenny, who can I turn to?&#34;</span>
   <span style="color:#e6db74">&#34;You give me somethin&#39; I can hold on to&#34;</span>
-  <span style="color:#e6db74">...</span>)</code></pre></div>
-<p>That&rsquo;s exactly the sort of that prompted this entire thought: the ability to take the fairly opaque structure of iOS backups and dump them into an easily readable / easily diffable format for my own purposes. Sweet.</p>
-
+  <span style="color:#e6db74">...</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>That&rsquo;s exactly the sort of that prompted this entire thought: the ability to take the fairly opaque structure of iOS backups and dump them into an easily readable / easily diffable format for my own purposes. Sweet.</p>
 <p>If you&rsquo;d like to see the entire project, you can do so on GitHub: <a href="https://github.com/jpverkamp/ios-backup">ios-backup</a>. Alternatively, it&rsquo;s set up as a package, so you should be able to install it with <code>raco pkg install</code>. If you do, just import one or more of these:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">require</span> ios-backup
          ios-backup/contacts
-         ios-backup/messages)</code></pre></div>
-<p>Here is a list of all of the posts in this series:</p>
-
+         ios-backup/messages)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Here is a list of all of the posts in this series:</p>
 <div class="ranking">
     <h3 class="title">Posts in <a href="/series/ios-backups-in-racket/">iOS Backups in Racket</a>:</h3>
     <div class="content">

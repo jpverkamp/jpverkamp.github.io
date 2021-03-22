@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,13 +71,9 @@
     </header>
 
 	<div class="entry-content"><p>For a number of years now, I&rsquo;ve been writing down my &lsquo;observations&rsquo;. Essentially, it&rsquo;s a semi-structured set of text files that I keep in Dropbox. One for each day, in a folder by month. I record interesting people I see, things I did worth doing, and things my children did which were adorable.</p>
-
 <p>After a while, I started wanting to look back, so first, I wrote a relatively simple script that would go back through my archives and send me everything I did 1/2/3/4/etc years ago. That worked well enough, but it ended up generating a lot of emails to go through some days. So the second generation is a server that can format those pages and display them as a nice webpage.</p>
-
 <p>The most interesting part perhaps was dealing with the tarballs that I keep the archives in (they&rsquo;re plain text, so they compress very well). I wanted to keep them compressed, so I had to decompress them in memory on the fly.</p>
-
 <p>The general format is one folder per year, a sub folder per month, and a file per day. From time to time, I&rsquo;ll compress the previous months and then each new year, I&rsquo;ll uncompress those and stick them back into a whole year. Originally, I would actually nest the tarballs and I have code to deal with that.</p>
-
 <h1 id="unpacking-tarballs">Unpacking tarballs</h1>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_observations</span>(date):
     ymstr <span style="color:#f92672">=</span> date<span style="color:#f92672">.</span>strftime(<span style="color:#e6db74">&#39;%Y-%m&#39;</span>)
@@ -110,14 +106,11 @@
                             <span style="color:#66d9ef">for</span> ti2 <span style="color:#f92672">in</span> tf2<span style="color:#f92672">.</span>getmembers():
                                 <span style="color:#66d9ef">if</span> ti2<span style="color:#f92672">.</span>name<span style="color:#f92672">.</span>endswith(datestr):
                                     fin <span style="color:#f92672">=</span> tf2<span style="color:#f92672">.</span>extractfile(ti2)
-                                    <span style="color:#66d9ef">return</span> fin<span style="color:#f92672">.</span>read()<span style="color:#f92672">.</span>decode(<span style="color:#e6db74">&#39;utf-8&#39;</span>, <span style="color:#e6db74">&#39;replace&#39;</span>)</code></pre></div>
-<p>The easiest case, just open the file. No problem.</p>
-
+                                    <span style="color:#66d9ef">return</span> fin<span style="color:#f92672">.</span>read()<span style="color:#f92672">.</span>decode(<span style="color:#e6db74">&#39;utf-8&#39;</span>, <span style="color:#e6db74">&#39;replace&#39;</span>)
+</code></pre></div><p>The easiest case, just open the file. No problem.</p>
 <p>But if we have an archive, we&rsquo;ll open it with <code><a href="https://docs.python.org/3/search.html?q=tarfile.open">tarfile.open</a></code>
  in memory and scan through the file. Then <code>tf.extractfile</code> to get a file pointer and read it. Not even that complicated. It&rsquo;s ugly, but it works! I could probably have structured that better.</p>
-
 <h1 id="going-back-in-time">Going back in time</h1>
-
 <p>The next problem is going back in time. I&rsquo;ve always liked infinite generators, and this is a good enough case for one:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">naturals</span>(i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>):
     <span style="color:#66d9ef">while</span> True:
@@ -133,11 +126,9 @@ content <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;&#
             content <span style="color:#f92672">=</span> year_content
         )
     <span style="color:#66d9ef">else</span>:
-        <span style="color:#66d9ef">break</span></code></pre></div>
-<p><code>get_contents</code> takes a number of years ago and calls <code>get_observations</code> with that date.</p>
-
+        <span style="color:#66d9ef">break</span>
+</code></pre></div><p><code>get_contents</code> takes a number of years ago and calls <code>get_observations</code> with that date.</p>
 <h1 id="sending-emails">Sending emails</h1>
-
 <p>Then, we just send the email off in the off in the next to lowest level way you could do it (at least I&rsquo;m not generating the bytes/network connections by hand?):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Generate a plaintext email and send it</span>
 msg <span style="color:#f92672">=</span> email<span style="color:#f92672">.</span>mime<span style="color:#f92672">.</span>text<span style="color:#f92672">.</span>MIMEText(content, _charset <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;utf-8&#39;</span>)
@@ -149,17 +140,12 @@ smtp <span style="color:#f92672">=</span> smtplib<span style="color:#f92672">.</
 smtp<span style="color:#f92672">.</span>ehlo()
 smtp<span style="color:#f92672">.</span>login(os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;EMAIL_USER&#39;</span>], os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;EMAIL_PASS&#39;</span>])
 smtp<span style="color:#f92672">.</span>sendmail(os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;EMAIL_TO&#39;</span>], [os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#39;EMAIL_TO&#39;</span>]], msg<span style="color:#f92672">.</span>as_string())
-smtp<span style="color:#f92672">.</span>quit()</code></pre></div>
-<p>There are certainly better ways to do this. Heck, I have <em>done</em> the better ways to do this. I&rsquo;ll write those up at some point. But it works.</p>
-
+smtp<span style="color:#f92672">.</span>quit()
+</code></pre></div><p>There are certainly better ways to do this. Heck, I have <em>done</em> the better ways to do this. I&rsquo;ll write those up at some point. But it works.</p>
 <p>And that was it. For years, that did it&rsquo;s job.</p>
-
 <p>But then in my recent push to <em>server all the things</em>, I moved on to making an internal server just for my home network.</p>
-
 <h1 id="creating-a-server">Creating a server</h1>
-
 <p>Like I generally do for simple one off servers, I used <a href="https://flask.palletsprojects.com/en/1.1.x/">Flask</a>.</p>
-
 <p>First, a route for specific days:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@app.route</span>(<span style="color:#e6db74">&#39;/&lt;int:year&gt;/&lt;int:month&gt;/&lt;int:day&gt;&#39;</span>)
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_date</span>(year, month, day):
@@ -188,8 +174,8 @@ smtp<span style="color:#f92672">.</span>quit()</code></pre></div>
         entries <span style="color:#f92672">=</span> observations,
         jumplink <span style="color:#f92672">=</span> jumplink,
         is_favorite <span style="color:#f92672">=</span> is_favorite
-    )</code></pre></div>
-<p>Get the date first, sure. Then the observations next. Okay. Then I&rsquo;m doing a bit to break down categories (which are the &lsquo;interesting things&rsquo; / &lsquo;things I did worth doing&rsquo; I mentioned before, the parsing of those isn&rsquo;t super interesting). The <code>jumplink</code> nested function is a bit interesting. Basically, you can call it with a bunch of different options to jump around in time:</p>
+    )
+</code></pre></div><p>Get the date first, sure. Then the observations next. Okay. Then I&rsquo;m doing a bit to break down categories (which are the &lsquo;interesting things&rsquo; / &lsquo;things I did worth doing&rsquo; I mentioned before, the parsing of those isn&rsquo;t super interesting). The <code>jumplink</code> nested function is a bit interesting. Basically, you can call it with a bunch of different options to jump around in time:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html">&lt;<span style="color:#f92672">ul</span> <span style="color:#a6e22e">class</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;button-list&#34;</span>&gt;
     &lt;<span style="color:#f92672">li</span>&gt;{{ jumplink(&#39;today&#39;, today = True) | safe }}&lt;/<span style="color:#f92672">li</span>&gt;
     &lt;<span style="color:#f92672">li</span>&gt;{{ jumplink(&#39;random&#39;, random = True) | safe }}&lt;/<span style="color:#f92672">li</span>&gt;
@@ -202,8 +188,8 @@ smtp<span style="color:#f92672">.</span>quit()</code></pre></div>
     &lt;<span style="color:#f92672">li</span>&gt;{{ jumplink(&#39;last year&#39;, years = -1) | safe }}&lt;/<span style="color:#f92672">li</span>&gt;
     &lt;<span style="color:#f92672">li</span>&gt;{{ jumplink(&#39;next year&#39;, years = 1) | safe }}&lt;/<span style="color:#f92672">li</span>&gt;
     &lt;<span style="color:#f92672">li</span>&gt;&lt;<span style="color:#f92672">a</span> <span style="color:#a6e22e">class</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;button&#34;</span> <span style="color:#a6e22e">href</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;/favorites&#34;</span>&gt;favorites&lt;/<span style="color:#f92672">a</span>&gt;&lt;/<span style="color:#f92672">li</span>&gt;
-&lt;/<span style="color:#f92672">ul</span>&gt;</code></pre></div>
-<p>Then I use all of that information to render the page via a <a href="https://jinja.palletsprojects.com/en/2.11.x/">Jinja template</a>:</p>
+&lt;/<span style="color:#f92672">ul</span>&gt;
+</code></pre></div><p>Then I use all of that information to render the page via a <a href="https://jinja.palletsprojects.com/en/2.11.x/">Jinja template</a>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html">{% if categories %}
     {% for category in categories | sort %}
     &lt;<span style="color:#f92672">h2</span>&gt;{{ category }}&lt;/<span style="color:#f92672">h2</span>&gt;
@@ -223,14 +209,12 @@ smtp<span style="color:#f92672">.</span>quit()</code></pre></div>
     {% endfor %}
 {% else %}
     &lt;<span style="color:#f92672">h2</span>&gt;No entries today (it wasn&#39;t always so)&lt;/<span style="color:#f92672">h2</span>&gt;
-{% endif %}</code></pre></div>
-<p>Pretty nice.</p>
-
+{% endif %}
+</code></pre></div><p>Pretty nice.</p>
 <p>That&rsquo;s really it. As you can see there, I also added some functionality for &lsquo;favoriting&rsquo; specific observations. Those, I&rsquo;ll create an MD5 hash (it&rsquo;s not great from a security perspective, but I&rsquo;m not using it for that). I did do a quick trick to make that function available to Jinja though:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">app <span style="color:#f92672">=</span> flask<span style="color:#f92672">.</span>Flask(__name__)
-app<span style="color:#f92672">.</span>jinja_env<span style="color:#f92672">.</span>globals[<span style="color:#e6db74">&#39;hash&#39;</span>] <span style="color:#f92672">=</span> <span style="color:#66d9ef">lambda</span> el : hashlib<span style="color:#f92672">.</span>md5(str(el)<span style="color:#f92672">.</span>encode())<span style="color:#f92672">.</span>hexdigest()</code></pre></div>
-<p>I thought that was neat. I can change the hash too, just by changing <code>md5</code> for <code>sha256</code> for example. I then store the dates and hashes in a <a href="https://yaml.org/">YAML</a> file in the same observations directory.</p>
-
+app<span style="color:#f92672">.</span>jinja_env<span style="color:#f92672">.</span>globals[<span style="color:#e6db74">&#39;hash&#39;</span>] <span style="color:#f92672">=</span> <span style="color:#66d9ef">lambda</span> el : hashlib<span style="color:#f92672">.</span>md5(str(el)<span style="color:#f92672">.</span>encode())<span style="color:#f92672">.</span>hexdigest()
+</code></pre></div><p>I thought that was neat. I can change the hash too, just by changing <code>md5</code> for <code>sha256</code> for example. I then store the dates and hashes in a <a href="https://yaml.org/">YAML</a> file in the same observations directory.</p>
 <p>A few more helper routes (that go with the <code>jumplink</code> code earlier):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@app.route</span>(<span style="color:#e6db74">&#39;/&#39;</span>)
 <span style="color:#a6e22e">@app.route</span>(<span style="color:#e6db74">&#39;/today&#39;</span>)
@@ -241,9 +225,8 @@ app<span style="color:#f92672">.</span>jinja_env<span style="color:#f92672">.</s
 <span style="color:#a6e22e">@app.route</span>(<span style="color:#e6db74">&#39;/random&#39;</span>)
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_random</span>():
     date <span style="color:#f92672">=</span> random_date()
-    <span style="color:#66d9ef">return</span> get_date(date<span style="color:#f92672">.</span>year, date<span style="color:#f92672">.</span>month, date<span style="color:#f92672">.</span>day)</code></pre></div>
-<p>And we&rsquo;re golden.</p>
-
+    <span style="color:#66d9ef">return</span> get_date(date<span style="color:#f92672">.</span>year, date<span style="color:#f92672">.</span>month, date<span style="color:#f92672">.</span>day)
+</code></pre></div><p>And we&rsquo;re golden.</p>
 <p>I know it&rsquo;s a quick post, but perhaps you&rsquo;ll find something interesting there to use for your own projects!</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -73,11 +73,11 @@
 </div>
     </header>
 
-	<div class="entry-content"><p>Random quick post today<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. Basically, we want to write code to generate what&rsquo;s known as <a href="https://en.wikipedia.org/wiki/Look%20and%20Say%20sequence">Look and Say sequence</a>:</p>
-
+	<div class="entry-content"><p>Random quick post today<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. Basically, we want to write code to generate what&rsquo;s known as <a href="https://en.wikipedia.org/wiki/Look%20and%20Say%20sequence">Look and Say sequence</a>:</p>
 <blockquote>
 <p>To generate a member of the sequence from the previous member, read off the digits of the previous member, counting the number of digits in groups of the same digit. For example:</p>
-
+</blockquote>
+<blockquote>
 <ul>
 <li>1 is read off as &ldquo;one 1&rdquo; or 11.</li>
 <li>11 is read off as &ldquo;two 1s&rdquo; or 21.</li>
@@ -86,93 +86,82 @@
 <li>111221 is read off as &ldquo;three 1s, then two 2s, then one 1&rdquo; or 312211.</li>
 </ul>
 </blockquote>
-
 <p>Originally, my interest in this came from a video on the excellent YouTube video series <a href="https://www.youtube.com/user/numberphile">Numberphile</a>:</p>
 
-
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
-  <iframe src="//www.youtube.com/embed/ea7lJkEhytA" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;" allowfullscreen title="YouTube Video"></iframe>
+  <iframe src="https://www.youtube.com/embed/ea7lJkEhytA" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;" allowfullscreen title="YouTube Video"></iframe>
 </div>
 
-
 <p>Yes, that is <a href="https://en.wikipedia.org/wiki/John%20Conway">John Conway</a> of <a href="https://en.wikipedia.org/wiki/Conway%27s%20Game%20of%20Life">Conway&#39;s Game of Life</a>. It&rsquo;s well worth the watch.</p>
-
 <p>Then this morning, /r/dailyprogrammer has a post: <a href="https://www.reddit.com/r/dailyprogrammer/comments/2ggy30/9152014_challenge180_easy_looknsay/">Challenge #180 [Easy] Look&rsquo;n&rsquo;Say</a>. Seems like it&rsquo;s about time. 😄</p>
-
 <p>So how do we do it? Well, essentially we&rsquo;re going to want a function that can recur down a list of, collecting groups of like numbers. So in the sequence <code>111221</code>, we want to collect that into <code>111 22 1</code>. Then we know how long each sequence is, <code>31 22 11</code>, which is the next number in the sequence. How&rsquo;s that look in code?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Create a look and see list by combining repeated values into count+number</span>
 <span style="color:#75715e">; For example: 111221 becomes 3 1s, 2 2s, 1 1 =&gt; 312211</span>
-(<span style="color:#66d9ef">define </span>(look-and-say ls)
-  (apply
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">look-and-say</span> ls)
+  (<span style="color:#a6e22e">apply</span>
    append
-   (<span style="color:#66d9ef">let </span>count ([ls (rest ls)] [i <span style="color:#ae81ff">1</span>] [v (first ls)])
-     (cond
+   (<span style="color:#66d9ef">let </span>count ([ls (<span style="color:#a6e22e">rest</span> ls)] [i <span style="color:#ae81ff">1</span>] [v (<span style="color:#a6e22e">first</span> ls)])
+     (<span style="color:#a6e22e">cond</span>
        [(null? ls)
         (list (list i v))]
-       [(equal? (first ls) v)
-        (count (rest ls) (+ i <span style="color:#ae81ff">1</span>) v)]
+       [(equal? (<span style="color:#a6e22e">first</span> ls) v)
+        (<span style="color:#a6e22e">count</span> (<span style="color:#a6e22e">rest</span> ls) (+ i <span style="color:#ae81ff">1</span>) v)]
        [else
-        (list* (list i v) (count (rest ls) <span style="color:#ae81ff">1</span> (first ls)))]))))</code></pre></div>
-<p>The counting function will recur down the list, collecting the current count (<code>i</code>) and value (<code>v</code>) as we go. Within that recursion, there are three cases. In the first case (<code>(null? ls)</code>), we&rsquo;ve reached the end. This makes sure that we output the last sequence. In the second (<code>(equal? (first ls) v)</code>), we have a matching number, so increment the current sequence. In the last (<code>else</code>), the number do not match. Output the current count and start a new sequence.</p>
-
+        (<span style="color:#a6e22e">list*</span> (list i v) (<span style="color:#a6e22e">count</span> (<span style="color:#a6e22e">rest</span> ls) <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">first</span> ls)))]))))
+</code></pre></div><p>The counting function will recur down the list, collecting the current count (<code>i</code>) and value (<code>v</code>) as we go. Within that recursion, there are three cases. In the first case (<code>(null? ls)</code>), we&rsquo;ve reached the end. This makes sure that we output the last sequence. In the second (<code>(equal? (first ls) v)</code>), we have a matching number, so increment the current sequence. In the last (<code>else</code>), the number do not match. Output the current count and start a new sequence.</p>
 <p>Let&rsquo;s try it out:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (look-and-say <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">look-and-say</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
-&gt; (look-and-say <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
+&gt; (<span style="color:#a6e22e">look-and-say</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)
-&gt; (look-and-say <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>))
+&gt; (<span style="color:#a6e22e">look-and-say</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
-&gt; (look-and-say <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
-<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)</code></pre></div>
-<p>Looks good. It&rsquo;s annoying to have to keep calling it like that though. What I&rsquo;d really like to see is a Racket <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence">sequence</a></code>
+&gt; (<span style="color:#a6e22e">look-and-say</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
+<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)
+</code></pre></div><p>Looks good. It&rsquo;s annoying to have to keep calling it like that though. What I&rsquo;d really like to see is a Racket <code><a href="http://docs.racket-lang.org/search/index.html?q=sequence">sequence</a></code>
 . Luckily, this is exactly the sort of thing we can make with <code><a href="http://docs.racket-lang.org/search/index.html?q=make-do-sequence">make-do-sequence</a></code>
 :</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Make an infinite sequence that generates look-and-see lists</span>
 <span style="color:#75715e">; Use the current look-and-say list itself as both the key and value</span>
-(<span style="color:#66d9ef">define </span>(in-look-and-say [ls <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>)])
-  (make-do-sequence
-   (thunk
-    (values
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">in-look-and-say</span> [ls <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>)])
+  (<span style="color:#a6e22e">make-do-sequence</span>
+   (<span style="color:#a6e22e">thunk</span>
+    (<span style="color:#a6e22e">values</span>
      identity       <span style="color:#75715e">; Current</span>
      look-and-say   <span style="color:#75715e">; Next</span>
      ls             <span style="color:#75715e">; Initial</span>
-     (const <span style="color:#66d9ef">#t</span>)     <span style="color:#75715e">; Continue from this key/value/pair</span>
-     (const <span style="color:#66d9ef">#t</span>)
-     (const <span style="color:#66d9ef">#t</span>)))))</code></pre></div>
-<p>We&rsquo;re going to use the sequence itself as the &lsquo;count&rsquo;, which makes the first few arguments easy enough. Basically, we use <code>identity</code> to return the current value, and <code>look-and-say</code> (the function we just defined above) as the <code>next</code> function. The last three are easy as well. Since we want an infinite sequence: just always return <code>#t</code>. Done.</p>
-
+     (<span style="color:#a6e22e">const</span> <span style="color:#66d9ef">#t</span>)     <span style="color:#75715e">; Continue from this key/value/pair</span>
+     (<span style="color:#a6e22e">const</span> <span style="color:#66d9ef">#t</span>)
+     (<span style="color:#a6e22e">const</span> <span style="color:#66d9ef">#t</span>)))))
+</code></pre></div><p>We&rsquo;re going to use the sequence itself as the &lsquo;count&rsquo;, which makes the first few arguments easy enough. Basically, we use <code>identity</code> to return the current value, and <code>look-and-say</code> (the function we just defined above) as the <code>next</code> function. The last three are easy as well. Since we want an infinite sequence: just always return <code>#t</code>. Done.</p>
 <p>Given this, we can generate as long a seqence as we want:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Take the first chunk off of a sequence</span>
-(<span style="color:#66d9ef">define </span>(look-and-say* ls i)
-  (for/list ([ls (in-look-and-say ls)]
-             [_  (in-range i)])
-    ls))</code></pre></div>
-<p>Nice. 😄</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">look-and-say*</span> ls i)
+  (<span style="color:#a6e22e">for/list</span> ([ls (<span style="color:#a6e22e">in-look-and-say</span> ls)]
+             [_  (<span style="color:#a6e22e">in-range</span> i)])
+    ls))
+</code></pre></div><p>Nice. 😄</p>
 <p>Or we can plot some interesting information about them, say the length:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (plot-look-and-say length <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">20</span>)</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">plot-look-and-say</span> length <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">20</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/look-and-say-length.png"/> 
 </figure>
 
-
 <p>Or the maximum value:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (plot-look-and-say (curry apply max) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">20</span>)</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">plot-look-and-say</span> (<span style="color:#a6e22e">curry</span> apply max) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">20</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/look-and-say-max.png"/> 
 </figure>
 
-
 <p>It&rsquo;s interesting how it never gets beyond 3 up to 50 steps along the sequence. Unfortunately</p>
-
 <p>Last thing last, pretty pictures!</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Render a look and say sequence to a bitmap, stretching rows to the entire width</span>
 <span style="color:#75715e">; Note: Values are clamped to between 0.0 and 1.0 before conversion. *rolls eyes*</span>
-(<span style="color:#66d9ef">define </span>(render-look-and-say ls bound)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">render-look-and-say</span> ls bound)
   <span style="color:#75715e">; Precalculate the image data; figuring out what dimenions will we need from that</span>
-  (<span style="color:#66d9ef">define </span>ls* (look-and-say* ls bound))
+  (<span style="color:#66d9ef">define </span>ls* (<span style="color:#a6e22e">look-and-say*</span> ls bound))
   (<span style="color:#66d9ef">define </span>height (length ls*))
-  (<span style="color:#66d9ef">define </span>width (length (last ls*)))
+  (<span style="color:#66d9ef">define </span>width (length (<span style="color:#a6e22e">last</span> ls*)))
 
   <span style="color:#75715e">; Precalculated list of colors that are defined to be more visually distinct</span>
   (<span style="color:#66d9ef">define </span>colors
@@ -183,45 +172,41 @@
 
   <span style="color:#75715e">; Generate the image, three channels are RGB</span>
   <span style="color:#75715e">; Note: 4 channels is ARGB, not RGBA *rolls eyes again*</span>
-  (flomap-&gt;bitmap
-   (build-flomap*
+  (<span style="color:#a6e22e">flomap-&gt;bitmap</span>
+   (<span style="color:#a6e22e">build-flomap*</span>
     <span style="color:#ae81ff">3</span> width height
-    (λ (x y)
+    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">x</span> y)
       <span style="color:#75715e">; Pull out the correct row for the data, normalize entries to &#39;stretch&#39; over the entire row</span>
       (<span style="color:#66d9ef">define </span>row (list-ref ls* y))
       (<span style="color:#66d9ef">define </span>row-width (length row))
       (<span style="color:#66d9ef">define </span>index (quotient (* x row-width) width))
-      (displayln <span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>x <span style="color:#f92672">,</span>y <span style="color:#f92672">,</span>index <span style="color:#f92672">,</span>(list-ref row index) <span style="color:#f92672">,</span>row))
+      (<span style="color:#a6e22e">displayln</span> <span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>x <span style="color:#f92672">,</span>y <span style="color:#f92672">,</span>index <span style="color:#f92672">,</span>(list-ref row index) <span style="color:#f92672">,</span>row))
 
-      (vector-ref colors (list-ref row index))))))</code></pre></div>
-<p>That will encode each iteration into a line of the resulting image and each different value into its own color. Something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (scale-to <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span> (render-look-and-say <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">20</span>))</code></pre></div>
-<figure>
+      (vector-ref colors (list-ref row index))))))
+</code></pre></div><p>That will encode each iteration into a line of the resulting image and each different value into its own color. Something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">scale-to</span> <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span> (<span style="color:#a6e22e">render-look-and-say</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">20</span>))
+</code></pre></div><figure>
     <img src="/embeds/2014/look-and-say-20.png"/> 
 </figure>
 
-
 <p>Neat how there&rsquo;s a nice line right down the center. Although that makes sense, given that there are always an even number of values. On thing that I want to check out is those divisions that the video was talking about where two parts of a sequence can diverge and never interact again. Those would be fairly straight forward to find even, just &lsquo;tag&rsquo; each part of the sequence with where it came from. Perhaps another day.</p>
-
 <p>As always, code on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/look-and-say.rkt">look-and-say.rkt</a></p>
-
 <p>As a side note, here&rsquo;s a neat trick:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Create a look and say sequence with regular expressions instead of lists</span>
-(<span style="color:#66d9ef">define </span>(look-and-say/regex str)
-  (regexp-replace*
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">look-and-say/regex</span> str)
+  (<span style="color:#a6e22e">regexp-replace*</span>
    <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;(.)(\\1*)&#34;</span>
    str
-   (λ (match block repeat) (~a (string-length match) block))))</code></pre></div>
-<p>Regular expressions for the win! Of course, it&rsquo;s an order of magnitude slower than the list version, but it&rsquo;s still neat.</p>
-<div class="footnotes">
-
-<hr />
-
+   (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">match</span> block repeat) (<span style="color:#a6e22e">~a</span> (string-length match) block))))
+</code></pre></div><p>Regular expressions for the win! Of course, it&rsquo;s an order of magnitude slower than the list version, but it&rsquo;s still neat.</p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Don&rsquo;t worry, I&rsquo;m still working on both <a href="https://blog.jverkamp.com/2013/02/01/#1gam-chesslike-1.0-did-it/">Chess Puzzles</a> and a followup to <a href="https://blog.jverkamp.com/2014/09/14/procedural-invaders/">Procedural Invaders</a>
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Don&rsquo;t worry, I&rsquo;m still working on both <a href="https://blog.jverkamp.com/2013/02/01/#1gam-chesslike-1.0-did-it/">Chess Puzzles</a> and a followup to <a href="https://blog.jverkamp.com/2014/09/14/procedural-invaders/">Procedural Invaders</a> <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

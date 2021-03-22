@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,9 +71,7 @@
     </header>
 
 	<div class="entry-content"><p>If you have a website that allows users to submit URLs, one of the (many many) things people will try to do to break your site is to submit URLs that use the <code>javascript:</code> protocol (rather than the more expected <code>http:</code> or <code>https:</code>). This is almost never something that you want, since it allows users to submit essentially arbitrary code that other users will run on click in the context of your domain (<a href="https://en.wikipedia.org/wiki/same%20origin%20policy">same origin policy</a>).</p>
-
 <p>So how do you fix it?</p>
-
 <p>First thought would be to try to check the protocol:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">url</span>) =&gt; <span style="color:#f92672">!</span><span style="color:#a6e22e">url</span>.<span style="color:#a6e22e">match</span>(<span style="color:#e6db74">/^javascript:/</span>)
 [Function<span style="color:#f92672">:</span> <span style="color:#a6e22e">safe_url</span>]
@@ -83,27 +81,22 @@
 
 <span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39;javascript:alert(1)&#39;</span>)
 <span style="color:#66d9ef">false</span>
-</code></pre></div>
-<p>Unfortunately, that&rsquo;s easy enough to bypass:</p>
+</code></pre></div><p>Unfortunately, that&rsquo;s easy enough to bypass:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39;Javascript:alert(1)&#39;</span>)
 <span style="color:#66d9ef">true</span>
-</code></pre></div>
-<p>So we make the test case insensitive:</p>
+</code></pre></div><p>So we make the test case insensitive:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span> <span style="color:#f92672">=</span> (<span style="color:#a6e22e">url</span>) =&gt; <span style="color:#f92672">!</span><span style="color:#a6e22e">url</span>.<span style="color:#a6e22e">match</span>(<span style="color:#e6db74">/^javascript/i</span>)
 [Function<span style="color:#f92672">:</span> <span style="color:#a6e22e">safe_url</span>]
 
 <span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39;Javascript:alert(1)&#39;</span>)
 <span style="color:#66d9ef">false</span>
-</code></pre></div>
-<p>But we can still bypass that (note the leading space):</p>
+</code></pre></div><p>But we can still bypass that (note the leading space):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39; javascript:alert(1)&#39;</span>)
 <span style="color:#66d9ef">true</span>
-</code></pre></div>
-<p>It turns out that most browsers are fairly accepting in trying to guess what a developer meant. They&rsquo;ll just trim off the space and run it. You can&rsquo;t just detect the word <code>javascript</code> anywhere though, since this is still perfectly runnable by browsers:</p>
+</code></pre></div><p>It turns out that most browsers are fairly accepting in trying to guess what a developer meant. They&rsquo;ll just trim off the space and run it. You can&rsquo;t just detect the word <code>javascript</code> anywhere though, since this is still perfectly runnable by browsers:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39; &amp;#14;  javascript:alert(1)&#39;</span>)
 <span style="color:#66d9ef">true</span>
-</code></pre></div>
-<p>Long story short, there are a great many ways to bypass regular expression based filters. At least in my opinion, you&rsquo;re far better off not trying that way at all. Instead, use the built in functionality of your language to parse the URL and then use that to check the protocol. There are still a few gotchas (mostly in relative URLs if you want to allow those and protocol relative URLs starting with <code>//...</code>). How would you implement something like that?</p>
+</code></pre></div><p>Long story short, there are a great many ways to bypass regular expression based filters. At least in my opinion, you&rsquo;re far better off not trying that way at all. Instead, use the built in functionality of your language to parse the URL and then use that to check the protocol. There are still a few gotchas (mostly in relative URLs if you want to allow those and protocol relative URLs starting with <code>//...</code>). How would you implement something like that?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">URL</span>(<span style="color:#e6db74">&#39;javascript:alert(1)&#39;</span>)
 <span style="color:#a6e22e">URL</span> {
   <span style="color:#a6e22e">href</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#39;javascript:alert(1)&#39;</span>,
@@ -131,16 +124,14 @@
 
 <span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39; javascript://www.example.com&#39;</span>)
 <span style="color:#66d9ef">false</span>
-</code></pre></div>
-<p>Seems pretty good. Downside is that it blows up on protocol relative and relative URLs:</p>
+</code></pre></div><p>Seems pretty good. Downside is that it blows up on protocol relative and relative URLs:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#e6db74">&#39;//www.example.com&#39;</span>)
 <span style="color:#a6e22e">Thrown</span><span style="color:#f92672">:</span>
 { <span style="color:#a6e22e">TypeError</span> [<span style="color:#a6e22e">ERR_INVALID_URL</span>]<span style="color:#f92672">:</span> <span style="color:#a6e22e">Invalid</span> <span style="color:#a6e22e">URL</span><span style="color:#f92672">:</span> <span style="color:#75715e">//www.example.com
 </span><span style="color:#75715e"></span>    <span style="color:#a6e22e">at</span> <span style="color:#a6e22e">onParseError</span> (<span style="color:#a6e22e">internal</span><span style="color:#f92672">/</span><span style="color:#a6e22e">url</span>.<span style="color:#a6e22e">js</span><span style="color:#f92672">:</span><span style="color:#ae81ff">241</span><span style="color:#f92672">:</span><span style="color:#ae81ff">17</span>)
     <span style="color:#a6e22e">at</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">URL</span> (<span style="color:#a6e22e">internal</span><span style="color:#f92672">/</span><span style="color:#a6e22e">url</span>.<span style="color:#a6e22e">js</span><span style="color:#f92672">:</span><span style="color:#ae81ff">319</span><span style="color:#f92672">:</span><span style="color:#ae81ff">5</span>)
     <span style="color:#a6e22e">at</span> <span style="color:#a6e22e">safe_url</span> (<span style="color:#a6e22e">repl</span><span style="color:#f92672">:</span><span style="color:#ae81ff">1</span><span style="color:#f92672">:</span><span style="color:#ae81ff">27</span>) <span style="color:#a6e22e">input</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#39;//www.example.com&#39;</span> }
-</code></pre></div>
-<p>If you don&rsquo;t want to support those, that&rsquo;s fine. Otherwise, you might need another trick:</p>
+</code></pre></div><p>If you don&rsquo;t want to support those, that&rsquo;s fine. Otherwise, you might need another trick:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">a</span> <span style="color:#f92672">=</span> document.<span style="color:#a6e22e">createElement</span>(<span style="color:#e6db74">&#39;a&#39;</span>)
 <span style="color:#f92672">&lt;</span><span style="color:#a6e22e">a</span><span style="color:#f92672">&gt;</span><span style="color:#960050;background-color:#1e0010">​</span><span style="color:#f92672">&lt;</span><span style="color:#960050;background-color:#1e0010">/a&gt;​</span>
 
@@ -155,19 +146,15 @@
 
 <span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">href</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;/relative&#39;</span>
 <span style="color:#e6db74">&#34;/relative&#34;</span>
-</code></pre></div>
-<p>And in those cases, it will pick up the protocol (and host in the latter case) of the site you&rsquo;re running in. This may or may not (probably won&rsquo;t) work with server side JavaScript though.</p>
-
+</code></pre></div><p>And in those cases, it will pick up the protocol (and host in the latter case) of the site you&rsquo;re running in. This may or may not (probably won&rsquo;t) work with server side JavaScript though.</p>
 <p>So, let&rsquo;s say you want to filter to only allow absolute URLs with <code>http</code> or <code>https</code> protocol. How do you do that in various languages?</p>
-
 <p>JavaScript:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">safe_url</span>(<span style="color:#a6e22e">url</span>) {
     <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">a</span> <span style="color:#f92672">=</span> document.<span style="color:#a6e22e">createElement</span>;
     <span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">href</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">url</span>;
     <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">protocol</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;http&#39;</span> <span style="color:#a6e22e">or</span> <span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">protocol</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;https&#39;</span>;
 }
-</code></pre></div>
-<p>Ruby:</p>
+</code></pre></div><p>Ruby:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">safe_url</span>(url)
     <span style="color:#66d9ef">begin</span>
         parsed_url <span style="color:#f92672">=</span> <span style="color:#66d9ef">URI</span><span style="color:#f92672">.</span>parse(url)
@@ -175,8 +162,8 @@
     <span style="color:#66d9ef">rescue</span> <span style="color:#66d9ef">URI</span><span style="color:#f92672">::</span><span style="color:#66d9ef">InvalidURIError</span>
         <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>
     <span style="color:#66d9ef">end</span>
-<span style="color:#66d9ef">end</span></code></pre></div>
-<p>Go:</p>
+<span style="color:#66d9ef">end</span>
+</code></pre></div><p>Go:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-go" data-lang="go"><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">safeUrl</span>(<span style="color:#a6e22e">url</span> <span style="color:#66d9ef">string</span>) <span style="color:#66d9ef">string</span> {
     <span style="color:#a6e22e">parsedURL</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">url</span>.<span style="color:#a6e22e">Parse</span>(<span style="color:#a6e22e">url</span>)
 
@@ -185,18 +172,17 @@
     } 
     
     <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">parsedURL</span>.<span style="color:#a6e22e">Scheme</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;http&#34;</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">parsedURL</span>.<span style="color:#a6e22e">Scheme</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;https&#34;</span>;
-}</code></pre></div>
-<p>PHP:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"># PHP
-function safe_url($url) {
-    $parsed = parse_url($url);
-    return $parsed[&#39;scheme&#39;] == &#39;http&#39; or $parsed[&#39;scheme&#39;] == &#39;https&#39;;
-}</code></pre></div>
-<p>Python(3):</p>
+}
+</code></pre></div><p>PHP:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"><span style="color:#75715e"># PHP
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">safe_url</span>($url) {
+    $parsed <span style="color:#f92672">=</span> <span style="color:#a6e22e">parse_url</span>($url);
+    <span style="color:#66d9ef">return</span> $parsed[<span style="color:#e6db74">&#39;scheme&#39;</span>] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;http&#39;</span> <span style="color:#66d9ef">or</span> $parsed[<span style="color:#e6db74">&#39;scheme&#39;</span>] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;https&#39;</span>;
+}
+</code></pre></div><p>Python(3):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">safeUrl</span>(url):
-    <span style="color:#66d9ef">return</span> urllib<span style="color:#f92672">.</span>parse<span style="color:#f92672">.</span>urlparse(url)<span style="color:#f92672">.</span>scheme <span style="color:#f92672">in</span> [<span style="color:#e6db74">&#39;http&#39;</span>, <span style="color:#e6db74">&#39;https&#39;</span>]</code></pre></div>
-<p>And believe it or not&hellip; I have used a (slightly more complicated) variation of each and every single one of those in production code. Sometimes you realize just how much of a programming polygot you have to be to do security work&hellip;</p>
-
+    <span style="color:#66d9ef">return</span> urllib<span style="color:#f92672">.</span>parse<span style="color:#f92672">.</span>urlparse(url)<span style="color:#f92672">.</span>scheme <span style="color:#f92672">in</span> [<span style="color:#e6db74">&#39;http&#39;</span>, <span style="color:#e6db74">&#39;https&#39;</span>]
+</code></pre></div><p>And believe it or not&hellip; I have used a (slightly more complicated) variation of each and every single one of those in production code. Sometimes you realize just how much of a programming polygot you have to be to do security work&hellip;</p>
 <p>Fun times.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

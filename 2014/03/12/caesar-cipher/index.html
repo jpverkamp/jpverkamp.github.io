@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -73,31 +73,26 @@
 </div>
     </header>
 
-	<div class="entry-content"><p><a href="http://programmingpraxis.com/2014/03/11/caesar-cipher/">Here&rsquo;s</a> a 5 minute<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup> coding challenge from Programming Praxis:</p>
-
+	<div class="entry-content"><p><a href="http://programmingpraxis.com/2014/03/11/caesar-cipher/">Here&rsquo;s</a> a 5 minute<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup> coding challenge from Programming Praxis:</p>
 <blockquote>
 <p>A <a href="https://en.wikipedia.org/wiki/Caesar%20cipher">caeser cipher</a>, named after Julius Caesar, who either invented the cipher or was an early user of it, is a simple substitution cipher in which letters are substituted at a fixed distance along the alphabet, which cycles; children’s magic decoder rings implement a caesar cipher. Non-alphabetic characters are passed unchanged. For instance, the plaintext PROGRAMMINGPRAXIS is rendered as the ciphertext SURJUDPPLQJSUDALV with a shift of 3 positions.</p>
 </blockquote>
-
 <p><figure>
     <img src="/embeds/2014/caesar-shift.png"/> 
 </figure>
 
 &ndash; Source: <a href="https://en.wikipedia.org/wiki/File:Caesar%20cipher%20left%20shift%20of%203.svg">Wikipedia</a>, public domain</p>
-
 <p>To make it a bit more interesting, I&rsquo;m actually going to be using a different <code>#lang</code> built on Racket: <a href="https://github.com/greghendershott/rackjure">rackjure</a>. If you&rsquo;re running a newer version of Racket (6+), you can install it with either <code>raco pkg install rackjure</code> or with the Package Manger built into DrRacket. Then just change the <code>#lang</code> line at the top of your file to <code>#lang rackjure</code>.</p>
-
 <p>What specifically do I want from Rackjure? The threading macro <code>~&gt;</code>. Basically, it takes a value and &lsquo;threads&rsquo; it as the first argument through a series of functions. The example on the <a href="https://github.com/greghendershott/rackjure">Rackjure GitHub page</a>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (string-&gt;bytes/utf-8 (number-&gt;string (bytes-length <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;foobar&#34;</span>) <span style="color:#ae81ff">16</span>))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">string-&gt;bytes/utf-8</span> (number-&gt;string (<span style="color:#a6e22e">bytes-length</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;foobar&#34;</span>) <span style="color:#ae81ff">16</span>))
 <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;6&#34;</span>
 
-&gt; (~&gt; <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;foobar&#34;</span>
+&gt; (<span style="color:#a6e22e">~&gt;</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;foobar&#34;</span>
       bytes-length
       (number-&gt;string <span style="color:#ae81ff">16</span>)
       string-&gt;bytes/utf-8)
-<span style="color:#f92672">#</span><span style="color:#e6db74">&#34;6&#34;</span></code></pre></div>
-<p>In our case, we want it because we&rsquo;re going to do run through a similar stream of transformations on each character:</p>
-
+<span style="color:#f92672">#</span><span style="color:#e6db74">&#34;6&#34;</span>
+</code></pre></div><p>In our case, we want it because we&rsquo;re going to do run through a similar stream of transformations on each character:</p>
 <ul>
 <li>Convert from a character to a number using <code><a href="http://docs.racket-lang.org/search/index.html?q=char-%3einteger">char-&gt;integer</a></code>
 </li>
@@ -108,62 +103,60 @@
 <li>Convert back to a character with <code><a href="http://docs.racket-lang.org/search/index.html?q=integer-%3echar">integer-&gt;char</a></code>
 </li>
 </ul>
-
 <p>Turn that into Rackjure:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(caesar str n)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">caesar</span> str n)
   (<span style="color:#66d9ef">define </span>A (char-&gt;integer <span style="color:#e6db74">#\A</span>))
-  (list-&gt;string
-   (for/list ([c (in-string str)])
-     (~&gt; c char-&gt;integer (- A) (+ n) (mod <span style="color:#ae81ff">26</span>) (+ A) integer-&gt;char))))</code></pre></div>
-<p>If we didn&rsquo;t have <code>~&gt;</code>, that would look something more like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(caesar str n)
+  (<span style="color:#a6e22e">list-&gt;string</span>
+   (<span style="color:#a6e22e">for/list</span> ([c (<span style="color:#a6e22e">in-string</span> str)])
+     (<span style="color:#a6e22e">~&gt;</span> c char-&gt;integer (- A) (+ n) (<span style="color:#a6e22e">mod</span> <span style="color:#ae81ff">26</span>) (+ A) integer-&gt;char))))
+</code></pre></div><p>If we didn&rsquo;t have <code>~&gt;</code>, that would look something more like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">caesar</span> str n)
   (<span style="color:#66d9ef">define </span>A (char-&gt;integer <span style="color:#e6db74">#\A</span>))
-  (list-&gt;string
-   (for/list ([c (in-string str)])
-     (integer-&gt;char (+ (mod (+ (- (char-&gt;integer c) A) n) <span style="color:#ae81ff">26</span>) A)))))</code></pre></div>
-<p>I&rsquo;ll leave it up to you which of the two styles you think is easier to read&ndash;either the Scheme style inside out, jumping back and forth between the operators and their arguments or the Clojure style left to right<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>.</p>
-
-<p>Unfortunately, Racket doesn&rsquo;t have a <code>mod</code> function built in<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>. You can get one from R6RS though:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(require (only-in rnrs/base-6 mod))</code></pre></div>
-<p>And there you have it. Simple (and almost trivial to crack) encryption:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (caesar <span style="color:#e6db74">&#34;HELLOWORLD&#34;</span> <span style="color:#ae81ff">10</span>)
+  (<span style="color:#a6e22e">list-&gt;string</span>
+   (<span style="color:#a6e22e">for/list</span> ([c (<span style="color:#a6e22e">in-string</span> str)])
+     (integer-&gt;char (+ (<span style="color:#a6e22e">mod</span> (+ (- (char-&gt;integer c) A) n) <span style="color:#ae81ff">26</span>) A)))))
+</code></pre></div><p>I&rsquo;ll leave it up to you which of the two styles you think is easier to read&ndash;either the Scheme style inside out, jumping back and forth between the operators and their arguments or the Clojure style left to right<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>.</p>
+<p>Unfortunately, Racket doesn&rsquo;t have a <code>mod</code> function built in<sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup>. You can get one from R6RS though:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">require</span> (<span style="color:#a6e22e">only-in</span> rnrs/base-6 mod))
+</code></pre></div><p>And there you have it. Simple (and almost trivial to crack) encryption:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">caesar</span> <span style="color:#e6db74">&#34;HELLOWORLD&#34;</span> <span style="color:#ae81ff">10</span>)
 <span style="color:#e6db74">&#34;ROVVYGYBVN&#34;</span>
-&gt; (caesar <span style="color:#e6db74">&#34;ROVVYGYBVN&#34;</span> <span style="color:#ae81ff">-10</span>)
-<span style="color:#e6db74">&#34;HELLOWORLD&#34;</span></code></pre></div>
-<p>We can make it at least a little better though. Let&rsquo;s go ahead and deal with lower case and non-alphabetic characters:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(caesar str n)
+&gt; (<span style="color:#a6e22e">caesar</span> <span style="color:#e6db74">&#34;ROVVYGYBVN&#34;</span> <span style="color:#ae81ff">-10</span>)
+<span style="color:#e6db74">&#34;HELLOWORLD&#34;</span>
+</code></pre></div><p>We can make it at least a little better though. Let&rsquo;s go ahead and deal with lower case and non-alphabetic characters:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">caesar</span> str n)
   (<span style="color:#66d9ef">define </span>A (char-&gt;integer <span style="color:#e6db74">#\A</span>))
   (<span style="color:#66d9ef">define </span>a (char-&gt;integer <span style="color:#e6db74">#\a</span>))
-  (list-&gt;string
-   (for/list ([c (in-string str)])
-     (cond
+  (<span style="color:#a6e22e">list-&gt;string</span>
+   (<span style="color:#a6e22e">for/list</span> ([c (<span style="color:#a6e22e">in-string</span> str)])
+     (<span style="color:#a6e22e">cond</span>
        [(char&lt;=? <span style="color:#e6db74">#\A</span> c <span style="color:#e6db74">#\Z</span>)
-        (~&gt; c char-&gt;integer (- A) (+ n) (mod <span style="color:#ae81ff">26</span>) (+ A) integer-&gt;char)]
+        (<span style="color:#a6e22e">~&gt;</span> c char-&gt;integer (- A) (+ n) (<span style="color:#a6e22e">mod</span> <span style="color:#ae81ff">26</span>) (+ A) integer-&gt;char)]
        [(char&lt;=? <span style="color:#e6db74">#\a</span> c <span style="color:#e6db74">#\z</span>)
-        (~&gt; c char-&gt;integer (- a) (+ n) (mod <span style="color:#ae81ff">26</span>) (+ a) integer-&gt;char)]
+        (<span style="color:#a6e22e">~&gt;</span> c char-&gt;integer (- a) (+ n) (<span style="color:#a6e22e">mod</span> <span style="color:#ae81ff">26</span>) (+ a) integer-&gt;char)]
        [else
-        c]))))</code></pre></div>
-<p>Basically, the only thing that changes is the offset. For upper case letters, we use <code>#\A = 65</code>, for lower case <code>#\a = 97</code>. Anything that&rsquo;s not a letter? We just leave it alone.</p>
-
+        c]))))
+</code></pre></div><p>Basically, the only thing that changes is the offset. For upper case letters, we use <code>#\A = 65</code>, for lower case <code>#\a = 97</code>. Anything that&rsquo;s not a letter? We just leave it alone.</p>
 <p>How&rsquo;s it work?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (caesar <span style="color:#e6db74">&#34;Hello world!&#34;</span> <span style="color:#ae81ff">100</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">caesar</span> <span style="color:#e6db74">&#34;Hello world!&#34;</span> <span style="color:#ae81ff">100</span>)
 <span style="color:#e6db74">&#34;Dahhk sknhz!&#34;</span>
-&gt; (caesar <span style="color:#e6db74">&#34;Dahhk sknhz!&#34;</span> <span style="color:#ae81ff">-100</span>)
-<span style="color:#e6db74">&#34;Hello world!&#34;</span></code></pre></div>
-<p>It&rsquo;s actually such a simple program, you have all of the code right there, but just in case you can also download it from GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/caesar-cipher.rkt">caesar-cipher.rkt</a></p>
-<div class="footnotes">
-
-<hr />
-
+&gt; (<span style="color:#a6e22e">caesar</span> <span style="color:#e6db74">&#34;Dahhk sknhz!&#34;</span> <span style="color:#ae81ff">-100</span>)
+<span style="color:#e6db74">&#34;Hello world!&#34;</span>
+</code></pre></div><p>It&rsquo;s actually such a simple program, you have all of the code right there, but just in case you can also download it from GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/caesar-cipher.rkt">caesar-cipher.rkt</a></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">More or less
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">Exercise to the reader: which do you think I prefer?
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
-<li id="fn:3">At least not one that deals how we need with negative numbers
- <a class="footnote-return" href="#fnref:3"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>More or less <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>Exercise to the reader: which do you think I prefer? <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3" role="doc-endnote">
+<p>At least not one that deals how we need with negative numbers <a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

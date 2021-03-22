@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,9 +74,7 @@
     </header>
 
 	<div class="entry-content"><p>So far we&rsquo;ve read <a href="https://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork/">backup files</a>, parsed <a href="https://blog.jverkamp.com/2015/01/23/ios-backups-in-racket-contacts/">contacts</a>, and parsed <a href="https://blog.jverkamp.com/2015/01/27/ios-backups-in-racket-messages/">messages</a>. Today we&rsquo;re going to dig a little deeper and start parsing apps specifically.</p>
-
 <p>First things first, let&rsquo;s get a list of applications. That&rsquo;s actually in two different files: <code>Manifest.plist</code> and <code>Manifest.mbdb</code>. In versions of iTunes prior to 9.2, <code>Manifest.plist</code> had a nice listing of files, but now it only contains the list of applications. Still, that&rsquo;s a good enough place to start.</p>
-
 <p>Remember back in the <a href="https://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork/">first post</a>? We learned how how to read plist files. In this one in particular, we have a list of installed applications, using their internal names:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">struct</span> app (name plist files) <span style="color:#66d9ef">#:prefab</span> <span style="color:#66d9ef">#:mutable</span>)
 (<span style="color:#66d9ef">struct</span> <span style="color:#66d9ef">file</span> (name path) <span style="color:#66d9ef">#:prefab</span>)
@@ -94,9 +92,8 @@
                                                    <span style="color:#e6db74">&#34;Info.plist&#34;</span>)
                           read-plist/jsexpr)
                         <span style="color:#f92672">&#39;</span><span style="color:#e6db74">|Installed Applications|</span>))])
-       (app name <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span>)))))</code></pre></div>
-<p>For the moment, we&rsquo;ll leave out the plist and files. Eventually, plist is going to store a list of properties stored with the application (all apps have it, even if some don&rsquo;t store anything interesting). Files will store any files stored in the local filesystem for app in specific.</p>
-
+       (app name <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span>)))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>For the moment, we&rsquo;ll leave out the plist and files. Eventually, plist is going to store a list of properties stored with the application (all apps have it, even if some don&rsquo;t store anything interesting). Files will store any files stored in the local filesystem for app in specific.</p>
 <p>So how does it work?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (with-backup <span style="color:#e6db74">&#34;86b1...aa36&#34;</span>
     (map app-name (list-apps)))
@@ -106,9 +103,8 @@
   <span style="color:#e6db74">...</span>
   <span style="color:#e6db74">&#34;com.apple.iBooks&#34;</span>
   <span style="color:#e6db74">&#34;com.apple.MobileSMS&#34;</span>
-  <span style="color:#e6db74">&#34;com.apple.CoreAuthUI&#34;</span>)</code></pre></div>
-<p>Neat. That&rsquo;s pretty much exactly what I was hoping to see.</p>
-
+  <span style="color:#e6db74">&#34;com.apple.CoreAuthUI&#34;</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Neat. That&rsquo;s pretty much exactly what I was hoping to see.</p>
 <p>Next, let&rsquo;s load up the plists. On doing some digging around, it looks like every app will have a file with a path something like <code>AppDomain-Library/Preferences/{app-name}.plist</code>, so let&rsquo;s try to load that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Load an app&#39;s plist file</span>
 (<span style="color:#66d9ef">define</span> (load-plist! app)
@@ -125,8 +121,8 @@
      (<span style="color:#66d9ef">with-handlers</span> ([exn? (<span style="color:#66d9ef">λ</span> (exn)
                              (call-with-input-file plist-path
                                read-plist/jsexpr/binary))])
-       (call-with-input-file plist-path read-plist/jsexpr)))))</code></pre></div>
-<p>Here we run into our first wrinkle. It turns out that while the <code><a href="http://docs.racket-lang.org/search/index.html?q=xml/plist">xml/plist</a></code>
+       (call-with-input-file plist-path read-plist/jsexpr)))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Here we run into our first wrinkle. It turns out that while the <code><a href="http://docs.racket-lang.org/search/index.html?q=xml/plist">xml/plist</a></code>
  file works just fine on the text format plist files, it doesn&rsquo;t deal well with binary ones. And unfortunately most (if not all) apps use the binary format. So we need something that will be able to convert and load those (warning, this is ugly):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Read a plist file as a JSON expression from a binary plist file</span>
 (<span style="color:#66d9ef">define</span> (read-plist/jsexpr/binary [in (current-input-port)])
@@ -156,11 +152,9 @@
 </span><span style="color:#e6db74">  (delete-file temp-filename)
 </span><span style="color:#e6db74">
 </span><span style="color:#e6db74">  ; Read the plist into memory and remove the temporary file
-</span><span style="color:#e6db74">  (call-with-input-string plist-fixed-content read-plist/jsexpr))</span></code></pre></div>
-<p>Basically, if you have iTunes installed, it comes with a program (on Windows, it&rsquo;s built in on OSX) called <code>plutil</code>. That can be used to convert between binary, xml, and json formats of plist files. Unfortunately though, the json format cannont handle a lot of plists, so we have to convert to xml and then use our previous <code>plist-&gt;jsexpr</code> function to convert it.</p>
-
+</span><span style="color:#e6db74">  (call-with-input-string plist-fixed-content read-plist/jsexpr))
+</span></code></pre></div><p>Basically, if you have iTunes installed, it comes with a program (on Windows, it&rsquo;s built in on OSX) called <code>plutil</code>. That can be used to convert between binary, xml, and json formats of plist files. Unfortunately though, the json format cannont handle a lot of plists, so we have to convert to xml and then use our previous <code>plist-&gt;jsexpr</code> function to convert it.</p>
 <p>Other hacks: we have to copy it to a temporary file. It&rsquo;s probably possible to open <code>plutil</code> and pass the file on stdin and read from stdout instead, but this works so we&rsquo;ll leave it as is for the moment.</p>
-
 <p>Finally, another caveat of the <code><a href="http://docs.racket-lang.org/search/index.html?q=xml/plist">xml/plist</a></code>
  library: it breaks on empty string elements. So there&rsquo;s a fix above to take any empty string elements and insert a single space into them. Hacky, but so it goes. When all this is said and done though, we can use this to read in the plist data for an application:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (with-backup <span style="color:#e6db74">&#34;86b18eea28a991f4dd569d1f59737a842e24aa36&#34;</span>
@@ -179,19 +173,17 @@
           (<span style="color:#e6db74">kGIPMicPermissionControllerPermissionRequested</span> <span style="color:#f92672">.</span> <span style="color:#66d9ef">#t</span>)
           (<span style="color:#e6db74">kGMSMapsUserClientLegalCountry</span> <span style="color:#f92672">.</span> <span style="color:#e6db74">&#34;US&#34;</span>)
           (<span style="color:#e6db74">kGMSUserEvent3LoggerSequenceIDKey</span> <span style="color:#f92672">.</span> <span style="color:#ae81ff">8860</span>))
-    <span style="color:#66d9ef">#f</span>)</code></pre></div>
-<p>Whee! For any particular app, I&rsquo;m not entirely sure what I&rsquo;m looking for, but there&rsquo;s a whole heck of a lot of information there.</p>
-
+    <span style="color:#66d9ef">#f</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Whee! For any particular app, I&rsquo;m not entirely sure what I&rsquo;m looking for, but there&rsquo;s a whole heck of a lot of information there.</p>
 <p>But one thing that I was hoping to find is still missing: a list of files for a given application. I was hoping each application would know that, but apparently not. Then again, why would they? A given application probably knows exactly what files it&rsquo;s looking for, it doesn&rsquo;t have to list them.</p>
-
 <p>Fine. I guess I have to read that <code>Manifest.mbdb</code> file.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ xxd <span style="color:#e6db74">&#34;Manifest.mbdb&#34;</span>
 
-<span style="color:#ae81ff">0000000</span>: 6d62 <span style="color:#ae81ff">6462</span> <span style="color:#ae81ff">0500</span> 001d <span style="color:#ae81ff">4170</span> <span style="color:#ae81ff">7044</span> 6f6d <span style="color:#ae81ff">6169</span>  mbdb....AppDomai
-<span style="color:#ae81ff">0000010</span>: 6e2d 636f 6d2e 6f6f 6b6c 612e <span style="color:#ae81ff">7370</span> <span style="color:#ae81ff">6565</span>  n-com.ookla.spee
-<span style="color:#ae81ff">0000020</span>: <span style="color:#ae81ff">6474</span> <span style="color:#ae81ff">6573</span> <span style="color:#ae81ff">7400</span> 00ff ffff ffff ff41 ed00  dtest........A..
-<span style="color:#ae81ff">0000030</span>: <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span> 005f bc00 <span style="color:#ae81ff">0001</span> f500 <span style="color:#ae81ff">0001</span> f554  ....._.........T
-<span style="color:#ae81ff">0000040</span>: <span style="color:#ae81ff">3044</span> <span style="color:#ae81ff">1354</span> <span style="color:#ae81ff">3044</span> <span style="color:#ae81ff">1354</span> <span style="color:#ae81ff">2757</span> c900 <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span>  0D.T0D.T<span style="color:#e6db74">&#39;W......
+0000000: 6d62 <span style="color:#ae81ff">6462</span> <span style="color:#ae81ff">0500</span> 001d <span style="color:#ae81ff">4170</span> <span style="color:#ae81ff">7044</span> 6f6d <span style="color:#ae81ff">6169</span>  mbdb....AppDomai
+0000010: 6e2d 636f 6d2e 6f6f 6b6c 612e <span style="color:#ae81ff">7370</span> <span style="color:#ae81ff">6565</span>  n-com.ookla.spee
+0000020: <span style="color:#ae81ff">6474</span> <span style="color:#ae81ff">6573</span> <span style="color:#ae81ff">7400</span> 00ff ffff ffff ff41 ed00  dtest........A..
+0000030: <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span> 005f bc00 <span style="color:#ae81ff">0001</span> f500 <span style="color:#ae81ff">0001</span> f554  ....._.........T
+0000040: <span style="color:#ae81ff">3044</span> <span style="color:#ae81ff">1354</span> <span style="color:#ae81ff">3044</span> <span style="color:#ae81ff">1354</span> <span style="color:#ae81ff">2757</span> c900 <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span>  0D.T0D.T<span style="color:#e6db74">&#39;W......
 </span><span style="color:#e6db74">0000050: 0000 0000 0000 1d41 7070 446f 6d61 696e  .......AppDomain
 </span><span style="color:#e6db74">0000060: 2d63 6f6d 2e6f 6f6b 6c61 2e73 7065 6564  -com.ookla.speed
 </span><span style="color:#e6db74">0000070: 7465 7374 0007 4c69 6272 6172 79ff ffff  test..Library...
@@ -199,13 +191,10 @@
 </span><span style="color:#e6db74">0000090: f500 0001 f554 2757 c954 2758 1f54 1b09  .....T&#39;</span>W.T<span style="color:#960050;background-color:#1e0010">&#39;</span>X.T..
 00000a0: df00 <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span> <span style="color:#ae81ff">0000</span> 1d41 <span style="color:#ae81ff">7070</span>  .............App
 00000b0: 446f 6d61 696e 2d63 6f6d 2e6f 6f6b 6c61  Domain-com.ookla
-...</code></pre></div>
-<p>Right. That&rsquo;s some sort of binary file. I can see the app names repeated several times for each app, but we&rsquo;re still going to have to figure out the format.</p>
-
-<p>Luckily for me, the format has already been relatively well reverse engineered<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. First, we have a file header, the bytes <code>mbdb\5\0</code>. The last two are probably versioning, but so far as I can tell, it hasn&rsquo;t changed. So we&rsquo;ll skip over that for the moment.</p>
-
+...
+</code></pre></div><p>Right. That&rsquo;s some sort of binary file. I can see the app names repeated several times for each app, but we&rsquo;re still going to have to figure out the format.</p>
+<p>Luckily for me, the format has already been relatively well reverse engineered<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. First, we have a file header, the bytes <code>mbdb\5\0</code>. The last two are probably versioning, but so far as I can tell, it hasn&rsquo;t changed. So we&rsquo;ll skip over that for the moment.</p>
 <p>Next, we have a sequence of records:</p>
-
 <table>
 <thead>
 <tr>
@@ -214,92 +203,77 @@
 <th>Note</th>
 </tr>
 </thead>
-
 <tbody>
 <tr>
 <td>string</td>
 <td>domain</td>
 <td>Used for <code>hash-filename</code></td>
 </tr>
-
 <tr>
 <td>string</td>
 <td>path</td>
 <td></td>
 </tr>
-
 <tr>
 <td>string</td>
 <td>target</td>
 <td>Absolute path, only for <a href="https://en.wikipedia.org/wiki/symlinks">symlinks</a></td>
 </tr>
-
 <tr>
 <td>string</td>
 <td>data hash</td>
 <td>SHA1 (for encrypted files)</td>
 </tr>
-
 <tr>
 <td>string</td>
 <td>encryption key</td>
 <td></td>
 </tr>
-
 <tr>
 <td>uint16</td>
 <td>mode</td>
 <td>file/directory/symlink (see below)</td>
 </tr>
-
 <tr>
 <td>uint64</td>
 <td><a href="https://en.wikipedia.org/wiki/inode">inode</a></td>
 <td></td>
 </tr>
-
 <tr>
 <td>uint32</td>
 <td>user id</td>
 <td></td>
 </tr>
-
 <tr>
 <td>uint32</td>
 <td>group id</td>
 <td></td>
 </tr>
-
 <tr>
 <td>uint32</td>
 <td>last modified</td>
 <td></td>
 </tr>
-
 <tr>
 <td>uint32</td>
 <td>last accessed</td>
 <td></td>
 </tr>
-
 <tr>
 <td>uint32</td>
 <td>created at</td>
 <td></td>
 </tr>
-
 <tr>
 <td>uint64</td>
 <td>file size</td>
 <td>0 for symlinks and directories</td>
 </tr>
-
 <tr>
 <td>uint8</td>
 <td>data protection class</td>
 <td>0 if special (link, directory), otherwise ranges from 1-11</td>
 </tr>
-
 <tr>
 <td>uint8</td>
 <td>property count</td>
@@ -307,9 +281,7 @@
 </tr>
 </tbody>
 </table>
-
 <p>This is then followed by a list of properties:</p>
-
 <table>
 <thead>
 <tr>
@@ -318,14 +290,12 @@
 <th>Note</th>
 </tr>
 </thead>
-
 <tbody>
 <tr>
 <td>string</td>
 <td>name</td>
 <td></td>
 </tr>
-
 <tr>
 <td>string</td>
 <td>value</td>
@@ -333,12 +303,10 @@
 </tr>
 </tbody>
 </table>
-
 <p>That sounds pretty straight forward (relatively speaking). Let&rsquo;s write a function to read it. We want to fill out this structure:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">struct</span> record (domain path hash mode size properties) <span style="color:#66d9ef">#:prefab</span>)
-(<span style="color:#66d9ef">struct</span> property (name value) <span style="color:#66d9ef">#:prefab</span>)</code></pre></div>
-<p>In general LISP style (so far as I understand it), we will write a series of functions named <code>read-*</code>, each of which will read the specified form of data from the current input port. Then, for example, we can have a <code>read-mbdb</code> function, which calls <code>read-record</code>, which in turn has a bunch of calls to either <code>read-uint</code> or <code>read-string</code> followed by zero or more calls to <code>read-property</code>.</p>
-
+(<span style="color:#66d9ef">struct</span> property (name value) <span style="color:#66d9ef">#:prefab</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>In general LISP style (so far as I understand it), we will write a series of functions named <code>read-*</code>, each of which will read the specified form of data from the current input port. Then, for example, we can have a <code>read-mbdb</code> function, which calls <code>read-record</code>, which in turn has a bunch of calls to either <code>read-uint</code> or <code>read-string</code> followed by zero or more calls to <code>read-property</code>.</p>
 <p>Starting at the outermost layer, lets read an entire file. Specifically, we want a function that will read off those 6 header bytes then continuously read records until the end of the file:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Read mdbd records until eof</span>
 (<span style="color:#66d9ef">define</span> (read-mbdb [in (current-input-port)])
@@ -347,8 +315,8 @@
     (<span style="color:#66d9ef">cond</span>
       [(eof-object? (peek-char in)) <span style="color:#f92672">&#39;</span>()]
       [<span style="color:#66d9ef">else</span>
-       (cons (read-record in) (loop))])))</code></pre></div>
-<p>Having that, we need the ability to read an individual record:</p>
+       (cons (read-record in) (loop))])))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Having that, we need the ability to read an individual record:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Read an mbdb record</span>
 (<span style="color:#66d9ef">define</span> (read-record [in (current-input-port)])
 
@@ -385,25 +353,21 @@
 
   (<span style="color:#66d9ef">define</span> hash (hash-filename path domain))
 
-  (record domain path hash mode file-size properties))</code></pre></div>
-<p>Other than the missing functions, one caveat here is the definition of <code>mode</code>. I&rsquo;m not actually sure what&rsquo;s in the other three half bytes, but all we care about is in the first. If it&rsquo;s <code>A</code>, it&rsquo;s a symlink. <code>8</code> is a file; <code>4</code> is a directory. That handles every entry at least on my phone.</p>
-
+  (record domain path hash mode file-size properties))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Other than the missing functions, one caveat here is the definition of <code>mode</code>. I&rsquo;m not actually sure what&rsquo;s in the other three half bytes, but all we care about is in the first. If it&rsquo;s <code>A</code>, it&rsquo;s a symlink. <code>8</code> is a file; <code>4</code> is a directory. That handles every entry at least on my phone.</p>
 <p>Also, you may note that we&rsquo;re not returning all of the data in the records. Honestly, for most of it I just don&rsquo;t need it. It&rsquo;s useful if you&rsquo;re trying to do more interesting things and then write back to the backup, but just to read it? We don&rsquo;t care about user/group ids, et al. It&rsquo;s all there though, with just a tweak. Perhaps I&rsquo;ll figure out a way to pull out the full record if wanted in the future.</p>
-
 <p>Okay, so next, what does it mean to <code>read-uint</code>? Well, we&rsquo;re going to have anywhere from 1 to 8 bytes, which we then need to turn into a single value. That&rsquo;s easy enough doing a base conversion (from essentially base 256 to base 10):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Read size bytes as a big-endian unsigned integer</span>
 (<span style="color:#66d9ef">define</span> (read-uint size [in (current-input-port)])
   (<span style="color:#66d9ef">define</span> b* (read-bytes size in))
   (<span style="color:#66d9ef">for/sum</span> ([i (in-naturals)]
             [b (in-bytes b*)])
-    (* (expt <span style="color:#ae81ff">256</span> (- (bytes-length b*) i <span style="color:#ae81ff">1</span>)) b)))</code></pre></div>
-<p>Cool. That means that all that&rsquo;s left is reading strings. Luckily, they have a nice format. Rather than <a href="https://en.wikipedia.org/wiki/null%20terminated%20strings">null terminated strings</a> a la C/C++, they store first the length of the string (as a <code>uint16</code>) and then that many bytes. There are two caveats though:</p>
-
+    (* (expt <span style="color:#ae81ff">256</span> (- (bytes-length b*) i <span style="color:#ae81ff">1</span>)) b)))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Cool. That means that all that&rsquo;s left is reading strings. Luckily, they have a nice format. Rather than <a href="https://en.wikipedia.org/wiki/null%20terminated%20strings">null terminated strings</a> a la C/C++, they store first the length of the string (as a <code>uint16</code>) and then that many bytes. There are two caveats though:</p>
 <ul>
 <li>If the size is maxed (<code>#xFFFF</code>), it&rsquo;s actually empty</li>
 <li>This same datatype can be either a UTF8 string or raw binary data (try to parse it as a string, fall back to bytes)</li>
 </ul>
-
 <p>Codewise:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Read a length + string, if length if #xFFFF the string is empty</span>
 <span style="color:#75715e">; Note: Sometimes &#39;strings&#39; are actually binary data, return those as bytes</span>
@@ -414,8 +378,8 @@
     [<span style="color:#66d9ef">else</span>
      (<span style="color:#66d9ef">define</span> raw (read-bytes size in))
      (<span style="color:#66d9ef">with-handlers</span> ([exn? (<span style="color:#66d9ef">λ</span> (<span style="color:#66d9ef">_</span>) raw)])
-       (bytes-&gt;string/utf-8 raw))]))</code></pre></div>
-<p>Cool.</p>
+       (bytes-&gt;string/utf-8 raw))]))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Cool.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (with-backup <span style="color:#e6db74">&#34;86b1...aa36&#34;</span>
     (call-with-input-file (build-path (backup-path (current-backup))
                                       <span style="color:#e6db74">&#34;Manifest.mbdb&#34;</span>)
@@ -437,9 +401,8 @@
      (<span style="color:#e6db74">symlink</span> <span style="color:#e6db74">&#34;/private/var/mobile/Library/Preferences/com.apple.PeoplePicker.plist&#34;</span>)
      <span style="color:#ae81ff">0</span>
      ())
-  <span style="color:#e6db74">...</span>)</code></pre></div>
-<p>It&rsquo;s kind of neat how cleanly binary formats can actually be read at least if they&rsquo;re relatively well documented.</p>
-
+  <span style="color:#e6db74">...</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>It&rsquo;s kind of neat how cleanly binary formats can actually be read at least if they&rsquo;re relatively well documented.</p>
 <p>Let&rsquo;s go ahead and add this to the <code>app</code> structure and then write a helper as we have before to find a specific app:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Load the list of files associated with an app</span>
 (<span style="color:#66d9ef">define</span> (load-files! app)
@@ -465,8 +428,8 @@
   (<span style="color:#66d9ef">when</span> (<span style="color:#66d9ef">and</span> app (not (app-plist app))) (load-plist! app))
   (<span style="color:#66d9ef">when</span> (<span style="color:#66d9ef">and</span> app (not (app-files app))) (load-files! app))
 
-  app)</code></pre></div>
-<p>Yes, this does has the disadvantage that if you just <code>list-apps</code>, you won&rsquo;t get the plists and file lists. On the flip side though, this one uses a regex, so you can just search by app name. Most developers (although not all I&rsquo;ve found) will include that as part of their internal name. They take a bit to load though, especially if you have a lot of apps, so I think that&rsquo;s a fair enough trade off. It&rsquo;s still caching <code>Manifest.mbdb</code> though, so at least that only has to be read once:</p>
+  app)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Yes, this does has the disadvantage that if you just <code>list-apps</code>, you won&rsquo;t get the plists and file lists. On the flip side though, this one uses a regex, so you can just search by app name. Most developers (although not all I&rsquo;ve found) will include that as part of their internal name. They take a bit to load though, especially if you have a lot of apps, so I think that&rsquo;s a fair enough trade off. It&rsquo;s still caching <code>Manifest.mbdb</code> though, so at least that only has to be read once:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> mdbd-records-by-backup (make-hash))
 (hash-set! mdbd-records-by-backup <span style="color:#66d9ef">#f</span> <span style="color:#f92672">&#39;</span>())
 
@@ -478,15 +441,11 @@
    (<span style="color:#66d9ef">λ</span> ()
      (call-with-input-file (build-path (backup-path (current-backup))
                                        <span style="color:#e6db74">&#34;Manifest.mbdb&#34;</span>)
-       read-mbdb))))</code></pre></div>
-<p>Once you start digging through these lists, there are some pretty interesting files &hellip; but that will have to wait for another post. This one is already pretty long. I think I&rsquo;ll have at least one more post in this series taking everything I&rsquo;ve done thus far and turning it into an actual backup solution. Keep an eye out!</p>
-
+       read-mbdb))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Once you start digging through these lists, there are some pretty interesting files &hellip; but that will have to wait for another post. This one is already pretty long. I think I&rsquo;ll have at least one more post in this series taking everything I&rsquo;ve done thus far and turning it into an actual backup solution. Keep an eye out!</p>
 <p>The full source thus far (and I&rsquo;ve finally caught up) is on GitHub: <a href="https://github.com/jpverkamp/ios-backup">ios-backup</a>.</p>
-
 <p>If you&rsquo;ve installed <code>ios-backup</code> as a library, you can import these new functions with <code>(require ios-backup/apps)</code> or if you really want to get adventerous <code>(require ios-backup/mbdb)</code>.</p>
-
 <p>Here is a list of all of the posts in this series:</p>
-
 <div class="ranking">
     <h3 class="title">Posts in <a href="/series/ios-backups-in-racket/">iOS Backups in Racket</a>:</h3>
     <div class="content">
@@ -494,15 +453,14 @@
     </div>
 </div>
 
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">initial source: <a href="https://code.google.com/p/iphonebackupbrowser/wiki/MbdbMbdxFormat">iphonebackupbrowser</a>, although some of the details came from elsewhere
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>initial source: <a href="https://code.google.com/p/iphonebackupbrowser/wiki/MbdbMbdxFormat">iphonebackupbrowser</a>, although some of the details came from elsewhere <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

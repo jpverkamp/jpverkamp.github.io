@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,30 +71,21 @@
     </header>
 
 	<div class="entry-content"><p>One problem that has come up a time or two is dealing with email-based domain validation (specifically in this case for the issuance of TLS certificates) on domains that aren&rsquo;t actually configured to receive email. Yes, in a perfect world, it would be easier to switch to DNS-based validation (since we have to have control of the DNS for the domain, we need it later), but let&rsquo;s just assume that&rsquo;s not an option. So, how do we &lsquo;catch&rsquo; the activation email so we can prove we can receive email on that domain?</p>
-
 <p>Basic plan of attack:</p>
-
 <ul>
 <li>Set up or otherwise have a server with a public IP that we can run python on</li>
 <li>Run Python&rsquo;s built in SMTP server to catch emails</li>
 <li>Change DNS so that emails sent to the given domain will go to that server</li>
 <li>Capture the activation email, use the link to validate our domain</li>
 </ul>
-
 <h1 id="set-up-a-server-with-a-public-ip">Set up a server with a public IP</h1>
-
 <p>I&rsquo;m going to skip over this case, since it depends on your specific setup. In our case, we&rsquo;re based in AWS, so I just requested a new <code>t2.nano</code> in a public part of our VPC.</p>
-
-<h1 id="run-python-s-built-in-smtp-server-to-catch-emails">Run Python&rsquo;s built in SMTP server to catch emails</h1>
-
+<h1 id="run-pythons-built-in-smtp-server-to-catch-emails">Run Python&rsquo;s built in SMTP server to catch emails</h1>
 <p>For this part, we could instead have run something more heavyweight&ndash;a full SMTP server. But that&rsquo;s exactly what I&rsquo;m trying to avoid. I&rsquo;ve had to configure those before, it&rsquo;s not the hardest thing I&rsquo;ve ever done, but there are more than enough fiddly bits that I don&rsquo;t want to mess with them. Especially when running the debug server is so easy:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo python -m smtpd -n -c DebuggingServer <span style="color:#ae81ff">0</span>.0.0.0:25</code></pre></div>
-<p>Since we&rsquo;re binding to port 25 (the standard SMTP port), we do need <code>sudo</code> (or to otherwise have root permissions). In theory, we could route a different port at a different level, but for that you&rsquo;d need to have elevated permissions in AWS (or whatever system you&rsquo;re using), so somewhere you&rsquo;re going to just have to assume you have elevated permissions.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo python -m smtpd -n -c DebuggingServer 0.0.0.0:25
+</code></pre></div><p>Since we&rsquo;re binding to port 25 (the standard SMTP port), we do need <code>sudo</code> (or to otherwise have root permissions). In theory, we could route a different port at a different level, but for that you&rsquo;d need to have elevated permissions in AWS (or whatever system you&rsquo;re using), so somewhere you&rsquo;re going to just have to assume you have elevated permissions.</p>
 <p>And that&rsquo;s it. You now have a working SMTP server.</p>
-
 <h1 id="optional-test-that-the-smtp-server-is-working">[optional] Test that the SMTP server is working</h1>
-
 <p>You can test it with TELNET in another prompt (on another machine):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ telnet <span style="color:#f92672">{</span>ip<span style="color:#f92672">}</span> <span style="color:#ae81ff">25</span>
 
@@ -105,34 +96,28 @@
 &gt; DATA
 &gt; Hello world
 &gt; .
-&lt; <span style="color:#ae81ff">250</span> Ok</code></pre></div>
-<p>If you go back to the still open terminal running the debug SMTP server, you should see the message you just sent in the console:</p>
+&lt; <span style="color:#ae81ff">250</span> Ok
+</code></pre></div><p>If you go back to the still open terminal running the debug SMTP server, you should see the message you just sent in the console:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">---------- MESSAGE FOLLOWS ----------
 Hello world
------------- END MESSAGE ------------</code></pre></div>
-<p>One downside, it only writes to standard out. If you want to assume you&rsquo;ll only get a few messages (the activation emails), this is fine. But if you manage to get any spam (and eventually you will), it might be more handy to send the output to a file as well. Normally, you could just use <code>tee</code>, but it seems that this particular library buffers output fairly agressively. No problem. <code>stdbuf</code> to the rescue!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo stdbuf -oL python -m smtpd -n -c DebuggingServer <span style="color:#ae81ff">0</span>.0.0.0:25 | tee mail.log</code></pre></div>
-<h1 id="update-create-dns-records">Update/create DNS records</h1>
-
+------------ END MESSAGE ------------
+</code></pre></div><p>One downside, it only writes to standard out. If you want to assume you&rsquo;ll only get a few messages (the activation emails), this is fine. But if you manage to get any spam (and eventually you will), it might be more handy to send the output to a file as well. Normally, you could just use <code>tee</code>, but it seems that this particular library buffers output fairly agressively. No problem. <code>stdbuf</code> to the rescue!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sudo stdbuf -oL python -m smtpd -n -c DebuggingServer 0.0.0.0:25 | tee mail.log
+</code></pre></div><h1 id="updatecreate-dns-records">Update/create DNS records</h1>
 <p>Now that we have the new SMTP server, we have to tell the world that it can receive email on behalf of our domain. To do that, we need to create a pair of DNS records:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">MX {domain} 10 smtp.{domain}
-A smtp.{domain} {ip}</code></pre></div>
-<p>&lsquo;Why can&rsquo;t you just put the IP address directly in the <code>MX</code> record?&rsquo; you might say. Well, it turns out that the powers that be that set up DNS decided that MX records should resolve to a name and be independent of IPs directly. So they&rsquo;re almost always paired with an <code>A</code> or <code>CNAME</code> (and then an <code>A</code>) record.</p>
-
+A smtp.{domain} {ip}
+</code></pre></div><p>&lsquo;Why can&rsquo;t you just put the IP address directly in the <code>MX</code> record?&rsquo; you might say. Well, it turns out that the powers that be that set up DNS decided that MX records should resolve to a name and be independent of IPs directly. So they&rsquo;re almost always paired with an <code>A</code> or <code>CNAME</code> (and then an <code>A</code>) record.</p>
 <h1 id="optional-verify-that-the-dns-is-set-up-correctly">[optional] Verify that the DNS is set up correctly</h1>
-
 <p>In order to make sure that the DNS changes are propagating correctly, you can test at the command line with <code>dig</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ dig <span style="color:#f92672">{</span>domain<span style="color:#f92672">}</span> MX +short
 <span style="color:#ae81ff">10</span> smtp.<span style="color:#f92672">{</span>domain<span style="color:#f92672">}</span>.
 
 $ dig smtp.<span style="color:#f92672">{</span>domain<span style="color:#f92672">}</span> +short
-<span style="color:#f92672">{</span>IP<span style="color:#f92672">}</span></code></pre></div>
-<p>If you&rsquo;re really thorough, you could also <code>telnet</code> again here, this time to the new domain name <code>smtp.{domain}</code> or even send a test email using your everyday email client. Couldn&rsquo;t hurt. Everything is set up so that could work now.</p>
-
+<span style="color:#f92672">{</span>IP<span style="color:#f92672">}</span>
+</code></pre></div><p>If you&rsquo;re really thorough, you could also <code>telnet</code> again here, this time to the new domain name <code>smtp.{domain}</code> or even send a test email using your everyday email client. Couldn&rsquo;t hurt. Everything is set up so that could work now.</p>
 <h1 id="catch-the-validation-email">Catch the validation email</h1>
-
 <p>Now that email is set up, all that&rsquo;s left is to tell whatever system you&rsquo;re trying to validate your domain to that they should (re)send validation email. It&rsquo;s possible it was waiting to be sent (it was in my case), but if you resend, it should show up more quickly. Then watch the logs on the debug server to see it arrive. You may have to scroll up past an HTML formatted section, but most validation emails should have both an HTML section and a plain text section. Copy that link and you&rsquo;re golden.</p>
-
 <p>And that&rsquo;s it. Validation email without having to configure a &lsquo;real&rsquo; SMTP server. You definitely want to clean up when you&rsquo;re done, removing the new DNS entries, shutting down the server, and (optionally) shutting down the instance that was running it. It&rsquo;s a debug server. Not the sort of thing you want to leave exposed to the public internet. And if you need it again in a year&rsquo;s time to validate the domain again&hellip; well, come right on back to this post. 😄</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

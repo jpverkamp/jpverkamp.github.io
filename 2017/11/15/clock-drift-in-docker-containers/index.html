@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -68,28 +68,24 @@
     </header>
 
 	<div class="entry-content"><p>I was working on a docker container which uses the aws cli to mess around with some autoscaling groups when I got a somewhat strange error:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">A client error <span style="color:#f92672">(</span>SignatureDoesNotMatch<span style="color:#f92672">)</span> occurred when calling the DescribeAutoScalingGroups operation: Signature not yet current: 20171115T012426Z is still later than 20171115T012420Z <span style="color:#f92672">(</span>20171115T011920Z + <span style="color:#ae81ff">5</span> min.<span style="color:#f92672">)</span></code></pre></div>
-<p>Hmm.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">A client error <span style="color:#f92672">(</span>SignatureDoesNotMatch<span style="color:#f92672">)</span> occurred when calling the DescribeAutoScalingGroups operation: Signature not yet current: 20171115T012426Z is still later than 20171115T012420Z <span style="color:#f92672">(</span>20171115T011920Z + <span style="color:#ae81ff">5</span> min.<span style="color:#f92672">)</span>
+</code></pre></div><p>Hmm.</p>
 <p>Are the clocks off?</p>
-
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ date
-Sat Nov <span style="color:#ae81ff">14</span> <span style="color:#ae81ff">21</span>:21:54 EDT <span style="color:#ae81ff">2017</span>
+Sat Nov <span style="color:#ae81ff">14</span> 21:21:54 EDT <span style="color:#ae81ff">2017</span>
 
 $ docker run alpine date
-Sun Nov <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">01</span>:26:58 UTC <span style="color:#ae81ff">2017</span></code></pre></div>
-<p>There&rsquo;s a time zone difference, but that&rsquo;s not a big deal. The big problem is that the clock has drifted just over five minutes&hellip;</p>
-
+Sun Nov <span style="color:#ae81ff">15</span> 01:26:58 UTC <span style="color:#ae81ff">2017</span>
+</code></pre></div><p>There&rsquo;s a time zone difference, but that&rsquo;s not a big deal. The big problem is that the clock has drifted just over five minutes&hellip;</p>
 <p>A bit of Google later shows that it could be a problem with docker-for-mac: <a href="https://github.com/docker/for-mac/issues/1260">https://github.com/docker/for-mac/issues/1260</a>. It seems that the virtual machine that docker is using under the hood is drifting. All that you have to do is set the hardware clock *of the virtual machine.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ docker run --rm --privileged alpine hwclock -s</code></pre></div>
-<p>No output. Let&rsquo;s see if it worked:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ docker run --rm --privileged alpine hwclock -s
+</code></pre></div><p>No output. Let&rsquo;s see if it worked:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ date
-Sat Nov <span style="color:#ae81ff">14</span> <span style="color:#ae81ff">21</span>:23:20 EDT <span style="color:#ae81ff">2017</span>
+Sat Nov <span style="color:#ae81ff">14</span> 21:23:20 EDT <span style="color:#ae81ff">2017</span>
 
 $ docker run alpine date
-Sun Nov <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">01</span>:23:22 UTC <span style="color:#ae81ff">2017</span></code></pre></div>
-<p>Bam. The drift now is due to the time between me running the commands. Nothing else.</p>
-
+Sun Nov <span style="color:#ae81ff">15</span> 01:23:22 UTC <span style="color:#ae81ff">2017</span>
+</code></pre></div><p>Bam. The drift now is due to the time between me running the commands. Nothing else.</p>
 <p>Weird. But fixable.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

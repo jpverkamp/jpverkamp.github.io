@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,97 +74,88 @@
     </header>
 
 	<div class="entry-content"><p>Today&rsquo;s five minute post brought to you via <a href="http://programmingpraxis.com/2014/07/25/number-words/">Programming Praxis</a> / <a href="http://www.careercup.com/question?id=5120347909128192">Career Cup</a>:</p>
-
 <blockquote>
 <p>Given a positive integer, return all the ways that the integer can be represented by letters using the mapping 1 -&gt; A, 2 -&gt; B, …, 26 -&gt; Z. For instance, the number 1234 can be represented by the words ABCD, AWD and LCD.</p>
 </blockquote>
-
 <p>That may look fairly straight forward. Basically, it&rsquo;s a <a href="https://en.wikipedia.org/wiki/parsing">parsing</a>/<a href="https://en.wikipedia.org/wiki/lexing">lexing</a> problem. You take a string as input and break it into a series of tokens (in this case, numbers 1-26); then each token is converted into a letter.</p>
-
 <p>Unfortunately, it&rsquo;s a bit more complicated than that, since the grammar is ambiguous. Taking the example <code>1234</code> from above, should you parse that as <code>1 2 3 4 = ABCD</code>? Or what about <code>1 23 4 = AWD</code>? Or even <code>12 3 4 = LCD</code>? In a nutshell, we have to do all of them. So we want some sort of branching lexer that will try all possible routes.</p>
-
 <p>So let&rsquo;s start with a function that meta-function that can make such a parser:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Make an optional parser</span>
 <span style="color:#75715e">; If the regex matches, add it to each possible next parse</span>
 <span style="color:#75715e">; If it does not, return an empty list (to be appendable)</span>
-(<span style="color:#66d9ef">define </span>(make-parser re)
-  (λ (str)
-    (match str
-      [(regexp re (list _ n rest))
-       (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">make-parser</span> re)
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">str</span>)
+    (<span style="color:#a6e22e">match</span> str
+      [(<span style="color:#a6e22e">regexp</span> re (list _ n rest))
+       (map (<span style="color:#a6e22e">curry</span> ~a (<span style="color:#a6e22e">n-&gt;char</span> n)) (<span style="color:#a6e22e">number-&gt;words</span> rest))]
       [any
-       <span style="color:#f92672">&#39;</span>()])))</code></pre></div>
-<p>Looks a bit funny, (especially since we haven&rsquo;t defined <code>number-&amp;gt;words</code> yet), but basically we try to match the regular expression. If that works, make the recursive call (to <code>number-&amp;gt;words</code>) and then append that string (as a character via <code>n-&gt;char</code>) to each recursive result. If there are no recursive results, this <code>map</code> will return an empty list. Likewise, if the regular expression doesn&rsquo;t match.</p>
-
+       <span style="color:#f92672">&#39;</span>()])))
+</code></pre></div><p>Looks a bit funny, (especially since we haven&rsquo;t defined <code>number-&amp;gt;words</code> yet), but basically we try to match the regular expression. If that works, make the recursive call (to <code>number-&amp;gt;words</code>) and then append that string (as a character via <code>n-&gt;char</code>) to each recursive result. If there are no recursive results, this <code>map</code> will return an empty list. Likewise, if the regular expression doesn&rsquo;t match.</p>
 <p>Next step, write the two parsers. We want to parse either a single digit number or a two digit number:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Create parsers for valid 1 digit and 2 digit letter numbers</span>
-(<span style="color:#66d9ef">define </span>parse-1 (make-parser <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;([1-9])(.*)&#34;</span>))
-(<span style="color:#66d9ef">define </span>parse-2 (make-parser <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;(1[0-9]|2[0-6])(.*)&#34;</span>))</code></pre></div>
-<p>That&rsquo;s what makes the ambiguity the most interesting. If only <code>0</code> were a valid digit&hellip; As it is, there are four possible cases (and these two functions handle them all!):</p>
-
+(<span style="color:#66d9ef">define </span>parse-1 (<span style="color:#a6e22e">make-parser</span> <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;([1-9])(.*)&#34;</span>))
+(<span style="color:#66d9ef">define </span>parse-2 (<span style="color:#a6e22e">make-parser</span> <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;(1[0-9]|2[0-6])(.*)&#34;</span>))
+</code></pre></div><p>That&rsquo;s what makes the ambiguity the most interesting. If only <code>0</code> were a valid digit&hellip; As it is, there are four possible cases (and these two functions handle them all!):</p>
 <ul>
 <li><code>str</code> starts with 1 and a digit 0-9, parse both</li>
 <li><code>str</code> starts with 2 and a digit 0-6, parse both</li>
 <li><code>str</code> starts with 2 and a digit 7-9, parse 2 digits only</li>
 <li><code>str</code> starts with 3-9, parse 1 digit only</li>
 </ul>
-
 <p>And finally, try both:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Base case, so we can stop eventually</span>
 (<span style="color:#66d9ef">if </span>(equal? str <span style="color:#e6db74">&#34;&#34;</span>)
     <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;&#34;</span>)
-    (append (parse-1 str) (parse-2 str)))</code></pre></div>
-<p>The base case looks a bit funny, since you might assume that if neither case matches we&rsquo;ll get there. That&rsquo;s the difference between the empty list <code>'()</code> and the list containing just an empty string <code>'(&quot;&quot;)</code>. In the latter, there&rsquo;s nothing to map against, ergo necessary.</p>
-
+    (append (<span style="color:#a6e22e">parse-1</span> str) (<span style="color:#a6e22e">parse-2</span> str)))
+</code></pre></div><p>The base case looks a bit funny, since you might assume that if neither case matches we&rsquo;ll get there. That&rsquo;s the difference between the empty list <code>'()</code> and the list containing just an empty string <code>'(&quot;&quot;)</code>. In the latter, there&rsquo;s nothing to map against, ergo necessary.</p>
 <p>And then all we need is the <code>n-&gt;char</code> function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Convert a number 1-26 to a letter A-Z</span>
-(<span style="color:#66d9ef">define </span>(n-&gt;char n) (integer-&gt;char (+ <span style="color:#ae81ff">64</span> (string-&gt;number n))))</code></pre></div>
-<p>And that&rsquo;s it. Put it all together:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">n-&gt;char</span> n) (integer-&gt;char (+ <span style="color:#ae81ff">64</span> (string-&gt;number n))))
+</code></pre></div><p>And that&rsquo;s it. Put it all together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Given 1-26 mapping to A-Z, determine all possible words represented by a number</span>
 <span style="color:#75715e">; Correctly resolve ambiguities where 1234 -&gt; 1 2 3 4 = ABCD / 1 23 4 -&gt; AWD / 12 3 4 -&gt; LCD</span>
-(<span style="color:#66d9ef">define </span>(number-&gt;words str)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">number-&gt;words</span> str)
   <span style="color:#75715e">; Convert a number 1-26 to a letter A-Z</span>
-  (<span style="color:#66d9ef">define </span>(n-&gt;char n) (integer-&gt;char (+ <span style="color:#ae81ff">64</span> (string-&gt;number n))))
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">n-&gt;char</span> n) (integer-&gt;char (+ <span style="color:#ae81ff">64</span> (string-&gt;number n))))
 
   <span style="color:#75715e">; Make an optional parser</span>
   <span style="color:#75715e">; If the regex matches, add it to each possible next parse</span>
   <span style="color:#75715e">; If it does not, return an empty list (to be appendable)</span>
-  (<span style="color:#66d9ef">define </span>(make-parser re)
-    (λ (str)
-      (match str
-        [(regexp re (list _ n rest))
-         (map (curry ~a (n-&gt;char n)) (number-&gt;words rest))]
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">make-parser</span> re)
+    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">str</span>)
+      (<span style="color:#a6e22e">match</span> str
+        [(<span style="color:#a6e22e">regexp</span> re (list _ n rest))
+         (map (<span style="color:#a6e22e">curry</span> ~a (<span style="color:#a6e22e">n-&gt;char</span> n)) (<span style="color:#a6e22e">number-&gt;words</span> rest))]
         [any
          <span style="color:#f92672">&#39;</span>()])))
 
   <span style="color:#75715e">; Create parsers for valid 1 digit and 2 digit letter numbers</span>
-  (<span style="color:#66d9ef">define </span>parse-1 (make-parser <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;([1-9])(.*)&#34;</span>))
-  (<span style="color:#66d9ef">define </span>parse-2 (make-parser <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;(1[0-9]|2[0-6])(.*)&#34;</span>))
+  (<span style="color:#66d9ef">define </span>parse-1 (<span style="color:#a6e22e">make-parser</span> <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;([1-9])(.*)&#34;</span>))
+  (<span style="color:#66d9ef">define </span>parse-2 (<span style="color:#a6e22e">make-parser</span> <span style="color:#f92672">#</span>px<span style="color:#e6db74">&#34;(1[0-9]|2[0-6])(.*)&#34;</span>))
 
   <span style="color:#75715e">; Base case, so we can stop eventually</span>
   (<span style="color:#66d9ef">if </span>(equal? str <span style="color:#e6db74">&#34;&#34;</span>)
       <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;&#34;</span>)
-      (append (parse-1 str) (parse-2 str))))</code></pre></div>
-<p>Let&rsquo;s give it a try:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (number-&gt;words <span style="color:#e6db74">&#34;1234&#34;</span>)
+      (append (<span style="color:#a6e22e">parse-1</span> str) (<span style="color:#a6e22e">parse-2</span> str))))
+</code></pre></div><p>Let&rsquo;s give it a try:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">number-&gt;words</span> <span style="color:#e6db74">&#34;1234&#34;</span>)
 <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;ABCD&#34;</span> <span style="color:#e6db74">&#34;AWD&#34;</span> <span style="color:#e6db74">&#34;LCD&#34;</span>)
 
-&gt; (number-&gt;words <span style="color:#e6db74">&#34;8675309&#34;</span>)
+&gt; (<span style="color:#a6e22e">number-&gt;words</span> <span style="color:#e6db74">&#34;8675309&#34;</span>)
 <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;HFGECI&#34;</span>)
 
-&gt; (length (number-&gt;words <span style="color:#e6db74">&#34;85121215231518124&#34;</span>))
+&gt; (length (<span style="color:#a6e22e">number-&gt;words</span> <span style="color:#e6db74">&#34;85121215231518124&#34;</span>))
 
 <span style="color:#ae81ff">1181</span>
 
-&gt; (number-&gt;words <span style="color:#e6db74">&#34;85121215231518124&#34;</span>)
-<span style="color:#f92672">&#39;</span>(<span style="color:#f92672">...</span> <span style="color:#e6db74">&#34;HELLOWORLD&#34;</span> <span style="color:#f92672">...</span>)</code></pre></div>
-<p>I could claim that I just happen to know the number code for <code>HELLOWORLD</code>, but really I wrote a quick inverse function:</p>
+&gt; (<span style="color:#a6e22e">number-&gt;words</span> <span style="color:#e6db74">&#34;85121215231518124&#34;</span>)
+<span style="color:#f92672">&#39;</span>(<span style="color:#f92672">...</span> <span style="color:#e6db74">&#34;HELLOWORLD&#34;</span> <span style="color:#f92672">...</span>)
+</code></pre></div><p>I could claim that I just happen to know the number code for <code>HELLOWORLD</code>, but really I wrote a quick inverse function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Convert words back to numbers</span>
-(<span style="color:#66d9ef">define </span>(words-&gt;number str)
-  (<span style="color:#66d9ef">define </span>(char-&gt;n c) (number-&gt;string (- (char-&gt;integer c) <span style="color:#ae81ff">64</span>)))
-  (apply ~a (for/list ([c (in-string str)]) (char-&gt;n c))))</code></pre></div>
-<p>Shiny!</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">words-&gt;number</span> str)
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">char-&gt;n</span> c) (number-&gt;string (- (char-&gt;integer c) <span style="color:#ae81ff">64</span>)))
+  (apply ~a (<span style="color:#a6e22e">for/list</span> ([c (<span style="color:#a6e22e">in-string</span> str)]) (<span style="color:#a6e22e">char-&gt;n</span> c))))
+</code></pre></div><p>Shiny!</p>
 <p>Code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/number-words.rkt">number-words.rkt</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

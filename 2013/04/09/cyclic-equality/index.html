@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,168 +74,158 @@
     </header>
 
 	<div class="entry-content"><p>In <a title="Cyclic equality on Programming Praxis" href="http://programmingpraxis.com/2013/04/09/cyclic-equality/">today&rsquo;s post</a> from Programming Praxis, the goal is to check if two cyclic lists are equal. So if you have the cycles <code>↻(1 2 3 4 5)</code> and <code>↻(3 4 5 1 2)</code>, they&rsquo;re equal. Likewise, <code>↻(1 2 2 1)</code> and <code>↻(2 1 1 2)</code> are equal. But <code>↻(1 2 3 4)</code> and <code>↻(1 2 3 5)</code> are not since they have different elements while <code>↻(1 1 1)</code> and <code>↻(1 1 1 1)</code> aren&rsquo;t since they have different elements.</p>
-
 <p>Basically, there are two ways that you can solve this problem. First, you actually use the cyclic structure and recursively check each start in one list for a matching cycle in the other. Alternatively, so long as the lengths are equal you can just double one list and search for the other as a subset. We&rsquo;ll go ahead and code up both.</p>
-
 <p>First, we want to write a semi-straight forward comparison. The function will take two lists. It will recur across each in both for a start and loop in the second until either a match is confirmed or not. One thing that I want to do is make a cycle structure. We could use mutation to set the last <code>cdr</code>/<code>tail</code> of the list to the head, but instead I&rsquo;ll make the following structure:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Store a cycle as the current head and original (reset) head</span>
-(define-struct cycle (current original))
+(<span style="color:#a6e22e">define-struct</span> cycle (<span style="color:#a6e22e">current</span> original))
 
 <span style="color:#75715e">; Convert a list to a cycle</span>
-(<span style="color:#66d9ef">define </span>(list-&gt;cycle ls)
-  (make-cycle ls ls))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">list-&gt;cycle</span> ls)
+  (<span style="color:#a6e22e">make-cycle</span> ls ls))
 
 <span style="color:#75715e">; Convert a cycle to a list</span>
-(<span style="color:#66d9ef">define </span>(cycle-&gt;list c)
-  (cycle-take (cycle-length c) c))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-&gt;list</span> c)
+  (<span style="color:#a6e22e">cycle-take</span> (<span style="color:#a6e22e">cycle-length</span> c) c))
 
 <span style="color:#75715e">; Return the first item of a cycle</span>
-(<span style="color:#66d9ef">define </span>(cycle-head c)
-  (<span style="color:#66d9ef">if </span>(null? (cycle-current c))
-      (car (cycle-original c))
-      (car (cycle-current c))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-head</span> c)
+  (<span style="color:#66d9ef">if </span>(null? (<span style="color:#a6e22e">cycle-current</span> c))
+      (car (<span style="color:#a6e22e">cycle-original</span> c))
+      (car (<span style="color:#a6e22e">cycle-current</span> c))))
 
 <span style="color:#75715e">; Return all but the first item of a cycle</span>
-(<span style="color:#66d9ef">define </span>(cycle-tail c)
-  (<span style="color:#66d9ef">if </span>(null? (cycle-current c))
-      (make-cycle (cdr (cycle-original c)) (cycle-original c))
-      (make-cycle (cdr (cycle-current c)) (cycle-original c))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-tail</span> c)
+  (<span style="color:#66d9ef">if </span>(null? (<span style="color:#a6e22e">cycle-current</span> c))
+      (<span style="color:#a6e22e">make-cycle</span> (cdr (<span style="color:#a6e22e">cycle-original</span> c)) (<span style="color:#a6e22e">cycle-original</span> c))
+      (<span style="color:#a6e22e">make-cycle</span> (cdr (<span style="color:#a6e22e">cycle-current</span> c)) (<span style="color:#a6e22e">cycle-original</span> c))))
 
 <span style="color:#75715e">; Get the length of a cycle</span>
-(<span style="color:#66d9ef">define </span>(cycle-length c)
-  (length (cycle-original c)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-length</span> c)
+  (length (<span style="color:#a6e22e">cycle-original</span> c)))
 
 <span style="color:#75715e">; Take the first n items from a cycle</span>
-(<span style="color:#66d9ef">define </span>(cycle-take n c)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-take</span> n c)
   (<span style="color:#66d9ef">let </span>loop ([i <span style="color:#ae81ff">0</span>] [c c])
     (<span style="color:#66d9ef">if </span>(= i n)
         <span style="color:#f92672">&#39;</span>()
-        (cons (cycle-head c) (loop (+ i <span style="color:#ae81ff">1</span>) (cycle-tail c))))))
+        (cons (<span style="color:#a6e22e">cycle-head</span> c) (<span style="color:#a6e22e">loop</span> (+ i <span style="color:#ae81ff">1</span>) (<span style="color:#a6e22e">cycle-tail</span> c))))))
 
 <span style="color:#75715e">; Test if a cycle is about to reset</span>
-(<span style="color:#66d9ef">define </span>(cycle-reset? c)
-  (null? (cycle-current c)))</code></pre></div>
-<p>Essentially, we&rsquo;ll keep a pointer to the original list and reset when the current pointer runs out. All of this is of course transparent to anyone using the API, so we could switch it out for another (using a vector and a current pointer for example) if we wanted. The most useful function yet potentially non-standard function is <code>cycle-reset?</code>. Essentially, it fills what would have been <code>cycle-null?</code>, except a cycle will never be null. This tests when we&rsquo;re about to reset to the beginning of the cycle.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-reset?</span> c)
+  (null? (<span style="color:#a6e22e">cycle-current</span> c)))
+</code></pre></div><p>Essentially, we&rsquo;ll keep a pointer to the original list and reset when the current pointer runs out. All of this is of course transparent to anyone using the API, so we could switch it out for another (using a vector and a current pointer for example) if we wanted. The most useful function yet potentially non-standard function is <code>cycle-reset?</code>. Essentially, it fills what would have been <code>cycle-null?</code>, except a cycle will never be null. This tests when we&rsquo;re about to reset to the beginning of the cycle.</p>
 <p>There are a bunch of unit tests in the <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/cycle-equality.rkt" title="cycle equality source on GitHub">source on GitHub</a>, but reset assured it works.</p>
-
 <p>Now that we have that, the function it relatively straight forward:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Test if two cycles are equal</span>
-(<span style="color:#66d9ef">define </span>(cycle-equal? c1 c2)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-equal?</span> c1 c2)
   <span style="color:#75715e">; Check the lengths first</span>
-  (<span style="color:#66d9ef">define </span>len (cycle-length c1))
-  (<span style="color:#66d9ef">and </span>(= len (cycle-length c2))
+  (<span style="color:#66d9ef">define </span>len (<span style="color:#a6e22e">cycle-length</span> c1))
+  (<span style="color:#66d9ef">and </span>(= len (<span style="color:#a6e22e">cycle-length</span> c2))
        (<span style="color:#66d9ef">let </span>loop ([ci1 c1] [ci2 c2])
-         (cond
+         (<span style="color:#a6e22e">cond</span>
            <span style="color:#75715e">; No matches found</span>
-           [(cycle-reset? ci1)
+           [(<span style="color:#a6e22e">cycle-reset?</span> ci1)
             <span style="color:#66d9ef">#f</span>]
            <span style="color:#75715e">; No match found for this start in c1</span>
            <span style="color:#75715e">; Advance c1, reset c2</span>
-           [(cycle-reset? ci2)
-            (loop (cycle-tail ci1) c2)]
+           [(<span style="color:#a6e22e">cycle-reset?</span> ci2)
+            (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">cycle-tail</span> ci1) c2)]
            <span style="color:#75715e">; Match found at the current element!</span>
-           [(equal? (cycle-take len ci1)
-                    (cycle-take len ci2))
+           [(equal? (<span style="color:#a6e22e">cycle-take</span> len ci1)
+                    (<span style="color:#a6e22e">cycle-take</span> len ci2))
             <span style="color:#66d9ef">#t</span>]
            <span style="color:#75715e">; Otherwise, no match, advance c2</span>
            [else
-            (loop ci1 (cycle-tail ci2))]))))</code></pre></div>
-<p>Theoretically, the comments should be pretty straight forward. For each starting pair, test if we have matching cycles using <code>cycle-take</code>. That could bail out early to make the code more efficient, but at the cost of being rather less clean. Really, if you wanted to make this code efficient you&rsquo;d most likely use a vector and a head pointer anyways.</p>
-
+            (<span style="color:#a6e22e">loop</span> ci1 (<span style="color:#a6e22e">cycle-tail</span> ci2))]))))
+</code></pre></div><p>Theoretically, the comments should be pretty straight forward. For each starting pair, test if we have matching cycles using <code>cycle-take</code>. That could bail out early to make the code more efficient, but at the cost of being rather less clean. Really, if you wanted to make this code efficient you&rsquo;d most likely use a vector and a head pointer anyways.</p>
 <p>And here we have a few tests:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)))
 <span style="color:#66d9ef">#t</span>
-&gt; (cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))
+&gt; (<span style="color:#a6e22e">cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))
 <span style="color:#66d9ef">#t</span>
-&gt; (cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))
+&gt; (<span style="color:#a6e22e">cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)))
 <span style="color:#66d9ef">#t</span>
-&gt; (cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)))
+&gt; (<span style="color:#a6e22e">cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)))
 <span style="color:#66d9ef">#f</span>
-&gt; (cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>)))
-<span style="color:#66d9ef">#f</span></code></pre></div>
-<p>The next solution is a bit more straight forward if not quite as efficient. Essentially, double one of the lists and then check if the other is in it. For equal cycles, this will be equal but not others. You do have to check the length first though.</p>
-
+&gt; (<span style="color:#a6e22e">cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>)))
+<span style="color:#66d9ef">#f</span>
+</code></pre></div><p>The next solution is a bit more straight forward if not quite as efficient. Essentially, double one of the lists and then check if the other is in it. For equal cycles, this will be equal but not others. You do have to check the length first though.</p>
 <p>First, we need to write code to check if one given list is a subset anywhere in another. Here&rsquo;s one way to do that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Check if p is a prefix of ls</span>
-(<span style="color:#66d9ef">define </span>(prefix? ls p)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">prefix?</span> ls p)
   (<span style="color:#66d9ef">or </span>(null? p)
       (<span style="color:#66d9ef">and </span>(equal? (car ls) (car p))
-           (prefix? (cdr ls) (cdr p)))))
+           (<span style="color:#a6e22e">prefix?</span> (cdr ls) (cdr p)))))
 
 <span style="color:#75715e">; Check if a list needle is in the list haystack</span>
-(<span style="color:#66d9ef">define </span>(contains? haystack needle)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">contains?</span> haystack needle)
   (<span style="color:#66d9ef">and </span>(not (null? haystack))
-       (<span style="color:#66d9ef">or </span>(prefix? haystack needle)
-           (contains? (cdr haystack) needle))))</code></pre></div>
-<p>And with that, checking for equal is a rather minimal function (we&rsquo;re taking the cycles as lists this time):</p>
+       (<span style="color:#66d9ef">or </span>(<span style="color:#a6e22e">prefix?</span> haystack needle)
+           (<span style="color:#a6e22e">contains?</span> (cdr haystack) needle))))
+</code></pre></div><p>And with that, checking for equal is a rather minimal function (we&rsquo;re taking the cycles as lists this time):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Check if two cycles (as lists) are equal by doubling one</span>
-(<span style="color:#66d9ef">define </span>(list-cycle-equal? lsc1 lsc2)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">list-cycle-equal?</span> lsc1 lsc2)
   (<span style="color:#66d9ef">and </span>(= (length lsc1) (length lsc2))
-       (contains? (append lsc1 lsc1) lsc2)))</code></pre></div>
-<p>And to check that we can use the same tests. We just don&rsquo;t convert to cycles first:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (list-cycle-equal? <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>))
+       (<span style="color:#a6e22e">contains?</span> (append lsc1 lsc1) lsc2)))
+</code></pre></div><p>And to check that we can use the same tests. We just don&rsquo;t convert to cycles first:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">list-cycle-equal?</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>))
 <span style="color:#66d9ef">#t</span>
-&gt; (list-cycle-equal? <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
+&gt; (<span style="color:#a6e22e">list-cycle-equal?</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
 <span style="color:#66d9ef">#t</span>
-&gt; (list-cycle-equal? <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
+&gt; (<span style="color:#a6e22e">list-cycle-equal?</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
 <span style="color:#66d9ef">#t</span>
-&gt; (list-cycle-equal? <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
+&gt; (<span style="color:#a6e22e">list-cycle-equal?</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
 <span style="color:#66d9ef">#f</span>
-&gt; (list-cycle-equal? <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>))
-<span style="color:#66d9ef">#f</span></code></pre></div>
-<p>And that&rsquo;s it. If you&rsquo;d like, you can see the entire code on GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/cycle-equality.rkt" title="cycle equality source on GitHub">cycle equality source</a>). All of the functions are already in this post, but there are a bunch of unit tests that might be of interest.</p>
-
-<p><strong>Edit 9 April 2013</strong>: A comment from Maurits on the Programming Praxis post got me wondering if it could be done in <em>O(m + n)</em><sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. Basically, their idea was to lexically order both cycles and then check if they are equal as lists.</p>
-
+&gt; (<span style="color:#a6e22e">list-cycle-equal?</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>))
+<span style="color:#66d9ef">#f</span>
+</code></pre></div><p>And that&rsquo;s it. If you&rsquo;d like, you can see the entire code on GitHub (<a href="https://github.com/jpverkamp/small-projects/blob/master/blog/cycle-equality.rkt" title="cycle equality source on GitHub">cycle equality source</a>). All of the functions are already in this post, but there are a bunch of unit tests that might be of interest.</p>
+<p><strong>Edit 9 April 2013</strong>: A comment from Maurits on the Programming Praxis post got me wondering if it could be done in <em>O(m + n)</em><sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. Basically, their idea was to lexically order both cycles and then check if they are equal as lists.</p>
 <p>To lexically order them, we want to advance the cycle so that the smallest element in the cycle is first. If there is a tie, break it with the element right after each smallest and so on. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Advance a cycle to the lexically minimum position</span>
-(<span style="color:#66d9ef">define </span>(cycle-lexical-min c [&lt; &lt;] [= =])
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-lexical-min</span> c [&lt; &lt;] [= =])
   <span style="color:#75715e">; Check if one cycle is less than another</span>
-  (<span style="color:#66d9ef">define </span>(cycle-&lt; c1 c2)
-    (<span style="color:#66d9ef">let </span>loop ([c1 c1] [c1-cnt (cycle-length c1)]
-               [c2 c2] [c2-cnt (cycle-length c2)])
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">cycle-&lt;</span> c1 c2)
+    (<span style="color:#66d9ef">let </span>loop ([c1 c1] [c1-cnt (<span style="color:#a6e22e">cycle-length</span> c1)]
+               [c2 c2] [c2-cnt (<span style="color:#a6e22e">cycle-length</span> c2)])
       (<span style="color:#66d9ef">and </span>(&gt; c1-cnt <span style="color:#ae81ff">0</span>)
            (&gt; c2-cnt <span style="color:#ae81ff">0</span>)
-           (<span style="color:#66d9ef">or </span>(&lt; (cycle-head c1) (cycle-head c2))
-               (<span style="color:#66d9ef">and </span>(= (cycle-head c1) (cycle-head c2))
-                    (loop (cycle-tail c1) (- c1-cnt <span style="color:#ae81ff">1</span>)
-                          (cycle-tail c2) (- c2-cnt <span style="color:#ae81ff">1</span>)))))))
+           (<span style="color:#66d9ef">or </span>(&lt; (<span style="color:#a6e22e">cycle-head</span> c1) (<span style="color:#a6e22e">cycle-head</span> c2))
+               (<span style="color:#66d9ef">and </span>(= (<span style="color:#a6e22e">cycle-head</span> c1) (<span style="color:#a6e22e">cycle-head</span> c2))
+                    (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">cycle-tail</span> c1) (- c1-cnt <span style="color:#ae81ff">1</span>)
+                          (<span style="color:#a6e22e">cycle-tail</span> c2) (- c2-cnt <span style="color:#ae81ff">1</span>)))))))
 
   <span style="color:#75715e">; Lexically sort by storing minimum</span>
-  (<span style="color:#66d9ef">let </span>loop ([min c] [c (cycle-tail c)])
-    (cond
-      [(cycle-reset? c) min]
-      [(cycle-&lt; c min) (loop c (cycle-tail c))]
-      [<span style="color:#66d9ef">else </span>(loop min (cycle-tail c))])))</code></pre></div>
-<p>Note: This code uses an updated version of <code>cycle-length</code> that is <a href="https://en.wikipedia.org/wiki/amortized">amortized</a> <em>O(1)</em> (it caches the length). You can see the code for that on <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/cycle-equality.rkt" title="cycle equality source on GitHub">GitHub</a>.</p>
-
+  (<span style="color:#66d9ef">let </span>loop ([min c] [c (<span style="color:#a6e22e">cycle-tail</span> c)])
+    (<span style="color:#a6e22e">cond</span>
+      [(<span style="color:#a6e22e">cycle-reset?</span> c) min]
+      [(<span style="color:#a6e22e">cycle-&lt;</span> c min) (<span style="color:#a6e22e">loop</span> c (<span style="color:#a6e22e">cycle-tail</span> c))]
+      [<span style="color:#66d9ef">else </span>(<span style="color:#a6e22e">loop</span> min (<span style="color:#a6e22e">cycle-tail</span> c))])))
+</code></pre></div><p>Note: This code uses an updated version of <code>cycle-length</code> that is <a href="https://en.wikipedia.org/wiki/amortized">amortized</a> <em>O(1)</em> (it caches the length). You can see the code for that on <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/cycle-equality.rkt" title="cycle equality source on GitHub">GitHub</a>.</p>
 <p>One you have the sort, the actual comparison is easy:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Compare cycles by lexical comparison</span>
-(<span style="color:#66d9ef">define </span>(lexical-cycle-equal? c1 c2 [&lt; &lt;] [= =])
-  (equal? (cycle-take (cycle-length c1) (cycle-lexical-min c1 &lt; =))
-          (cycle-take (cycle-length c2) (cycle-lexical-min c2 &lt; =))))</code></pre></div>
-<p>I’m not completely sure about the runtime of finding the lexical minimum. In the general case (with few duplicates), it’ll be <em>O(n)</em> though. Then there’s another <em>O(n + n)</em> for the cycle-length and cycle-take, plus a final additional <em>O(max(m, n))</em> for the equal?. So overall it would be <em>O(3m + 3n + max(m, n))</em> which is <em>O(m + n)</em>. The constant could be improved with a better abstraction, but not the big-O time.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">lexical-cycle-equal?</span> c1 c2 [&lt; &lt;] [= =])
+  (equal? (<span style="color:#a6e22e">cycle-take</span> (<span style="color:#a6e22e">cycle-length</span> c1) (<span style="color:#a6e22e">cycle-lexical-min</span> c1 &lt; =))
+          (<span style="color:#a6e22e">cycle-take</span> (<span style="color:#a6e22e">cycle-length</span> c2) (<span style="color:#a6e22e">cycle-lexical-min</span> c2 &lt; =))))
+</code></pre></div><p>I’m not completely sure about the runtime of finding the lexical minimum. In the general case (with few duplicates), it’ll be <em>O(n)</em> though. Then there’s another <em>O(n + n)</em> for the cycle-length and cycle-take, plus a final additional <em>O(max(m, n))</em> for the equal?. So overall it would be <em>O(3m + 3n + max(m, n))</em> which is <em>O(m + n)</em>. The constant could be improved with a better abstraction, but not the big-O time.</p>
 <p>And of course all of the previous tests still work:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (lexical-cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) &lt; =)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">lexical-cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) &lt; =)
 <span style="color:#66d9ef">#t</span>
-&gt; (lexical-cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)) &lt; =)
+&gt; (<span style="color:#a6e22e">lexical-cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)) &lt; =)
 <span style="color:#66d9ef">#t</span>
-&gt; (lexical-cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)) &lt; =)
+&gt; (<span style="color:#a6e22e">lexical-cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)) &lt; =)
 <span style="color:#66d9ef">#t</span>
-&gt; (lexical-cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)) &lt; =)
+&gt; (<span style="color:#a6e22e">lexical-cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)) &lt; =)
 <span style="color:#66d9ef">#f</span>
-&gt; (lexical-cycle-equal? (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>)) (list-&gt;cycle <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>)) &lt; =)
-<span style="color:#66d9ef">#f</span></code></pre></div><div class="footnotes">
-
-<hr />
-
+&gt; (<span style="color:#a6e22e">lexical-cycle-equal?</span> (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>)) (<span style="color:#a6e22e">list-&gt;cycle</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>)) &lt; =)
+<span style="color:#66d9ef">#f</span>
+</code></pre></div><section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">The previous two solutions are <em>O(mn)</em> because they have to compare each starting point pairwise
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>The previous two solutions are <em>O(mn)</em> because they have to compare each starting point pairwise <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

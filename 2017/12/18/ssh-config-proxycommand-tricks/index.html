@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -68,18 +68,9 @@
     </header>
 
 	<div class="entry-content"><p>Working in security/operations in the tech industry, I use <a href="https://en.wikipedia.org/wiki/SSH">SSH</a> a lot. To various different machines (some with hostnames, some without), using various different users and keys, and often (as was the case in my <a href="https://blog.jverkamp.com/2017/12/13/dynamic-automatic-proxies/">previous post</a>) via a <a href="https://en.wikipedia.org/wiki/bastion%20host">bastion host</a>. Over the years, I&rsquo;ve collected a number of SSH tricks that make my life easier.</p>
+<nav id="TableOfContents"></nav>
 
-<nav id="TableOfContents">
-<ul>
-<li><a href="#using-proxycommand-to-automatically-use-not-use-an-ssh-tunnel">Using ProxyCommand to automatically use / not use an SSH tunnel</a></li>
-<li><a href="#using-proxycommand-to-dynamically-resolve-fake-hostnames">Using ProxyCommand to dynamically resolve &lsquo;fake&rsquo; hostnames</a></li>
-<li><a href="#automatically-choosing-ssh-key-based-on-user">Automatically choosing SSH key based on user</a></li>
-</ul>
-</nav>
-
-
-<h1 id="using-proxycommand-to-automatically-use-not-use-an-ssh-tunnel">Using ProxyCommand to automatically use / not use an SSH tunnel</h1>
-
+<h1 id="using-proxycommand-to-automatically-use--not-use-an-ssh-tunnel">Using ProxyCommand to automatically use / not use an SSH tunnel</h1>
 <p>First up, almost all of the machines that I need access to cannot be SSHed to directly when I&rsquo;m not on a specific network. Instead, I need to log in via a <a href="https://en.wikipedia.org/wiki/bastion%20host">bastion host</a>. But if I do happen to already be within the network (SSHing from one machine to another for example), I don&rsquo;t want to connect via the bastion host any longer. Luckily, you can use <code>ProxyCommand</code> to do exactly that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">Host bastion
     User jp
@@ -87,25 +78,19 @@
     HostName bastion.example.com
 
 Host work-server
-    ProxyCommand bash -c &#34;dig +short myip.opendns.com @resolver1.opendns.com | egrep &#39;^(10|50|52)\\.&#39; &amp;&amp; nc %h %p || ssh bastion nc %h %p&#34;</code></pre></div>
-<p>This uses the same <a href="https://www.opendns.com/">OpenDNS</a> trick as my <a href="https://blog.jverkamp.com/2017/12/13/dynamic-automatic-proxies/">previous post</a>) along with Bash conditionals. If my IP starts with <code>10.</code>, I will use the <code>&amp;&amp; nc %h %p</code> part of the command, which will use <a href="https://en.wikipedia.org/wiki/netcat">netcat</a> locally to create the connection. If it does not, then I will set up an SSH tunnel using netcat instead (which will otherwise still use my local ssh config, so the bastion and final hosts can use different users/keys).</p>
-
+    ProxyCommand bash -c &#34;dig +short myip.opendns.com @resolver1.opendns.com | egrep &#39;^(10|50|52)\\.&#39; &amp;&amp; nc %h %p || ssh bastion nc %h %p&#34;
+</code></pre></div><p>This uses the same <a href="https://www.opendns.com/">OpenDNS</a> trick as my <a href="https://blog.jverkamp.com/2017/12/13/dynamic-automatic-proxies/">previous post</a>) along with Bash conditionals. If my IP starts with <code>10.</code>, I will use the <code>&amp;&amp; nc %h %p</code> part of the command, which will use <a href="https://en.wikipedia.org/wiki/netcat">netcat</a> locally to create the connection. If it does not, then I will set up an SSH tunnel using netcat instead (which will otherwise still use my local ssh config, so the bastion and final hosts can use different users/keys).</p>
 <p>It&rsquo;s quite lovely to just be able to type <code>ssh work-server</code> and have things just work™ no matter if I&rsquo;m on network or not.</p>
-
 <h1 id="using-proxycommand-to-dynamically-resolve-fake-hostnames">Using ProxyCommand to dynamically resolve &lsquo;fake&rsquo; hostnames</h1>
-
 <p>Finally, we can actually use the same basic idea to dynamically resolve hostnames. Say we have a bunch of servers that we don&rsquo;t necessary known the IP for (and that don&rsquo;t have a hostname) but have a way to look it up. Perhaps we can use my previous <a href="https://blog.jverkamp.com/2015/10/30/finding-ec2-instances-by-tag/">ec2 script</a> combined with <a href="https://blog.jverkamp.com/2017/12/13/dynamic-automatic-proxies/">autoproxied</a> to automatically look up hosts in EC2 without having to spawn a subshell explicitly:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">Host *.aws
-    ProxyCommand bash -c &#34;nc $(ec2 $(echo %h | sed &#34;s/.aws//&#34;) --ip) %p&#34;</code></pre></div>
-<p>What that will do is allow you to SSH to <code>prod-frontend.aws</code> and automatically get logged into the private IP address of the first server with a tag matching <code>prod-frontend</code> (assuming you have the credentials to access said machine). Even better, you could (and probably would) combine it with the automatic SSH tunnel above:</p>
+    ProxyCommand bash -c &#34;nc $(ec2 $(echo %h | sed &#34;s/.aws//&#34;) --ip) %p&#34;
+</code></pre></div><p>What that will do is allow you to SSH to <code>prod-frontend.aws</code> and automatically get logged into the private IP address of the first server with a tag matching <code>prod-frontend</code> (assuming you have the credentials to access said machine). Even better, you could (and probably would) combine it with the automatic SSH tunnel above:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">Host *.aws
-    ProxyCommand bash -c &#34;dig +short myip.opendns.com @resolver1.opendns.com | egrep &#39;^(10|50|52)\\.&#39; &amp;&amp; nc %h %p || nc $(ec2 $(echo %h | sed &#34;s/.aws//&#34;) --ip) %p&#34;</code></pre></div>
-<p>It&rsquo;s ugly, but it totally works.</p>
-
+    ProxyCommand bash -c &#34;dig +short myip.opendns.com @resolver1.opendns.com | egrep &#39;^(10|50|52)\\.&#39; &amp;&amp; nc %h %p || nc $(ec2 $(echo %h | sed &#34;s/.aws//&#34;) --ip) %p&#34;
+</code></pre></div><p>It&rsquo;s ugly, but it totally works.</p>
 <p>Note: <code>.aws</code> is actually a valid TLD: <a href="https://icannwiki.org/.aws">ICANN .aws</a>. If you need to actually SSH to a host using a <code>.aws</code> TLD, you could easily choose a different suffix.</p>
-
 <h1 id="automatically-choosing-ssh-key-based-on-user">Automatically choosing SSH key based on user</h1>
-
 <p>Finally, as a non-ProxyCommand bonus, I have a number of different users that I use to SSH to various different machines, based on how limited access is to the machine or, in some cases, how old it is. In order to deal with that, I don&rsquo;t always want to type <code>ssh -i {key name} {user}@{host}</code>. Luckily, since <a href="https://www.openssh.com/txt/release-4.4">version 4.4</a> SSH has has the ability to apply configuration sections conditionally based on various fields. One of those is the <code>User</code> being used for the connection:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">Match User jp
     IdentityFile ~/.ssh/keys/work/jp.rsa
@@ -114,13 +99,10 @@ Match User automation
     IdentityFile ~/.ssh/keys/work/automation.rsa
 
 Match User superuser
-    IdentityFile ~/.ssh/keys/work/superuser.rsa</code></pre></div>
-<p>In this case, logging into a remote machine using the <code>superuser</code> user and key is as easy as <code>ssh superuser@{host}</code>. Better yet, if I do need to override this setting for some reason, I can. The <code>-i</code> flag overrides the config file.</p>
-
+    IdentityFile ~/.ssh/keys/work/superuser.rsa
+</code></pre></div><p>In this case, logging into a remote machine using the <code>superuser</code> user and key is as easy as <code>ssh superuser@{host}</code>. Better yet, if I do need to override this setting for some reason, I can. The <code>-i</code> flag overrides the config file.</p>
 <hr>
-
 <p>And&hellip; that&rsquo;s it. There are a handful of other tricks I use to stay organized (like keeping my various SSH keys in folders), but those three tips save me the lion&rsquo;s share of time.</p>
-
 <p>Along the way, I came across an interesting alternative: <a href="https://github.com/moul/advanced-ssh-config">advanced-ssh-config</a>. Basically, it&rsquo;s a &lsquo;smarter&rsquo; system that can handle automatically proxying and some dynamic configuration for you. The one downside I&rsquo;ve found is that I couldn&rsquo;t figure out how to quickly use the SSH tunnel when I need to but not when I don&rsquo;t. It has the ability to have fallback gateways, but the failover takes a long time. This just works.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

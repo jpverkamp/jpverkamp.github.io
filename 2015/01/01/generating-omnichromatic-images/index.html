@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,31 +74,22 @@
     </header>
 
 	<div class="entry-content"><p>Inspired half by a <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">post on the Code Golf StackExchange</a> and half by the corresponding website <a href="http://allrgb.com/">allrgb.com</a>, today&rsquo;s post tasks us with making images like this:</p>
-
 <figure>
     <img src="/embeds/2015/grow-minimum_gray-code_400x200.png"/> 
 </figure>
 
-
 <p>So what&rsquo;s so interesting about that picture?</p>
-
 <p>Well, at 256x128, there are 32,768 pixels in that image. And all 32,768 are different.</p>
-
 <p>What&rsquo;s really interesting about this is that there are all sorts of possible ways to do this. That&rsquo;s sort of the entire point behind <a href="http://allrgb.com/">allrgb.com</a>, although in that case, you are generating 4096x4096 images containing <em>all</em> RGB images (with one byte each for red, green, and blue). Perhaps by the end of the post, we can generate one of those giant images.</p>
-
 <p>When I first started out, I had a few ideas for the images that I wanted to generate. Then a few more. Then even more. Each time I added more, I wanted to see how it would combine with each of the previous. As I added more and more, that got increasingly complicated. So instead, I decided to split all of the algorithms that I was writing into two halves:</p>
-
 <ul>
 <li>Color producers - generate a list of unique colors in some specified order</li>
 <li>Location producers - generate a list of locations within the target image to place each color produced by a color producer</li>
 </ul>
-
 <p>Specifically, a producer is something that I can use with <code><a href="http://docs.racket-lang.org/search/index.html?q=in-producer">in-producer</a></code>
 . A thunk (a function of no arguments) that I can call over and over again that will return a new item with each call. In the case of color producers, I will be returning a vector of ARGB colors in the range <code>[0.0, 1.0]</code> (for use with the <code><a href="http://docs.racket-lang.org/search/index.html?q=images/flomap">images/flomap</a></code>
  module). In the case of location producers, the returned value will be a <code>(struct pt (x y))</code>.</p>
-
 <p>This way, I can make a new color producer and almost immediately see how it looked with all of the location producers (and vice versa). Neat, no?</p>
-
 <p>To do that, I made a module each for colors and locations. For each then, I defined code something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">provide</span> list-rgb-producers
          get-rgb-producer
@@ -114,21 +105,16 @@
 (<span style="color:#66d9ef">define-syntax-rule</span> (define-rgb-producer (name count) body <span style="color:#66d9ef">...</span>)
   (<span style="color:#66d9ef">let</span> ()
     (<span style="color:#66d9ef">define</span> (name count) body <span style="color:#66d9ef">...</span>)
-    (hash-set! rgb-producers <span style="color:#f92672">&#39;</span><span style="color:#e6db74">name</span> name)))</code></pre></div>
-<p>The basic idea is that internally, I will store a list of producers which I can easily define with my custom macro (<code>define-rgb-producer</code> in this case). Then when I want to use the module, I can use one of the three exported functions:</p>
-
+    (hash-set! rgb-producers <span style="color:#f92672">&#39;</span><span style="color:#e6db74">name</span> name)))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>The basic idea is that internally, I will store a list of producers which I can easily define with my custom macro (<code>define-rgb-producer</code> in this case). Then when I want to use the module, I can use one of the three exported functions:</p>
 <ul>
 <li><code>list-rgb-producers</code> - get a list of names of defined producers</li>
 <li><code>get-rgb-producer</code> - get a specific producer by name (especially helpful if I want to base one off of another internally)</li>
 <li><code>in-rgb-producers</code> - a thin wrapper around <code>in-hash</code> to return both the name and function for each defined producer in turn</li>
 </ul>
-
 <p>Everything else, including all of the functions themselves I can define privately. That way, we can write our testing code using <code>in-rgb-producers</code> and have it automatically generate all new variants no matter what we add. Neat!</p>
-
 <h2 id="color-producers">Color producers</h2>
-
 <p>Okay, let&rsquo;s get to the meat of the situation now. First, let&rsquo;s define a whole series of color producers. Since we need a location producer to actually render these, let&rsquo;s assume we have an <code>order-producer</code> that runs left to right, top to bottom. <code>reading</code> order, as it were (we&rsquo;ll define it in the next section).</p>
-
 <p>First thought, let&rsquo;s just run directly through the RGB color space:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Move evenly through the RGB color space</span>
 (define-rgb-producer (sequential-noskip count)
@@ -142,27 +128,24 @@
   (vector <span style="color:#ae81ff">1.0</span>
           (-&gt;1.0 (bitwise-and (arithmetic-shift n <span style="color:#ae81ff">-16</span>) <span style="color:#ae81ff">255</span>))
           (-&gt;1.0 (bitwise-and (arithmetic-shift n <span style="color:#ae81ff">-8</span>) <span style="color:#ae81ff">255</span>))
-          (-&gt;1.0 (bitwise-and (arithmetic-shift n <span style="color:#ae81ff">-0</span>) <span style="color:#ae81ff">255</span>))))</code></pre></div>
-<figure>
+          (-&gt;1.0 (bitwise-and (arithmetic-shift n <span style="color:#ae81ff">-0</span>) <span style="color:#ae81ff">255</span>))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/reading_sequential-noskip_400x200.png"/> 
 </figure>
 
-
 <p>Nice and simple. We&rsquo;re using a <code><a href="http://docs.racket-lang.org/search/index.html?q=generator">generator</a></code>
  despite the performance problems mostly because they make the code so nice and clean. Also, especially once we get to the more complicated location generation code, the algorithmic complexity is going to dwarf the cost of a generator anyways&hellip;</p>
-
 <p>Simple enough, but it has one major disadvantage. Because we&rsquo;re working in RGB, but only using 0.1% of the color space (20 thousand of the available 16 million colors), everything is blue. That&rsquo;s because since we&rsquo;re only changing the low bits, we change the blue value first (0-255). Green changes as well, but much slower, only getting up to around 80. Oops. So instead, let&rsquo;s skip enough colors each time so we go through the entire color space:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Move evenly through the RGB color space</span>
 (define-rgb-producer (sequential count)
   (<span style="color:#66d9ef">define</span> increment (quotient 256^3 count))
   (generator ()
     (<span style="color:#66d9ef">for</span> ([i (in-range <span style="color:#ae81ff">0</span> 256^3 increment)])
-      (yield (-&gt;rgb i)))))</code></pre></div>
-<p><figure>
+      (yield (-&gt;rgb i)))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p><figure>
     <img src="/embeds/2015/reading_sequential_400x200.png"/> 
 </figure>
 .</p>
-
 <p>Much better. This time we have a reasonable sampling of colors. Well&hellip; sort of. This time we have the opposite problem. Now instead of too much blue, we have less blue, more red and green. This time, the problem is that since we&rsquo;re changing the most in the low bits, we&rsquo;re skipping over a lot of the possible values for blue in each pixel, using all of the red values and still only some of the green. What we really want to do is iterate through each of the three channels, skipping the same amount for each:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Cascade through red, then green, then blue</span>
 (define-rgb-producer (cascade count)
@@ -171,14 +154,12 @@
     (<span style="color:#66d9ef">for*</span> ([r (in-range <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">256</span> increment)]
            [g (in-range <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">256</span> increment)]
            [b (in-range <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">256</span> increment)])
-      (yield (-&gt;rgb (+ r (* <span style="color:#ae81ff">256</span> g) (* <span style="color:#ae81ff">256</span> <span style="color:#ae81ff">256</span> b)))))))</code></pre></div>
-<figure>
+      (yield (-&gt;rgb (+ r (* <span style="color:#ae81ff">256</span> g) (* <span style="color:#ae81ff">256</span> <span style="color:#ae81ff">256</span> b)))))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/reading_cascade_400x200.png"/> 
 </figure>
 
-
 <p>One problem is that unless you have a specific power, this isn&rsquo;t quite going to give you an even split, but it&rsquo;s certainly better than the previous examples.</p>
-
 <p>Another idea would be to make use of <a href="https://en.wikipedia.org/wiki/gray%20codes">gray codes</a>, rather than directly use the indicies. Also known as a reflected binary code, the idea of a gray code is that between any two values, you change only one bit. This has two advantages. First, gray codes avoid the sudden change we have in previous images where we go from the end of one iteration to the beginning of the next. Second, gray codes essentially form a <a href="https://en.wikipedia.org/wiki/space%20filling%20curve">space filling curve</a>. If you have a power of 2, <em>n</em> gray codes will cover the same space as <em>n</em> sequential values, just in a different order. Let&rsquo;s see what that means for our color generation:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (-&gt;gray-code i)
   (bitwise-xor (arithmetic-shift i <span style="color:#ae81ff">1</span>) i))
@@ -187,8 +168,8 @@
 (define-rgb-producer (gray-code-noskip count)
   (generator ()
     (<span style="color:#66d9ef">for</span> ([i (in-range 256^3)])
-      (yield (-&gt;rgb (-&gt;gray-code i))))))</code></pre></div>
-<figure>
+      (yield (-&gt;rgb (-&gt;gray-code i))))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/reading_gray-code-noskip_400x200.png"/> 
 </figure>
 
@@ -196,14 +177,12 @@
   (<span style="color:#66d9ef">define</span> increment (quotient 256^3 count))
   (generator ()
     (<span style="color:#66d9ef">for</span> ([i (in-range <span style="color:#ae81ff">0</span> 256^3 increment)])
-      (yield (-&gt;rgb (-&gt;gray-code i))))))</code></pre></div>
-<figure>
+      (yield (-&gt;rgb (-&gt;gray-code i))))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/reading_gray-code_400x200.png"/> 
 </figure>
 
-
 <p>As before, if you don&rsquo;t skip you get change mostly in the lowest/blue channel with a slower change in the green. None at all in the red. If you skip around though, you get exactly the pattern we&rsquo;re looking for, smooth changes uniformly through the entire color space. Nice!</p>
-
 <p>Last but not least, let&rsquo;s through all this nice theoretically color space stuff out the window. Random colors for the win!</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Randomly generate colors (regenerating on duplicates)</span>
 (define-rgb-producer (randomly count)
@@ -213,33 +192,26 @@
                  [new-color (in-value (random 256^3))]
                  <span style="color:#66d9ef">#:when</span> (not (hash-has-key? used new-color)))
       (hash-set! used new-color <span style="color:#66d9ef">#t</span>)
-      (-&gt;rgb new-color))))</code></pre></div>
-<figure>
+      (-&gt;rgb new-color))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/reading_randomly_400x200.png"/> 
 </figure>
 
-
 <p>Optimally, I&rsquo;d like to call that one <code>random</code>, but that would shadow the call to <code>random</code> made to actually choose a color. Can&rsquo;t very well do that, now can we?</p>
-
 <p>Also, this one has a major performance problem, especially with larger images. Can you guess what it is?</p>
-
 <h2 id="location-producers">Location producers</h2>
-
 <p>Okay, enough with the color generation. That should be enough for the moment. Let&rsquo;s instead move on to location producers. First, we&rsquo;ll start with the simple one we&rsquo;ve been actually using all along:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Left to right, top to bottom</span>
 (define-order-producer (reading width height get-new-color get-color-at)
   (generator ()
     (<span style="color:#66d9ef">for*</span> ([y (in-range height)] [x (in-range width)])
-      (yield (pt x y)))))</code></pre></div>
-<p>Simple enough. That generates the images we&rsquo;ve seen above:</p>
-
+      (yield (pt x y)))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Simple enough. That generates the images we&rsquo;ve seen above:</p>
 <figure>
     <img src="/embeds/2015/reading_gray-code_400x200.png"/> 
 </figure>
 
-
 <p>This time, you may have noticed a few more parameters. Specifically, this time we care about not just how many colors to generate, but also the size of the iamge we&rsquo;re going to put them in. Likewise, in some of the later functions, we&rsquo;re going to want to determine which color we&rsquo;re about to place (generated from the color producers) and what neighbors we&rsquo;re about to place it nearby. In the next section, we&rsquo;ll have to show how we came to those last two functions / parameters.</p>
-
 <p>How about next, we spiral from a central point outwards. This is similar to the <code>in-spiral</code> function I defined in the post on <a href="https://blog.jverkamp.com/2014/12/23/palette-swapping/">palette swapping</a>, only this time we&rsquo;ll use a <a href="https://en.wikipedia.org/wiki/queue">Queue_(abstract_data_type)</a> rather than a generator:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Spiral from the center point outwards</span>
 (<span style="color:#66d9ef">require</span> data/queue)
@@ -262,14 +234,12 @@
          (<span style="color:#66d9ef">match-define</span> (pt x y) next)
          (<span style="color:#66d9ef">for*</span> ([xd (in-range <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)] [yd (in-range <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)])
            (enqueue! q (pt (+ x xd) (+ y yd))))
-         next]))))</code></pre></div>
-<figure>
+         next]))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/spiral_gray-code_400x200.png"/> 
 </figure>
 
-
 <p>Not very functional code, but it certainly does work. The beauty of using a queue here is that by processing each pixel in the order it was added, we will do each layer in turn. As we do each layer, the next is added to the end of the queue. It&rsquo;s arguable which code is cleaner between this and <code>in-spiral</code>.</p>
-
 <p>Neat. Okay, how about we take that code one step further. Rather than generating a single square, how about we generate a seed square randomly in the image, expanding it until we hit the edge. Once we do, generate another square, repeating over and over again with smaller and smaller seeds. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Generate random squares each until they hit an edge or another square</span>
 (define-order-producer (square-fill width height get-new-color get-color-at)
@@ -305,21 +275,17 @@
          (<span style="color:#66d9ef">for*</span> ([xd (in-range <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)] [yd (in-range <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)])
            (enqueue! q (pt (+ x xd) (+ y yd))))
          (hash-set! this-square next <span style="color:#66d9ef">#t</span>)
-         next]))))</code></pre></div>
-<figure>
+         next]))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/square-fill_gray-code_400x200.png"/> 
 </figure>
 
-
 <p>This is actually one algorithm where the more abrupt changes of the <code>cascade</code> algorithm really look neat:</p>
-
 <figure>
     <img src="/embeds/2015/square-fill_cascade_400x200.png"/> 
 </figure>
 
-
 <p>Next, let&rsquo;s take a similar idea, but instead of squares, let&rsquo;s go back to something I posted about all of the way in 2012: <a href="https://blog.jverkamp.com/2012/09/27/html5-bugs/">random walk / bugs</a>.</p>
-
 <p>Basically, start with a seed as before. This time though, randomly expand in one of the eight possible directions. If that doesn&rsquo;t work (either it&rsquo;s an edge or already set), try another direction until we fail at all eight. If that&rsquo;s the case (and we&rsquo;ve walked ourselves into a corner), generate a new seed.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Walk randomly, starting a new seed if there are no more options</span>
 (define-order-producer (random-walk width height get-new-color get-color-at)
@@ -353,30 +319,27 @@
                  (loop)
                  new-seed))))
 
-        (<span style="color:#66d9ef">set!</span> current-point next-point)))))</code></pre></div>
-<figure>
+        (<span style="color:#66d9ef">set!</span> current-point next-point)))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/random-walk_gray-code_400x200.png"/> 
 </figure>
-
 
 <figure>
     <img src="/embeds/2015/random-walk_cascade_400x200.png"/> 
 </figure>
 
-
 <p>It&rsquo;s really neat how you can see the structure in each of the images, where fairly large initial walks fill in large regions and then as the space gets more and more full, you get more noise as walks generate only a pixel or two.</p>
-
 <p>Okay, and now the big one. This is honestly the response to the <a href="https://codegolf.stackexchange.com/questions/22144/images-with-all-colors">StackExchange post</a> that got me the most interested in the first place, generating some really stunning images. Here&rsquo;s the basic algorithm:</p>
-
 <ul>
 <li>Generate a set of border points <code>B</code>, set to some initial small set of points</li>
 <li>While <code>B</code> is not empty:</li>
+</ul>
+<ol>
 <li>Generate a new color <code>c</code></li>
 <li>For each point <code>b</code> ∋ <code>B</code> calculate an error value if we were to place <code>c</code> at <code>b</code></li>
 <li>Place <code>c</code> at the <code>b</code> with the minimal error</li>
 <li>Update <code>B</code> by removing <code>b</code> and adding points adjacent to <code>b</code> that have not already been set</li>
-</ul>
-
+</ol>
 <p>That&rsquo;s a bit of a mouthful, but it&rsquo;s relatively straight forward to turn into code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Organically grow outwards, finding the best match among border pixels</span>
 
@@ -426,32 +389,27 @@
                          (not (get-color-at new-border-point <span style="color:#66d9ef">#f</span>))))
         (hash-set! border new-border-point <span style="color:#66d9ef">#t</span>))
 
-      best-point)))</code></pre></div>
-<p>I did say relatively. 😄 One thing to note is that we&rsquo;re doing something a little different here. Rather than directly defining a new ordering function, we&rsquo;re going to define several. That&rsquo;s the beauty of higher order functions is that we can make one function (like this one) and parameterize it over how exactly that error function is calculated. Specifically (as noted in the comments), we have 3 variables that determine how error is defined:</p>
-
+      best-point)))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>I did say relatively. 😄 One thing to note is that we&rsquo;re doing something a little different here. Rather than directly defining a new ordering function, we&rsquo;re going to define several. That&rsquo;s the beauty of higher order functions is that we can make one function (like this one) and parameterize it over how exactly that error function is calculated. Specifically (as noted in the comments), we have 3 variables that determine how error is defined:</p>
 <ul>
 <li><code>combine</code> - how do you combine the error of multiple already set pixels adjacent to a border pixel <code>b</code></li>
 <li><code>zero</code> - the initial value for the error, also used for neighboring pixels that are not currently set</li>
 <li><code>after</code> - a special function I needed when I wanted to average the error over the surrounding pixels</li>
 </ul>
-
 <p>Specifically, with these three functions, we can define (at the very least), the following error functions:</p>
-
 <ul>
 <li><code>grow-minimum</code> - take the color distance to the neighboring pixel closest to the new color</li>
 <li><code>grow-minimum</code> - like <code>grow-minimum</code>, only take the worst neighbor</li>
 <li><code>grow-average</code> - take the average color of any set neighbors and use the distance to that as the error</li>
 </ul>
-
 <p>We can use the <code>make-grower</code> function to define these as such:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Choose the border pixel closest to any one of its neighbors</span>
 (define-order-producer (grow-minimum width height get-new-color get-color-at)
   ((make-grower <span style="color:#66d9ef">#:combine</span> min <span style="color:#66d9ef">#:missing</span> <span style="color:#ae81ff">+inf.0</span>)
-   width height get-new-color get-color-at))</code></pre></div>
-<figure>
+   width height get-new-color get-color-at))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/grow-minimum_gray-code_400x200.png"/> 
 </figure>
-
 
 <figure>
     <img src="/embeds/2015/grow-minimum_cascade_400x200.png"/> 
@@ -460,11 +418,10 @@
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Choose the border pixel closest to the furthest away neighbor</span>
 (define-order-producer (grow-maximum width height get-new-color get-color-at)
   ((make-grower <span style="color:#66d9ef">#:combine</span> max <span style="color:#66d9ef">#:missing</span> <span style="color:#ae81ff">-inf.0</span>)
-   width height get-new-color get-color-at))</code></pre></div>
-<figure>
+   width height get-new-color get-color-at))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/grow-maximum_gray-code_400x200.png"/> 
 </figure>
-
 
 <figure>
     <img src="/embeds/2015/grow-maximum_cascade_400x200.png"/> 
@@ -476,41 +433,32 @@
   ((make-grower <span style="color:#66d9ef">#:combine</span> (<span style="color:#66d9ef">λ</span> (old-v new-v) (+ old-v new-v <span style="color:#ae81ff">0+1i</span>))
                 <span style="color:#66d9ef">#:missing</span> <span style="color:#ae81ff">0</span>
                 <span style="color:#66d9ef">#:after</span> (<span style="color:#66d9ef">λ</span> (v) (<span style="color:#66d9ef">if</span> (= v <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0</span> (/ (real-part v) (imag-part v)))))
-   width height get-new-color get-color-at))</code></pre></div>
-<figure>
+   width height get-new-color get-color-at))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/grow-average_gray-code_400x200.png"/> 
 </figure>
-
 
 <figure>
     <img src="/embeds/2015/grow-average_cascade_400x200.png"/> 
 </figure>
 
-
 <p>The oddest one is <code>grow-average</code>. Since we need to track both the sum and the count (since we don&rsquo;t know how many neighbors are actually set), we&rsquo;ll use imagionary numbers. Then we can use that <code>#:after</code> parameter to do the final division.</p>
-
 <p>I really also like how different <code>grow-minimum</code> and <code>grow-maximum</code> are, despite how similar their definitions are. Specifically, since in the latter we take the worst case error, we get neat ridges between the expanding color sections which are only filled right at the very end. Likewise, <code>grow-average</code> has it&rsquo;s own distinct feel. Because of the averaging of the error, it tends to be much more muted.</p>
-
 <p>Another interesting note is runtime. Because of how the border pixels are filled in, <code>grow-maximum</code> will have a much longer list through most of its run. Furthermore, since we have to compare every current border pixel to each new color, that results in a correspondingly longer runtime. While they would have the same runtime in <a href="https://en.wikipedia.org/wiki/Big%20O%20notation">Big O notation</a>, the constants are very different.</p>
-
 <p>You may be asking yourself, so what about that <code>#:seeds</code> paramater? Well, with that, you can do something like this: growing in from the edges rather than from the center:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(define-order-producer (grow-maximum-corners width height get-new-color get-color-at)
   ((make-grower <span style="color:#66d9ef">#:combine</span> max <span style="color:#66d9ef">#:missing</span> <span style="color:#ae81ff">-inf.0</span> <span style="color:#66d9ef">#:seeds</span> (corners width height))
-   width height get-new-color get-color-at))</code></pre></div>
-<figure>
+   width height get-new-color get-color-at))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><figure>
     <img src="/embeds/2015/grow-maximum-corners_gray-code_400x200.png"/> 
 </figure>
-
 
 <figure>
     <img src="/embeds/2015/grow-maximum-corners_cascade_400x200.png"/> 
 </figure>
 
-
 <p>And&hellip; that&rsquo;s that. That&rsquo;s all of the different algorithms I&rsquo;ve come up with thus far. I have a few more ideas percolating in the back of my head (in particular, the idea of combining the ideas in this post with those in <a href="https://blog.jverkamp.com/2014/12/23/palette-swapping/">palette swapping</a>), but those will have to wait for another day.</p>
-
 <h2 id="putting-it-all-together">Putting it all together</h2>
-
 <p>Before we go though, I think it would be interesting to show how I&rsquo;ve been putting these images all together. Given one of each producer, how do you render that into an image?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Given a color and order producer, make an image</span>
 (<span style="color:#66d9ef">define</span> (render width height rgb-producer order-producer)
@@ -564,17 +512,12 @@
   (flomap-&gt;bitmap
    (build-flomap*
     <span style="color:#ae81ff">4</span> width height
-    (<span style="color:#66d9ef">λ</span> (x y) (get-pixel (pt x y) (vector <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>))))))</code></pre></div>
-<p>Basically, it&rsquo;s very similar to how we were working with <a href="https://blog.jverkamp.com/2014/12/23/palette-swapping/">palette swapping</a>. We generate a vector to hold the colors as we&rsquo;re generating them, since <code>build-flomap*</code> doesn&rsquo;t give us a mutable image. Then we created a getter/setter for that same vector, the former of which we will be passing into the location producers above (as <code>get-color-at</code>). Finally, we loop through the colors.</p>
-
+    (<span style="color:#66d9ef">λ</span> (x y) (get-pixel (pt x y) (vector <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>))))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Basically, it&rsquo;s very similar to how we were working with <a href="https://blog.jverkamp.com/2014/12/23/palette-swapping/">palette swapping</a>. We generate a vector to hold the colors as we&rsquo;re generating them, since <code>build-flomap*</code> doesn&rsquo;t give us a mutable image. Then we created a getter/setter for that same vector, the former of which we will be passing into the location producers above (as <code>get-color-at</code>). Finally, we loop through the colors.</p>
 <p>I would optimally have rather used <code>in-rgb-producer</code> and <code>in-order-producer</code> here, but unfortunately that doesn&rsquo;t quite work. Since we need to know what the color generated by the former is in the latter, we have to add another instruction. So it goes.</p>
-
 <p>And&hellip; that&rsquo;s it. Really this time. There&rsquo;s also a bit of test code for generating a bunch of test images along with all of the rest of my code available on GitHub: <a href="https://github.com/jpverkamp/small-projects/tree/master/blog/allrgb">allrgb</a>.</p>
-
 <p>If you have any great ideas for more producers, I&rsquo;d love to see them. Feel free to leave a comment / make a pull request / shoot me an email. If they&rsquo;re particularly neat, I&rsquo;ll add them here / to the repo above.</p>
-
 <p>Oh hey, since I already generated it anyways:</p>
-
 <figure>
     <img src="/embeds/2015/grow-minimum_randomly_512x512.png"/> 
 </figure></div>

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -70,13 +70,11 @@
 </div>
     </header>
 
-	<div class="entry-content"><p>Keen eyed observers may have noticed that last Friday when I <a href="https://blog.jverkamp.com/2013/09/20/deploy-racket-libraries-to-planet-2/">posted about converting</a> my various Racket libraries to Planet 2 packages, that there was a new package there I haven&rsquo;t otherwise talked about: <a href="http://racket.jverkamp.com/bit-struct/">bit-struct</a>. Today seems like a good time to talk about that. Theoretically, I&rsquo;ll also have another post or two this week showing exactly what I&rsquo;m doing with it (spoilers: it involves sending on the order of billions of DNS requests<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>).</p>
-
+	<div class="entry-content"><p>Keen eyed observers may have noticed that last Friday when I <a href="https://blog.jverkamp.com/2013/09/20/deploy-racket-libraries-to-planet-2/">posted about converting</a> my various Racket libraries to Planet 2 packages, that there was a new package there I haven&rsquo;t otherwise talked about: <a href="http://racket.jverkamp.com/bit-struct/">bit-struct</a>. Today seems like a good time to talk about that. Theoretically, I&rsquo;ll also have another post or two this week showing exactly what I&rsquo;m doing with it (spoilers: it involves sending on the order of billions of DNS requests<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>).</p>
 <p>If you&rsquo;d like to go straight to the code, it&rsquo;s available on GitHub: <a href="https://github.com/jpverkamp/bit-struct">jpverkamp/bit-struct</a>. Along with the new Planet 2 packages, I also have documentation now, available here: <a href="http://racket.jverkamp.com/bit-struct/">bit-struct documentation</a>.</p>
-
 <p>The basic idea is we want to take straight forward Racket structs (already rather useful in their own right), limit them to only numeric values, and extend them to convert the structs to bit fields (as Racket <code><a href="http://docs.racket-lang.org/search/index.html?q=bytes">bytes</a></code>
-) and back. In theory<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>, this will allow interaction with systems that have very specific memory layouts, such as networking packets. As a bit of a spoiler, this should be both completely valid and do exactly what you might expect<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-bit-struct dns
+) and back. In theory<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>, this will allow interaction with systems that have very specific memory layouts, such as networking packets. As a bit of a spoiler, this should be both completely valid and do exactly what you might expect<sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-bit-struct</span> dns
   ([id      <span style="color:#ae81ff">16</span>]
    [qr      <span style="color:#ae81ff">1</span>]  [opcode  <span style="color:#ae81ff">4</span>]  [aa      <span style="color:#ae81ff">1</span>]  [tc      <span style="color:#ae81ff">1</span>]  [rd      <span style="color:#ae81ff">1</span>]
    [ra      <span style="color:#ae81ff">1</span>]  [z       <span style="color:#ae81ff">3</span>]  [rcode   <span style="color:#ae81ff">4</span>]
@@ -84,34 +82,31 @@
    [ancount <span style="color:#ae81ff">16</span>]
    [nscount <span style="color:#ae81ff">16</span>]
    [arcount <span style="color:#ae81ff">16</span>]
-   [data    _]))</code></pre></div>
-<p>The extra advantage in this case is that (via the magic of macros) three additional functions are also defined:</p>
-
+   [data    _]))
+</code></pre></div><p>The extra advantage in this case is that (via the magic of macros) three additional functions are also defined:</p>
 <ul>
 <li><code>(build-dns #:key val ...)</code> - take any number of keyword arguments matching the struct fields above and create the struct, any unspecified values are set to 0</li>
 <li><code>(dns-&gt;bytes data)</code> - convert a struct into a bit field, using the given bit widths</li>
 <li><code>(bytes-&gt;dns buffer)</code> - convert a bit field back into a struct, again using the bit widths</li>
 </ul>
-
 <p>Here are some more examples:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>packet
-    (build-dns
-     <span style="color:#f92672">#</span>:id (random <span style="color:#ae81ff">65536</span>)
+    (<span style="color:#a6e22e">build-dns</span>
+     <span style="color:#f92672">#</span>:id (<span style="color:#a6e22e">random</span> <span style="color:#ae81ff">65536</span>)
      <span style="color:#f92672">#</span>:tc <span style="color:#ae81ff">1</span>
      <span style="color:#f92672">#</span>:qdcount <span style="color:#ae81ff">1</span>
      <span style="color:#f92672">#</span>:data
-     (bytes-append
+     (<span style="color:#a6e22e">bytes-append</span>
       <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;\3www\6google\3com\0&#34;</span>
-      (bytes <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)
-      (bytes <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>))))
+      (<span style="color:#a6e22e">bytes</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)
+      (<span style="color:#a6e22e">bytes</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>))))
 &gt; packet
-(dns <span style="color:#ae81ff">3202</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;\3www\6google\3com\0\0\1\0\1&#34;</span>)
-&gt; (dns-&gt;bytes packet)
+(<span style="color:#a6e22e">dns</span> <span style="color:#ae81ff">3202</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;\3www\6google\3com\0\0\1\0\1&#34;</span>)
+&gt; (<span style="color:#a6e22e">dns-&gt;bytes</span> packet)
 <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;\f\202\2\0\0\1\0\0\0\0\0\0\3www\6google\3com\0\0\1\0\1&#34;</span>
-&gt; (bytes-&gt;dns (dns-&gt;bytes packet))
-(dns <span style="color:#ae81ff">3202</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;\3www\6google\3com\0\0\1\0\1&#34;</span>)</code></pre></div>
-<p>Nice and straight forward. The real question though is what sort of magic did we need to get this all working? Just as useful as having the package itself is the additional experience with a relative complicated macro.</p>
-
+&gt; (<span style="color:#a6e22e">bytes-&gt;dns</span> (<span style="color:#a6e22e">dns-&gt;bytes</span> packet))
+(<span style="color:#a6e22e">dns</span> <span style="color:#ae81ff">3202</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;\3www\6google\3com\0\0\1\0\1&#34;</span>)
+</code></pre></div><p>Nice and straight forward. The real question though is what sort of magic did we need to get this all working? Just as useful as having the package itself is the additional experience with a relative complicated macro.</p>
 <p>First, we need to introduce some more names. Normally, that isn&rsquo;t particularly straight forward, since we have to bend the rules of <a href="https://en.wikipedia.org/wiki/Hygienic%20macro">hygienic macros</a> just a bit. Luckily though, Racket provides the tools to do just that: <code><a href="http://docs.racket-lang.org/search/index.html?q=with-syntax">with-syntax</a></code>
  and <code><a href="http://docs.racket-lang.org/search/index.html?q=format-id">format-id</a></code>
 . Essentially, <code>with-syntax</code> is similar to <code>syntax-case</code> in that it binds more syntax variables. <code>format-id</code> is basically an extension to format that attaches scope to the new <code>id</code> in order to make cleaner error message. Always a plus. 😄 Here&rsquo;s how all of that looks:</p>
@@ -119,135 +114,132 @@
 <span style="color:#75715e">; build-* takes keyword arguments for parameters (default = 0)</span>
 <span style="color:#75715e">; *-&gt;bytes turns a struct into bytes</span>
 <span style="color:#75715e">; bytes-&gt;* takes bytes and returns a struct</span>
-(<span style="color:#66d9ef">define-syntax </span>(define-bit-struct stx)
-  (syntax-case stx ()
-    [(_ struct-name ([name* bits*] <span style="color:#f92672">...</span>))
+(<span style="color:#66d9ef">define-syntax </span>(<span style="color:#a6e22e">define-bit-struct</span> stx)
+  (<span style="color:#a6e22e">syntax-case</span> stx ()
+    [(<span style="color:#a6e22e">_</span> struct-name ([name* bits*] <span style="color:#f92672">...</span>))
      <span style="color:#75715e">; Get some identifiers we&#39;ll need</span>
-     (with-syntax ([builder-name (format-id stx <span style="color:#e6db74">&#34;build-~a&#34;</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#39;struct-name</span>)]
-                   [bytes-&gt;-name (format-id stx <span style="color:#e6db74">&#34;bytes-&gt;~a&#34;</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#39;struct-name</span>)]
-                   [-&gt;bytes-name (format-id stx <span style="color:#e6db74">&#34;~a-&gt;bytes&#34;</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#39;struct-name</span>)])
-       <span style="color:#f92672">...</span>)]))</code></pre></div>
-<p>More or less straight forward. It does require <a href="http://docs.racket-lang.org/reference/stx-patterns.html?q=with-syntax#(form._((lib._racket/private/stxcase-scheme..rkt)._syntax-case))" data-pltdoc="x">syntax-<wbr />case</a> rather than <a href="http://docs.racket-lang.org/reference/stx-patterns.html?q=with-syntax#(form._((lib._racket/private/stxcase-scheme..rkt)._syntax-rules))" data-pltdoc="x">syntax-<wbr />rules</a> which I normally use (in order to have access to the raw <code>stx</code> to pass to <code>format-id</code>, but other than that, a pretty normal macro. Now each function in turn.</p>
-
+     (<span style="color:#a6e22e">with-syntax</span> ([builder-name (<span style="color:#a6e22e">format-id</span> stx <span style="color:#e6db74">&#34;build-~a&#34;</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#39;struct-name</span>)]
+                   [bytes-&gt;-name (<span style="color:#a6e22e">format-id</span> stx <span style="color:#e6db74">&#34;bytes-&gt;~a&#34;</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#39;struct-name</span>)]
+                   [-&gt;bytes-name (<span style="color:#a6e22e">format-id</span> stx <span style="color:#e6db74">&#34;~a-&gt;bytes&#34;</span> <span style="color:#f92672">#</span><span style="color:#e6db74">&#39;struct-name</span>)])
+       <span style="color:#f92672">...</span>)]))
+</code></pre></div><p>More or less straight forward. It does require <a href="http://docs.racket-lang.org/reference/stx-patterns.html?q=with-syntax#(form._((lib._racket/private/stxcase-scheme..rkt)._syntax-case))" data-pltdoc="x">syntax-<wbr />case</a> rather than <a href="http://docs.racket-lang.org/reference/stx-patterns.html?q=with-syntax#(form._((lib._racket/private/stxcase-scheme..rkt)._syntax-rules))" data-pltdoc="x">syntax-<wbr />rules</a> which I normally use (in order to have access to the raw <code>stx</code> to pass to <code>format-id</code>, but other than that, a pretty normal macro. Now each function in turn.</p>
 <p>First, <code>build-*</code>. This one does the magic of creating a function with dynamic keyword parameters that match whatever fields the struct has. To do that, we need the function <code><a href="http://docs.racket-lang.org/search/index.html?q=make-keyword-procedure">make-keyword-procedure</a></code>
 , which takes a procedure of the form <code>((Listof keys) (Listof values) any ... . -&gt; . any)</code>. So if you define a function <code>(λ (keys vals . args) ...)</code>, keys and values are lists of the same length, the first containing the keywords and the latter containing the associated values. You could easily make it into an association list if you wanted just by calling <code>(map list keys vals)</code> (or with <code>for</code> as I did below). I did have to convert them though. As given, they are keywords but I wanted symbols. I&rsquo;m not sure there&rsquo;s a direct way to convert between those two, but it&rsquo;s easy enough via an intermediate string.</p>
-
 <p>In this case, I&rsquo;m ignoring the <code>rest</code> parameter so only keyword parameters are allowed.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Create the builder function</span>
 (<span style="color:#66d9ef">define </span>builder-name
-  (make-keyword-procedure
-   (λ (keys vals)
+  (<span style="color:#a6e22e">make-keyword-procedure</span>
+   (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">keys</span> vals)
       <span style="color:#75715e">; Create an association map from the new values</span>
       (<span style="color:#66d9ef">define </span>new-values
-        (for/list ([k (in-list (map string-&gt;symbol 
+        (<span style="color:#a6e22e">for/list</span> ([k (<span style="color:#a6e22e">in-list</span> (map string-&gt;symbol 
                                     (map keyword-&gt;string keys)))]
-                   [v (in-list vals)])
+                   [v (<span style="color:#a6e22e">in-list</span> vals)])
           (list k v)))
 
       <span style="color:#75715e">; Build a new structure</span>
       (apply 
        maker-name
-       (for/list ([name (in-list <span style="color:#f92672">&#39;</span>(name* <span style="color:#f92672">...</span>))]
-                  [bits (in-list <span style="color:#f92672">&#39;</span>(bits* <span style="color:#f92672">...</span>))])
-         (cond
+       (<span style="color:#a6e22e">for/list</span> ([name (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(name* <span style="color:#f92672">...</span>))]
+                  [bits (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(bits* <span style="color:#f92672">...</span>))])
+         (<span style="color:#a6e22e">cond</span>
            [(assoc name new-values)
-            <span style="color:#66d9ef">=&gt; </span>(λ (kv) (second kv))]
+            <span style="color:#66d9ef">=&gt; </span>(<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">kv</span>) (<span style="color:#a6e22e">second</span> kv))]
            [(eq? bits <span style="color:#e6db74">&#39;_</span>) <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;&#34;</span>]
-           [<span style="color:#66d9ef">else </span>           <span style="color:#ae81ff">0</span>]))))))</code></pre></div>
-<p>After we have that association list, we&rsquo;ll use a second loop to create the structure. Since we&rsquo;re inside of the macro, <code>'(name* ...)</code> expands to a list of whatever was in the first position for each argument when <code>define-bit-struct</code> was called. Likewise, bits is a list of the bit widths. With all of that, we can loop across these values. Another neat trick in this code is the use of <code>=&gt;</code> in the <code>cond</code>. Essentially, <code>assoc</code> will take the association list we created and query it. If the key is there, it will call the given function, passing the key/value pair as an argument (<code>kv</code>). If it&rsquo;s not there, use the <code>else</code> case to set the value to 0.</p>
+           [<span style="color:#66d9ef">else </span>           <span style="color:#ae81ff">0</span>]))))))
+</code></pre></div><p>After we have that association list, we&rsquo;ll use a second loop to create the structure. Since we&rsquo;re inside of the macro, <code>'(name* ...)</code> expands to a list of whatever was in the first position for each argument when <code>define-bit-struct</code> was called. Likewise, bits is a list of the bit widths. With all of that, we can loop across these values. Another neat trick in this code is the use of <code>=&gt;</code> in the <code>cond</code>. Essentially, <code>assoc</code> will take the association list we created and query it. If the key is there, it will call the given function, passing the key/value pair as an argument (<code>kv</code>). If it&rsquo;s not there, use the <code>else</code> case to set the value to 0.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Create the parser function</span>
-(<span style="color:#66d9ef">define </span>(bytes-&gt;-name buffer)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">bytes-&gt;-name</span> buffer)
   <span style="color:#75715e">; Set names with parameters (easier than making lots of ids)</span>
-  (<span style="color:#66d9ef">define </span>name* (make-parameter <span style="color:#ae81ff">0</span>)) <span style="color:#f92672">...</span>
+  (<span style="color:#66d9ef">define </span>name* (<span style="color:#a6e22e">make-parameter</span> <span style="color:#ae81ff">0</span>)) <span style="color:#f92672">...</span>
   <span style="color:#75715e">; Unpack fields into those parameters as integers</span>
   <span style="color:#75715e">; _ is different, it stores any remaining bytes</span>
   (<span style="color:#66d9ef">define </span>_
-    (for/fold ([offset <span style="color:#ae81ff">0</span>])
-              ([name (in-list (list name* <span style="color:#f92672">...</span>))]
-               [bits (in-list <span style="color:#f92672">&#39;</span>(bits* <span style="color:#f92672">...</span>))])
-      (cond
+    (<span style="color:#a6e22e">for/fold</span> ([offset <span style="color:#ae81ff">0</span>])
+              ([name (<span style="color:#a6e22e">in-list</span> (list name* <span style="color:#f92672">...</span>))]
+               [bits (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(bits* <span style="color:#f92672">...</span>))])
+      (<span style="color:#a6e22e">cond</span>
         [(number? bits)
-         (name (extract-bytes buffer offset (+ offset bits)))
+         (<span style="color:#a6e22e">name</span> (<span style="color:#a6e22e">extract-bytes</span> buffer offset (+ offset bits)))
          (+ offset bits)]
         [else
-         (name (subbytes buffer (quotient offset <span style="color:#ae81ff">8</span>)))
+         (<span style="color:#a6e22e">name</span> (<span style="color:#a6e22e">subbytes</span> buffer (quotient offset <span style="color:#ae81ff">8</span>)))
          offset])))
   <span style="color:#75715e">; Create the structure</span>
   (apply 
    maker-name
-   (for/list ([name (list name* <span style="color:#f92672">...</span>)])
-     (name))))</code></pre></div>
-<p>For the second function, we want to be able to take a sequence of bytes and pull one of these structures out of it. If we need to get only part of a byte or extend over multiple bytes (both of which happen in the DNS example), the function <code>extract-bytes</code> will do just that:</p>
+   (<span style="color:#a6e22e">for/list</span> ([name (list name* <span style="color:#f92672">...</span>)])
+     (<span style="color:#a6e22e">name</span>))))
+</code></pre></div><p>For the second function, we want to be able to take a sequence of bytes and pull one of these structures out of it. If we need to get only part of a byte or extend over multiple bytes (both of which happen in the DNS example), the function <code>extract-bytes</code> will do just that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Extract bits from a bit field</span>
-(<span style="color:#66d9ef">define </span>(extract-bytes buffer from [to <span style="color:#66d9ef">#f</span>])
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">extract-bytes</span> buffer from [to <span style="color:#66d9ef">#f</span>])
   <span style="color:#75715e">; Extract the bytes we&#39;re interested in</span>
   (<span style="color:#66d9ef">define </span>f (quotient from <span style="color:#ae81ff">8</span>))
   (<span style="color:#66d9ef">define </span>t (<span style="color:#66d9ef">if </span>to 
                 (<span style="color:#66d9ef">let </span>([q (quotient to <span style="color:#ae81ff">8</span>)])
                   (<span style="color:#66d9ef">if </span>(zero? (remainder to <span style="color:#ae81ff">8</span>)) q (+ <span style="color:#ae81ff">1</span> q)))
-                (bytes-length buffer)))
-  (<span style="color:#66d9ef">define </span>chunk (subbytes buffer f t))
+                (<span style="color:#a6e22e">bytes-length</span> buffer)))
+  (<span style="color:#66d9ef">define </span>chunk (<span style="color:#a6e22e">subbytes</span> buffer f t))
   <span style="color:#75715e">; Convert to a base 256 number</span>
   (<span style="color:#66d9ef">define </span>numeric
-    (for/fold ([total <span style="color:#ae81ff">0</span>])
-              ([byte (in-bytes chunk)])
+    (<span style="color:#a6e22e">for/fold</span> ([total <span style="color:#ae81ff">0</span>])
+              ([byte (<span style="color:#a6e22e">in-bytes</span> chunk)])
       (+ byte (* total <span style="color:#ae81ff">256</span>))))
   <span style="color:#75715e">; Shift off the ends</span>
-  (bitwise-and
-   (arithmetic-shift numeric 
+  (<span style="color:#a6e22e">bitwise-and</span>
+   (<span style="color:#a6e22e">arithmetic-shift</span> numeric 
                      (<span style="color:#66d9ef">if </span>to 
                          (<span style="color:#66d9ef">let </span>([r (remainder to <span style="color:#ae81ff">8</span>)])
                            (<span style="color:#66d9ef">if </span>(zero? r) r (- r <span style="color:#ae81ff">8</span>)))
                          <span style="color:#ae81ff">0</span>))
-   (- (arithmetic-shift <span style="color:#ae81ff">1</span> (- to from)) <span style="color:#ae81ff">1</span>)))</code></pre></div>
-<p>First, we get just the bytes we&rsquo;re interested in as a list. Then, we convert that to a single number by treating the list as a &lsquo;base 256&rsquo; number. Finally, we use an <code>arithmetic-shift</code> to pull off bits at one end and a <code>bitwise-and</code> with a mask to select only the ones from the other end that we want. The bit twiddling gets a bit complicated here, but once it all works, you don&rsquo;t have to think about it any more&ndash;just use it.</p>
+   (- (<span style="color:#a6e22e">arithmetic-shift</span> <span style="color:#ae81ff">1</span> (- to from)) <span style="color:#ae81ff">1</span>)))
+</code></pre></div><p>First, we get just the bytes we&rsquo;re interested in as a list. Then, we convert that to a single number by treating the list as a &lsquo;base 256&rsquo; number. Finally, we use an <code>arithmetic-shift</code> to pull off bits at one end and a <code>bitwise-and</code> with a mask to select only the ones from the other end that we want. The bit twiddling gets a bit complicated here, but once it all works, you don&rsquo;t have to think about it any more&ndash;just use it.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Create the -&gt;bytes function</span>
-(<span style="color:#66d9ef">define </span>(-&gt;bytes-name data-struct)
-  (<span style="color:#66d9ef">define </span>data (struct-&gt;vector data-struct))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">-&gt;bytes-name</span> data-struct)
+  (<span style="color:#66d9ef">define </span>data (<span style="color:#a6e22e">struct-&gt;vector</span> data-struct))
   (<span style="color:#66d9ef">let </span>loop ([bits <span style="color:#f92672">&#39;</span>(bits* <span style="color:#f92672">...</span>)]
              [buffer <span style="color:#ae81ff">0</span>]
              [buffer-bits <span style="color:#ae81ff">0</span>]
              [index <span style="color:#ae81ff">1</span>])
-    (cond
+    (<span style="color:#a6e22e">cond</span>
       <span style="color:#75715e">; Full buffer, transfer it</span>
       [(<span style="color:#66d9ef">and </span>(&gt; buffer-bits <span style="color:#ae81ff">0</span>) (zero? (remainder buffer-bits <span style="color:#ae81ff">8</span>)))
-       (bytes-append
-        (number-&gt;bytes buffer (quotient buffer-bits <span style="color:#ae81ff">8</span>))
-        (loop bits <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> index))]
+       (<span style="color:#a6e22e">bytes-append</span>
+        (<span style="color:#a6e22e">number-&gt;bytes</span> buffer (quotient buffer-bits <span style="color:#ae81ff">8</span>))
+        (<span style="color:#a6e22e">loop</span> bits <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> index))]
       <span style="color:#75715e">; Nothing left</span>
       [(null? bits)
        <span style="color:#f92672">#</span><span style="color:#e6db74">&#34;&#34;</span>]
       <span style="color:#75715e">; Current value is bytes, copy directly</span>
-      [(eq? (first bits) <span style="color:#e6db74">&#39;_</span>)
-       (bytes-append
+      [(eq? (<span style="color:#a6e22e">first</span> bits) <span style="color:#e6db74">&#39;_</span>)
+       (<span style="color:#a6e22e">bytes-append</span>
         (vector-ref data index)
-        (loop (rest bits) buffer buffer-bits (+ index <span style="color:#ae81ff">1</span>)))]
+        (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">rest</span> bits) buffer buffer-bits (+ index <span style="color:#ae81ff">1</span>)))]
       <span style="color:#75715e">; Otherwise, add to buffer</span>
       [else
-       (loop
-        (rest bits)
-        (+ (* buffer (arithmetic-shift <span style="color:#ae81ff">1</span> (first bits)))
+       (<span style="color:#a6e22e">loop</span>
+        (<span style="color:#a6e22e">rest</span> bits)
+        (+ (* buffer (<span style="color:#a6e22e">arithmetic-shift</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">first</span> bits)))
            (vector-ref data index))
-        (+ buffer-bits (first bits))
-        (+ index <span style="color:#ae81ff">1</span>))])))</code></pre></div>
-<p>The third and final function&rsquo;s code is actually fairly similar, in that it has to loop over the names/bit widths. One additional part that it does is that it uses a <code>named let</code> to collect the current offset within a byte. That way we collect partial bytes in a <code>buffer</code> until we have some multiple of 8. Then we use the dual to <code>extract-bytes</code> (<code>number-&gt;</code>) to convert back to bytes.</p>
-
+        (+ buffer-bits (<span style="color:#a6e22e">first</span> bits))
+        (+ index <span style="color:#ae81ff">1</span>))])))
+</code></pre></div><p>The third and final function&rsquo;s code is actually fairly similar, in that it has to loop over the names/bit widths. One additional part that it does is that it uses a <code>named let</code> to collect the current offset within a byte. That way we collect partial bytes in a <code>buffer</code> until we have some multiple of 8. Then we use the dual to <code>extract-bytes</code> (<code>number-&gt;</code>) to convert back to bytes.</p>
 <p>And that&rsquo;s all there is to it. It&rsquo;s certainly not bullet proof just yet (for example, I know that negative values will probably do strange things to it, as will providing keywords that don&rsquo;t exist to <code>build-*</code>), but it&rsquo;s certainly a good first step. It should be useful later this week.</p>
-
 <p>As always, today&rsquo;s code is available on GitHub: <a href="https://github.com/jpverkamp/bit-struct">jpverkamp/bit-struct</a>. This time, there&rsquo;s also documentation available here: <a href="http://racket.jverkamp.com/bit-struct/">bit-struct documentation</a>.</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Not to DoSing anyone though (at least not on purpose)
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">In practice as well actually; we&rsquo;ll see that later this week
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
-<li id="fn:3">If what you expect is a struct with the given names and ordered fields each containing the given number of bits
- <a class="footnote-return" href="#fnref:3"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Not to DoSing anyone though (at least not on purpose) <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>In practice as well actually; we&rsquo;ll see that later this week <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3" role="doc-endnote">
+<p>If what you expect is a struct with the given names and ordered fields each containing the given number of bits <a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

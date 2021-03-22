@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,68 +71,46 @@
     </header>
 
 	<div class="entry-content"><p>One of the more subtle bugs that a lot of companies miss is Server Side Request Forgery (SSRF). Like it&rsquo;s cousin CSRF (cross-site request forgery), SSRF involves carefully crafting a request that runs in a way that the original developers didn&rsquo;t expect to do things that shouldn&rsquo;t be done. In the case of CSRF, one site is making a request on behalf of another in a user&rsquo;s browser (cross-site), but in SSRF, a request is being made by a server on behalf of a client, but you can trick it into making a request that wasn&rsquo;t intended.</p>
-
 <p>For a perhaps more obvious example, consider a website with a service that will render webpages as preview images&ndash;consider sharing links on a social network. A user makes a request such as <code>/render?url=https://www.google.com</code>. This goes to the server, which will then fetch <a href="https://www.google.com">https://www.google.com</a>, render the page to a screenshot, and then return that as a thumbnail.</p>
-
 <p>This seems like rather useful functionality, but what if instead, the user gives the url: <code>/render?url=https://secret-internal-site.company.com</code>. Normally, <code>company.com</code> would be an internal only domain that cannot be viewed by users, but in this case&ndash;the server is within the corporate network. Off the server goes, helpfully taking and returning a screenshot. Another option&ndash;if you&rsquo;re hosted on AWS&ndash;is the AWS <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html">metadata endpoint</a>: <code>http://169.254.169.254/latest/meta-data/</code>. All sorts of interesting private things there. Or even more insidious, <code>/render?url=file:///etc/password</code>. That shouldn&rsquo;t work in most cases, since most libraries know better than to rener <code>file://</code> protocol URLs, but&hellip; not always!</p>
-
-<h1 id="fix-version-1-ssrf-filter">Fix version 1: ssrf_filter</h1>
-
+<h1 id="fix-version-1-ssrf_filter">Fix version 1: ssrf_filter</h1>
 <p>The easiest general solution to many problems is&ndash;don&rsquo;t solve the problem. Until you get deep into the weeks (which SSRF is not), someone has already solved the problem.</p>
-
 <p>In this case, I was working in a <a href="https://rubyonrails.org/">Ruby on Rails</a> codebase, so the top answer is: <a href="https://github.com/arkadiyt/ssrf_filter">ssrf_filter</a>. It&rsquo;s actually pretty much just a direct drop in for the built in <code>open</code> functionality:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-ruby" data-lang="ruby">require <span style="color:#e6db74">&#39;ssrf_filter&#39;</span>
 response <span style="color:#f92672">=</span> <span style="color:#66d9ef">SsrfFilter</span><span style="color:#f92672">.</span>get(params<span style="color:#f92672">[</span><span style="color:#e6db74">:url</span><span style="color:#f92672">]</span>) <span style="color:#75715e"># throws an exception for unsafe fetches</span>
 response<span style="color:#f92672">.</span>code
 <span style="color:#f92672">=&gt;</span> <span style="color:#e6db74">&#34;200&#34;</span>
 response<span style="color:#f92672">.</span>body
-<span style="color:#f92672">=&gt;</span> <span style="color:#e6db74">&#34;&lt;!doctype html&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;html&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;head&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">...&#34;</span></code></pre></div>
-<p>And that&rsquo;s it. If the page is internal (such as the AWS metadata URL above, <code>file://</code> protocol, or even IPs in a <a href="https://en.wikipedia.org/wiki/private%20network">private network</a>), <code>ssrf_filter</code> will refuse to load the page and throw an <code>Ssrf:Filter::Error</code>.</p>
-
+<span style="color:#f92672">=&gt;</span> <span style="color:#e6db74">&#34;&lt;!doctype html&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;html&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;head&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">...&#34;</span>
+</code></pre></div><p>And that&rsquo;s it. If the page is internal (such as the AWS metadata URL above, <code>file://</code> protocol, or even IPs in a <a href="https://en.wikipedia.org/wiki/private%20network">private network</a>), <code>ssrf_filter</code> will refuse to load the page and throw an <code>Ssrf:Filter::Error</code>.</p>
 <p>That&rsquo;s it. Trivial, no?</p>
-
-<h1 id="but-it-s-not-perfect">But it&rsquo;s not perfect</h1>
-
+<h1 id="but-its-not-perfect">But it&rsquo;s not perfect</h1>
 <p>Well. No. Of course it isn&rsquo;t.</p>
-
 <p>It turns out that depending on exactly what you&rsquo;re doing with <code>ssrf_filter</code>, it can be bypassed. Now, this isn&rsquo;t actually a problem with the library, but rather in what you&rsquo;re doing with it. Instead of directly trying to fetch <code>https://secret-internal-site.company.com</code>, instead host a simple HTML document on your own server (anywhere as long as it&rsquo;s public):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html">&lt;<span style="color:#f92672">script</span>&gt;document.<span style="color:#a6e22e">location</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;https://secret-internal-site.company.com&#34;</span>&lt;/<span style="color:#f92672">script</span>&gt;</code></pre></div>
-<p>All this does is load the original site (bypassing <code>ssrf_filter</code>) and then instruct the page to use JavaScript to perform a redirect. If you&rsquo;re not rendering JavaScript (which the most basic thumbnail software would not be), this isn&rsquo;t a problem. But in modern websites, that isn&rsquo;t really an option. There are whole swaths of the internet that will not render without at least minimal JavaScript enabled.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html">&lt;<span style="color:#f92672">script</span>&gt;document.<span style="color:#a6e22e">location</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;https://secret-internal-site.company.com&#34;</span>&lt;/<span style="color:#f92672">script</span>&gt;
+</code></pre></div><p>All this does is load the original site (bypassing <code>ssrf_filter</code>) and then instruct the page to use JavaScript to perform a redirect. If you&rsquo;re not rendering JavaScript (which the most basic thumbnail software would not be), this isn&rsquo;t a problem. But in modern websites, that isn&rsquo;t really an option. There are whole swaths of the internet that will not render without at least minimal JavaScript enabled.</p>
 <p>So now we have a problem: do we turn off JavaScript rendering? or do we try to make sure that even if the page redirects, we can still prevent SSRF?</p>
-
 <p>(Side note: Making your server return an <code>HTTP 3xx redirect</code> will not bypass <code>ssrf_filter</code>, it automatically follows and allows/blocks those as expected).</p>
-
 <h1 id="fix-version-2-iptables">Fix version 2: iptables</h1>
-
 <p>Okay, we tried to solve it at the network level, but now it&rsquo;s time to bring out the big guns. <a href="https://en.wikipedia.org/wiki/iptables">iptables</a></p>
-
 <p>In a nutshell, it&rsquo;s a Linux kernel level firewall. It allows you to do cool things like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">iptables -N APP_FIREWALL
-iptables -A APP_FIREWALL -d <span style="color:#ae81ff">169</span>.254.169.254 -j DROP
-iptables -A APP_FIREWALL -p tcp -d <span style="color:#ae81ff">10</span>.0.0.0/8 -m multiport --dports http,https -j DROP
-iptables -I FORWARD -i docker0 -j APP_FIREWALL</code></pre></div>
-<p>That required some testing, but essentially what we&rsquo;re doing is:</p>
-
+iptables -A APP_FIREWALL -d 169.254.169.254 -j DROP
+iptables -A APP_FIREWALL -p tcp -d 10.0.0.0/8 -m multiport --dports http,https -j DROP
+iptables -I FORWARD -i docker0 -j APP_FIREWALL
+</code></pre></div><p>That required some testing, but essentially what we&rsquo;re doing is:</p>
 <ul>
 <li>Create a <code>N</code>ew <code>iptables</code> rule</li>
 <li><code>A</code>ppend a rule to it that any packets to the <code>d</code>estination <code>169.254.169.254</code> should be <code>DROP</code>ed</li>
 <li><code>A</code>ppend a rule that any <code>tcp</code> connections to the private subnet <code>10.0.0.0/8</code> from any port over <code>http</code> or <code>https</code> should be <code>DROP</code>ed</li>
 <li><code>I</code>nsert a <code>FORWARD</code>ing rule that the subnet <code>docker0</code> should hand traffic over to the new <code>APP_FIREWALL</code> rules</li>
 </ul>
-
 <p>This does exactly what we need. Any traffic that&rsquo;s coming from docker (I&rsquo;ll come back to that in a moment) cannot go to the metadata IP or a <code>10.*</code> IP. No matter how you do it, be it a direct request, an HTTP redirect, or a JavaScript redirect. All such traffic will be dropped and will then timeout.</p>
-
 <p>So, back to <a href="https://www.docker.com/">Docker</a>: this solution is for the moment specific to Docker. I really do like what containers do for you, be the Docker or any of other solutions that have cropped up since. They let you run a reproducible image on a variety of systems without having to worry about what&rsquo;s installed or leaving behind state that might break other systems. In this case, the Docker process already sets up it&rsquo;s own <code>iptables</code> network: <code>docker0</code>. So that&rsquo;s why I&rsquo;m appending to that. If you didn&rsquo;t have Docker, you could do much the same thing for <code>10.*</code> IPs, but outright blocking all traffic to <code>169.254.169.254</code> may break AWS specific services. Your milage may vary.</p>
-
 <p>All together though, it works. At least I haven&rsquo;t been able to get through this with any of the SSRF tricks I know. Of course, when you&rsquo;re working in security: you have to fix everything, but they only have to break one thing&hellip;</p>
-
 <h1 id="summary">Summary</h1>
-
 <p>So what have we learned?</p>
-
 <p>Well, attackers are tricky. Any way that they can convince a server to do something it&rsquo;s not supposed to is a way that you can leverage an attack. In this case, making a server request resources that it can access that the user shouldn&rsquo;t be able to see. It&rsquo;s often possible to fix such problems with a built in library (and that&rsquo;s a good start), but&hellip; sometimes you need to go a level deeper.</p>
-
 <p>Also, <code>iptables</code> are cool. I should look more into that. Before solving this particular problem, I had little experience with <code>iptables</code>, but a few hours of reading documentation, searching for examples, and fiddling with settings and I had something functional. A few more and I thought I understood the system well enough that I could probably put something more powerful into place.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

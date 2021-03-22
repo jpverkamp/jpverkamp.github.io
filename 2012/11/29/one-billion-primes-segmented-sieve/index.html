@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,45 +74,42 @@
     </header>
 
 	<div class="entry-content"><p>After a <a href="https://blog.jverkamp.com/2012/11/01/the-sum-of-the-first-billion-primes/">sum of the first billion primes</a> post (originally from <a title="Programming Praxis: The Sum Of The First Billion Primes" href="http://programmingpraxis.com/2012/09/11/the-sum-of-the-first-billion-primes/">Programming Praxis</a>), I decided to finally write a segmented version of the <a href="https://en.wikipedia.org/wiki/Sieve%20of%20Eratosthenes">Sieve of Eratosthenes</a>.</p>
-
 <p>Basically, the idea is not to make a sieve for the entire 23 billion numbers that you&rsquo;ll be summing, instead just make a sieve for the first square root of them. This is guaranteed to contain all of the primes you will need to divide by for the rest of the list. After that, just reuse that same vector over and over again until you&rsquo;ve counted enough primes. This should definitely help with the memory issues I was having and should also be much faster (we can take better advantage of memory caches).</p>
-
 <p>If you&rsquo;d like to follow along, the entire code is available on <a title="GitHub: Segmented billion primes source" href="https://github.com/jpverkamp/small-projects/blob/master/blog/billion-primes-segmented.rkt">GitHub</a>.</p>
-
 <p>First we need to create the initial sieve. This code is nearly identical to the original sieve code except we&rsquo;re only sieving up to the square root of the upper bound on the nth prime.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; sieve up to sqrt of the estimated high prime</span>
-(define-values (lo hi) (guess-nth-prime n))
-(<span style="color:#66d9ef">define </span>sieve-size (+ <span style="color:#ae81ff">1</span> (integer-sqrt hi)))
+(<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">lo</span> hi) (<span style="color:#a6e22e">guess-nth-prime</span> n))
+(<span style="color:#66d9ef">define </span>sieve-size (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">integer-sqrt</span> hi)))
 (<span style="color:#66d9ef">define </span>sieve (make-vector sieve-size <span style="color:#66d9ef">#t</span>))
 (vector-set! sieve <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">#f</span>)
 (vector-set! sieve <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">#f</span>)
-(for* ([i (in-range <span style="color:#ae81ff">2</span> sieve-size)]
+(<span style="color:#a6e22e">for*</span> ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">2</span> sieve-size)]
        <span style="color:#f92672">#</span>:when (vector-ref sieve i)
-       [j (in-range (* i i) sieve-size i)])
-  (vector-set! sieve j <span style="color:#66d9ef">#f</span>))</code></pre></div>
-<p>And then we can turn that directly into a list of primes:</p>
+       [j (<span style="color:#a6e22e">in-range</span> (* i i) sieve-size i)])
+  (vector-set! sieve j <span style="color:#66d9ef">#f</span>))
+</code></pre></div><p>And then we can turn that directly into a list of primes:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; create a list of just those primes</span>
 (<span style="color:#66d9ef">define </span>primes
-  (for/list ([i (in-naturals)]
-             [p? (in-vector sieve)]
+  (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-naturals</span>)]
+             [p? (<span style="color:#a6e22e">in-vector</span> sieve)]
              <span style="color:#f92672">#</span>:when p?)
     i))
 (<span style="color:#66d9ef">define </span>sum (apply + primes))
-(<span style="color:#66d9ef">define </span>cnt (length primes))</code></pre></div>
-<p>The next step starts the loop that will segment and sum the primes. First, code:</p>
+(<span style="color:#66d9ef">define </span>cnt (length primes))
+</code></pre></div><p>The next step starts the loop that will segment and sum the primes. First, code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; reuse the sieve in blocks until we&#39;ve found enough</span>
   (<span style="color:#66d9ef">let </span>loop ([lo sieve-size])
     <span style="color:#75715e">; clear the vector</span>
-    (for ([i (in-range sieve-size)]) (vector-set! sieve i <span style="color:#66d9ef">#t</span>))
+    (<span style="color:#a6e22e">for</span> ([i (<span style="color:#a6e22e">in-range</span> sieve-size)]) (vector-set! sieve i <span style="color:#66d9ef">#t</span>))
 
     <span style="color:#75715e">; remove all multiples of candidate primes</span>
-    (for* ([p (in-list primes)]
-           [i (in-range (<span style="color:#66d9ef">if </span>(divides? lo p) <span style="color:#ae81ff">0</span> (- p (mod lo p))) sieve-size p)])
+    (<span style="color:#a6e22e">for*</span> ([p (<span style="color:#a6e22e">in-list</span> primes)]
+           [i (<span style="color:#a6e22e">in-range</span> (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">divides?</span> lo p) <span style="color:#ae81ff">0</span> (- p (<span style="color:#a6e22e">mod</span> lo p))) sieve-size p)])
       (vector-set! sieve i <span style="color:#66d9ef">#f</span>))
 
     <span style="color:#75715e">; add new primes to sum and count</span>
-    (for ([i (in-range lo (+ lo sieve-size))]
-          [p? (in-vector sieve)]
+    (<span style="color:#a6e22e">for</span> ([i (<span style="color:#a6e22e">in-range</span> lo (+ lo sieve-size))]
+          [p? (<span style="color:#a6e22e">in-vector</span> sieve)]
           <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">and </span>p? (&lt; cnt n)))
       (<span style="color:#66d9ef">set! </span>sum (+ sum i))
       (<span style="color:#66d9ef">set! </span>cnt (+ cnt <span style="color:#ae81ff">1</span>)))
@@ -120,15 +117,13 @@
     <span style="color:#75715e">; if we&#39;re done, return the result, otherwise loop</span>
     (<span style="color:#66d9ef">if </span>(= cnt n)
         sum
-        (loop (+ lo sieve-size)))))</code></pre></div>
-<p>As mentioned, we have to start by clearing out the previous values. After that, we want to remove candidates. This is a bit tricky as this segment doesn&rsquo;t necessarily (actually doesn&rsquo;t often) start at a multiple of each prime, so you have to find the first one. That&rsquo;s what the <code>(if (divides? lo p) 0 (- p (mod lo p)))</code> bit does.</p>
-
+        (<span style="color:#a6e22e">loop</span> (+ lo sieve-size)))))
+</code></pre></div><p>As mentioned, we have to start by clearing out the previous values. After that, we want to remove candidates. This is a bit tricky as this segment doesn&rsquo;t necessarily (actually doesn&rsquo;t often) start at a multiple of each prime, so you have to find the first one. That&rsquo;s what the <code>(if (divides? lo p) 0 (- p (mod lo p)))</code> bit does.</p>
 <p>Then, you simply go through this segment and add all of the primes into our running total. There&rsquo;s a bit of inefficiency here as we loop through the rest of the segment even when we hit our count, but I think that&rsquo;s actually acceptable. The next version of Racket will have a <code>#:break</code> parameter in <code>for</code> which would help in this case, but as it is, we&rsquo;re not losing much.</p>
-
 <p>And there you have it. This should be everything we need to sum primes with a segmented sieve. Let&rsquo;s try it out:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (for ([n (in-list <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">10000</span> <span style="color:#ae81ff">20000</span> <span style="color:#ae81ff">30000</span>))])
-    (printf <span style="color:#e6db74">&#34;~s:\n&#34;</span> n)
-    (printf <span style="color:#e6db74">&#34;~s\n\n&#34;</span> (time (sum-primes n))))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">for</span> ([n (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">10000</span> <span style="color:#ae81ff">20000</span> <span style="color:#ae81ff">30000</span>))])
+    (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;~s:\n&#34;</span> n)
+    (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;~s\n\n&#34;</span> (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">sum-primes</span> n))))
 
 <span style="color:#ae81ff">10000</span>:
 cpu time: <span style="color:#ae81ff">7</span> real time: <span style="color:#ae81ff">8</span> gc time: <span style="color:#ae81ff">0</span>
@@ -140,12 +135,13 @@ cpu time: <span style="color:#ae81ff">897</span> real time: <span style="color:#
 
 <span style="color:#ae81ff">1000000000</span>:
 cpu time: <span style="color:#ae81ff">1512636</span> real time: <span style="color:#ae81ff">1510899</span> gc time: <span style="color:#ae81ff">3836</span>
-<span style="color:#ae81ff">11138479445180240497</span></code></pre></div>
-<p>Yes, you read that right. It only took a bit under half an hour (25 minutes 12 seconds) to sum the first billion primes where previously it had taken 2 hours 42 minutes for the Sieve of Eratosthenes and 1 hour 28 minutes for the Sieve of Atkin. It turns out that paying a bit of attention to memory access isn&rsquo;t necessarily a bad thing. 😄</p>
-
-<p>If you&rsquo;d like to check out / download the entire code, you can do so here:
-- <a title="GitHub: Segmented billion primes source" href="https://github.com/jpverkamp/small-projects/blob/master/blog/billion-primes-segmented.rkt">segmented version</a>
-- <a title="GitHub billion primes source" href="https://github.com/jpverkamp/small-projects/blob/master/blog/billion-primes.rkt">original version</a></p></div>
+<span style="color:#ae81ff">11138479445180240497</span>
+</code></pre></div><p>Yes, you read that right. It only took a bit under half an hour (25 minutes 12 seconds) to sum the first billion primes where previously it had taken 2 hours 42 minutes for the Sieve of Eratosthenes and 1 hour 28 minutes for the Sieve of Atkin. It turns out that paying a bit of attention to memory access isn&rsquo;t necessarily a bad thing. 😄</p>
+<p>If you&rsquo;d like to check out / download the entire code, you can do so here:</p>
+<ul>
+<li><a title="GitHub: Segmented billion primes source" href="https://github.com/jpverkamp/small-projects/blob/master/blog/billion-primes-segmented.rkt">segmented version</a></li>
+<li><a title="GitHub billion primes source" href="https://github.com/jpverkamp/small-projects/blob/master/blog/billion-primes.rkt">original version</a></li>
+</ul></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

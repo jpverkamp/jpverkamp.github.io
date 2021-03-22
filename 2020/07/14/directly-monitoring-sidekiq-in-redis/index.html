@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,37 +71,32 @@
     </header>
 
 	<div class="entry-content"><p>Another thing that came up recently: we have many (many) <a href="https://github.com/mperham/sidekiq">sidekiq</a> queues. Each has their own admin interface, but sometimes you just want all of the information in one place. Of course, you could bookmark all of the pages. Or make a single page with a lot of frames (remember <a href="https://en.wikipedia.org/wiki/HTML%20frames">HTML frames</a>?). Or use their API. But where&rsquo;s the fun in that? Instead, let&rsquo;s dig straight into the redis backend and see what we can see!</p>
-
-<p>First, let&rsquo;s find the queues. <a href="https://stackoverflow.com/questions/46407772/what-is-the-redis-key-for-a-queue-in-sidekiq">Google + StackOverflow to the rescue</a><sup class="footnote-ref" id="fnref:myday"><a href="#fn:myday">1</a></sup>. The queues are (by default), stored in <code>queue:default</code>.</p>
+<p>First, let&rsquo;s find the queues. <a href="https://stackoverflow.com/questions/46407772/what-is-the-redis-key-for-a-queue-in-sidekiq">Google + StackOverflow to the rescue</a><sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. The queues are (by default), stored in <code>queue:default</code>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ redis-cli
 
 &gt; get queue:default
-<span style="color:#f92672">(</span>nil<span style="color:#f92672">)</span></code></pre></div>
-<p>Hmm. There&rsquo;s a comment on the same post that actually answers that question. It turns out, I have <del>one</del> <del>two</del> three problems:</p>
-
+<span style="color:#f92672">(</span>nil<span style="color:#f92672">)</span>
+</code></pre></div><p>Hmm. There&rsquo;s a comment on the same post that actually answers that question. It turns out, I have <del>one</del> <del>two</del> three problems:</p>
 <ol>
 <li>If a queue is empty, the key will not currently exist</li>
 <li>If you have multiple queues/named queues, they won&rsquo;t be named <code>default</code></li>
 <li>If you used a prefix, that will be part of the queue as well</li>
 </ol>
-
 <p>So&hellip; let&rsquo;s look for a more general solution. It turns out there will always be a list of queues stored at <code>queues</code> or <code>{prefix}:queues</code>. So we can start with:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">&gt; keys *queues*
-<span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;myservice:queues&#34;</span>
+1<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;myservice:queues&#34;</span>
 
 &gt; smembers myservice:queues
-<span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;high&#34;</span>
-<span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;low&#34;</span>
-<span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;critical&#34;</span>
-<span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;medium&#34;</span>
+1<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;high&#34;</span>
+2<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;low&#34;</span>
+3<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;critical&#34;</span>
+4<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;medium&#34;</span>
 
 &gt; llen myservice:queue:low
-<span style="color:#f92672">(</span>integer<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span></code></pre></div>
-<p>Nice!</p>
-
+<span style="color:#f92672">(</span>integer<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+</code></pre></div><p>Nice!</p>
 <p>That&rsquo;s all the information I needed for now. Let&rsquo;s throw together a quick UI. Now, I really should do this in Ruby, since sidekiq is a Ruby thing, and I&rsquo;ve started exploring <a href="http://sinatrarb.com/">Sinatra</a> as a really light weight server language. But for now, let&rsquo;s go with what I do best for lightweight services: <a href="https://flask.palletsprojects.com/en/1.1.x/">Flask</a></p>
-
-<p>I&rsquo;m going to take what I found about the Redis/Sidekiq earlier and connect to multiple Redii<sup class="footnote-ref" id="fnref:plurals"><a href="#fn:plurals">2</a></sup> and pull out all their data:</p>
+<p>I&rsquo;m going to take what I found about the Redis/Sidekiq earlier and connect to multiple Redii<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup> and pull out all their data:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">redii <span style="color:#f92672">=</span> {
     url: redis<span style="color:#f92672">.</span>Redis(
         host <span style="color:#f92672">=</span> url<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;:&#39;</span>)[<span style="color:#ae81ff">0</span>],
@@ -137,31 +132,29 @@
     <span style="color:#66d9ef">except</span> redis<span style="color:#f92672">.</span>exceptions<span style="color:#f92672">.</span>ConnectionError <span style="color:#66d9ef">as</span> ex:
         results[<span style="color:#e6db74">&#39;error&#39;</span>] <span style="color:#f92672">=</span> str(ex)
 
-    <span style="color:#66d9ef">return</span> results</code></pre></div>
-<p>Get the <code>*queues</code>, reformat that as a singular to get the keys, get the lengths, and write it all down. Then to be really fancy, let&rsquo;s make automatic tables:</p>
+    <span style="color:#66d9ef">return</span> results
+</code></pre></div><p>Get the <code>*queues</code>, reformat that as a singular to get the keys, get the lengths, and write it all down. Then to be really fancy, let&rsquo;s make automatic tables:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@app.route</span>(<span style="color:#e6db74">&#39;/&#39;</span>)
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">index</span>():
     <span style="color:#66d9ef">return</span> tabulate<span style="color:#f92672">.</span>tabulate(
         get_all_counts(),
         tablefmt<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;html&#39;</span>,
         headers<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;keys&#39;</span>,
-    )</code></pre></div>
-<p><a href="https://pypi.org/project/tabulate/">tabulate</a> is pretty cool.</p>
-
+    )
+</code></pre></div><p><a href="https://pypi.org/project/tabulate/">tabulate</a> is pretty cool.</p>
 <p>Now on top of that, I did a few more things, such as writing down previous values and then calculating the current delta of the system (along with estimated time to clear) and alerting using <a href="https://api.slack.com/messaging/webhooks">Slack incoming webhooks</a>. But that&rsquo;s a post for another day. For now, it&rsquo;s a quick script that probably took me an hour or two to write but can save hours of time recovering from an overloading sidekiq queue that no one noticed.</p>
-
 <p>Woot.</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:myday">I should graph how many searches I make on an average day. Most of my job isn&rsquo;t knowing the answers to everything (although it helps :D), it&rsquo;s knowing how to phrase the question and interpret previous solutions.
- <a class="footnote-return" href="#fnref:myday"><sup>[return]</sup></a></li>
-<li id="fn:plurals">Hey, it could be right! Maybe Redipodes would be better.
- <a class="footnote-return" href="#fnref:plurals"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>I should graph how many searches I make on an average day. Most of my job isn&rsquo;t knowing the answers to everything (although it helps :D), it&rsquo;s knowing how to phrase the question and interpret previous solutions. <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>Hey, it could be right! Maybe Redipodes would be better. <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

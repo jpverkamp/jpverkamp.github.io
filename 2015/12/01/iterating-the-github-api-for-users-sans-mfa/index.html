@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -70,8 +70,7 @@
 </div>
     </header>
 
-	<div class="entry-content"><p>Today I found myself auditing an organization&rsquo;s users to see which have <a href="https://en.wikipedia.org/wiki/multifactor%20authentication">multifactor authentication</a> enabled<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go&hellip; and now I have a clean way of iterating across paginated GitHub API responses.</p>
-
+	<div class="entry-content"><p>Today I found myself auditing an organization&rsquo;s users to see which have <a href="https://en.wikipedia.org/wiki/multifactor%20authentication">multifactor authentication</a> enabled<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. Since we have a not insignificant number of users, I wanted to write a quick script to automate it. Down the rabbit hole I go&hellip; and now I have a clean way of iterating across paginated GitHub API responses.</p>
 <p>First, the full script:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
 
@@ -96,30 +95,26 @@ headers <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;A
         <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;next&#39;</span> <span style="color:#f92672">in</span> response<span style="color:#f92672">.</span>links:
             url <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>links[<span style="color:#e6db74">&#39;next&#39;</span>][<span style="color:#e6db74">&#39;url&#39;</span>]
         <span style="color:#66d9ef">else</span>:
-            <span style="color:#66d9ef">return</span></code></pre></div>
-<p>The core of this script once again leans against the excellent <a href="http://docs.python-requests.org/en/latest/">Requests</a> library for Python. It makes making simple requests and parsing the <a href="http://www.w3.org/wiki/LinkHeader">HTTP Link Header</a> trivial. Also, <code>yield from</code> is pretty cool.</p>
-
+            <span style="color:#66d9ef">return</span>
+</code></pre></div><p>The core of this script once again leans against the excellent <a href="http://docs.python-requests.org/en/latest/">Requests</a> library for Python. It makes making simple requests and parsing the <a href="http://www.w3.org/wiki/LinkHeader">HTTP Link Header</a> trivial. Also, <code>yield from</code> is pretty cool.</p>
 <p>Basically, we use these instructions to <a href="https://help.github.com/articles/creating-an-access-token-for-command-line-use/">create a GitHub access token</a>. You&rsquo;ll need at least the organization rights, I don&rsquo;t have an exact list. Unfortunately, it doesn&rsquo;t look like there is a way to do this with a username, password, and MFA token. I tried a few variations but it kept claiming that I wasn&rsquo;t an owner of the organization. So it goes.</p>
-
 <p>Now, if we wanted to use this for my original goal of finding users without MFA, you need the <code>/orgs/:organization/members</code> endpoint, with a specific filter:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">endpoint <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;/orgs/{}/members?filter=2fa_disabled&#39;</span><span style="color:#f92672">.</span>format(organization)
 <span style="color:#66d9ef">for</span> user <span style="color:#f92672">in</span> api_iterator(endpoint):
-    <span style="color:#66d9ef">print</span>(user[<span style="color:#e6db74">&#39;login&#39;</span>])</code></pre></div>
-<p>Alternatively, you can use it just as easily to get all of your repositories (similar to what I did for my post on <a href="https://blog.jverkamp.com/2015/09/08/backing-up-github-repositories/">backing up GitHub repositories</a>):</p>
+    <span style="color:#66d9ef">print</span>(user[<span style="color:#e6db74">&#39;login&#39;</span>])
+</code></pre></div><p>Alternatively, you can use it just as easily to get all of your repositories (similar to what I did for my post on <a href="https://blog.jverkamp.com/2015/09/08/backing-up-github-repositories/">backing up GitHub repositories</a>):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">for</span> repo <span style="color:#f92672">in</span> api_iterator(<span style="color:#e6db74">&#39;/user/repos&#39;</span>):
-    <span style="color:#66d9ef">print</span>(repo[<span style="color:#e6db74">&#39;url&#39;</span>])</code></pre></div>
-<p>Cool. Hope it&rsquo;s helpful!</p>
-
+    <span style="color:#66d9ef">print</span>(repo[<span style="color:#e6db74">&#39;url&#39;</span>])
+</code></pre></div><p>Cool. Hope it&rsquo;s helpful!</p>
 <p>The full source for the MFA version is also available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/missing-mfa.py">missing-mfa.py</a></p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">As you should
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>As you should <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

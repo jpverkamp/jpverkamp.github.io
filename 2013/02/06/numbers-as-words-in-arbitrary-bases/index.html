@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,13 +74,11 @@
     </header>
 
 	<div class="entry-content"><p><a href="http://www.reddit.com/r/dailyprogrammer/comments/17zn6g/020613_challenge_120_intermediate_base_conversion/" title="Challenge #120 [Intermediate] Base Conversion Words">Today&rsquo;s intermediate challenge</a> on Reddit&rsquo;s /r/dailyprogrammer intrigued me somewhat, so I decided to take a crack at it. The basic idea is if you are given a number, try converting it to all bases from 2 to 64 (with a special encoding). Print out any of those that are words.</p>
-
 <p>For example, if you interpret the number 44,269 as a <a href="https://en.wikipedia.org/wiki/Hexadecimal">base 16 (Hexadecimal)</a> number, you get the word &ldquo;aced&rdquo;. So just how many of these words are there out there?</p>
-
 <p>The first thing we want is the ability to associate a character with a given value. Since we want 64 possible values, we need case sensitive strings (so &ldquo;a&rdquo; is distinct from &ldquo;A&rdquo;). But that only gives us 62 (10 digits, 26 lower case letters, and 26 upper case letters), so we&rsquo;ll also add + and /. It&rsquo;s the same character set as <a href="https://en.wikipedia.org/wiki/Base64">Base64 encoding</a>, but a different ordering.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; order of characters for the encoding</span>
 (<span style="color:#66d9ef">define </span>encoding
-  (string-append
+  (<span style="color:#a6e22e">string-append</span>
    <span style="color:#e6db74">&#34;0123456789&#34;</span>
    <span style="color:#e6db74">&#34;abcdefghijklmnopqrstuvwxyz&#34;</span>
    <span style="color:#e6db74">&#34;ABCDEFGHIJKLMNOPQRSTUVWXYZ&#34;</span>
@@ -88,54 +86,52 @@
 
 <span style="color:#75715e">; convert a number into a character</span>
 (<span style="color:#66d9ef">define </span>n-&gt;c
-  (for/hash ([i (in-naturals)]
-             [c (in-string encoding)])
+  (<span style="color:#a6e22e">for/hash</span> ([i (<span style="color:#a6e22e">in-naturals</span>)]
+             [c (<span style="color:#a6e22e">in-string</span> encoding)])
     (values i c)))
 
 <span style="color:#75715e">; convert a character into a number</span>
 (<span style="color:#66d9ef">define </span>c-&gt;n
-  (for/hash ([i (in-naturals)]
-             [c (in-string encoding)])
-    (values c i)))</code></pre></div>
-<p>Here we create a <code><a href="http://docs.racket-lang.org/search/index.html?q=Racket%20hash%20table">Racket hash table</a></code>
+  (<span style="color:#a6e22e">for/hash</span> ([i (<span style="color:#a6e22e">in-naturals</span>)]
+             [c (<span style="color:#a6e22e">in-string</span> encoding)])
+    (values c i)))
+</code></pre></div><p>Here we create a <code><a href="http://docs.racket-lang.org/search/index.html?q=Racket%20hash%20table">Racket hash table</a></code>
  associating each number with its character (<code>n-&gt;c</code>) and then each character to its numerical value (<code>c-&gt;n</code>).</p>
-
 <p>Once that&rsquo;s been done, we want to be able to convert between lists of digits and strings of characters. For example if we have the string <code>&quot;101&quot;</code> that would be <code>'(1 0 1)</code>. Likewise <code>&quot;abc&quot;</code> would be <code>'(10 11 12)</code>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert a list of digits in decimal form into a string</span>
-(<span style="color:#66d9ef">define </span>(dlist-&gt;string dls)
-  (list-&gt;string
-   (for/list ([n (in-list dls)])
-     (hash-ref n-&gt;c n))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">dlist-&gt;string</span> dls)
+  (<span style="color:#a6e22e">list-&gt;string</span>
+   (<span style="color:#a6e22e">for/list</span> ([n (<span style="color:#a6e22e">in-list</span> dls)])
+     (<span style="color:#a6e22e">hash-ref</span> n-&gt;c n))))
 
 <span style="color:#75715e">; convert a string into a list of digits in decimal form</span>
-(<span style="color:#66d9ef">define </span>(string-&gt;dlist str)
-  (for/list ([c (in-string str)])
-    (hash-ref c-&gt;n c)))</code></pre></div>
-<p>This just directly uses those hashes we created earlier. Technically <code>dlist-&gt;string</code> could instead directly <code>string-ref</code> into <code>encoding</code> but I like the parallelism of doing it this way.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">string-&gt;dlist</span> str)
+  (<span style="color:#a6e22e">for/list</span> ([c (<span style="color:#a6e22e">in-string</span> str)])
+    (<span style="color:#a6e22e">hash-ref</span> c-&gt;n c)))
+</code></pre></div><p>This just directly uses those hashes we created earlier. Technically <code>dlist-&gt;string</code> could instead directly <code>string-ref</code> into <code>encoding</code> but I like the parallelism of doing it this way.</p>
 <p>Next, we want to be able to convert some arbitrary decimal list to/from a number. This should (theoretically) be covered in most introductory CS courses (at least for a few limited bases) so if this code isn&rsquo;t familiar, take a deeper look. This is the recursive way to do it, but it&rsquo;s close enough to the iterative algorithm that you should be able to convert them.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert a digit list in base b to number</span>
-(<span style="color:#66d9ef">define </span>(-&gt;decimal dls b)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">-&gt;decimal</span> dls b)
   (<span style="color:#66d9ef">let </span>loop ([dls dls] [n <span style="color:#ae81ff">0</span>])
-    (cond
+    (<span style="color:#a6e22e">cond</span>
       [(null? dls) n]
       [else
-       (loop (cdr dls) (+ (* n b) (car dls)))])))
+       (<span style="color:#a6e22e">loop</span> (cdr dls) (+ (* n b) (car dls)))])))
 
 <span style="color:#75715e">; convert a decimal number to a digital list in base b</span>
-(<span style="color:#66d9ef">define </span>(decimal-&gt; n b)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">decimal-&gt;</span> n b)
   (<span style="color:#66d9ef">let </span>loop ([n n] [dls <span style="color:#f92672">&#39;</span>()])
-    (cond
+    (<span style="color:#a6e22e">cond</span>
       [(= n <span style="color:#ae81ff">0</span>) dls]
       [else
-       (loop (quotient n b) (cons (remainder n b) dls))])))</code></pre></div>
-<p>We&rsquo;re just about there. The next thing we want to be able to do is get strings of all of the bases from a given number. Something like this:</p>
+       (<span style="color:#a6e22e">loop</span> (quotient n b) (cons (remainder n b) dls))])))
+</code></pre></div><p>We&rsquo;re just about there. The next thing we want to be able to do is get strings of all of the bases from a given number. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; get all basis conversions for a number</span>
-(<span style="color:#66d9ef">define </span>(-&gt;all-bases n)
-  (for/list ([b (in-range <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">65</span>)])
-    (dlist-&gt;string (decimal-&gt; n b))))</code></pre></div>
-<p>So if you take <a href="https://en.wikipedia.org/wiki/867-5309/Jenny">Jenny&#39;s number</a>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (-&gt;all-bases <span style="color:#ae81ff">8675309</span>)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">-&gt;all-bases</span> n)
+  (<span style="color:#a6e22e">for/list</span> ([b (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">65</span>)])
+    (<span style="color:#a6e22e">dlist-&gt;string</span> (<span style="color:#a6e22e">decimal-&gt;</span> n b))))
+</code></pre></div><p>So if you take <a href="https://en.wikipedia.org/wiki/867-5309/Jenny">Jenny&#39;s number</a>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">-&gt;all-bases</span> <span style="color:#ae81ff">8675309</span>)
 <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;100001000101111111101101&#34;</span> <span style="color:#e6db74">&#34;121022202021202&#34;</span> <span style="color:#e6db74">&#34;201011333231&#34;</span> <span style="color:#e6db74">&#34;4210102214&#34;</span>
   <span style="color:#e6db74">&#34;505535245&#34;</span> <span style="color:#e6db74">&#34;133511306&#34;</span> <span style="color:#e6db74">&#34;41057755&#34;</span> <span style="color:#e6db74">&#34;17282252&#34;</span> <span style="color:#e6db74">&#34;8675309&#34;</span> <span style="color:#e6db74">&#34;4995985&#34;</span>
   <span style="color:#e6db74">&#34;2aa4525&#34;</span> <span style="color:#e6db74">&#34;1a49926&#34;</span> <span style="color:#e6db74">&#34;121b7ad&#34;</span> <span style="color:#e6db74">&#34;b656de&#34;</span> <span style="color:#e6db74">&#34;845fed&#34;</span> <span style="color:#e6db74">&#34;61ed65&#34;</span> <span style="color:#e6db74">&#34;4ab9bb&#34;</span>
@@ -144,30 +140,29 @@
   <span style="color:#e6db74">&#34;55xwt&#34;</span> <span style="color:#e6db74">&#34;4n9zu&#34;</span> <span style="color:#e6db74">&#34;463vn&#34;</span> <span style="color:#e6db74">&#34;3t9qw&#34;</span> <span style="color:#e6db74">&#34;3fm2t&#34;</span> <span style="color:#e6db74">&#34;32zwB&#34;</span> <span style="color:#e6db74">&#34;2x3EF&#34;</span> <span style="color:#e6db74">&#34;2n4Cg&#34;</span> <span style="color:#e6db74">&#34;2dB25&#34;</span>
   <span style="color:#e6db74">&#34;2594t&#34;</span> <span style="color:#e6db74">&#34;1H5Dv&#34;</span> <span style="color:#e6db74">&#34;1Aqc2&#34;</span> <span style="color:#e6db74">&#34;1ulft&#34;</span> <span style="color:#e6db74">&#34;1oAa6&#34;</span> <span style="color:#e6db74">&#34;1jk69&#34;</span> <span style="color:#e6db74">&#34;1ekj5&#34;</span> <span style="color:#e6db74">&#34;19AgJ&#34;</span> <span style="color:#e6db74">&#34;15el4&#34;</span>
   <span style="color:#e6db74">&#34;1153L&#34;</span> <span style="color:#e6db74">&#34;Q7LN&#34;</span> <span style="color:#e6db74">&#34;Nmkd&#34;</span> <span style="color:#e6db74">&#34;KM8n&#34;</span> <span style="color:#e6db74">&#34;IqOh&#34;</span> <span style="color:#e6db74">&#34;Geb8&#34;</span> <span style="color:#e6db74">&#34;E9Mt&#34;</span> <span style="color:#e6db74">&#34;Cdrb&#34;</span> <span style="color:#e6db74">&#34;AoQl&#34;</span> <span style="color:#e6db74">&#34;yHMk&#34;</span>
-  <span style="color:#e6db74">&#34;x5/J&#34;</span>)</code></pre></div>
-<p>Then you can filter those using my <a href="https://blog.jverkamp.com/2012/10/11/dictionary-tries-in-racket/">dictionary library</a>:</p>
+  <span style="color:#e6db74">&#34;x5/J&#34;</span>)
+</code></pre></div><p>Then you can filter those using my <a href="https://blog.jverkamp.com/2012/10/11/dictionary-tries-in-racket/">dictionary library</a>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; get a list of all bases that are also words</span>
-(<span style="color:#66d9ef">define </span>(-&gt;all-base-words dict n)
-  (filter
-   (<span style="color:#66d9ef">lambda </span>(word) (contains? dict word))
-   (-&gt;all-bases n)))</code></pre></div>
-<p>There aren&rsquo;t any in Jenny&rsquo;s number, but there are actually two in the example I gave earlier:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (-&gt;all-base-words dict <span style="color:#ae81ff">8675309</span>)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">-&gt;all-base-words</span> dict n)
+  (<span style="color:#a6e22e">filter</span>
+   (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">word</span>) (<span style="color:#a6e22e">contains?</span> dict word))
+   (<span style="color:#a6e22e">-&gt;all-bases</span> n)))
+</code></pre></div><p>There aren&rsquo;t any in Jenny&rsquo;s number, but there are actually two in the example I gave earlier:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">-&gt;all-base-words</span> dict <span style="color:#ae81ff">8675309</span>)
 <span style="color:#f92672">&#39;</span>()
 
-&gt; (-&gt;all-base-words dict <span style="color:#ae81ff">44269</span>)
-<span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;aced&#34;</span> <span style="color:#e6db74">&#34;fEe&#34;</span>)</code></pre></div>
-<p>(The dictionary is case-insensitive while the words are case-sensitive, so you get some funny looking words like <code>&quot;fEe&quot;</code>.)</p>
-
+&gt; (<span style="color:#a6e22e">-&gt;all-base-words</span> dict <span style="color:#ae81ff">44269</span>)
+<span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;aced&#34;</span> <span style="color:#e6db74">&#34;fEe&#34;</span>)
+</code></pre></div><p>(The dictionary is case-insensitive while the words are case-sensitive, so you get some funny looking words like <code>&quot;fEe&quot;</code>.)</p>
 <p>Finally, as a bonus solution, here&rsquo;s a nice infinite stream of all possible words as a CSV file:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; scan for numbers that turn into words</span>
-(<span style="color:#66d9ef">define </span>(scan dict)
-  (for ([i (in-naturals)])
-    (for ([b (in-range <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">65</span>)]
-          [word (in-list (-&gt;all-bases i))])
-      (when (contains? dict word)
-        (printf <span style="color:#e6db74">&#34;~s,~s,~s\n&#34;</span> i b word)))))</code></pre></div>
-<p>And here&rsquo;s an arbitrary slice:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">scan</span> dict)
+  (<span style="color:#a6e22e">for</span> ([i (<span style="color:#a6e22e">in-naturals</span>)])
+    (<span style="color:#a6e22e">for</span> ([b (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">65</span>)]
+          [word (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">-&gt;all-bases</span> i))])
+      (<span style="color:#a6e22e">when</span> (<span style="color:#a6e22e">contains?</span> dict word)
+        (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;~s,~s,~s\n&#34;</span> i b word)))))
+</code></pre></div><p>And here&rsquo;s an arbitrary slice:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
 <span style="color:#ae81ff">56672</span><span style="color:#f92672">,</span><span style="color:#ae81ff">47</span><span style="color:#f92672">,</span><span style="color:#e6db74">&#34;puB&#34;</span>
 <span style="color:#ae81ff">56673</span><span style="color:#f92672">,</span><span style="color:#ae81ff">60</span><span style="color:#f92672">,</span><span style="color:#e6db74">&#34;fIx&#34;</span>
@@ -193,10 +188,12 @@
 <span style="color:#ae81ff">56684</span><span style="color:#f92672">,</span><span style="color:#ae81ff">39</span><span style="color:#f92672">,</span><span style="color:#e6db74">&#34;Bah&#34;</span>
 <span style="color:#ae81ff">56684</span><span style="color:#f92672">,</span><span style="color:#ae81ff">43</span><span style="color:#f92672">,</span><span style="color:#e6db74">&#34;usa&#34;</span>
 <span style="color:#ae81ff">56685</span><span style="color:#f92672">,</span><span style="color:#ae81ff">51</span><span style="color:#f92672">,</span><span style="color:#e6db74">&#34;lEo&#34;</span>
-<span style="color:#f92672">...</span></code></pre></div>
-<p>If you&rsquo;d like to try it out, you can download the entire source from my GitHub:
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/base-conversion-words.rkt" title="Base Conversion Words source on GitHub">Base Conversion Words source</a>
-- <a herf="https://github.com/jpverkamp/small-projects/blob/master/racket-libraries/dictionary.rkt" title="Racket Dictionary library source on GitHub">Racket Dictionary library source</a></p></div>
+<span style="color:#f92672">...</span>
+</code></pre></div><p>If you&rsquo;d like to try it out, you can download the entire source from my GitHub:</p>
+<ul>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/base-conversion-words.rkt" title="Base Conversion Words source on GitHub">Base Conversion Words source</a></li>
+<li><a herf="https://github.com/jpverkamp/small-projects/blob/master/racket-libraries/dictionary.rkt" title="Racket Dictionary library source on GitHub">Racket Dictionary library source</a></li>
+</ul></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

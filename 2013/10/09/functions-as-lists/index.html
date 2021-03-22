@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -70,147 +70,142 @@
 </div>
     </header>
 
-	<div class="entry-content"><p><a href="http://programmingpraxis.com/2013/10/08/functional-style-linked-lists/">Yesterday&rsquo;s challenge</a> from Programming Praxis challenges us to rebuild a data structure near and dear to any Lisper&rsquo;s/Schemer&rsquo;s/Racketer&rsquo;s<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>/functional programmer&rsquo;s heart: lists. The idea presented in <a href="http://programmingpraxis.com/2013/10/08/functional-style-linked-lists/2/">their sample solution</a> uses two element vectors, directly mimicking the general internal structure of Scheme&rsquo;s lists. How about we do something a bit stranger? 😄</p>
-
+	<div class="entry-content"><p><a href="http://programmingpraxis.com/2013/10/08/functional-style-linked-lists/">Yesterday&rsquo;s challenge</a> from Programming Praxis challenges us to rebuild a data structure near and dear to any Lisper&rsquo;s/Schemer&rsquo;s/Racketer&rsquo;s<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>/functional programmer&rsquo;s heart: lists. The idea presented in <a href="http://programmingpraxis.com/2013/10/08/functional-style-linked-lists/2/">their sample solution</a> uses two element vectors, directly mimicking the general internal structure of Scheme&rsquo;s lists. How about we do something a bit stranger? 😄</p>
 <p>If you&rsquo;d like to follow along with the code, I&rsquo;ve pushed it as a GitHub Gist here: <a href="https://gist.github.com/jpverkamp/6896457">jpverkamp/6896457</a>.</p>
-
-<p>The idea is one that was first presented to me in a second year undergraduate programming languages course and really shows the strengths of <a href="https://en.wikipedia.org/wiki/lambda%20calculus">lambda calculus</a><sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>. You don&rsquo;t need vectors to build lists&ndash;all you need are functions.</p>
-
+<p>The idea is one that was first presented to me in a second year undergraduate programming languages course and really shows the strengths of <a href="https://en.wikipedia.org/wiki/lambda%20calculus">lambda calculus</a><sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>. You don&rsquo;t need vectors to build lists&ndash;all you need are functions.</p>
 <p>To get started, the basic functions that we want are equivalents to <code>car</code>/<code>first</code>, <code>cdr</code>/<code>rest</code>, and <code>cons</code>/<code>pair</code>. If we can build those, the rest will follow. The main obstacle is reversing how we think of lists. Rather than <code>cons</code> building lists and <code>car</code> and <code>cdr</code> taking them apart, <code>cons</code> will create a function which knows how to do either. All <code>car</code> and <code>cdr</code> have to do is tell it which to do. That may sound like black magic, but lets take a look:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Build and take apart lists</span>
-&gt;(<span style="color:#66d9ef">define </span>pair (λ (a d) (λ (l) (l a d))))
-(<span style="color:#66d9ef">define </span>first (λ (l) (l (λ (a d) a))))
-(<span style="color:#66d9ef">define </span>rest (λ (l) (l (λ (a d) d))))</code></pre></div>
-<p>So when we have a list, it&rsquo;s actually a function (<code>l</code>) expecting another function in turn (of the form <code>(λ (a d) ...)</code>. Let&rsquo;s try it out:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (pair <span style="color:#e6db74">&#39;a</span> <span style="color:#e6db74">&#39;b</span>)
+&gt;(<span style="color:#66d9ef">define </span>pair (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> a d))))
+(<span style="color:#66d9ef">define </span>first (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) a))))
+(<span style="color:#66d9ef">define </span>rest (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) d))))
+</code></pre></div><p>So when we have a list, it&rsquo;s actually a function (<code>l</code>) expecting another function in turn (of the form <code>(λ (a d) ...)</code>. Let&rsquo;s try it out:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">pair</span> <span style="color:#e6db74">&#39;a</span> <span style="color:#e6db74">&#39;b</span>)
 <span style="color:#f92672">#</span>&lt;procedure&gt;
-&gt; (first (pair <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
+&gt; (<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
 <span style="color:#ae81ff">1</span>
-&gt; (rest (pair <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>))
+&gt; (<span style="color:#a6e22e">rest</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>))
 <span style="color:#ae81ff">4</span>
-&gt; (first (rest (pair <span style="color:#ae81ff">5</span> (pair <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
-<span style="color:#ae81ff">6</span></code></pre></div>
-<p>This works just like you would expect it to. Let&rsquo;s do something I generally don&rsquo;t and hand trace that last example. With this many functions flying about, things can get a bit complicated((Not that the trace is terribly better&hellip;)):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(first (rest (pair <span style="color:#ae81ff">5</span> (pair <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
-(first (rest (pair <span style="color:#ae81ff">5</span> ((λ (a d) (λ (l) (l a d))) <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
-(first (rest (pair <span style="color:#ae81ff">5</span> (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))))
-(first (rest ((λ (a d) (λ (l) (l a d))) <span style="color:#ae81ff">5</span> (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))))
-(first (rest (λ (l) (l <span style="color:#ae81ff">5</span> (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))))
-(first ((λ (l) (l (λ (a d) d))) (λ (l) (l <span style="color:#ae81ff">5</span> (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))))
-(first ((λ (l) (l <span style="color:#ae81ff">5</span> (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))) (λ (a d) d)))
-(first ((λ (a d) d) <span style="color:#ae81ff">5</span> (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
-(first (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))
-((λ (l) (l (λ (a d) a))) (λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))
-((λ (l) (l <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)) (λ (a d) a))
-((λ (a d) a) <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)
-<span style="color:#ae81ff">6</span></code></pre></div>
-<p>So it seems to work as planned. What&rsquo;s next?</p>
-
+&gt; (<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">rest</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
+<span style="color:#ae81ff">6</span>
+</code></pre></div><p>This works just like you would expect it to. Let&rsquo;s do something I generally don&rsquo;t and hand trace that last example. With this many functions flying about, things can get a bit complicated((Not that the trace is terribly better&hellip;)):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">rest</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
+(<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">rest</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">5</span> ((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> a d))) <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
+(<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">rest</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))))
+(<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">rest</span> ((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> a d))) <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))))
+(<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">rest</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))))
+(<span style="color:#a6e22e">first</span> ((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) d))) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))))
+(<span style="color:#a6e22e">first</span> ((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) d)))
+(<span style="color:#a6e22e">first</span> ((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) d) <span style="color:#ae81ff">5</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))))
+(<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))
+((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) a))) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)))
+((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) a))
+((<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) a) <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>)
+<span style="color:#ae81ff">6</span>
+</code></pre></div><p>So it seems to work as planned. What&rsquo;s next?</p>
 <p>Well, we want to be able to represent empty lists. One way we could do it is just using some random value as the &lsquo;empty list&rsquo;:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Empty list</span>
-(<span style="color:#66d9ef">define </span>empty   (gensym))
-(<span style="color:#66d9ef">define </span>empty?  (λ (l)   (eq? l empty)))</code></pre></div>
-<p>This works well enough, but one problem we get is that the empty list (in this case) doesn&rsquo;t look the same as a list. In one case, it&rsquo;s a symbol; in the other, it&rsquo;s a function:</p>
+(<span style="color:#66d9ef">define </span>empty   (<span style="color:#a6e22e">gensym</span>))
+(<span style="color:#66d9ef">define </span>empty?  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)   (eq? l empty)))
+</code></pre></div><p>This works well enough, but one problem we get is that the empty list (in this case) doesn&rsquo;t look the same as a list. In one case, it&rsquo;s a symbol; in the other, it&rsquo;s a function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; empty
 <span style="color:#e6db74">&#39;g30678</span>
-&gt; (pair <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)
-<span style="color:#f92672">#</span>&lt;procedure&gt;</code></pre></div>
-<p>But that&rsquo;s okay. We can actually still do this. All we have to do is add a third value to the list functions. In addition to the first and rest values, we&rsquo;ll insert a flag telling us if the list is empty. Instead of <code>(λ (a d) ...)</code>, we&rsquo;ll have <code>(λ (a d e) ...)</code>. Something like this:</p>
+&gt; (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)
+<span style="color:#f92672">#</span>&lt;procedure&gt;
+</code></pre></div><p>But that&rsquo;s okay. We can actually still do this. All we have to do is add a third value to the list functions. In addition to the first and rest values, we&rsquo;ll insert a flag telling us if the list is empty. Instead of <code>(λ (a d) ...)</code>, we&rsquo;ll have <code>(λ (a d e) ...)</code>. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Empty list</span>
-(<span style="color:#66d9ef">define </span>empty   (λ (l)   (l <span style="color:#e6db74">&#39;error</span> <span style="color:#e6db74">&#39;error</span> <span style="color:#66d9ef">#t</span>)))
-(<span style="color:#66d9ef">define </span>empty?  (λ (l)   (l (λ (a d e) e))))
+(<span style="color:#66d9ef">define </span>empty   (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)   (<span style="color:#a6e22e">l</span> <span style="color:#e6db74">&#39;error</span> <span style="color:#e6db74">&#39;error</span> <span style="color:#66d9ef">#t</span>)))
+(<span style="color:#66d9ef">define </span>empty?  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)   (<span style="color:#a6e22e">l</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d e) e))))
 
 <span style="color:#75715e">; Build and take apart lists</span>
-(<span style="color:#66d9ef">define </span>pair    (λ (a d) (λ (l) (l a d <span style="color:#66d9ef">#f</span>))))
-(<span style="color:#66d9ef">define </span>first   (λ (l)   (l (λ (a d e) a))))
-(<span style="color:#66d9ef">define </span>rest    (λ (l)   (l (λ (a d e) d))))</code></pre></div>
-<p>We could actually raise an error, but at the moment, simply returning the symbol <code>error</code> will suffice. Now we can build &lsquo;real&rsquo; lists rather than just pairs:</p>
+(<span style="color:#66d9ef">define </span>pair    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d) (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>) (<span style="color:#a6e22e">l</span> a d <span style="color:#66d9ef">#f</span>))))
+(<span style="color:#66d9ef">define </span>first   (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)   (<span style="color:#a6e22e">l</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d e) a))))
+(<span style="color:#66d9ef">define </span>rest    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)   (<span style="color:#a6e22e">l</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> d e) d))))
+</code></pre></div><p>We could actually raise an error, but at the moment, simply returning the symbol <code>error</code> will suffice. Now we can build &lsquo;real&rsquo; lists rather than just pairs:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; empty
 <span style="color:#f92672">#</span>&lt;procedure:empty&gt;
-&gt; (empty? empty)
+&gt; (<span style="color:#a6e22e">empty?</span> empty)
 <span style="color:#66d9ef">#t</span>
-&gt; (first empty)
+&gt; (<span style="color:#a6e22e">first</span> empty)
 <span style="color:#e6db74">&#39;error</span>
-&gt; (pair <span style="color:#ae81ff">1</span> (pair <span style="color:#ae81ff">2</span> (pair <span style="color:#ae81ff">3</span> empty)))
+&gt; (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">2</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">3</span> empty)))
 <span style="color:#f92672">#</span>&lt;procedure&gt;
-&gt; (first (rest (pair <span style="color:#ae81ff">1</span> (pair <span style="color:#ae81ff">2</span> (pair <span style="color:#ae81ff">3</span> empty)))))
-<span style="color:#ae81ff">2</span></code></pre></div>
-<p>And that&rsquo;s actually all we need. Technically, the project wants us to to add functions equivalent to Scheme&rsquo;s <code>list-ref</code>, <code>length</code>, <code>reverse</code>, and <code>append</code>. With the four functions we have though, these definitions aren&rsquo;t any different than they would be writing them by hand in Scheme:</p>
+&gt; (<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">rest</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">2</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">3</span> empty)))))
+<span style="color:#ae81ff">2</span>
+</code></pre></div><p>And that&rsquo;s actually all we need. Technically, the project wants us to to add functions equivalent to Scheme&rsquo;s <code>list-ref</code>, <code>length</code>, <code>reverse</code>, and <code>append</code>. With the four functions we have though, these definitions aren&rsquo;t any different than they would be writing them by hand in Scheme:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Get the nth item of a list</span>
 (<span style="color:#66d9ef">define </span>nth     
-  (λ (l i) 
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span> i) 
     (<span style="color:#66d9ef">if </span>(zero? i) 
-        (first l) 
-        (nth (rest l) (- i <span style="color:#ae81ff">1</span>)))))
+        (<span style="color:#a6e22e">first</span> l) 
+        (<span style="color:#a6e22e">nth</span> (<span style="color:#a6e22e">rest</span> l) (- i <span style="color:#ae81ff">1</span>)))))
 
 <span style="color:#75715e">; Calculate the length of a list</span>
 (<span style="color:#66d9ef">define </span>length  
-  (λ (l)   
-    (<span style="color:#66d9ef">if </span>(empty? l) 
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)   
+    (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">empty?</span> l) 
         <span style="color:#ae81ff">0</span> 
-        (+ <span style="color:#ae81ff">1</span> (length (rest l))))))
+        (+ <span style="color:#ae81ff">1</span> (length (<span style="color:#a6e22e">rest</span> l))))))
 
 <span style="color:#75715e">; Reverse a list</span>
 (<span style="color:#66d9ef">define </span>reverse 
-  (λ (l)
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)
     (<span style="color:#66d9ef">let </span>loop ([l l] [acc empty])
-      (<span style="color:#66d9ef">if </span>(empty? l)
+      (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">empty?</span> l)
           acc
-          (loop (rest l)
-                (pair (first l) acc))))))
+          (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">rest</span> l)
+                (<span style="color:#a6e22e">pair</span> (<span style="color:#a6e22e">first</span> l) acc))))))
 
 <span style="color:#75715e">; Append two lists</span>
 (<span style="color:#66d9ef">define </span>append  
-  (λ (l r) 
-    (<span style="color:#66d9ef">if </span>(empty? l) 
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span> r) 
+    (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">empty?</span> l) 
         r 
-        (pair (first l) (append (rest l) r)))))</code></pre></div>
-<p>You can do a few tests to make sure that everything works as you would expect, but it&rsquo;s not particularly pleasant given that the structures we&rsquo;re building are rather opaque. So instead, we&rsquo;ll create functions to convert between traditional lists and these functional lists:</p>
+        (<span style="color:#a6e22e">pair</span> (<span style="color:#a6e22e">first</span> l) (append (<span style="color:#a6e22e">rest</span> l) r)))))
+</code></pre></div><p>You can do a few tests to make sure that everything works as you would expect, but it&rsquo;s not particularly pleasant given that the structures we&rsquo;re building are rather opaque. So instead, we&rsquo;ll create functions to convert between traditional lists and these functional lists:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Helpers to convert with traditional lists</span>
 (<span style="color:#66d9ef">define </span>list-&gt;flist
-  (λ (l)
-    (foldl pair empty l)))
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)
+    (<span style="color:#a6e22e">foldl</span> pair empty l)))
 
 (<span style="color:#66d9ef">define </span>flist-&gt;list
-  (λ (l)
-    (<span style="color:#66d9ef">if </span>(empty? l)
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">l</span>)
+    (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">empty?</span> l)
         <span style="color:#f92672">&#39;</span>()
-        (cons (first l) (flist-&gt;list (rest l))))))</code></pre></div>
-<p>Now we can tests a few things:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (flist-&gt;list
-   (append
-    (pair <span style="color:#ae81ff">1</span> (pair <span style="color:#ae81ff">2</span> empty))
-    (pair <span style="color:#ae81ff">3</span> (pair <span style="color:#ae81ff">4</span> (pair <span style="color:#ae81ff">5</span> empty)))))
+        (cons (<span style="color:#a6e22e">first</span> l) (<span style="color:#a6e22e">flist-&gt;list</span> (<span style="color:#a6e22e">rest</span> l))))))
+</code></pre></div><p>Now we can tests a few things:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">flist-&gt;list</span>
+   (<span style="color:#a6e22e">append</span>
+    (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">2</span> empty))
+    (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">3</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">4</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">5</span> empty)))))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)
-&gt; (flist-&gt;list
-   (reverse
-    (pair <span style="color:#ae81ff">6</span> (pair <span style="color:#ae81ff">7</span> (pair <span style="color:#ae81ff">8</span> empty)))))
+&gt; (<span style="color:#a6e22e">flist-&gt;list</span>
+   (<span style="color:#a6e22e">reverse</span>
+    (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">6</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">7</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">8</span> empty)))))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">8</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">6</span>)
-&gt; (length
-   (pair <span style="color:#ae81ff">9</span> (pair <span style="color:#ae81ff">10</span> (pair <span style="color:#ae81ff">11</span> (pair <span style="color:#ae81ff">12</span> empty)))))
+&gt; (<span style="color:#a6e22e">length</span>
+   (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">9</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">10</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">11</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">12</span> empty)))))
 <span style="color:#ae81ff">4</span>
-&gt; (nth
-   (pair <span style="color:#ae81ff">13</span> (pair <span style="color:#ae81ff">14</span> (pair <span style="color:#ae81ff">15</span> (pair <span style="color:#ae81ff">16</span> empty))))
+&gt; (<span style="color:#a6e22e">nth</span>
+   (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">13</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">14</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">15</span> (<span style="color:#a6e22e">pair</span> <span style="color:#ae81ff">16</span> empty))))
    <span style="color:#ae81ff">2</span>)
-<span style="color:#ae81ff">15</span></code></pre></div>
-<p>Seems to be working well enough. In practice, you&rsquo;d likely want to test somewhat more thoroughly, but that&rsquo;s good enough for the time being.</p>
-
-<p>What I really love about this is just how much you can build with just functions. Technically, we don&rsquo;t even need <code>#f</code> or numbers in the examples above. Either can be built with just functions in much the same reason. As a bit of a mental exercise, try to implement <code>if</code>, <code>true</code>, and <code>false</code> using only functions<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup></p>
-
+<span style="color:#ae81ff">15</span>
+</code></pre></div><p>Seems to be working well enough. In practice, you&rsquo;d likely want to test somewhat more thoroughly, but that&rsquo;s good enough for the time being.</p>
+<p>What I really love about this is just how much you can build with just functions. Technically, we don&rsquo;t even need <code>#f</code> or numbers in the examples above. Either can be built with just functions in much the same reason. As a bit of a mental exercise, try to implement <code>if</code>, <code>true</code>, and <code>false</code> using only functions<sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup></p>
 <p>If you&rsquo;d like to see the entire code at once, you can see it here: <a href="https://gist.github.com/jpverkamp/6896457">jpverkamp/6896457</a>.</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Is there a better term?
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">I&rsquo;ve never understood why most people refer to it as *the *lambda calculus. Especially when there are so many variations&hellip;
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
-<li id="fn:3">Hint: There are only so many ways to arrange functions. 😄
- <a class="footnote-return" href="#fnref:3"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Is there a better term? <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>I&rsquo;ve never understood why most people refer to it as *the *lambda calculus. Especially when there are so many variations&hellip; <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3" role="doc-endnote">
+<p>Hint: There are only so many ways to arrange functions. 😄 <a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

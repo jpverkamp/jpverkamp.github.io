@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,41 +74,38 @@
     </header>
 
 	<div class="entry-content"><p><a title="NPR Sunday Puzzle" href="https://programmingpraxis.com/2013/02/19/npr-sunday-puzzle/">Yesterday&rsquo;s puzzle</a> from Programming Praxis asks us to solve a Sunday Puzzle from NPR:</p>
-
 <blockquote>
 <p>Think of two familiar, unhyphenated, eight-letter words that contain the letters A, B, C, D, E and F, plus two others, in any order. What words are these?</p>
 </blockquote>
-
 <p>It&rsquo;s another in a <a title="jverkamp.com: Word games" href="http://blog.jverkamp.com/tag/word-games/">long history of word games</a>, my favorite sort of puzzle.</p>
-
 <p>So how do we do it? Well, it turns out that the program is rather straight forward. You need something something that will loop through a file, reading in a line at a time. Racket&rsquo;s <code>(in-lines)</code> makes this all sorts of easy. So we&rsquo;ll start with that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; find all words containing _chars_ with _length_ characters</span>
-(<span style="color:#66d9ef">define </span>(words-containing chars [length (length chars)])
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">words-containing</span> chars [length (length chars)])
   (with-input-from-file DICTIONARY
     (<span style="color:#66d9ef">lambda </span>()
-      (for/list ([word (in-lines)]
+      (<span style="color:#a6e22e">for/list</span> ([word (<span style="color:#a6e22e">in-lines</span>)]
                  <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">and </span>(= length (string-length word))
-                             (andmap (<span style="color:#66d9ef">lambda </span>(c) (string-contains? word c)) chars)))
-        word))))</code></pre></div>
-<p>It&rsquo;s generalized over the original problem to any required letters and any given word length. The only at all sneaky part here is using the <code>#:when</code> conditional to first check if the word is the proper length. If so, use <code>andmap</code> to make sure all of the letters are in the word in turn. The advantage of this is that <code>andmap</code> will short circuit, stopping as soon as we find a letter not in the word. It&rsquo;ll only save us a bit of time, but over the length of of the entire dictionary, the savings can be impressive.</p>
-
+                             (<span style="color:#a6e22e">andmap</span> (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">c</span>) (<span style="color:#a6e22e">string-contains?</span> word c)) chars)))
+        word))))
+</code></pre></div><p>It&rsquo;s generalized over the original problem to any required letters and any given word length. The only at all sneaky part here is using the <code>#:when</code> conditional to first check if the word is the proper length. If so, use <code>andmap</code> to make sure all of the letters are in the word in turn. The advantage of this is that <code>andmap</code> will short circuit, stopping as soon as we find a letter not in the word. It&rsquo;ll only save us a bit of time, but over the length of of the entire dictionary, the savings can be impressive.</p>
 <p>Likewise, the <code>string-contains?</code> function will short circuit, using a trick with <code>call/cc</code> to simulate <code>return</code> which <a href="https://blog.jverkamp.com/2012/08/27/4sum/">I&rsquo;ve used</a> before:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; test if _str_ contains the character _char_</span>
-(<span style="color:#66d9ef">define </span>(string-contains? str char)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">string-contains?</span> str char)
   (call/cc 
-   (<span style="color:#66d9ef">lambda </span>(return)
-     (for ([c (in-string str)])
-       (when (eq? c char)
-         (return <span style="color:#66d9ef">#t</span>)))
-     <span style="color:#66d9ef">#f</span>)))</code></pre></div>
-<p>And that&rsquo;s all there is to it. Using the same dictionary I&rsquo;ve used before (<a title="SIL International: wordsEn.txt" href="http://www-01.sil.org/linguistics/wordlists/english/">wordsEn.txt</a>), we&rsquo;re ready to solve the actual problem:</p>
+   (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">return</span>)
+     (<span style="color:#a6e22e">for</span> ([c (<span style="color:#a6e22e">in-string</span> str)])
+       (<span style="color:#a6e22e">when</span> (eq? c char)
+         (<span style="color:#a6e22e">return</span> <span style="color:#66d9ef">#t</span>)))
+     <span style="color:#66d9ef">#f</span>)))
+</code></pre></div><p>And that&rsquo;s all there is to it. Using the same dictionary I&rsquo;ve used before (<a title="SIL International: wordsEn.txt" href="http://www-01.sil.org/linguistics/wordlists/english/">wordsEn.txt</a>), we&rsquo;re ready to solve the actual problem:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>DICTIONARY <span style="color:#e6db74">&#34;wordsEn.txt&#34;</span>)
-&gt; (words-containing (string-&gt;list <span style="color:#e6db74">&#34;abcdef&#34;</span>) <span style="color:#ae81ff">8</span>)
-<span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;boldface&#34;</span> <span style="color:#e6db74">&#34;feedback&#34;</span>)</code></pre></div>
-<p>And that&rsquo;s it. The only two common words with 8 letters, 6 of which are A through F are <code>boldface</code> and <code>feedback</code>.</p>
-
-<p>If you&rsquo;d like to see / download the entire code in one go, you can do so on my GitHub:
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/npr-sunday-problem.rkt" title="NPR Sunday Puzzle source">NPR Sunday Puzzle source</a></p></div>
+&gt; (<span style="color:#a6e22e">words-containing</span> (string-&gt;list <span style="color:#e6db74">&#34;abcdef&#34;</span>) <span style="color:#ae81ff">8</span>)
+<span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;boldface&#34;</span> <span style="color:#e6db74">&#34;feedback&#34;</span>)
+</code></pre></div><p>And that&rsquo;s it. The only two common words with 8 letters, 6 of which are A through F are <code>boldface</code> and <code>feedback</code>.</p>
+<p>If you&rsquo;d like to see / download the entire code in one go, you can do so on my GitHub:</p>
+<ul>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/npr-sunday-problem.rkt" title="NPR Sunday Puzzle source">NPR Sunday Puzzle source</a></li>
+</ul></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

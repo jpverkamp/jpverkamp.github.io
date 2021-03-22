@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,40 +71,30 @@
     </header>
 
 	<div class="entry-content"><p>Today&rsquo;s post is a follow up to Sunday&rsquo;s post <a href="https://blog.jverkamp.com/2014/09/14/procedural-invaders/">Procedural Invaders</a>. This time around, we&rsquo;re going to work through two different space filling algorithms in order to eventually generate something like this:</p>
-
 <figure>
     <img src="/embeds/2014/fractal-invaders-100x100.png"/> 
 </figure>
 
-
 <p>But before we get to that image, let&rsquo;s start with where I was Sunday. We had something that looked like this:</p>
-
 <figure>
     <img src="/embeds/2014/random-invaders.png"/> 
 </figure>
 
-
 <p>That was my first take at a fractal invader algorithm, and in that case there really wasn&rsquo;t anything to do with fractals at all. The basic algorithm for that was simple:</p>
-
 <ul>
 <li>Choose a random location and size for an invader</li>
 <li>If the new invader does not collide with any previous invader, place it</li>
 <li>Go to step 1</li>
 </ul>
-
 <p>If we failed 100 times in a row to place an invader, we made the assumption that the space was empty and bailed out. It actually worked well enough. You got to see a bunch of invaders of different sizes, all together on the map. Unfortunately though, it didn&rsquo;t work particularly well for filling the entire space, which is really what I was after. (If you&rsquo;d like you can see the code for that on GitHub in Sunday&rsquo;s code: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a>).</p>
-
 <p>After that though, I took a step back. How can we actually fill the space? More specifically, how can we use recursion / fractals to efficiently fill the space? Well, what we really need is actually really similar to another previous post of mine: <a href="https://blog.jverkamp.com/2014/05/28/quadtree-image-compression/">Quadtree image compression</a>.</p>
-
 <p>Basically, here&rsquo;s the new algorithm:</p>
-
 <ul>
 <li>Given a rectangular region, choose a random location and size for an invader</li>
 <li>Recursively divide the remaining space into four sections: one above, one to the right, one below, and one to the left of the new invader</li>
 <li>If any region is small enough for only a single invader, place it and stop (base case)</li>
 <li>For each other region, start again at step 1</li>
 </ul>
-
 <p>The main odd step there is step 2 above. How can we split a region into five subregions (the center being square) like that? Well, we could do something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">| R
       | i
@@ -114,15 +104,15 @@ ______| h
  L |__|____
  e |
  f | Bottom
- t |</code></pre></div>
-<p>Making sure that you have all of the regions set up exactly right gets a little bit complicated, but if you draw a nice diagram, it should be fairly straight forward to make sure that you always generate this structure. And that&rsquo;s exactly what we have here:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(struct rect (t l w h) <span style="color:#f92672">#</span>:transparent)
-(struct node (bounds value-bounds value children) <span style="color:#f92672">#</span>:transparent)
+ t |
+</code></pre></div><p>Making sure that you have all of the regions set up exactly right gets a little bit complicated, but if you draw a nice diagram, it should be fairly straight forward to make sure that you always generate this structure. And that&rsquo;s exactly what we have here:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">struct</span> rect (<span style="color:#a6e22e">t</span> l w h) <span style="color:#f92672">#</span>:transparent)
+(<span style="color:#a6e22e">struct</span> node (<span style="color:#a6e22e">bounds</span> value-bounds value children) <span style="color:#f92672">#</span>:transparent)
 
 <span style="color:#75715e">; Create the recursive fractal structure</span>
-(<span style="color:#66d9ef">define </span>(made-fractal width height random-node)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">made-fractal</span> width height random-node)
   (<span style="color:#66d9ef">let </span>loop ([t <span style="color:#ae81ff">0</span>] [l <span style="color:#ae81ff">0</span>] [w width] [h height])
-    (cond
+    (<span style="color:#a6e22e">cond</span>
       <span style="color:#75715e">; The next node is too small, do not place it</span>
       [(<span style="color:#66d9ef">or </span>(&lt;= w <span style="color:#ae81ff">0</span>) (&lt;= h <span style="color:#ae81ff">0</span>) (&gt;= t height) (&gt;= l width))
        <span style="color:#66d9ef">#f</span>]
@@ -134,198 +124,183 @@ ______| h
       <span style="color:#75715e">;   |</span>
       <span style="color:#75715e">;   | B</span>
       [else
-       (<span style="color:#66d9ef">define </span>s (<span style="color:#66d9ef">if </span>(= (min w h) <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (random (min w h)))))
-       (<span style="color:#66d9ef">define </span>x (<span style="color:#66d9ef">if </span>(= w s)         <span style="color:#ae81ff">0</span> (random (- w s))))
-       (<span style="color:#66d9ef">define </span>y (<span style="color:#66d9ef">if </span>(= h s)         <span style="color:#ae81ff">0</span> (random (- h s))))
-       (node (rect t       l       w h) <span style="color:#75715e">; Bounds of this node</span>
-             (rect (+ t y) (+ l x) s s) <span style="color:#75715e">; Bounds of the value within this node</span>
-             (random-node)              <span style="color:#75715e">; The value of this node</span>
-             (list (loop t         l         (+ x s)   y        )
-                   (loop t         (+ l x s) (- w x s) (+ y s)  )
-                   (loop (+ t y s) (+ l x)   (- w x)   (- h y s))
-                   (loop (+ t y)   l         x         (- h y)  )))])))</code></pre></div>
-<p>Essentially, we want to create a nested structure made out of <code>node</code> structs. For each node, we have two bounding boxes, one for the entire recursive structure and one just for the central image (which in turn defines the four children). Then we have a value which I&rsquo;ve already parameterized here as the <code>random-node</code> parameter and finally four children (ordered top, right, bottom, left, although it really doesn&rsquo;t matter).</p>
-
+       (<span style="color:#66d9ef">define </span>s (<span style="color:#66d9ef">if </span>(= (min w h) <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">random</span> (min w h)))))
+       (<span style="color:#66d9ef">define </span>x (<span style="color:#66d9ef">if </span>(= w s)         <span style="color:#ae81ff">0</span> (<span style="color:#a6e22e">random</span> (- w s))))
+       (<span style="color:#66d9ef">define </span>y (<span style="color:#66d9ef">if </span>(= h s)         <span style="color:#ae81ff">0</span> (<span style="color:#a6e22e">random</span> (- h s))))
+       (<span style="color:#a6e22e">node</span> (<span style="color:#a6e22e">rect</span> t       l       w h) <span style="color:#75715e">; Bounds of this node</span>
+             (<span style="color:#a6e22e">rect</span> (+ t y) (+ l x) s s) <span style="color:#75715e">; Bounds of the value within this node</span>
+             (<span style="color:#a6e22e">random-node</span>)              <span style="color:#75715e">; The value of this node</span>
+             (list (<span style="color:#a6e22e">loop</span> t         l         (+ x s)   y        )
+                   (<span style="color:#a6e22e">loop</span> t         (+ l x s) (- w x s) (+ y s)  )
+                   (<span style="color:#a6e22e">loop</span> (+ t y s) (+ l x)   (- w x)   (- h y s))
+                   (<span style="color:#a6e22e">loop</span> (+ t y)   l         x         (- h y)  )))])))
+</code></pre></div><p>Essentially, we want to create a nested structure made out of <code>node</code> structs. For each node, we have two bounding boxes, one for the entire recursive structure and one just for the central image (which in turn defines the four children). Then we have a value which I&rsquo;ve already parameterized here as the <code>random-node</code> parameter and finally four children (ordered top, right, bottom, left, although it really doesn&rsquo;t matter).</p>
 <p>What&rsquo;s neat about this is that the exact same code could theoretically be used for other structures. Say if we wanted 8 children for each of the orthagonal or diagonal directions. Just add more to the <code>node-children</code> list.</p>
-
 <p>There are a few edge cases to watch out for that I did spend rather a while working out. For example, the base case deals with cases where either <code>w</code> or <code>h</code> is less than zero, but it also deals when we go off the right or bottom edge of the region. Likewise, we have to check if we only have exactly 1 square left in either width or height (which would mean we cannot generate an interesting random size) or if we only have exactly enough room for one shape.</p>
-
 <p>After that, it&rsquo;s just a matter of getting the parameters right for the recursive calls. Let&rsquo;s try one out:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (make-fractal <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> (const <span style="color:#66d9ef">#t</span>))
-(node
- (rect <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span>)
- (rect <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">3</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">make-fractal</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> (<span style="color:#a6e22e">const</span> <span style="color:#66d9ef">#t</span>))
+(<span style="color:#a6e22e">node</span>
+ (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span>)
+ (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">3</span>)
  <span style="color:#66d9ef">#t</span>
- (list
+ (<span style="color:#a6e22e">list</span>
   <span style="color:#66d9ef">#f</span>
-  (node
-   (rect <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span>)
-   (rect <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
+  (<span style="color:#a6e22e">node</span>
+   (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span>)
+   (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
    <span style="color:#66d9ef">#t</span>
-   (list
-    (node (rect <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) (rect <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">#t</span> <span style="color:#f92672">&#39;</span>(<span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span>))
+   (<span style="color:#a6e22e">list</span>
+    (<span style="color:#a6e22e">node</span> (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">#t</span> <span style="color:#f92672">&#39;</span>(<span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span>))
     <span style="color:#66d9ef">#f</span>
-    (node (rect <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) (rect <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">#t</span> <span style="color:#f92672">&#39;</span>(<span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span>))
+    (<span style="color:#a6e22e">node</span> (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) (<span style="color:#a6e22e">rect</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">#t</span> <span style="color:#f92672">&#39;</span>(<span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span>))
     <span style="color:#66d9ef">#f</span>))
   <span style="color:#66d9ef">#f</span>
-  <span style="color:#66d9ef">#f</span>))</code></pre></div>
-<p>If you take each of those in order, you have the regions:</p>
+  <span style="color:#66d9ef">#f</span>))
+</code></pre></div><p>If you take each of those in order, you have the regions:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">AAAB
 AAAC
-AAAD</code></pre></div>
-<p>So we generated a 3x3 region first and then filled in the rest with 1x1s. Of course that&rsquo;s not very nice to visualize. Let&rsquo;s make something a little prettier:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(in? bounds x y)
-  (match-define (rect t l w h) bounds)
+AAAD
+</code></pre></div><p>So we generated a 3x3 region first and then filled in the rest with 1x1s. Of course that&rsquo;s not very nice to visualize. Let&rsquo;s make something a little prettier:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">in?</span> bounds x y)
+  (<span style="color:#a6e22e">match-define</span> (<span style="color:#a6e22e">rect</span> t l w h) bounds)
   (<span style="color:#66d9ef">and </span>(&lt;= l x (+ l w <span style="color:#ae81ff">-1</span>))
        (&lt;= t y (+ t h <span style="color:#ae81ff">-1</span>))))
 
 <span style="color:#75715e">; Render a fractal image</span>
-(<span style="color:#66d9ef">define </span>(fractal-image
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">fractal-image</span>
          width height
-         <span style="color:#f92672">#</span>:random-color [random-color (thunk (vector (random) (random) (random)))])
+         <span style="color:#f92672">#</span>:random-color [random-color (<span style="color:#a6e22e">thunk</span> (vector (<span style="color:#a6e22e">random</span>) (<span style="color:#a6e22e">random</span>) (<span style="color:#a6e22e">random</span>)))])
 
-  (<span style="color:#66d9ef">define </span>root (make-fractal width height random-color))
+  (<span style="color:#66d9ef">define </span>root (<span style="color:#a6e22e">make-fractal</span> width height random-color))
 
-  (flomap-&gt;bitmap
-   (build-flomap*
+  (<span style="color:#a6e22e">flomap-&gt;bitmap</span>
+   (<span style="color:#a6e22e">build-flomap*</span>
     <span style="color:#ae81ff">3</span> width height
-    (λ (x y)
+    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">x</span> y)
       (<span style="color:#66d9ef">let </span>loop ([node root])
-        (cond
-          [(in? (node-value-bounds node) x y) (node-value node)]
+        (<span style="color:#a6e22e">cond</span>
+          [(<span style="color:#a6e22e">in?</span> (<span style="color:#a6e22e">node-value-bounds</span> node) x y) (<span style="color:#a6e22e">node-value</span> node)]
           [else
-           (for*/first ([child (in-list (node-children node))]
-                        <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">and </span>child (in? (node-bounds child) x y)))
-             (loop child))]))))))</code></pre></div>
-<p>That&rsquo;s surprisingly simple, but then again most of the work was already done in setting up the structure. The most complicated bit here is that we have two different usages of the <code>in?</code> function:</p>
-
+           (<span style="color:#a6e22e">for*/first</span> ([child (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">node-children</span> node))]
+                        <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">and </span>child (<span style="color:#a6e22e">in?</span> (<span style="color:#a6e22e">node-bounds</span> child) x y)))
+             (<span style="color:#a6e22e">loop</span> child))]))))))
+</code></pre></div><p>That&rsquo;s surprisingly simple, but then again most of the work was already done in setting up the structure. The most complicated bit here is that we have two different usages of the <code>in?</code> function:</p>
 <ul>
 <li><code>(in? (node-value-bounds node) x y)</code> - checks if the current point is in the current node&rsquo;s value box (the inner box); if that&rsquo;s the case, this is our base case</li>
 <li><code>(in? (node-bounds child) x y)</code> - if this is true for any of the child node&rsquo;s outer box; if that&rsquo;s true we know that our value is somewhere in that subtree</li>
 </ul>
-
 <p>That&rsquo;s all we need to make some pretty neat images, just changing how we generate colors:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-image <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span>)</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-image</span> <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-image-random.png"/> 
 </figure>
 
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-image <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span> <span style="color:#f92672">#</span>:random-color (thunk (<span style="color:#66d9ef">let </span>([g (random)]) (vector g g g))))</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-image</span> <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span> <span style="color:#f92672">#</span>:random-color (<span style="color:#a6e22e">thunk</span> (<span style="color:#66d9ef">let </span>([g (<span style="color:#a6e22e">random</span>)]) (vector g g g))))
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-image-gray.png"/> 
 </figure>
 
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-image <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span>
-                 <span style="color:#f92672">#</span>:random-color (thunk
-                                  (<span style="color:#66d9ef">case </span>(random <span style="color:#ae81ff">3</span>)
-                                    [(<span style="color:#ae81ff">0</span>) (vector (random) <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>)]
-                                    [(<span style="color:#ae81ff">1</span>) (vector <span style="color:#ae81ff">0</span> (random) <span style="color:#ae81ff">0</span>)]
-                                    [(<span style="color:#ae81ff">2</span>) (vector <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> (random))])))</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-image</span> <span style="color:#ae81ff">200</span> <span style="color:#ae81ff">200</span>
+                 <span style="color:#f92672">#</span>:random-color (<span style="color:#a6e22e">thunk</span>
+                                  (<span style="color:#66d9ef">case </span>(<span style="color:#a6e22e">random</span> <span style="color:#ae81ff">3</span>)
+                                    [(<span style="color:#ae81ff">0</span>) (vector (<span style="color:#a6e22e">random</span>) <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>)]
+                                    [(<span style="color:#ae81ff">1</span>) (vector <span style="color:#ae81ff">0</span> (<span style="color:#a6e22e">random</span>) <span style="color:#ae81ff">0</span>)]
+                                    [(<span style="color:#ae81ff">2</span>) (vector <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> (<span style="color:#a6e22e">random</span>))])))
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-image-rgb.png"/> 
 </figure>
 
-
 <p>Which, honestly, would be a pretty neat post all by itself. But wasn&rsquo;t the entire point of this to made a fractal out of the <a href="https://blog.jverkamp.com/2014/09/14/procedural-invaders/">procedural invaders</a>?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Render a fractal image made of invaders!</span>
-(<span style="color:#66d9ef">define </span>(fractal-invaders width height <span style="color:#f92672">#</span>:highlights? [highlights? <span style="color:#66d9ef">#f</span>])
-  (<span style="color:#66d9ef">define </span>(random-invader)
-    (flomap-add-margin
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">fractal-invaders</span> width height <span style="color:#f92672">#</span>:highlights? [highlights? <span style="color:#66d9ef">#f</span>])
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">random-invader</span>)
+    (<span style="color:#a6e22e">flomap-add-margin</span>
      (<span style="color:#66d9ef">if </span>highlights?
-         (procedural-invader/highlight (random <span style="color:#ae81ff">524288</span>))
-         (procedural-invader (random <span style="color:#ae81ff">32768</span>)))
+         (<span style="color:#a6e22e">procedural-invader/highlight</span> (<span style="color:#a6e22e">random</span> <span style="color:#ae81ff">524288</span>))
+         (<span style="color:#a6e22e">procedural-invader</span> (<span style="color:#a6e22e">random</span> <span style="color:#ae81ff">32768</span>)))
      <span style="color:#ae81ff">1</span>))
 
-  (<span style="color:#66d9ef">define </span>root (make-fractal (quotient width <span style="color:#ae81ff">7</span>)
+  (<span style="color:#66d9ef">define </span>root (<span style="color:#a6e22e">make-fractal</span> (quotient width <span style="color:#ae81ff">7</span>)
                              (quotient height <span style="color:#ae81ff">7</span>)
                              random-invader))
 
-  (flomap-&gt;bitmap
-   (build-flomap*
+  (<span style="color:#a6e22e">flomap-&gt;bitmap</span>
+   (<span style="color:#a6e22e">build-flomap*</span>
     (<span style="color:#66d9ef">if </span>highlights? <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span>) width height
-    (λ (x y)
+    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">x</span> y)
       <span style="color:#75715e">; Correct for coordinates within the node</span>
       (<span style="color:#66d9ef">define </span>nx (quotient x <span style="color:#ae81ff">7</span>))
       (<span style="color:#66d9ef">define </span>ny (quotient y <span style="color:#ae81ff">7</span>))
 
       (<span style="color:#66d9ef">let </span>loop ([n root])
-        (cond
-          [(in? (node-value-bounds n) nx ny)
+        (<span style="color:#a6e22e">cond</span>
+          [(<span style="color:#a6e22e">in?</span> (<span style="color:#a6e22e">node-value-bounds</span> n) nx ny)
            <span style="color:#75715e">; Calculate coordinates within the image</span>
-           (match-define (node _ (rect t l s _) img _) n)
+           (<span style="color:#a6e22e">match-define</span> (<span style="color:#a6e22e">node</span> _ (<span style="color:#a6e22e">rect</span> t l s _) img _) n)
            (<span style="color:#66d9ef">define </span>ix (quotient (- x (* <span style="color:#ae81ff">7</span> l)) s))
            (<span style="color:#66d9ef">define </span>iy (quotient (- y (* <span style="color:#ae81ff">7</span> t)) s))
-           (flomap-ref* img ix iy)]
+           (<span style="color:#a6e22e">flomap-ref*</span> img ix iy)]
           [else
-           (or
-            (for*/first ([child (in-list (node-children n))]
-                         <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">and </span>child (in? (node-bounds child) nx ny)))
-              (loop child))
-            (<span style="color:#66d9ef">if </span>highlights? <span style="color:#f92672">&#39;#</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;#</span>(<span style="color:#ae81ff">1</span>)))]))))))</code></pre></div>
-<p>Okay, this code isn&rsquo;t quite as nice. Mostly, that&rsquo;s because of a simplifying requirement that I started with: we&rsquo;re going to be working with a grid where each &lsquo;pixel&rsquo; is a single minimal size invader. With a 1 pixel margin, that means that our minimum image size is 7x7 (thus the 7s scattered throughout the code).</p>
-
+           (<span style="color:#a6e22e">or</span>
+            (<span style="color:#a6e22e">for*/first</span> ([child (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">node-children</span> n))]
+                         <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">and </span>child (<span style="color:#a6e22e">in?</span> (<span style="color:#a6e22e">node-bounds</span> child) nx ny)))
+              (<span style="color:#a6e22e">loop</span> child))
+            (<span style="color:#66d9ef">if </span>highlights? <span style="color:#f92672">&#39;#</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;#</span>(<span style="color:#ae81ff">1</span>)))]))))))
+</code></pre></div><p>Okay, this code isn&rsquo;t quite as nice. Mostly, that&rsquo;s because of a simplifying requirement that I started with: we&rsquo;re going to be working with a grid where each &lsquo;pixel&rsquo; is a single minimal size invader. With a 1 pixel margin, that means that our minimum image size is 7x7 (thus the 7s scattered throughout the code).</p>
 <p>Unfortunately, that does make our base case a little more complicated, since we&rsquo;re working with two different coordinate systems: image coordinates <code>x</code> and <code>y</code> and fractal coordinates <code>nx</code> and <code>ny</code>. Still, add in some offsets by 7 and a bit of padding down at the end (for images not divisible by 7) and off we go:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-invaders <span style="color:#ae81ff">100</span> <span style="color:#ae81ff">100</span>)</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-invaders</span> <span style="color:#ae81ff">100</span> <span style="color:#ae81ff">100</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-invaders-100x100.png"/> 
 </figure>
 
-
 <p>It also works great for larger images:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-invaders <span style="color:#ae81ff">400</span> <span style="color:#ae81ff">200</span>)</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-invaders</span> <span style="color:#ae81ff">400</span> <span style="color:#ae81ff">200</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-invaders-400x200.png"/> 
 </figure>
 
-
 <p>It even supports highlights:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-invaders <span style="color:#ae81ff">400</span> <span style="color:#ae81ff">200</span> <span style="color:#f92672">#</span>:highlights? <span style="color:#66d9ef">#t</span>)</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-invaders</span> <span style="color:#ae81ff">400</span> <span style="color:#ae81ff">200</span> <span style="color:#f92672">#</span>:highlights? <span style="color:#66d9ef">#t</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-invaders-400x200-highlights.png"/> 
 </figure>
 
-
 <p>Now that&rsquo;s what I&rsquo;m talking about. Unfortunately, the process is still somewhat random:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-invaders <span style="color:#ae81ff">100</span> <span style="color:#ae81ff">100</span>)</code></pre></div>
-<figure>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-invaders</span> <span style="color:#ae81ff">100</span> <span style="color:#ae81ff">100</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-invaders-100x100-big.png"/> 
 </figure>
 
-
 <p>Sometimes the first random image is a little on the annoyingly large size. Off the top of my head, there are two ways to deal with it: either add an option parameter that controls the maximum size of a block or just keep generating images until you get what you are looking for.</p>
-
 <p>Guess which solution I prefer? 😄</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(fractal-invaders <span style="color:#f92672">...</span> <span style="color:#f92672">#</span>:maximum-invader-size [max-size <span style="color:#66d9ef">#f</span>])
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">fractal-invaders</span> <span style="color:#f92672">...</span> <span style="color:#f92672">#</span>:maximum-invader-size [max-size <span style="color:#66d9ef">#f</span>])
   <span style="color:#f92672">...</span>
   (<span style="color:#66d9ef">define </span>root
-    (make-fractal
+    (<span style="color:#a6e22e">make-fractal</span>
      (quotient width <span style="color:#ae81ff">7</span>)
      (quotient height <span style="color:#ae81ff">7</span>)
      random-invader
      <span style="color:#f92672">#</span>:maximum-block-size (<span style="color:#66d9ef">and </span>max-size (/ max-size <span style="color:#ae81ff">7</span>))))
   <span style="color:#f92672">...</span>)
 
-(<span style="color:#66d9ef">define </span>(make-fractal width height random-node <span style="color:#f92672">#</span>:maximum-block-size [max-size <span style="color:#66d9ef">#f</span>])
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">make-fractal</span> width height random-node <span style="color:#f92672">#</span>:maximum-block-size [max-size <span style="color:#66d9ef">#f</span>])
   <span style="color:#f92672">...</span>
       [else
        (<span style="color:#66d9ef">define </span>s
          (<span style="color:#66d9ef">let </span>loop ()
-           (<span style="color:#66d9ef">define </span>s (<span style="color:#66d9ef">if </span>(= (min w h) <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (random (min w h)))))
-           (cond
+           (<span style="color:#66d9ef">define </span>s (<span style="color:#66d9ef">if </span>(= (min w h) <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">random</span> (min w h)))))
+           (<span style="color:#a6e22e">cond</span>
              [(<span style="color:#66d9ef">or </span>(not max-size) (&lt; s max-size)) s]
-             [<span style="color:#66d9ef">else </span>(loop)])))
-       <span style="color:#f92672">...</span>])</code></pre></div>
-<p>Simple!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (fractal-invaders <span style="color:#ae81ff">400</span> <span style="color:#ae81ff">200</span> <span style="color:#f92672">#</span>:highlights? <span style="color:#66d9ef">#t</span> <span style="color:#f92672">#</span>:maximum-invader-size <span style="color:#ae81ff">25</span>)</code></pre></div>
-<figure>
+             [<span style="color:#66d9ef">else </span>(<span style="color:#a6e22e">loop</span>)])))
+       <span style="color:#f92672">...</span>])
+</code></pre></div><p>Simple!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">fractal-invaders</span> <span style="color:#ae81ff">400</span> <span style="color:#ae81ff">200</span> <span style="color:#f92672">#</span>:highlights? <span style="color:#66d9ef">#t</span> <span style="color:#f92672">#</span>:maximum-invader-size <span style="color:#ae81ff">25</span>)
+</code></pre></div><figure>
     <img src="/embeds/2014/fractal-invaders-400x200-max-25.png"/> 
 </figure>
 
-
 <p>Beautiful!</p>
-
 <p>I wonder what other sort of images I could make with a fractal space filling algorithm like this? 😇</p>
-
 <p>As always, today&rsquo;s code is available on GitHub. Check it out: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/fractal-invaders.rkt">fractal-invaders.rkt</a> (Requires <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/procedural-invaders.rkt">procedural-invaders.rkt</a> to run.)</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

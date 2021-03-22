@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,7 +74,6 @@
     </header>
 
 	<div class="entry-content"><p>Getting a bit close to the deadline, but I think I have something that&rsquo;s pretty interesting. Basically, it&rsquo;s the same BF interpreter that I wrote about <a href="https://blog.jverkamp.com/2012/12/30/a-brainfk-interpreter/">yesterday</a> with four additional commands:</p>
-
 <table>
 <thead>
 <tr>
@@ -82,85 +81,73 @@
 <th>Spawn a new thread; set the current cell to 0 in the parent and 1 in the child</th>
 </tr>
 </thead>
-
 <tbody>
 <tr>
 <td>~</td>
 <td>Kill the current thread</td>
 </tr>
-
 <tr>
 <td>!</td>
 <td>Send a ping on the channel specified by the current cell</td>
 </tr>
-
 <tr>
 <td>?</td>
 <td>Wait for a ping on the channel specified by the current cell</td>
 </tr>
 </tbody>
 </table>
-
 <p>Originally, the idea was the keep the threads in sync, running only a single step on each in turn, but in the end I decided just to directly go with Racket&rsquo;s <code>thread</code>s both for ease of implementation and because it more closely matches what I&rsquo;m actually trying to do.</p>
-
 <p>If you&rsquo;d like to see full source code, you can do so <a href="https://github.com/jpverkamp/pbf/blob/master/pbf.rkt" title="GitHub: pbf">on GitHub</a>. Otherwise, here are the new sections:</p>
-
 <p>First, we have the new instruction <code>&amp;amp;</code> that is designed to spawn a new thread:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; spawn a new thread, set current cell to 0 in the parent and non-0 in the child</span>
 [(<span style="color:#e6db74">#\&amp;</span>)
  <span style="color:#75715e">; spawn the child process</span>
- (thread
-  (<span style="color:#66d9ef">lambda </span>() (step (+ pc <span style="color:#ae81ff">1</span>) tape-left <span style="color:#ae81ff">1</span> tape-right)))
+ (<span style="color:#a6e22e">thread</span>
+  (<span style="color:#66d9ef">lambda </span>() (<span style="color:#a6e22e">step</span> (+ pc <span style="color:#ae81ff">1</span>) tape-left <span style="color:#ae81ff">1</span> tape-right)))
 
  <span style="color:#75715e">; step the parent process</span>
- (step (+ pc <span style="color:#ae81ff">1</span>) tape-left <span style="color:#ae81ff">0</span> tape-right)]</code></pre></div>
-<p>That&rsquo;s one thing that I like about the provided <code>thread</code>s, all you have to do is pass it a thunk and it does the rest. So we&rsquo;ll spawn one process in a separate thread with 1 in the current cell and take a step while at the same time taking a step in the original thread. And that&rsquo;s it! The built in functionality will handle everything else for us.</p>
-
+ (<span style="color:#a6e22e">step</span> (+ pc <span style="color:#ae81ff">1</span>) tape-left <span style="color:#ae81ff">0</span> tape-right)]
+</code></pre></div><p>That&rsquo;s one thing that I like about the provided <code>thread</code>s, all you have to do is pass it a thunk and it does the rest. So we&rsquo;ll spawn one process in a separate thread with 1 in the current cell and take a step while at the same time taking a step in the original thread. And that&rsquo;s it! The built in functionality will handle everything else for us.</p>
 <p>Next, how do we kill off threads? That&rsquo;s even easier. Since we have the large <code>case</code> statement that&rsquo;s dealing with processing the input, all we have to do is break out of it (by returning <code>void</code> in this case):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; kill the current thread</span>
 [(<span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>~)
- (void)]</code></pre></div>
-<p>Now for the communication between threads. Optimally, I&rsquo;d like to have something that could actually send messages, but I couldn&rsquo;t figure out a good way to do that while only having a single variable at a time. Perhaps I could just send/receive the current cell? We&rsquo;ll see.</p>
-
+ (<span style="color:#a6e22e">void</span>)]
+</code></pre></div><p>Now for the communication between threads. Optimally, I&rsquo;d like to have something that could actually send messages, but I couldn&rsquo;t figure out a good way to do that while only having a single variable at a time. Perhaps I could just send/receive the current cell? We&rsquo;ll see.</p>
 <p>In any case, the model that I settled on is useful for synchronizing the threads. Basically, you can send a ping with <code>!</code> or wait for one with <code>?</code>.</p>
-
 <p>But how does that work? First we need the channels of communication. I used a shared mutable hash:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; control communication on channels</span>
-(<span style="color:#66d9ef">define </span>channels (make-hash))
+(<span style="color:#66d9ef">define </span>channels (<span style="color:#a6e22e">make-hash</span>))
 
 <span style="color:#75715e">; send a ping on a given channel</span>
-(<span style="color:#66d9ef">define </span>(ping i)
-  (hash-set! channels i <span style="color:#66d9ef">#t</span>))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">ping</span> i)
+  (<span style="color:#a6e22e">hash-set!</span> channels i <span style="color:#66d9ef">#t</span>))
 
 <span style="color:#75715e">; wait for a ping on a given channel</span>
 <span style="color:#75715e">; current a spinlock :(</span>
-(<span style="color:#66d9ef">define </span>(pong i)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">pong</span> i)
   (<span style="color:#66d9ef">let </span>loop ()
-    (<span style="color:#66d9ef">if </span>(hash-ref channels i <span style="color:#66d9ef">#f</span>)
-        (hash-remove! channels i) 
-        (loop))))</code></pre></div>
-<p>This way <code>pong</code> will block until it receives a message from another thread. there are some potential issues in that <code>pong</code> isn&rsquo;t actually atomic so you could have two threads receive the same ping or not, non-deterministically. But that&rsquo;s half the fun of a Turing Tarpit isn&rsquo;t it? 😄</p>
-
+    (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">hash-ref</span> channels i <span style="color:#66d9ef">#f</span>)
+        (<span style="color:#a6e22e">hash-remove!</span> channels i) 
+        (<span style="color:#a6e22e">loop</span>))))
+</code></pre></div><p>This way <code>pong</code> will block until it receives a message from another thread. there are some potential issues in that <code>pong</code> isn&rsquo;t actually atomic so you could have two threads receive the same ping or not, non-deterministically. But that&rsquo;s half the fun of a Turing Tarpit isn&rsquo;t it? 😄</p>
 <p>With that, the code for <code>!</code> and <code>?</code> is straight forward:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; send a ping on a given channel</span>
 [(<span style="color:#e6db74">#\!</span>)
- (ping tape-cell)
- (step (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)]
+ (<span style="color:#a6e22e">ping</span> tape-cell)
+ (<span style="color:#a6e22e">step</span> (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)]
 
 <span style="color:#75715e">; receive a ping on a given channel</span>
 [(<span style="color:#e6db74">#\?</span>)
- (pong tape-cell)
- (step (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)]</code></pre></div>
-<p>And that&rsquo;s all there is to it. Now you can BF in parallel!</p>
-
+ (<span style="color:#a6e22e">pong</span> tape-cell)
+ (<span style="color:#a6e22e">step</span> (+ pc <span style="color:#ae81ff">1</span>) tape-left tape-cell tape-right)]
+</code></pre></div><p>And that&rsquo;s all there is to it. Now you can BF in parallel!</p>
 <p>But what&rsquo;s it actually useful for?</p>
-
 <p>Well, consider this example:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#f92672">&amp;[</span>     spawn thread <span style="color:#a6e22e">1</span> <span style="color:#f92672">(</span>echo <span style="color:#f92672">+</span>1<span style="color:#f92672">)</span>
  <span style="color:#f92672">+</span>     set cell 0 to <span style="color:#a6e22e">1</span> <span style="color:#f92672">(</span>to ID the thread<span style="color:#f92672">)</span>
  <span style="color:#f92672">&gt;&gt;+</span>   set cell 2 to 1
  <span style="color:#f92672">&lt;,</span>    read into cell 1
- <span style="color:#f92672">[</span>     <span style="color:#66d9ef">while</span> not EOF:
+ <span style="color:#f92672">[</span>     <span style="color:#66d9ef">while</span> not EOF<span style="color:#f92672">:</span>
   <span style="color:#f92672">+.</span>    add 1 and echo
   <span style="color:#f92672">&gt;+!</span>   set cell 2 to 2 and send a ping on 2
   <span style="color:#f92672">-?</span>    set cell 2 to 1 and wait <span style="color:#66d9ef">for</span> a ping on 1
@@ -173,23 +160,22 @@
  <span style="color:#f92672">++</span>    set cell 0 to <span style="color:#a6e22e">2</span> <span style="color:#f92672">(</span>to ID the thread<span style="color:#f92672">)</span>
  <span style="color:#f92672">&gt;&gt;++?</span> set cell 2 to 2 and wait <span style="color:#66d9ef">for</span> a ping on 2
  <span style="color:#f92672">&lt;,</span>    read into cell 1
- <span style="color:#f92672">[</span>     <span style="color:#66d9ef">while</span> not EOF:
+ <span style="color:#f92672">[</span>     <span style="color:#66d9ef">while</span> not EOF<span style="color:#f92672">:</span>
   <span style="color:#f92672">-.</span>    sub 1 and echo
   <span style="color:#f92672">&gt;-!</span>   set cell 2 to 1 and send a ping on 1
   <span style="color:#f92672">+?</span>    set cell 2 to 2 and wait <span style="color:#66d9ef">for</span> a ping on 2
   <span style="color:#f92672">&lt;,</span>    read into cell 1
  <span style="color:#f92672">]</span>
  <span style="color:#f92672">~</span>     kill <span style="color:#66d9ef">this</span> thread
-<span style="color:#f92672">]</span></code></pre></div>
-<p>What this will actually do is act as a close cousin to the cat program from yesterday. Instead of a single thread though, here we spawn two. The first will read input and add one to it before echoing. The second will subtract one. Using <code>!</code> and <code>?</code>, we&rsquo;ll make sure to alternate between the two. Yes, this could easily have been written without threads, but it was a good test to make sure I had everything working.</p>
-
+<span style="color:#f92672">]</span>
+</code></pre></div><p>What this will actually do is act as a close cousin to the cat program from yesterday. Instead of a single thread though, here we spawn two. The first will read input and add one to it before echoing. The second will subtract one. Using <code>!</code> and <code>?</code>, we&rsquo;ll make sure to alternate between the two. Yes, this could easily have been written without threads, but it was a good test to make sure I had everything working.</p>
 <p>Here&rsquo;s an example:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (current-i/o-mode <span style="color:#e6db74">&#39;numeric</span>)
-&gt; (pbf (file-&gt;string <span style="color:#e6db74">&#34;split-cat.pbf&#34;</span>))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">current-i/o-mode</span> <span style="color:#e6db74">&#39;numeric</span>)
+&gt; (<span style="color:#a6e22e">pbf</span> (<span style="color:#a6e22e">file-&gt;string</span> <span style="color:#e6db74">&#34;split-cat.pbf&#34;</span>))
 <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">10</span>
-<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">11</span></code></pre></div>
-<p>Even more fun, how about Hello World done in parallel? Essentially, we can have one thread for upper case letters, one for lower case, and one for the rest. That way we can move around and get everything read all at the same time:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">the goal:
+<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">11</span>
+</code></pre></div><p>Even more fun, how about Hello World done in parallel? Essentially, we can have one thread for upper case letters, one for lower case, and one for the rest. That way we can move around and get everything read all at the same time:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">the goal<span style="color:#f92672">:</span>
  thread 0 outputs <span style="color:#e6db74">&#39;H&#39;</span> and sends 1
  on 1 thread 1 outputs <span style="color:#960050;background-color:#1e0010">&#39;</span>ello<span style="color:#960050;background-color:#1e0010">&#39;</span> and sends 2
  on 2 thread 2 outputs <span style="color:#e6db74">&#39; &#39;</span> and sends 3
@@ -200,14 +186,14 @@
 <span style="color:#f92672">&amp;[-</span>         spawn thread <span style="color:#a6e22e">0</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">for</span> H and W<span style="color:#f92672">)</span>
  <span style="color:#f92672">&gt;</span>          go to cell 1
  <span style="color:#f92672">+++++++++</span>  set cell 1 to 9
- <span style="color:#f92672">[</span>          loop <span style="color:#66d9ef">while</span> cell 1 is not 0:
+ <span style="color:#f92672">[</span>          loop <span style="color:#66d9ef">while</span> cell 1 is not 0<span style="color:#f92672">:</span>
   <span style="color:#f92672">&lt;++++++++</span>  add 8 to cell 0
   <span style="color:#f92672">&gt;-</span>         subtract 1 from cell 1
  <span style="color:#f92672">]</span>
  <span style="color:#f92672">&lt;.</span>         output cell <span style="color:#a6e22e">0</span> <span style="color:#f92672">(</span>9 <span style="color:#f92672">*</span> 8 <span style="color:#f92672">=</span> 72 <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;H&#39;</span><span style="color:#f92672">)</span>
  <span style="color:#f92672">&gt;+!</span>        send a ping on 1
  <span style="color:#f92672">++</span>         set cell 2 to 3
- <span style="color:#f92672">[</span>          loop <span style="color:#66d9ef">while</span> cell 1 is not 0:
+ <span style="color:#f92672">[</span>          loop <span style="color:#66d9ef">while</span> cell 1 is not 0<span style="color:#f92672">:</span>
   <span style="color:#f92672">&lt;+++++</span>     add 5 to cell 0
   <span style="color:#f92672">&gt;-</span>         subtract 1 from cell 1
  <span style="color:#f92672">]</span>
@@ -220,7 +206,7 @@
 <span style="color:#f92672">&amp;[-</span>         spawn thread <span style="color:#a6e22e">1</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">for</span> <span style="color:#960050;background-color:#1e0010">&#39;</span>ello<span style="color:#960050;background-color:#1e0010">&#39;</span> and <span style="color:#960050;background-color:#1e0010">&#39;</span>orld<span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#f92672">)</span>
  <span style="color:#f92672">&gt;+++++</span>
   <span style="color:#f92672">+++++</span>     add 10 to cell 1
- <span style="color:#f92672">[</span>          <span style="color:#66d9ef">while</span> cell 1 is not 0:
+ <span style="color:#f92672">[</span>          <span style="color:#66d9ef">while</span> cell 1 is not 0<span style="color:#f92672">:</span>
   <span style="color:#f92672">&lt;+++++</span>
    <span style="color:#f92672">+++++</span>    add 10 to cell 0
   <span style="color:#f92672">&gt;-</span>        subtract 1 from cell 1
@@ -242,7 +228,7 @@
 
 <span style="color:#f92672">&amp;[-</span>         spawn thread <span style="color:#a6e22e">2</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">for</span> <span style="color:#e6db74">&#39; &#39;</span> and bang<span style="color:#f92672">)</span>
  <span style="color:#f92672">&gt;++++</span>      set cell 1 to 4
- <span style="color:#f92672">[</span>          <span style="color:#66d9ef">while</span> cell 1 is not 0:
+ <span style="color:#f92672">[</span>          <span style="color:#66d9ef">while</span> cell 1 is not 0<span style="color:#f92672">:</span>
   <span style="color:#f92672">&lt;++++++++</span>  add 8 to cell 0
   <span style="color:#f92672">&gt;-</span>         subtract 1 from cell 1
  <span style="color:#f92672">]</span>
@@ -253,13 +239,12 @@
  <span style="color:#f92672">&gt;++?</span>       wait <span style="color:#66d9ef">for</span> a ping on 5
  <span style="color:#f92672">&lt;.</span>         output cell <span style="color:#a6e22e">0</span> <span style="color:#f92672">(</span>32 <span style="color:#f92672">+</span> 1 <span style="color:#f92672">=</span> 33 <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;!&#39;</span><span style="color:#f92672">)</span>
  <span style="color:#f92672">~</span>          kill <span style="color:#66d9ef">this</span> thread
-<span style="color:#f92672">]</span></code></pre></div>
-<p>Check it out:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt;(current-i/o-mode <span style="color:#e6db74">&#39;unicode</span>)
-&gt; (pbf (file-&gt;string <span style="color:#e6db74">&#34;hello.pbf&#34;</span>))
-Hello World!</code></pre></div>
-<p>And that&rsquo;s that. You can see the entire project on GitHub <a href="https://github.com/jpverkamp/pbf" title="GitHub: jpverkamp/pbf">here</a> or the competition from <a href="http://www.pltgames.com/competition/2012/12" title="PLT Games Competition December 2012">PLT Games here</a>.</p>
-
+<span style="color:#f92672">]</span>
+</code></pre></div><p>Check it out:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt;(<span style="color:#a6e22e">current-i/o-mode</span> <span style="color:#e6db74">&#39;unicode</span>)
+&gt; (<span style="color:#a6e22e">pbf</span> (<span style="color:#a6e22e">file-&gt;string</span> <span style="color:#e6db74">&#34;hello.pbf&#34;</span>))
+Hello World!
+</code></pre></div><p>And that&rsquo;s that. You can see the entire project on GitHub <a href="https://github.com/jpverkamp/pbf" title="GitHub: jpverkamp/pbf">here</a> or the competition from <a href="http://www.pltgames.com/competition/2012/12" title="PLT Games Competition December 2012">PLT Games here</a>.</p>
 <p>This was actually pretty fun. I think I&rsquo;m going to have to try a few other variants in the future.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

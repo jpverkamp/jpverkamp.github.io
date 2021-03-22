@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,15 +71,11 @@
     </header>
 
 	<div class="entry-content"><p>Recently at work, we were trying to get an application that uses <a href="https://en.wikipedia.org/wiki/websockets">websockets</a> working on an <a href="https://aws.amazon.com/">AWS</a> instance behind an <a href="https://aws.amazon.com/elasticloadbalancing/">ELB (load balancer)</a> and <a href="http://nginx.org/">nginx</a> on the instance.</p>
-
 <p>If you&rsquo;re either not using a secure connection or handling the cryptography on the instance (either in nginx or Flask), it works right out of the box. But if you want the ELB to handle TLS termination it doesn&rsquo;t work nearly as well&hellip; Luckily, after a bit of fiddling, I got it working.</p>
-
-<p><strong>Update 2018-05-31:</strong> A much easier solution, <a href="just use an ALB">https://aws.amazon.com/blogs/aws/new-aws-application-load-balancer/</a>:</p>
-
+<p><strong>Update 2018-05-31:</strong> A much easier solution, [https://aws.amazon.com/blogs/aws/new-aws-application-load-balancer/](just use an ALB):</p>
 <blockquote>
 <p><strong>WebSocket</strong> allows you to set up long-standing TCP connections between your client and your server. This is a more efficient alternative to the old-school method which involved HTTP connections that were held open with a “heartbeat” for very long periods of time. WebSocket is great for mobile devices and can be used to deliver stock quotes, sports scores, and other dynamic data while minimizing power consumption. ALB provides native support for WebSocket via the <code>ws://</code> and <code>wss://</code> protocols.</p>
 </blockquote>
-
 <p>First, we have a basic application. For my purposes, I wrote a quick Websocket chat app: <a href="https://github.com/jpverkamp/ws-chat">ws-chat</a>. The particular implementation details aren&rsquo;t as important. We&rsquo;ll start with the nginx config file:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-nginx" data-lang="nginx"><span style="color:#66d9ef">upstream</span> <span style="color:#e6db74">webserver</span> {
     <span style="color:#f92672">server</span> 127.0.0.1:<span style="color:#ae81ff">8000</span>;
@@ -106,34 +102,29 @@
         <span style="color:#f92672">proxy_set_header</span> <span style="color:#e6db74">Upgrade</span> $http_upgrade;
         <span style="color:#f92672">proxy_set_header</span> <span style="color:#e6db74">Connection</span> <span style="color:#e6db74">&#34;upgrade&#34;</span>;
     }
-}</code></pre></div>
-<p>Straight forward enough. We have two backend services: a <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/web-server.py">web server</a> running on port 8000 (a simple Flask server that just servers a single <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/templates/index.html">HTML page</a>) and the <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/ws-server.py">websocket backend</a> running on port 9000. Alternatively, these could be the same codebase. The important parts are that you allow the Websocket <code>upgrade</code> header to pass through to establish the connection and that you tell nginx to listen using the <code>proxy_protocol</code>, an extra header that passes through extra information:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">PROXY_STRING + single space + INET_PROTOCOL + single space + CLIENT_IP + single space + PROXY_IP + single space + CLIENT_PORT + single space + PROXY_PORT + &#34;\r\n&#34;</code></pre></div>
-<p>This seems like it wouldn&rsquo;t be necessary, except that without <code>proxy_protocol</code> AWS ELBs seem to strip something important to the connection.</p>
-
+}
+</code></pre></div><p>Straight forward enough. We have two backend services: a <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/web-server.py">web server</a> running on port 8000 (a simple Flask server that just servers a single <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/templates/index.html">HTML page</a>) and the <a href="https://github.com/jpverkamp/ws-chat/blob/master/app/ws-server.py">websocket backend</a> running on port 9000. Alternatively, these could be the same codebase. The important parts are that you allow the Websocket <code>upgrade</code> header to pass through to establish the connection and that you tell nginx to listen using the <code>proxy_protocol</code>, an extra header that passes through extra information:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">PROXY_STRING + single space + INET_PROTOCOL + single space + CLIENT_IP + single space + PROXY_IP + single space + CLIENT_PORT + single space + PROXY_PORT + &#34;\r\n&#34;
+</code></pre></div><p>This seems like it wouldn&rsquo;t be necessary, except that without <code>proxy_protocol</code> AWS ELBs seem to strip something important to the connection.</p>
 <p>Next, we need to configure the load balancer. One complication here is that telling the load balancer to forward HTTPS traffic to HTTP will not work for the websockets. Instead, you have to configure it to forward TCP (SSL) to TCP. This will still work for HTTP/HTTPS traffic (as HTTP is just a specific protocol over TCP and HTTPS is just HTTP with a TLS layer), but it will also allow the non-HTTP websocket traffic to pass through successfully. Something like this:</p>
-
 <figure>
     <img src="/embeds/2015/configure-elb.png"/> 
 </figure>
 
-
 <p>(Don&rsquo;t forget to set the certificate :))</p>
-
 <p>Finally, you have to configure the ELB also to speak proxy protocol. This part is slightly more annoying, since (at least now), there&rsquo;s no way to configure this through the AWS console. You have to use the <a href="https://aws.amazon.com/cli/">AWS CLI</a>.</p>
-
 <p>First, create the new policy (assuming you have an environment variable <code>ELB_NAME</code> defined):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">aws elb create-load-balancer-policy <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>    --load-balancer-name $ELB_NAME <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>    --policy-name $ELB_NAME-proxy-protocol <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>    --policy-type-name ProxyProtocolPolicyType <span style="color:#ae81ff">\
-</span><span style="color:#ae81ff"></span>    --policy-attributes AttributeName<span style="color:#f92672">=</span>ProxyProtocol,AttributeValue<span style="color:#f92672">=</span>True</code></pre></div>
-<p>Then, attach it to the load balancer. You will have to run this once for each port that the instance is listening on:</p>
+</span><span style="color:#ae81ff"></span>    --policy-attributes AttributeName<span style="color:#f92672">=</span>ProxyProtocol,AttributeValue<span style="color:#f92672">=</span>True
+</code></pre></div><p>Then, attach it to the load balancer. You will have to run this once for each port that the instance is listening on:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">aws elb set-load-balancer-policies-for-backend-server <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>    --load-balancer-name $ELB_NAME <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>    --instance-port <span style="color:#ae81ff">80</span> <span style="color:#ae81ff">\
-</span><span style="color:#ae81ff"></span>    --policy-names $ELB_NAME-proxy-protocol</code></pre></div>
-<p>Make sure that you&rsquo;re using <code>https://</code> for the web traffic and <code>wss://</code> for the websocket and you&rsquo;re golden. Encrypted websockets behind an AWS ELB. Now if only they would expose the proxy protocol options in the console&hellip;</p></div>
+</span><span style="color:#ae81ff"></span>    --policy-names $ELB_NAME-proxy-protocol
+</code></pre></div><p>Make sure that you&rsquo;re using <code>https://</code> for the web traffic and <code>wss://</code> for the websocket and you&rsquo;re golden. Encrypted websockets behind an AWS ELB. Now if only they would expose the proxy protocol options in the console&hellip;</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

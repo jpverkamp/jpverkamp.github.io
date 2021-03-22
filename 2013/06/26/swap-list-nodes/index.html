@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,118 +74,106 @@
     </header>
 
 	<div class="entry-content"><p>It&rsquo;s been rather a while since I&rsquo;ve worked out a <a title="Programming Praxis" href="http://programmingpraxis.com/">Programming Praxis</a> problem, but they posted a <a title="Swap list nodes" href="http://programmingpraxis.com/2013/06/25/swap-list-nodes/">new one yesterday</a>, so now seems as good a time as any. The problem is relatively simple:</p>
-
 <blockquote>
 <p>Given a linked list, swap the kth node from the head of the list with the kth node from the end of the list.</p>
 </blockquote>
-
 <p>Since all lists in Scheme are linked lists, that part seems easy enough. To make the problem a little more interesting however, I&rsquo;m going to work it out in a purely functional manner: no mutation.</p>
-
 <p>So, let&rsquo;s have at it!</p>
-
 <p>At first, I was interested in trying to do this in a single pass, building up data while recurring down and while back. But that code quickly grew into rather a mess with all sorts of edge cases dealing with things like the kth from the end coming before the kth from the front. So in the end, I abandoned that path in favor of a two pass solution:</p>
-
 <ul>
 <li>Find pointers to the kth node from the head and the kth from the tail.</li>
 <li>Recur down the list, swapping elements when we get to either points.</li>
 </ul>
-
-<p>One neat trick that we can use<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup> is that the pairs that make up lists in Scheme are distinct memory locations&ndash;which means that they are <code>eq?</code>.</p>
-
+<p>One neat trick that we can use<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup> is that the pairs that make up lists in Scheme are distinct memory locations&ndash;which means that they are <code>eq?</code>.</p>
 <p>So how can we use that? Well, for step one, all we have to do is <code>cdr</code> down the list until we get to the kth node (either from the head or tail). When we find that node, return the current list. This pointer will be <code>eq?</code> to itself during the second iteration rather than using indices. So let&rsquo;s start with that code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Get pointers to the kth head and the kth tail</span>
-(define-values (_ kth-head kth-tail)
+(<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">_</span> kth-head kth-tail)
   (<span style="color:#66d9ef">let </span>loop ([i <span style="color:#ae81ff">1</span>] [ls ls])
-    (cond
+    (<span style="color:#a6e22e">cond</span>
       [(null? ls)
        (values <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">#f</span> <span style="color:#66d9ef">#f</span>)]
       [else
-       (define-values (j kth-head kth-tail)
-         (loop (+ i <span style="color:#ae81ff">1</span>) (cdr ls)))
-       (values
+       (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">j</span> kth-head kth-tail)
+         (<span style="color:#a6e22e">loop</span> (+ i <span style="color:#ae81ff">1</span>) (cdr ls)))
+       (<span style="color:#a6e22e">values</span>
         (+ j <span style="color:#ae81ff">1</span>)
         (<span style="color:#66d9ef">if </span>(= i k) ls kth-head)
-        (<span style="color:#66d9ef">if </span>(= j k) ls kth-tail))])))</code></pre></div>
-<p>This is a little more complicated than base Scheme because we&rsquo;re returning multiple values. Essentially, this code (the function <code>loop</code>) has the type <code>(int list -&gt; int list list)</code> where the arguments are:</p>
-
+        (<span style="color:#66d9ef">if </span>(= j k) ls kth-tail))])))
+</code></pre></div><p>This is a little more complicated than base Scheme because we&rsquo;re returning multiple values. Essentially, this code (the function <code>loop</code>) has the type <code>(int list -&gt; int list list)</code> where the arguments are:</p>
 <ul>
 <li>a counter from the front</li>
 <li>the current list pointer</li>
 </ul>
-
 <p>In turn, the return values are:</p>
-
 <ul>
 <li>a counter from the back</li>
 <li>a pointer to the <code>kth-head</code> (once we&rsquo;ve found it)</li>
 <li>a pointer to the <code>kth-tail</code> (once we&rsquo;ve found it)</li>
 </ul>
-
 <p>The beauty of this code comes in the last four lines. Essentially, we&rsquo;re always going to increment the end counter, but the two <code>if</code> statements only change the <code>kth-head</code> or <code>kth-tail</code> if we&rsquo;re at the right value, replacing it with the current list <code>ls</code>.</p>
-
 <p>So what can we do with this? Well, this part is much more straight forward:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Recur again, swapping the pointers</span>
 (<span style="color:#66d9ef">let </span>loop ([ls ls])
-  (cond
+  (<span style="color:#a6e22e">cond</span>
     [(null? ls)        <span style="color:#f92672">&#39;</span>()]
-    [(eq? ls kth-head) (cons (car kth-tail) (loop (cdr ls)))]
-    [(eq? ls kth-tail) (cons (car kth-head) (loop (cdr ls)))]
-    [<span style="color:#66d9ef">else </span>             (cons (car ls)       (loop (cdr ls)))]))</code></pre></div>
-<p>If we&rsquo;re at the end, do nothing. Otherwise, rebuild the list, always recurring on the <code>cdr</code> of the list and adding the proper <code>car</code>. One thing to note is that the structure of those last three elements looks awfully similar. So theoretically, we could rewrite it so that we only have a single <code>cons</code>, <code>car</code>, and <code>(loop (cdr ls))</code>. That code would look something like this:</p>
+    [(eq? ls kth-head) (cons (car kth-tail) (<span style="color:#a6e22e">loop</span> (cdr ls)))]
+    [(eq? ls kth-tail) (cons (car kth-head) (<span style="color:#a6e22e">loop</span> (cdr ls)))]
+    [<span style="color:#66d9ef">else </span>             (cons (car ls)       (<span style="color:#a6e22e">loop</span> (cdr ls)))]))
+</code></pre></div><p>If we&rsquo;re at the end, do nothing. Otherwise, rebuild the list, always recurring on the <code>cdr</code> of the list and adding the proper <code>car</code>. One thing to note is that the structure of those last three elements looks awfully similar. So theoretically, we could rewrite it so that we only have a single <code>cons</code>, <code>car</code>, and <code>(loop (cdr ls))</code>. That code would look something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Recur again, swapping the pointers</span>
 (<span style="color:#66d9ef">let </span>loop ([ls ls])
-  (cond
+  (<span style="color:#a6e22e">cond</span>
     [(null? ls) ls]
     [else
-     (cons
+     (<span style="color:#a6e22e">cons</span>
       (car 
-       (cond
+       (<span style="color:#a6e22e">cond</span>
          [(eq? ls kth-head) kth-tail] <span style="color:#75715e">; k from head</span>
          [(eq? ls kth-tail) kth-head] <span style="color:#75715e">; k from tail</span>
          [<span style="color:#66d9ef">else </span>ls]))                  <span style="color:#75715e">; everything else</span>
-      (loop (cdr ls)))]))</code></pre></div>
-<p>Personally, I think it gives up something in terms of readability and (given a decent compiler) they should be essentially equivalent. Still, to each their own.</p>
-
+      (<span style="color:#a6e22e">loop</span> (cdr ls)))]))
+</code></pre></div><p>Personally, I think it gives up something in terms of readability and (given a decent compiler) they should be essentially equivalent. Still, to each their own.</p>
 <p>With that though, that&rsquo;s all that we need. Just put it all together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Given a list, swap the kth from head and tail</span>
-(<span style="color:#66d9ef">define </span>(swap-kth ls k)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">swap-kth</span> ls k)
   <span style="color:#75715e">; Get pointers to the kth head and the kth tail</span>
   <span style="color:#f92672">...</span>
 
   <span style="color:#75715e">; Recur again, swapping the pointers</span>
-  <span style="color:#f92672">...</span>)</code></pre></div>
-<p>And it works:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#ae81ff">2</span>)
-<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">5</span>)</code></pre></div>
-<p>But does it really work? Well, that&rsquo;s what the <code>test module</code> is for:</p>
+  <span style="color:#f92672">...</span>)
+</code></pre></div><p>And it works:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#ae81ff">2</span>)
+<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">5</span>)
+</code></pre></div><p>But does it really work? Well, that&rsquo;s what the <code>test module</code> is for:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Make sure that everything works as it should</span>
-(module+ test
-  (require rackunit)
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>() <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>())
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">4</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">8</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">8</span>))
-  (check-equal? (swap-kth <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">9</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">9</span>)))</code></pre></div>
-<p>Run it again&hellip; all good. So there you have it. Really, you have all of the pointer swapping <del>power</del> madness that you would have in a language like C, but without the headaches of actually manually managing memory<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>.</p>
-
-<p>If you&rsquo;d like to check out the entire code, you can do so here:
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/swap-kth.rkt" title="swap kth source on GitHub">swap kth source</a></p>
-<div class="footnotes">
-
-<hr />
-
+(<span style="color:#a6e22e">module+</span> test
+  (<span style="color:#a6e22e">require</span> rackunit)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>() <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>())
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">4</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">8</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">8</span>))
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">swap-kth</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">9</span>) <span style="color:#ae81ff">3</span>) <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">9</span>)))
+</code></pre></div><p>Run it again&hellip; all good. So there you have it. Really, you have all of the pointer swapping <del>power</del> madness that you would have in a language like C, but without the headaches of actually manually managing memory<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>.</p>
+<p>If you&rsquo;d like to check out the entire code, you can do so here:</p>
+<ul>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/swap-kth.rkt" title="swap kth source on GitHub">swap kth source</a></li>
+</ul>
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Which is really the same thing we&rsquo;d do if we were working in C, just a little nicer looking
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">It&rsquo;s on that list of skills every CS should know, but not something I expect many people actually enjoy doing&hellip;
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Which is really the same thing we&rsquo;d do if we were working in C, just a little nicer looking <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>It&rsquo;s on that list of skills every CS should know, but not something I expect many people actually enjoy doing&hellip; <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

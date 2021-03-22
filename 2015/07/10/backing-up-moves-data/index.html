@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,7 +71,6 @@
     </header>
 
 	<div class="entry-content"><p>Another <a href="https://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps/">backup post</a>, this time I&rsquo;m going to back up my data from the <a href="https://www.moves-app.com/">Moves App</a> (step counter + GPS tracker). Theoretically, it should be possible to get this same data from the app as part of my <a href="https://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps/">iOS Backup</a> series, but the data there is in a strange binary format. Much easier to use their API.</p>
-
 <p>The first step will be to make a few helper methods. As I often do with web scripts, I&rsquo;ll be using <a href="https://blog.jverkamp.com/2007/10/20/pymint-a-python-multi-interpreter/">Python</a> and the excellent <a href="http://docs.python-requests.org/en/latest/">Requests</a> library. First things first, we have to get an <code>access_token</code> using an <a href="https://en.wikipedia.org/wiki/OAuth">OAuth</a> handshake. It&rsquo;s a little complicated since our app is designed to run from the command line, yet needs to interact with the user on initial set up, but luckily that only has to be done once:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Request a new access token</span>
 
@@ -98,11 +97,9 @@
     config[<span style="color:#e6db74">&#39;user_id&#39;</span>] <span style="color:#f92672">=</span> js[<span style="color:#e6db74">&#39;user_id&#39;</span>]
 
     <span style="color:#66d9ef">with</span> open(<span style="color:#e6db74">&#39;config.yaml&#39;</span>, <span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
-        yaml<span style="color:#f92672">.</span>safe_dump(config, fout, default_flow_style<span style="color:#f92672">=</span>False)</code></pre></div>
-<p>Basically, we have to have two values to start the handshake: <code>client_id</code> and <code>client_secret</code>. I&rsquo;ve put those in a separate file (<code>config.yaml</code>) so that we don&rsquo;t have secrets in a repository. From there, we make a request to a given endpoint (see above), which opens in a browser. The user then gets an eight digit code which they enter in the app on the phone, prompting the web browser in turn to redirect with a <code>code</code> parameter. This part is a little ugly and I could make it much nicer by running a temporary single endpoint server, but since this only needs to be done once, I didn&rsquo;t bother.</p>
-
+        yaml<span style="color:#f92672">.</span>safe_dump(config, fout, default_flow_style<span style="color:#f92672">=</span>False)
+</code></pre></div><p>Basically, we have to have two values to start the handshake: <code>client_id</code> and <code>client_secret</code>. I&rsquo;ve put those in a separate file (<code>config.yaml</code>) so that we don&rsquo;t have secrets in a repository. From there, we make a request to a given endpoint (see above), which opens in a browser. The user then gets an eight digit code which they enter in the app on the phone, prompting the web browser in turn to redirect with a <code>code</code> parameter. This part is a little ugly and I could make it much nicer by running a temporary single endpoint server, but since this only needs to be done once, I didn&rsquo;t bother.</p>
 <p>After that, we take the <code>code</code> we just got, along with the <code>client_id</code> and <code>client_secret</code> and get the initial <code>access_token</code> and a <code>refresh_token</code> we can periodically use to prove we&rsquo;re still the same person.</p>
-
 <p>Next, a little bit of framework. We&rsquo;ll wrap the default <code>requests</code> object to automatically provide an <code>access_token</code> to any <code>GET</code> or <code>POST</code> requests I want to make to the API, now that I&rsquo;ve gotten one:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">makeMethod</span>(f):
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">run</span>(url, <span style="color:#f92672">**</span>kwargs):
@@ -122,8 +119,8 @@
     <span style="color:#66d9ef">return</span> run
 
 get <span style="color:#f92672">=</span> makeMethod(requests<span style="color:#f92672">.</span>get)
-post <span style="color:#f92672">=</span> makeMethod(requests<span style="color:#f92672">.</span>post)</code></pre></div>
-<p>With that, we can just always use that <code>refresh_token</code> we got above every time we run the script. This is definitely over kill, but it saves a little bit of logic telling when we have to refresh the code or not and doesn&rsquo;t really cost anything more than a single extra request:</p>
+post <span style="color:#f92672">=</span> makeMethod(requests<span style="color:#f92672">.</span>post)
+</code></pre></div><p>With that, we can just always use that <code>refresh_token</code> we got above every time we run the script. This is definitely over kill, but it saves a little bit of logic telling when we have to refresh the code or not and doesn&rsquo;t really cost anything more than a single extra request:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Perform a refresh on the access token just as a matter of course</span>
 
 response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>post(<span style="color:#e6db74">&#39;https://api.moves-app.com/oauth/v1/access_token&#39;</span>, data <span style="color:#f92672">=</span> {
@@ -139,12 +136,12 @@ config[<span style="color:#e6db74">&#39;refresh_token&#39;</span>] <span style="
 config[<span style="color:#e6db74">&#39;user_id&#39;</span>] <span style="color:#f92672">=</span> js[<span style="color:#e6db74">&#39;user_id&#39;</span>]
 
 <span style="color:#66d9ef">with</span> open(<span style="color:#e6db74">&#39;config.yaml&#39;</span>, <span style="color:#e6db74">&#39;w&#39;</span>) <span style="color:#66d9ef">as</span> fout:
-    yaml<span style="color:#f92672">.</span>safe_dump(config, fout, default_flow_style<span style="color:#f92672">=</span>False)</code></pre></div>
-<p>Next, fetch my user profile:</p>
+    yaml<span style="color:#f92672">.</span>safe_dump(config, fout, default_flow_style<span style="color:#f92672">=</span>False)
+</code></pre></div><p>Next, fetch my user profile:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Load the user profile to see how far back data goes</span>
 
-user_profile <span style="color:#f92672">=</span> get(<span style="color:#e6db74">&#39;/user/profile&#39;</span>)<span style="color:#f92672">.</span>json()</code></pre></div>
-<p>The most interesting bit of information here is <code>.profile.firstDate</code>, which tells us when we first started using Moves. We can then loop from that date forward in time, grabbing any days we are missing. Since sometimes previous days aren&rsquo;t completely done processing the next morning, I&rsquo;ll also always re-download the last week&rsquo;s worth of data no matter what.</p>
+user_profile <span style="color:#f92672">=</span> get(<span style="color:#e6db74">&#39;/user/profile&#39;</span>)<span style="color:#f92672">.</span>json()
+</code></pre></div><p>The most interesting bit of information here is <code>.profile.firstDate</code>, which tells us when we first started using Moves. We can then loop from that date forward in time, grabbing any days we are missing. Since sometimes previous days aren&rsquo;t completely done processing the next morning, I&rsquo;ll also always re-download the last week&rsquo;s worth of data no matter what.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Loop through all missing files, or force load anything less than a week ago</span>
 
 date <span style="color:#f92672">=</span> datetime<span style="color:#f92672">.</span>datetime<span style="color:#f92672">.</span>strptime(user_profile[<span style="color:#e6db74">&#39;profile&#39;</span>][<span style="color:#e6db74">&#39;firstDate&#39;</span>], <span style="color:#e6db74">&#39;%Y%m</span><span style="color:#e6db74">%d</span><span style="color:#e6db74">&#39;</span>)
@@ -182,13 +179,10 @@ oneWeekAgo <span style="color:#f92672">=</span> today <span style="color:#f92672
     <span style="color:#66d9ef">with</span> codecs<span style="color:#f92672">.</span>open(filename, <span style="color:#e6db74">&#39;w&#39;</span>, <span style="color:#e6db74">&#39;utf-8&#39;</span>) <span style="color:#66d9ef">as</span> fout:
         fout<span style="color:#f92672">.</span>write(response<span style="color:#f92672">.</span>text)
 
-    date <span style="color:#f92672">+=</span> datetime<span style="color:#f92672">.</span>timedelta(days <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>)</code></pre></div>
-<p>There is a neat bit in there with the <code>x-ratelimit-minuteremaining</code> and <code>x-ratelimit-hourremaining</code>. If we&rsquo;re downloading the entire history for the first time, you&rsquo;re going to get rate limited. So in this case, we&rsquo;ll wait a minute or an hour until the rate limit has expired.</p>
-
+    date <span style="color:#f92672">+=</span> datetime<span style="color:#f92672">.</span>timedelta(days <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>)
+</code></pre></div><p>There is a neat bit in there with the <code>x-ratelimit-minuteremaining</code> and <code>x-ratelimit-hourremaining</code>. If we&rsquo;re downloading the entire history for the first time, you&rsquo;re going to get rate limited. So in this case, we&rsquo;ll wait a minute or an hour until the rate limit has expired.</p>
 <p>And that&rsquo;s it. In the end, I end up with a pile of files, one for each day, each with exactly where I was on that day. I can use that data for all sorts of interesting analytics, like how far I walk in the average week, what my area of influence is, or even to combine with my <a href="/photography/">photography</a> so that I can geotag my pictures. It&rsquo;s a lot of fun.</p>
-
 <p>So, yes. I am something of a digital hoarder. But on the flip side, storage space is cheap and data is interesting. Perhaps I&rsquo;ll get a post or two out of making pretty pretty pictures out of where all I&rsquo;ve been!</p>
-
 <p>If you&rsquo;d like to see / download the entire script for my Moves backup (or any of my other non-iOS backups, those are <a href="https://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps/">here</a>), you can do so here: <a href="https://github.com/jpverkamp/backup">jpverkamp/backup on GitHub</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

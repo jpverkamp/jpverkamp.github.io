@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,115 +71,111 @@
     </header>
 
 	<div class="entry-content"><p>It may be 1 uinal, 15 kin too late for the new baktun, but I&rsquo;ve got some neat code to convert back and forth between the <a href="https://en.wikipedia.org/wiki/Gregorian%20calendar">Gregorian calendar</a> and the <a href="https://en.wikipedia.org/wiki/Mayan%20calendar">Mayan calendar</a>. It&rsquo;s based on a challenge on a post on the <a title="Daily Programmer Challenge #117 [Intermediate] Mayan Long Count" href="http://www.reddit.com/r/dailyprogrammer/comments/16obmx/011613_challenge_117_intermediate_mayan_long_count/">/r/dailyprogrammer subreddit</a>. As one might expect, the goal is to be able to take a year, month, and day in the Gregorian calendar and return the equivalent Mayan Long Count corresponding to that date. As a bonus (which of course I had to do 😄), do the opposite and do it without using built in date functions.</p>
-
 <p>To start out, we want a structure for each (if you&rsquo;d like, you can follow along <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/mayan-conversion.rkt" title="Mayan conversion on GitHub">here</a>):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; date structures</span>
-(define-struct gregorian (year month day) <span style="color:#f92672">#</span>:transparent)
-(define-struct mayan (baktun katun tun uinal kin) <span style="color:#f92672">#</span>:transparent)</code></pre></div>
-<p>Then, we&rsquo;ll need a few helpers. Particularly, we want a function that can calculate leap years and a list of days per month (ignoring any 29 day February for the time being).</p>
+(<span style="color:#a6e22e">define-struct</span> gregorian (<span style="color:#a6e22e">year</span> month day) <span style="color:#f92672">#</span>:transparent)
+(<span style="color:#a6e22e">define-struct</span> mayan (<span style="color:#a6e22e">baktun</span> katun tun uinal kin) <span style="color:#f92672">#</span>:transparent)
+</code></pre></div><p>Then, we&rsquo;ll need a few helpers. Particularly, we want a function that can calculate leap years and a list of days per month (ignoring any 29 day February for the time being).</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; test if a year is a leap year</span>
-(<span style="color:#66d9ef">define </span>(leap-year? year)
-  (<span style="color:#66d9ef">or </span>(<span style="color:#66d9ef">and </span>(divisible? year <span style="color:#ae81ff">4</span>)
-           (not (divisible? year <span style="color:#ae81ff">100</span>)))
-      (divisible? year <span style="color:#ae81ff">400</span>)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">leap-year?</span> year)
+  (<span style="color:#66d9ef">or </span>(<span style="color:#66d9ef">and </span>(<span style="color:#a6e22e">divisible?</span> year <span style="color:#ae81ff">4</span>)
+           (not (<span style="color:#a6e22e">divisible?</span> year <span style="color:#ae81ff">100</span>)))
+      (<span style="color:#a6e22e">divisible?</span> year <span style="color:#ae81ff">400</span>)))
 
 <span style="color:#75715e">; days per month</span>
-(<span style="color:#66d9ef">define </span>days/month <span style="color:#f92672">&#39;#</span>(<span style="color:#ae81ff">31</span> <span style="color:#ae81ff">28</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span>))</code></pre></div>
-<p>Now we&rsquo;re ready to go. Eventually, we want to write the functions <code>gregorian-&gt;mayan</code> and <code>mayan-&gt;gregorian</code>, but it would be a bit of a pain to convert directly. So instead, we&rsquo;ll convert via the number of days since 1 January 1970. That will give us the functions <code>gregorian-&gt;days</code>, <code>days-&gt;gregorian</code>, <code>mayan-&gt;days</code>, and <code>days-&gt;mayan</code>. The <code>gregorian</code> functions are a bit more complicated, so we&rsquo;ll start with those.</p>
-
+(<span style="color:#66d9ef">define </span>days/month <span style="color:#f92672">&#39;#</span>(<span style="color:#ae81ff">31</span> <span style="color:#ae81ff">28</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">31</span>))
+</code></pre></div><p>Now we&rsquo;re ready to go. Eventually, we want to write the functions <code>gregorian-&gt;mayan</code> and <code>mayan-&gt;gregorian</code>, but it would be a bit of a pain to convert directly. So instead, we&rsquo;ll convert via the number of days since 1 January 1970. That will give us the functions <code>gregorian-&gt;days</code>, <code>days-&gt;gregorian</code>, <code>mayan-&gt;days</code>, and <code>days-&gt;mayan</code>. The <code>gregorian</code> functions are a bit more complicated, so we&rsquo;ll start with those.</p>
 <p>First, <code>gregorian-&gt;days</code>. It&rsquo;s a bit sneaky, but it&rsquo;s a closed form solution. Basically, we need to know if we&rsquo;re before or after 0-day and if we&rsquo;re before or after February (for the leap years). After that, it&rsquo;s mostly a matter of mathy goodness.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert from gregorian to days since 1 jan 1970</span>
-(<span style="color:#66d9ef">define </span>(gregorian-&gt;days date)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">gregorian-&gt;days</span> date)
   <span style="color:#75715e">; a date after 1 jan 1970?</span>
-  (<span style="color:#66d9ef">define </span>go-&gt; (&gt;= (gregorian-year date) <span style="color:#ae81ff">1970</span>))
+  (<span style="color:#66d9ef">define </span>go-&gt; (&gt;= (<span style="color:#a6e22e">gregorian-year</span> date) <span style="color:#ae81ff">1970</span>))
 
   <span style="color:#75715e">; are we after February?</span>
-  (<span style="color:#66d9ef">define </span>feb+ (&gt; (gregorian-month date) <span style="color:#ae81ff">2</span>))
+  (<span style="color:#66d9ef">define </span>feb+ (&gt; (<span style="color:#a6e22e">gregorian-month</span> date) <span style="color:#ae81ff">2</span>))
 
   <span style="color:#75715e">; range for leap years to test</span>
   (<span style="color:#66d9ef">define </span>leap-range
-    (list
-     (<span style="color:#66d9ef">if </span>go-&gt; <span style="color:#ae81ff">1970</span> (+ (gregorian-year date) (<span style="color:#66d9ef">if </span>feb+ <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)))
-     (<span style="color:#66d9ef">if </span>go-&gt; (+ (gregorian-year date) (<span style="color:#66d9ef">if </span>feb+ <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>)) <span style="color:#ae81ff">1971</span>)))
+    (<span style="color:#a6e22e">list</span>
+     (<span style="color:#66d9ef">if </span>go-&gt; <span style="color:#ae81ff">1970</span> (+ (<span style="color:#a6e22e">gregorian-year</span> date) (<span style="color:#66d9ef">if </span>feb+ <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>)))
+     (<span style="color:#66d9ef">if </span>go-&gt; (+ (<span style="color:#a6e22e">gregorian-year</span> date) (<span style="color:#66d9ef">if </span>feb+ <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>)) <span style="color:#ae81ff">1971</span>)))
 
   (+ <span style="color:#75715e">; add year</span>
-     (* <span style="color:#ae81ff">365</span> (- (gregorian-year date) (<span style="color:#66d9ef">if </span>go-&gt; <span style="color:#ae81ff">1970</span> <span style="color:#ae81ff">1969</span>)))
+     (* <span style="color:#ae81ff">365</span> (- (<span style="color:#a6e22e">gregorian-year</span> date) (<span style="color:#66d9ef">if </span>go-&gt; <span style="color:#ae81ff">1970</span> <span style="color:#ae81ff">1969</span>)))
      <span style="color:#75715e">; add month</span>
      (* (<span style="color:#66d9ef">if </span>go-&gt; <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">-1</span>) 
-        (apply + ((<span style="color:#66d9ef">if </span>go-&gt; take drop) days/month (- (gregorian-month date) <span style="color:#ae81ff">1</span>))))
+        (apply + ((<span style="color:#66d9ef">if </span>go-&gt; take drop) days/month (- (<span style="color:#a6e22e">gregorian-month</span> date) <span style="color:#ae81ff">1</span>))))
      <span style="color:#75715e">; add day</span>
-     (- (gregorian-day date) <span style="color:#ae81ff">1</span>)
+     (- (<span style="color:#a6e22e">gregorian-day</span> date) <span style="color:#ae81ff">1</span>)
      <span style="color:#75715e">; deal with leap years</span>
-     (for/sum ([year (apply in-range leap-range)])
-       (<span style="color:#66d9ef">if </span>(leap-year? year) (<span style="color:#66d9ef">if </span>go-&gt; <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">-1</span>) <span style="color:#ae81ff">0</span>))))</code></pre></div>
-<p>The <code>for/sum</code> is the most potentially problematic point I think. I feel like there should be a non-looped solution to that, but this worked well enough (and it took long enough to get some of the other details working). In yet another tiny error that nevertheless took forever to track down, I originally had the second <code>(if feb+ ...)</code> the same as the first. Needless to say, that sent a few things sideways.</p>
-
+     (<span style="color:#a6e22e">for/sum</span> ([year (apply in-range leap-range)])
+       (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">leap-year?</span> year) (<span style="color:#66d9ef">if </span>go-&gt; <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">-1</span>) <span style="color:#ae81ff">0</span>))))
+</code></pre></div><p>The <code>for/sum</code> is the most potentially problematic point I think. I feel like there should be a non-looped solution to that, but this worked well enough (and it took long enough to get some of the other details working). In yet another tiny error that nevertheless took forever to track down, I originally had the second <code>(if feb+ ...)</code> the same as the first. Needless to say, that sent a few things sideways.</p>
 <p>Next, we want to be able to invert that function. I couldn&rsquo;t work out a clean closed form for this one, so I just loop, first setting the year, then the month, then the day. It&rsquo;s a bit longer and I couldn&rsquo;t combine the forwards and backwards code, but it works well enough.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert from days since 1 jan 1970 to gregorian date</span>
-(<span style="color:#66d9ef">define </span>(days-&gt;gregorian days)
-  (cond
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">days-&gt;gregorian</span> days)
+  (<span style="color:#a6e22e">cond</span>
     <span style="color:#75715e">; work forward from 1 jan 1970</span>
     [(&gt; days <span style="color:#ae81ff">0</span>)
      (<span style="color:#66d9ef">let </span>loop ([days days] [year <span style="color:#ae81ff">1970</span>] [month <span style="color:#ae81ff">1</span>] [day <span style="color:#ae81ff">1</span>])
-       (<span style="color:#66d9ef">define </span>d/y (<span style="color:#66d9ef">if </span>(leap-year? year) <span style="color:#ae81ff">366</span> <span style="color:#ae81ff">365</span>))
-       (<span style="color:#66d9ef">define </span>d/m (<span style="color:#66d9ef">if </span>(<span style="color:#66d9ef">and </span>(leap-year? year) (= month <span style="color:#ae81ff">2</span>))
+       (<span style="color:#66d9ef">define </span>d/y (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">leap-year?</span> year) <span style="color:#ae81ff">366</span> <span style="color:#ae81ff">365</span>))
+       (<span style="color:#66d9ef">define </span>d/m (<span style="color:#66d9ef">if </span>(<span style="color:#66d9ef">and </span>(<span style="color:#a6e22e">leap-year?</span> year) (= month <span style="color:#ae81ff">2</span>))
                        <span style="color:#ae81ff">29</span>
                        (list-ref days/month (- month <span style="color:#ae81ff">1</span>))))
-       (cond
+       (<span style="color:#a6e22e">cond</span>
          [(&gt;= days d/y)
-          (loop (- days d/y) (+ year <span style="color:#ae81ff">1</span>) month day)]
+          (<span style="color:#a6e22e">loop</span> (- days d/y) (+ year <span style="color:#ae81ff">1</span>) month day)]
          [(&gt;= days d/m)
-          (loop (- days d/m) year (+ month <span style="color:#ae81ff">1</span>) day)]
+          (<span style="color:#a6e22e">loop</span> (- days d/m) year (+ month <span style="color:#ae81ff">1</span>) day)]
          [else
-          (make-gregorian year month (+ day days))]))]
+          (<span style="color:#a6e22e">make-gregorian</span> year month (+ day days))]))]
     <span style="color:#75715e">; work backwards from 1 jan 1970</span>
     [(&lt; days <span style="color:#ae81ff">0</span>)
      (<span style="color:#66d9ef">let </span>loop ([days (- (abs days) <span style="color:#ae81ff">1</span>)] [year <span style="color:#ae81ff">1969</span>] [month <span style="color:#ae81ff">12</span>] [day <span style="color:#ae81ff">31</span>])
-       (<span style="color:#66d9ef">define </span>d/y (<span style="color:#66d9ef">if </span>(leap-year? year) <span style="color:#ae81ff">366</span> <span style="color:#ae81ff">365</span>))
-       (<span style="color:#66d9ef">define </span>d/m (<span style="color:#66d9ef">if </span>(<span style="color:#66d9ef">and </span>(leap-year? year) (= month <span style="color:#ae81ff">2</span>))
+       (<span style="color:#66d9ef">define </span>d/y (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">leap-year?</span> year) <span style="color:#ae81ff">366</span> <span style="color:#ae81ff">365</span>))
+       (<span style="color:#66d9ef">define </span>d/m (<span style="color:#66d9ef">if </span>(<span style="color:#66d9ef">and </span>(<span style="color:#a6e22e">leap-year?</span> year) (= month <span style="color:#ae81ff">2</span>))
                        <span style="color:#ae81ff">29</span>
                        (list-ref days/month (- month <span style="color:#ae81ff">1</span>))))
-       (cond
+       (<span style="color:#a6e22e">cond</span>
          [(&gt;= days d/y)
-          (loop (- days d/y) (- year <span style="color:#ae81ff">1</span>) month day)]
+          (<span style="color:#a6e22e">loop</span> (- days d/y) (- year <span style="color:#ae81ff">1</span>) month day)]
          [(&gt;= days d/m)
-          (loop (- days d/m) year (- month <span style="color:#ae81ff">1</span>) (list-ref days/month (- month <span style="color:#ae81ff">2</span>)))]
+          (<span style="color:#a6e22e">loop</span> (- days d/m) year (- month <span style="color:#ae81ff">1</span>) (list-ref days/month (- month <span style="color:#ae81ff">2</span>)))]
          [else
-          (make-gregorian year month (- d/m days))]))]
+          (<span style="color:#a6e22e">make-gregorian</span> year month (- d/m days))]))]
     <span style="color:#75715e">; that was easy</span>
     [else
-     (make-gregorian <span style="color:#ae81ff">1970</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)]))</code></pre></div>
-<p>Now that the two hard functions are out of the way, we get the easy ones. <code>mayan-&gt;days</code> is almost trivial, just a matter of multiplying each value by the correct multiple. Likewise, <code>days-&gt;mayan</code> works by repeated division (with remainder). I&rsquo;d never before used the <code>define-values</code> / <code>quotient/remainder</code> pattern before, but it works really well.</p>
+     (<span style="color:#a6e22e">make-gregorian</span> <span style="color:#ae81ff">1970</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)]))
+</code></pre></div><p>Now that the two hard functions are out of the way, we get the easy ones. <code>mayan-&gt;days</code> is almost trivial, just a matter of multiplying each value by the correct multiple. Likewise, <code>days-&gt;mayan</code> works by repeated division (with remainder). I&rsquo;d never before used the <code>define-values</code> / <code>quotient/remainder</code> pattern before, but it works really well.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert from mayan to days since 1 jan 1970</span>
-(<span style="color:#66d9ef">define </span>(mayan-&gt;days date)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">mayan-&gt;days</span> date)
   (+ <span style="color:#ae81ff">-1856305</span>
-     (mayan-kin date)
-     (* <span style="color:#ae81ff">20</span> (mayan-uinal date))
-     (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> (mayan-tun date))
-     (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span> (mayan-katun date))
-     (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">20</span> (mayan-baktun date))))
+     (<span style="color:#a6e22e">mayan-kin</span> date)
+     (* <span style="color:#ae81ff">20</span> (<span style="color:#a6e22e">mayan-uinal</span> date))
+     (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> (<span style="color:#a6e22e">mayan-tun</span> date))
+     (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span> (<span style="color:#a6e22e">mayan-katun</span> date))
+     (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">20</span> (<span style="color:#a6e22e">mayan-baktun</span> date))))
 
 <span style="color:#75715e">; convert from days since 1 jan 1970 to a mayan date</span>
-(<span style="color:#66d9ef">define </span>(days-&gt;mayan days)
-  (define-values (baktun baktun-days) (quotient/remainder (+ days <span style="color:#ae81ff">1856305</span>) (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">20</span>)))
-  (define-values (katun katun-days) (quotient/remainder baktun-days (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span>)))
-  (define-values (tun tun-days) (quotient/remainder katun-days (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span>)))
-  (define-values (uinal kin) (quotient/remainder tun-days <span style="color:#ae81ff">20</span>))
-  (make-mayan baktun katun tun uinal kin))</code></pre></div>
-<p>After that, it&rsquo;s just a matter of wiring them together:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">days-&gt;mayan</span> days)
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">baktun</span> baktun-days) (<span style="color:#a6e22e">quotient/remainder</span> (+ days <span style="color:#ae81ff">1856305</span>) (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">20</span>)))
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">katun</span> katun-days) (<span style="color:#a6e22e">quotient/remainder</span> baktun-days (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">20</span>)))
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">tun</span> tun-days) (<span style="color:#a6e22e">quotient/remainder</span> katun-days (* <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">18</span>)))
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">uinal</span> kin) (<span style="color:#a6e22e">quotient/remainder</span> tun-days <span style="color:#ae81ff">20</span>))
+  (<span style="color:#a6e22e">make-mayan</span> baktun katun tun uinal kin))
+</code></pre></div><p>After that, it&rsquo;s just a matter of wiring them together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert from gregorian to mayan</span>
-(<span style="color:#66d9ef">define </span>(gregorian-&gt;mayan date)
-  (days-&gt;mayan (gregorian-&gt;days date)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">gregorian-&gt;mayan</span> date)
+  (<span style="color:#a6e22e">days-&gt;mayan</span> (<span style="color:#a6e22e">gregorian-&gt;days</span> date)))
 
 <span style="color:#75715e">; convert from mayan to gregorian </span>
-(<span style="color:#66d9ef">define </span>(mayan-&gt;gregorian date)
-  (days-&gt;gregorian (mayan-&gt;days date)))</code></pre></div>
-<p>I love it when everything comes together like that. 😄</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">mayan-&gt;gregorian</span> date)
+  (<span style="color:#a6e22e">days-&gt;gregorian</span> (<span style="color:#a6e22e">mayan-&gt;days</span> date)))
+</code></pre></div><p>I love it when everything comes together like that. 😄</p>
 <p>Of course, we want to make sure to do some testing:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; do some testing</span>
-(require rackunit)
-(for ([test (in-list <span style="color:#f92672">&#39;</span>((( <span style="color:#ae81ff">741</span>  <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">28</span>)  <span style="color:#ae81ff">-448705</span> ( <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">10</span>  <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">0</span>))
+(<span style="color:#a6e22e">require</span> rackunit)
+(<span style="color:#a6e22e">for</span> ([test (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>((( <span style="color:#ae81ff">741</span>  <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">28</span>)  <span style="color:#ae81ff">-448705</span> ( <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">10</span>  <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">0</span>))
                        ((<span style="color:#ae81ff">1900</span>  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">1</span>)  <span style="color:#ae81ff">-25567</span>  (<span style="color:#ae81ff">12</span> <span style="color:#ae81ff">14</span>  <span style="color:#ae81ff">5</span>  <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">18</span>))
                        ((<span style="color:#ae81ff">1969</span>  <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">17</span>)  <span style="color:#ae81ff">-229</span>    (<span style="color:#ae81ff">12</span> <span style="color:#ae81ff">17</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">13</span> <span style="color:#ae81ff">16</span>))
                        ((<span style="color:#ae81ff">1970</span>  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">1</span>)   <span style="color:#ae81ff">0</span>      (<span style="color:#ae81ff">12</span> <span style="color:#ae81ff">17</span> <span style="color:#ae81ff">16</span>  <span style="color:#ae81ff">7</span>  <span style="color:#ae81ff">5</span>))
@@ -193,20 +189,18 @@
   (<span style="color:#66d9ef">define </span>d (cadr test))
   (<span style="color:#66d9ef">define </span>m (apply make-mayan (caddr test)))
 
-  (check-equal? (gregorian-&gt;days g) d)
-  (check-equal? (days-&gt;gregorian d) g)
-  (check-equal? (days-&gt;gregorian (gregorian-&gt;days g)) g)  
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">gregorian-&gt;days</span> g) d)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">days-&gt;gregorian</span> d) g)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">days-&gt;gregorian</span> (<span style="color:#a6e22e">gregorian-&gt;days</span> g)) g)  
 
-  (check-equal? (mayan-&gt;days m) d)
-  (check-equal? (days-&gt;mayan d) m)
-  (check-equal? (days-&gt;mayan (mayan-&gt;days m)) m)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">mayan-&gt;days</span> m) d)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">days-&gt;mayan</span> d) m)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">days-&gt;mayan</span> (<span style="color:#a6e22e">mayan-&gt;days</span> m)) m)
 
-  (check-equal? (gregorian-&gt;mayan g) m)
-  (check-equal? (mayan-&gt;gregorian m) g))</code></pre></div>
-<p>Interestingly, it was 21 December 2012 that was the only case broken before I fixed the error in <code>days-&gt;gregorian</code>. So much for the end of the world&hellip;</p>
-
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">gregorian-&gt;mayan</span> g) m)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">mayan-&gt;gregorian</span> m) g))
+</code></pre></div><p>Interestingly, it was 21 December 2012 that was the only case broken before I fixed the error in <code>days-&gt;gregorian</code>. So much for the end of the world&hellip;</p>
 <p>This was actually a really neat program to work through. I&rsquo;m glad that I stumbled across the <a title="Daily Programmer Challenge #117 [Intermediate] Mayan Long Count" href="http://www.reddit.com/r/dailyprogrammer/comments/16obmx/011613_challenge_117_intermediate_mayan_long_count/">Daily Programmer</a> challenges. With an easy problem each Monday, an intermediate one each Wednesday (like this one), and a hard one each Friday, there are more than enough interesting problems to keep me busy for quite a while.</p>
-
 <p>As always, if you&rsquo;d like to download the entire code, you can do so here:
 <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/mayan-conversion.rkt" title="Mayan conversion on GitHub">Mayan conversion source</a></p></div>
 </article></div>

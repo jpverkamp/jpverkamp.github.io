@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,9 +71,7 @@
     </header>
 
 	<div class="entry-content"><p>On Monday we <a href="https://blog.jverkamp.com/2013/09/23/extending-racket-structs-to-bitfields/">laid out a framework</a> for converting structures into bytes. On Wednesday, we used that to <a href="https://blog.jverkamp.com/2013/09/25/extending-rackets-dns-capabilities/">enhance Racket&rsquo;s UDP and DNS capabilities</a>. Today, we&rsquo;re going to take that all one step further and scan large portions of the Internet. The end goal will be to look for <a href="https://blog.jverkamp.com/2013/02/09/isma-2013-aims-5-dns-based-censorship/">DNS-based</a> on a worldwide scale.</p>
-
 <p>To that end, there are several steps that we&rsquo;re going to want to go through:</p>
-
 <ul>
 <li>Process any command line parameters (so I can tune the results)</li>
 <li>Load lists of targets, resolvers, and IP to country mappings</li>
@@ -81,172 +79,160 @@
 <li>Scan each target at each active resolver</li>
 <li>Analyze results, looking for signs of censorship</li>
 </ul>
-
 <p>Let&rsquo;s start at the top. First, we&rsquo;re going to be using <a href="http://www.alexa.com/">Alexa Top sites</a> for our targets. This should give us at least a list of sites that would be popular enough to attract a censor&rsquo;s notice, although by no means an obvious one. Second, we&rsquo;ll be using the <a href="http://dev.maxmind.com/geoip/legacy/geolite/">MaxMind GeoLite free database</a> to look up the country for a given IP address. They&rsquo;re all fine data sources, but we do want to tune a few parameters. Racket&rsquo;s <code><a href="http://docs.racket-lang.org/search/index.html?q=command-line">command-line</a></code>
  function will do exactly what we want:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; ----- ----- ----- ----- -----</span>
 <span style="color:#75715e">; 0) Get command line parameters</span>
 
-(<span style="color:#66d9ef">define </span>alexa-top-n (make-parameter <span style="color:#ae81ff">100</span>))
-(<span style="color:#66d9ef">define </span>resolvers/country (make-parameter <span style="color:#ae81ff">5</span>))
-(<span style="color:#66d9ef">define </span>timeout (make-parameter <span style="color:#ae81ff">5.0</span>))
+(<span style="color:#66d9ef">define </span>alexa-top-n (<span style="color:#a6e22e">make-parameter</span> <span style="color:#ae81ff">100</span>))
+(<span style="color:#66d9ef">define </span>resolvers/country (<span style="color:#a6e22e">make-parameter</span> <span style="color:#ae81ff">5</span>))
+(<span style="color:#66d9ef">define </span>timeout (<span style="color:#a6e22e">make-parameter</span> <span style="color:#ae81ff">5.0</span>))
 
-(command-line
+(<span style="color:#a6e22e">command-line</span>
  <span style="color:#f92672">#</span>:program <span style="color:#e6db74">&#34;scan.rkt&#34;</span>
  <span style="color:#f92672">#</span>:once-each
  [(<span style="color:#e6db74">&#34;-n&#34;</span> <span style="color:#e6db74">&#34;--alexa-top-n&#34;</span>)
   n
   <span style="color:#e6db74">&#34;Scan the top n Alexa ranked sites (default = 100)&#34;</span>
-  (alexa-top-n (string-&gt;number n))]
+  (<span style="color:#a6e22e">alexa-top-n</span> (string-&gt;number n))]
  [(<span style="color:#e6db74">&#34;-r&#34;</span> <span style="color:#e6db74">&#34;--resolvers&#34;</span>)
   r
   <span style="color:#e6db74">&#34;The maximum number of resolvers to use per country (default = 5)&#34;</span>
-  (resolvers/country (string-&gt;number r))]
+  (<span style="color:#a6e22e">resolvers/country</span> (string-&gt;number r))]
  [(<span style="color:#e6db74">&#34;-t&#34;</span> <span style="color:#e6db74">&#34;--timeout&#34;</span>)
   t
   <span style="color:#e6db74">&#34;Timeout for DNS requests (default = 5.0 seconds)&#34;</span>
-  (timeout (string-&gt;number t))])</code></pre></div>
-<p>The structure of each part within <code>#:once-each</code> block has four parts:</p>
-
+  (<span style="color:#a6e22e">timeout</span> (string-&gt;number t))])
+</code></pre></div><p>The structure of each part within <code>#:once-each</code> block has four parts:</p>
 <ul>
 <li>A list containing the short and long forms of the argument</li>
 <li>The variable that will be bound to the arguments value (as a string)</li>
 <li>Help text to display when the user requests <code>--help</code></li>
 <li>Code to run with the aforementioned parameter</li>
 </ul>
-
 <p><code><a href="http://docs.racket-lang.org/search/index.html?q=Parameters">Parameters</a></code>
  do help with this, allowing for mutation of a sort. Straight forward. Next we load the data. First, check to make sure that the definitions we need exist:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; ----- ----- ----- ----- -----</span>
 <span style="color:#75715e">; 1) Load data</span>
 
-(unless (<span style="color:#66d9ef">and </span>(file-exists? <span style="color:#e6db74">&#34;targets.txt&#34;</span>)
-             (file-exists? <span style="color:#e6db74">&#34;resolvers.txt&#34;</span>)
-             (file-exists? <span style="color:#e6db74">&#34;ip-mappings.csv&#34;</span>))
+(<span style="color:#a6e22e">unless</span> (<span style="color:#66d9ef">and </span>(<span style="color:#a6e22e">file-exists?</span> <span style="color:#e6db74">&#34;targets.txt&#34;</span>)
+             (<span style="color:#a6e22e">file-exists?</span> <span style="color:#e6db74">&#34;resolvers.txt&#34;</span>)
+             (<span style="color:#a6e22e">file-exists?</span> <span style="color:#e6db74">&#34;ip-mappings.csv&#34;</span>))
   (for-each displayln
             <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;Error: Data file(s) not found. Please ensure that the following files exist:&#34;</span>
               <span style="color:#e6db74">&#34;- targets.txt - a list of hostnames (one per line) to scan&#34;</span>
               <span style="color:#e6db74">&#34;- resolvers.txt - a list of open DNS resolvers (one per line) to scan with&#34;</span>
               <span style="color:#e6db74">&#34;- ip-mappings.csv - a list of IP -&gt; country mappings (numeric-ip-from, numeric-ip-to, ip-from, ip-to, country)&#34;</span>))
-  (exit))</code></pre></div>
-<p>Next, let&rsquo;s load in the list of targets. This isn&rsquo;t strictly the file you can get from Alexa, but rather a list of hostnames, one per line. We could read them in directly with the <code><a href="http://docs.racket-lang.org/search/index.html?q=file-%3elines">file-&gt;lines</a></code>
+  (<span style="color:#a6e22e">exit</span>))
+</code></pre></div><p>Next, let&rsquo;s load in the list of targets. This isn&rsquo;t strictly the file you can get from Alexa, but rather a list of hostnames, one per line. We could read them in directly with the <code><a href="http://docs.racket-lang.org/search/index.html?q=file-%3elines">file-&gt;lines</a></code>
  function, but that does more work that strictly speaking we need (since we only want the first <code>alexa-top-n</code> of them). So instead, we&rsquo;ll use a <code>for</code> loop with multiple conditions&ndash;with this form, they stop as soon as the first iterator to run out does:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; 1a) Load list of targets (dynamically?) (Alexa Top n)</span>
-(debug <span style="color:#e6db74">&#34;Loading list of targets, keeping top ~a&#34;</span> (alexa-top-n))
+(<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;Loading list of targets, keeping top ~a&#34;</span> (<span style="color:#a6e22e">alexa-top-n</span>))
 (<span style="color:#66d9ef">define </span>targets
   (call-with-input-file <span style="color:#e6db74">&#34;targets.txt&#34;</span>
-    (λ (fin)
-      (for/list ([i (in-range (alexa-top-n))]
-                 [line (in-lines fin)])
-        line))))</code></pre></div>
-<p>Resolvers is going to be much the same. It will be a list of IPs, one per line. This time we can use <code><a href="http://docs.racket-lang.org/search/index.html?q=file-%3elines">file-&gt;lines</a></code>
+    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">fin</span>)
+      (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-range</span> (<span style="color:#a6e22e">alexa-top-n</span>))]
+                 [line (<span style="color:#a6e22e">in-lines</span> fin)])
+        line))))
+</code></pre></div><p>Resolvers is going to be much the same. It will be a list of IPs, one per line. This time we can use <code><a href="http://docs.racket-lang.org/search/index.html?q=file-%3elines">file-&gt;lines</a></code>
 :</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; 1b) Load list of resolvers (from Drew)</span>
-(debug <span style="color:#e6db74">&#34;Loading resolvers&#34;</span>)
-(<span style="color:#66d9ef">define </span>resolvers (file-&gt;lines <span style="color:#e6db74">&#34;resolvers.txt&#34;</span>))</code></pre></div>
-<p>Finally, we want to be able to map IPs to countries. We&rsquo;ll use MaxMind&rsquo;s data for this. Their file (at least the one we&rsquo;ll use) is a list of comma-separated values of the following form:</p>
-
+(<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;Loading resolvers&#34;</span>)
+(<span style="color:#66d9ef">define </span>resolvers (<span style="color:#a6e22e">file-&gt;lines</span> <span style="color:#e6db74">&#34;resolvers.txt&#34;</span>))
+</code></pre></div><p>Finally, we want to be able to map IPs to countries. We&rsquo;ll use MaxMind&rsquo;s data for this. Their file (at least the one we&rsquo;ll use) is a list of comma-separated values of the following form:</p>
 <p><code>from-ip, to-ip, numeric-from, numeric-to, country code, country</code></p>
-
-<p>The third and fourth entries are the IPs from the first and second, just in a numeric form. If you have the IP 8.7.245.0, you get 8*256<sup>3</sup>+7*256<sup>2</sup>+245*256+0 = 134739200. For example:</p>
-
+<p>The third and fourth entries are the IPs from the first and second, just in a numeric form. If you have the IP 8.7.245.0, you get 8<em>256<sup>3</sup>+7</em>256<sup>2</sup>+245*256+0 = 134739200. For example:</p>
 <p><code>&quot;8.7.245.0&quot;,&quot;8.10.6.242&quot;,&quot;134739200&quot;,&quot;134874866&quot;,&quot;US&quot;,&quot;United States&quot;</code></p>
-
 <p>It&rsquo;s not perfect, but it&rsquo;s certainly something we can massage into shape. But what we really want is a lookup to turn an IP into a country. If we turn the data into a sorted vector, we can do a <a href="https://en.wikipedia.org/wiki/binary%20search">binary search</a> to perform the lookups much more quickly.</p>
-
 <p>The format isn&rsquo;t particularly optimal, but we can massage it easily enough. What we really want though is to be able to search it. So what we&rsquo;ll do is build a function that contains the data as a sorted vector. That way we can use a <a href="https://en.wikipedia.org/wiki/binary%20search">binary search</a> to (much) more quickly scan through</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; 1c) Load list of IP/country mappings (dynamically?) (GeoMind Lite)</span>
 <span style="color:#75715e">; format is csv: ip-from, ip-to, numeric-from, numeric-to, code, country</span>
 <span style="color:#75715e">; Lookup using a binary search</span>
-(debug <span style="color:#e6db74">&#34;Loading IP -&gt; country database&#34;</span>)
+(<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;Loading IP -&gt; country database&#34;</span>)
 (<span style="color:#66d9ef">define </span>ip-&gt;country
   <span style="color:#75715e">; Load data into a sorted vector of lists: numeric-from, numeric-to, country</span>
   (<span style="color:#66d9ef">let </span>([data
-         (list-&gt;vector
-          (sort
-           (for/list ([line (in-list (file-&gt;lines <span style="color:#e6db74">&#34;ip-mappings.csv&#34;</span>))])
-             (match-define (list-rest _ _ ip-from ip-to cc country)
-               (string-split line <span style="color:#e6db74">&#34;,&#34;</span>))
-             (list (string-&gt;number (string-trim ip-from <span style="color:#e6db74">&#34;\&#34;&#34;</span>))
-                   (string-&gt;number (string-trim ip-to <span style="color:#e6db74">&#34;\&#34;&#34;</span>))
-                   (string-trim
-                    (string-join
-                     (reverse (map (λ (x) (string-trim x <span style="color:#e6db74">&#34;\&#34;&#34;</span>)) country)) <span style="color:#e6db74">&#34; &#34;</span>))))
-           (λ (a b)
-             (&lt; (first a) (first b)))))])
+         (<span style="color:#a6e22e">list-&gt;vector</span>
+          (<span style="color:#a6e22e">sort</span>
+           (<span style="color:#a6e22e">for/list</span> ([line (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">file-&gt;lines</span> <span style="color:#e6db74">&#34;ip-mappings.csv&#34;</span>))])
+             (<span style="color:#a6e22e">match-define</span> (<span style="color:#a6e22e">list-rest</span> _ _ ip-from ip-to cc country)
+               (<span style="color:#a6e22e">string-split</span> line <span style="color:#e6db74">&#34;,&#34;</span>))
+             (list (string-&gt;number (<span style="color:#a6e22e">string-trim</span> ip-from <span style="color:#e6db74">&#34;\&#34;&#34;</span>))
+                   (string-&gt;number (<span style="color:#a6e22e">string-trim</span> ip-to <span style="color:#e6db74">&#34;\&#34;&#34;</span>))
+                   (<span style="color:#a6e22e">string-trim</span>
+                    (<span style="color:#a6e22e">string-join</span>
+                     (reverse (map (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">x</span>) (<span style="color:#a6e22e">string-trim</span> x <span style="color:#e6db74">&#34;\&#34;&#34;</span>)) country)) <span style="color:#e6db74">&#34; &#34;</span>))))
+           (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">a</span> b)
+             (&lt; (<span style="color:#a6e22e">first</span> a) (<span style="color:#a6e22e">first</span> b)))))])
     <span style="color:#75715e">; Perform a binary search for the given IP</span>
-    (λ (ip)
-      (cond
-        [(string? ip) (ip-&gt;country (ip-&gt;number ip))]
+    (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">ip</span>)
+      (<span style="color:#a6e22e">cond</span>
+        [(string? ip) (<span style="color:#a6e22e">ip-&gt;country</span> (<span style="color:#a6e22e">ip-&gt;number</span> ip))]
         [else
          (<span style="color:#66d9ef">let </span>loop ([lo <span style="color:#ae81ff">0</span>] [hi (vector-length data)])
            (<span style="color:#66d9ef">define </span>mid (quotient (+ lo hi) <span style="color:#ae81ff">2</span>))
-           (match-define (list ip-from ip-to country) (vector-ref data mid))
-           (cond
+           (<span style="color:#a6e22e">match-define</span> (list ip-from ip-to country) (vector-ref data mid))
+           (<span style="color:#a6e22e">cond</span>
              [(&lt;= ip-from ip ip-to) country]
              [(<span style="color:#66d9ef">or </span>(= lo mid)
                   (= mid hi))       <span style="color:#66d9ef">#f</span>]
-             [(&lt; ip ip-from)        (loop lo mid)]
-             [(&gt; ip ip-to)          (loop mid hi)]
-             [<span style="color:#66d9ef">else </span>                 (error <span style="color:#e6db74">&#39;ip-&gt;country</span> <span style="color:#e6db74">&#34;unknown ip ~a&#34;</span> ip)]))]))))</code></pre></div>
-<p>Now we get to the interesting part. The next part that we want to do is to narrow the full list of resolvers. No matter how quickly our code runs, it&rsquo;s not going to be easily able to run tens of thousands of queries on tens of millions of resolvers in a reasonable amount of time. All we really want is ~5 resolvers per country.</p>
-
+             [(&lt; ip ip-from)        (<span style="color:#a6e22e">loop</span> lo mid)]
+             [(&gt; ip ip-to)          (<span style="color:#a6e22e">loop</span> mid hi)]
+             [<span style="color:#66d9ef">else </span>                 (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;ip-&gt;country</span> <span style="color:#e6db74">&#34;unknown ip ~a&#34;</span> ip)]))]))))
+</code></pre></div><p>Now we get to the interesting part. The next part that we want to do is to narrow the full list of resolvers. No matter how quickly our code runs, it&rsquo;s not going to be easily able to run tens of thousands of queries on tens of millions of resolvers in a reasonable amount of time. All we really want is ~5 resolvers per country.</p>
 <p>First, let&rsquo;s reorganize our list of resolvers by country. Technically, we could have done this as we loaded them, but it&rsquo;s quick enough, let&rsquo;s do it now:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; ----- ----- ----- ----- -----</span>
 <span style="color:#75715e">; 2) Find a small set of resolvers per country</span>
 
 <span style="color:#75715e">; 2a) Split the list of resolvers by country</span>
-(debug <span style="color:#e6db74">&#34;Reorganizing resolvers by country&#34;</span>)
-(<span style="color:#66d9ef">define </span>resolvers-by-country (make-hash))
-(for ([ip (in-list resolvers)])
-  (with-handlers ([exn? (λ _ (printf <span style="color:#e6db74">&#34;skipping ~an&#34;</span> ip))])
-    (<span style="color:#66d9ef">define </span>country (ip-&gt;country ip))
-    (when country
-      (<span style="color:#66d9ef">define </span>new-set (set-add (hash-ref! resolvers-by-country country (set)) ip))
-      (hash-set! resolvers-by-country country new-set))))</code></pre></div>
-<p>The <code><a href="http://docs.racket-lang.org/search/index.html?q=with-handlers">with-handlers</a></code>
+(<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;Reorganizing resolvers by country&#34;</span>)
+(<span style="color:#66d9ef">define </span>resolvers-by-country (<span style="color:#a6e22e">make-hash</span>))
+(<span style="color:#a6e22e">for</span> ([ip (<span style="color:#a6e22e">in-list</span> resolvers)])
+  (<span style="color:#a6e22e">with-handlers</span> ([exn? (<span style="color:#a6e22e">λ</span> _ (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;skipping ~an&#34;</span> ip))])
+    (<span style="color:#66d9ef">define </span>country (<span style="color:#a6e22e">ip-&gt;country</span> ip))
+    (<span style="color:#a6e22e">when</span> country
+      (<span style="color:#66d9ef">define </span>new-set (<span style="color:#a6e22e">set-add</span> (<span style="color:#a6e22e">hash-ref!</span> resolvers-by-country country (<span style="color:#a6e22e">set</span>)) ip))
+      (<span style="color:#a6e22e">hash-set!</span> resolvers-by-country country new-set))))
+</code></pre></div><p>The <code><a href="http://docs.racket-lang.org/search/index.html?q=with-handlers">with-handlers</a></code>
  part isn&rsquo;t strictly speaking necessary, but my list of resolvers has a few non-IPs in it. Rather than filtering them out beforehand, this will just ignore them as we go.</p>
-
 <p>Next, we&rsquo;ll scan them using a reference hostname. For our purposes, we&rsquo;re using <code>www.google.com</code>, seeing as it&rsquo;s likely to be well known enough to always resolved. There are cases where Google is censored, but for the moment, that doesn&rsquo;t actually matter. We&rsquo;re not looking to see if we get a correct response back, but rather any (valid) response at all. If a resolver times out or returns any return code than <code>no-error</code>, ignore it and move on:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; 2b) Query random IPs in each country</span>
 <span style="color:#75715e">; 2b-i)  If it returns a valid response, add it to the list</span>
 <span style="color:#75715e">;        Remove any other IPs within the same /n prefix (avoid same ISPs etc)</span>
 <span style="color:#75715e">; 2b-ii) If it doesn&#39;t, try the next IP in that country</span>
 <span style="color:#75715e">; 2c) If we have n resolvers for a country, stop looking; if not, go to 2a for them</span>
-(debug <span style="color:#e6db74">&#34;Narrowing resolver list to ~a per country&#34;</span> (resolvers/country))
+(<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;Narrowing resolver list to ~a per country&#34;</span> (<span style="color:#a6e22e">resolvers/country</span>))
 (<span style="color:#66d9ef">let </span>([threads-finished <span style="color:#ae81ff">0</span>])
-  (for-each
+  (<span style="color:#a6e22e">for-each</span>
    thread-wait
-   (for/list ([(country ips) (in-hash resolvers-by-country)])
-     (thread
-      (thunk
-       (parameterize ([current-dns-timeout (timeout)])
-         (<span style="color:#66d9ef">let </span>loop ([ips (shuffle (set-&gt;list ips))]
+   (<span style="color:#a6e22e">for/list</span> ([(<span style="color:#a6e22e">country</span> ips) (<span style="color:#a6e22e">in-hash</span> resolvers-by-country)])
+     (<span style="color:#a6e22e">thread</span>
+      (<span style="color:#a6e22e">thunk</span>
+       (<span style="color:#a6e22e">parameterize</span> ([current-dns-timeout (<span style="color:#a6e22e">timeout</span>)])
+         (<span style="color:#66d9ef">let </span>loop ([ips (<span style="color:#a6e22e">shuffle</span> (<span style="color:#a6e22e">set-&gt;list</span> ips))]
                     [active <span style="color:#f92672">&#39;</span>()])
-           (cond
+           (<span style="color:#a6e22e">cond</span>
              <span style="color:#75715e">; No more IPs to scan or found enough</span>
              [(<span style="color:#66d9ef">or </span>(null? ips)
-                  (&gt;= (length active) (resolvers/country)))
+                  (&gt;= (length active) (<span style="color:#a6e22e">resolvers/country</span>)))
               (<span style="color:#66d9ef">set! </span>threads-finished (+ threads-finished <span style="color:#ae81ff">1</span>))
-              (debug <span style="color:#e6db74">&#34;~a/~a: ~a is ~a (~a active) -- ~a&#34;</span> threads-finished (hash-count resolvers-by-country) country (<span style="color:#66d9ef">if </span>(&gt;= (length active) (resolvers/country)) <span style="color:#e6db74">&#34;out&#34;</span> <span style="color:#e6db74">&#34;full&#34;</span>) (length active) active)
-              (hash-set! resolvers-by-country country active)]
+              (<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;~a/~a: ~a is ~a (~a active) -- ~a&#34;</span> threads-finished (<span style="color:#a6e22e">hash-count</span> resolvers-by-country) country (<span style="color:#66d9ef">if </span>(&gt;= (length active) (<span style="color:#a6e22e">resolvers/country</span>)) <span style="color:#e6db74">&#34;out&#34;</span> <span style="color:#e6db74">&#34;full&#34;</span>) (length active) active)
+              (<span style="color:#a6e22e">hash-set!</span> resolvers-by-country country active)]
              <span style="color:#75715e">; Got a response, check for no-error and record</span>
-             [(dns-request (first ips) <span style="color:#f92672">#</span>:a <span style="color:#e6db74">&#34;www.google.com&#34;</span>)
-              <span style="color:#66d9ef">=&gt; </span>(λ (response)
-                   (match-define (list who what where result) response)
-                   (cond
-                     [(<span style="color:#66d9ef">and </span>(eq? (first result) <span style="color:#e6db74">&#39;no-error</span>)
-                           (not (null? (rest result))))
-                      (loop (rest ips) (cons (first ips) active))]
+             [(<span style="color:#a6e22e">dns-request</span> (<span style="color:#a6e22e">first</span> ips) <span style="color:#f92672">#</span>:a <span style="color:#e6db74">&#34;www.google.com&#34;</span>)
+              <span style="color:#66d9ef">=&gt; </span>(<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">response</span>)
+                   (<span style="color:#a6e22e">match-define</span> (list who what where result) response)
+                   (<span style="color:#a6e22e">cond</span>
+                     [(<span style="color:#66d9ef">and </span>(eq? (<span style="color:#a6e22e">first</span> result) <span style="color:#e6db74">&#39;no-error</span>)
+                           (not (null? (<span style="color:#a6e22e">rest</span> result))))
+                      (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">rest</span> ips) (cons (<span style="color:#a6e22e">first</span> ips) active))]
                      [else
-                      (loop (rest ips) active)]))]
+                      (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">rest</span> ips) active)]))]
              <span style="color:#75715e">; Response timed out</span>
              [else
-              (loop (rest ips) active)]))))))))</code></pre></div>
-<p>We&rsquo;re using the same technique as several times before with the <code>cond</code> and <code>=&gt;</code> clause. Since <code>dns-request</code> returns <code>#f</code> if it times out, it will fall through to the last case, removing that IP but not recording it as active. The first clause is our base case&ndash;if we either run out of IPs to check for a given country or find enough, we can stop.</p>
-
+              (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">rest</span> ips) active)]))))))))
+</code></pre></div><p>We&rsquo;re using the same technique as several times before with the <code>cond</code> and <code>=&gt;</code> clause. Since <code>dns-request</code> returns <code>#f</code> if it times out, it will fall through to the last case, removing that IP but not recording it as active. The first clause is our base case&ndash;if we either run out of IPs to check for a given country or find enough, we can stop.</p>
 <p>One bit that&rsquo;s interesting is the first few lines. <code>(for-each thread-wait (for/list ...))</code> will build up the list of threads first (since parameters are evaluated before being sent to the function in Scheme/Racket) and then wait for each of them to finish in turn. This way, we&rsquo;re scanning all of the known countries at once (there are almost 200 of them in the list of resolvers I have) while each country is done sequentially. This does slow the code down a bit when we get to a particularly troublesome country, but it still runs quickly enough.</p>
-
 <p>Finally, we have the actual body of the code. After all of that set up, the code is actually pretty short:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; ----- ----- ----- ----- -----</span>
 <span style="color:#75715e">; 3) Query targets on each resolver</span>
@@ -254,33 +240,31 @@
 <span style="color:#75715e">;      100 requests/resolver</span>
 <span style="color:#75715e">;      1000 requests/pass</span>
 
-(<span style="color:#66d9ef">define </span>output-filename (format <span style="color:#e6db74">&#34;output-~a.txt&#34;</span> (current-milliseconds)))
-(debug <span style="color:#e6db74">&#34;Running queries (output to ~a):&#34;</span> output-filename)
+(<span style="color:#66d9ef">define </span>output-filename (<span style="color:#a6e22e">format</span> <span style="color:#e6db74">&#34;output-~a.txt&#34;</span> (<span style="color:#a6e22e">current-milliseconds</span>)))
+(<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;Running queries (output to ~a):&#34;</span> output-filename)
 
 (call-with-output-file output-filename
-  (λ (fout)
-    (<span style="color:#66d9ef">define </span>s (make-semaphore <span style="color:#ae81ff">1</span>))
-    (parameterize ([current-dns-timeout (timeout)])
-      (for ([i (in-naturals <span style="color:#ae81ff">1</span>)]
-            [target (in-list targets)])
-        (debug <span style="color:#e6db74">&#34;tScanning ~a/~a: ~a&#34;</span> i (alexa-top-n) target)
-        (for* ([(country ips) (in-hash resolvers-by-country)]
-               [ip (in-list ips)])
-          (dns-request/async
+  (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">fout</span>)
+    (<span style="color:#66d9ef">define </span>s (<span style="color:#a6e22e">make-semaphore</span> <span style="color:#ae81ff">1</span>))
+    (<span style="color:#a6e22e">parameterize</span> ([current-dns-timeout (<span style="color:#a6e22e">timeout</span>)])
+      (<span style="color:#a6e22e">for</span> ([i (<span style="color:#a6e22e">in-naturals</span> <span style="color:#ae81ff">1</span>)]
+            [target (<span style="color:#a6e22e">in-list</span> targets)])
+        (<span style="color:#a6e22e">debug</span> <span style="color:#e6db74">&#34;tScanning ~a/~a: ~a&#34;</span> i (<span style="color:#a6e22e">alexa-top-n</span>) target)
+        (<span style="color:#a6e22e">for*</span> ([(<span style="color:#a6e22e">country</span> ips) (<span style="color:#a6e22e">in-hash</span> resolvers-by-country)]
+               [ip (<span style="color:#a6e22e">in-list</span> ips)])
+          (<span style="color:#a6e22e">dns-request/async</span>
            ip <span style="color:#f92672">#</span>:a target
-           (λ (host type query response)
-             (<span style="color:#66d9ef">define </span>result (list* host country query response))
-             (call-with-semaphore
+           (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">host</span> type query response)
+             (<span style="color:#66d9ef">define </span>result (<span style="color:#a6e22e">list*</span> host country query response))
+             (<span style="color:#a6e22e">call-with-semaphore</span>
               s
-              (thunk
+              (<span style="color:#a6e22e">thunk</span>
                (write result fout)
                (newline fout)
-               (flush-output fout))))))
-        (sleep (+ <span style="color:#ae81ff">1.0</span> (timeout)))))))</code></pre></div>
-<p>Rather than parallelizing by country, this time we will be target. We&rsquo;ll take all of the resolvers we&rsquo;ve found (up to a thousand) and ask all of them at once about a given target asynchronously. Any responses we get will call the provided callback, writing them to file (with a semaphore to make sure we don&rsquo;t mix lines in the output).</p>
-
+               (<span style="color:#a6e22e">flush-output</span> fout))))))
+        (<span style="color:#a6e22e">sleep</span> (+ <span style="color:#ae81ff">1.0</span> (<span style="color:#a6e22e">timeout</span>)))))))
+</code></pre></div><p>Rather than parallelizing by country, this time we will be target. We&rsquo;ll take all of the resolvers we&rsquo;ve found (up to a thousand) and ask all of them at once about a given target asynchronously. Any responses we get will call the provided callback, writing them to file (with a semaphore to make sure we don&rsquo;t mix lines in the output).</p>
 <p>And that&rsquo;s really all there is to it. I&rsquo;m still analyzing the results, but I&rsquo;ve already found a few interesting cases. I&rsquo;ll have another post up about that early next week.</p>
-
 <p>If you’d like to see the entire code for this project thus far (I&rsquo;ve added the scanning code now), you can see it on GitHub: <a href="https://github.com/jpverkamp/dns-world-scan">jpverkamp/dns-world-scan</a>. It’s still a work in progress, but it may just be useful.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -75,146 +75,136 @@
 
 	<div class="entry-content"><p>When Programming Praxis mentioned that the <a href="http://programmingpraxis.com/2012/10/26/pythagorean-triples/" title="Programming Praxis: Pythagorean Triples">newest challenge</a> sounded like a <a href="http://projecteuler.net/" title="Project Euler">Project Euler</a> problem, they were&rsquo;t wrong. Basically, the idea is to count the number of <a href="https://en.wikipedia.org/wiki/Pythagorean%20Triples">Pythagorean Triples</a> with perimeters (sum of the three numbers) under a given value. The necessary code to brute force the problem is really straight forward, but then they asked for the count up to one million. With the brute force <span class="latex-inline">O(n^2)</span>
  algorithm (and a relatively high constant), that&rsquo;s not really feasible. So that&rsquo;s when we have to get a bit more creative.</p>
-
 <p>First, how about that brute force solution I promised:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(brute-count-triples-under sum)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">brute-count-triples-under</span> sum)
   (<span style="color:#66d9ef">define </span>count <span style="color:#ae81ff">0</span>)
-  (for* ([a (in-range <span style="color:#ae81ff">1</span> sum)]
-         [b (in-range <span style="color:#ae81ff">1</span> a)]
+  (<span style="color:#a6e22e">for*</span> ([a (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> sum)]
+         [b (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> a)]
          <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">let </span>([c (sqrt (+ (* a a) (* b b)))])
                   (<span style="color:#66d9ef">and </span>(&lt;= (+ a b c) sum)
                        (integer? c))))
     (<span style="color:#66d9ef">set! </span>count (+ count <span style="color:#ae81ff">1</span>)))
-  count)</code></pre></div>
-<p>The basic idea is calculate every a and b such that a &lt; b and such that <span class="latex-inline">c = \sqrt{a^2 &#43; b^2}</span>
+  count)
+</code></pre></div><p>The basic idea is calculate every a and b such that a &lt; b and such that <span class="latex-inline">c = \sqrt{a^2 &#43; b^2}</span>
  for some integer c and the sum a+b+c is less than the target. Simple enough, how does that work out?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (brute-count-triples-under <span style="color:#ae81ff">100</span>))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">brute-count-triples-under</span> <span style="color:#ae81ff">100</span>))
 cpu time: <span style="color:#ae81ff">8</span> real time: <span style="color:#ae81ff">5</span> gc time: <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">17</span></code></pre></div>
-<p>And pretty fast too. But if we try to run longer examples:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (brute-count-triples-under <span style="color:#ae81ff">1000</span>))
+<span style="color:#ae81ff">17</span>
+</code></pre></div><p>And pretty fast too. But if we try to run longer examples:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">brute-count-triples-under</span> <span style="color:#ae81ff">1000</span>))
 cpu time: <span style="color:#ae81ff">584</span> real time: <span style="color:#ae81ff">585</span> gc time: <span style="color:#ae81ff">48</span>
 <span style="color:#ae81ff">325</span>
 
-&gt; (time (brute-count-triples-under <span style="color:#ae81ff">10000</span>))
+&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">brute-count-triples-under</span> <span style="color:#ae81ff">10000</span>))
 cpu time: <span style="color:#ae81ff">54687</span> real time: <span style="color:#ae81ff">54840</span> gc time: <span style="color:#ae81ff">1348</span>
-<span style="color:#ae81ff">4858</span></code></pre></div>
-<p>Yeah, I don&rsquo;t really want to try that on one million. So we need a faster algorithm. Luckily, you don&rsquo;t have to try all of the possible ways that could generate a triple&ndash;it turns out there are algorithms to <a href="https://en.wikipedia.org/wiki/Formulas%20for%20generating%20Pythagorean%20triples">do it for you</a>. One in particularly came from a British math professor A. Hall in the paper <em><a href="http://www.jstor.org/discover/10.2307/3613860?uid=2&uid=4&sid=21101204896923" title="Genealogy of Pythagorean Triads">Genealogy of Pythagorean Triads</a></em> which showed that given any primitive Pythagorean triple (one that is not a multiple of another, smaller triple), you can produce three more primitive triples with the formulas:</p>
-
+<span style="color:#ae81ff">4858</span>
+</code></pre></div><p>Yeah, I don&rsquo;t really want to try that on one million. So we need a faster algorithm. Luckily, you don&rsquo;t have to try all of the possible ways that could generate a triple&ndash;it turns out there are algorithms to <a href="https://en.wikipedia.org/wiki/Formulas%20for%20generating%20Pythagorean%20triples">do it for you</a>. One in particularly came from a British math professor A. Hall in the paper <em><a href="http://www.jstor.org/discover/10.2307/3613860?uid=2&uid=4&sid=21101204896923" title="Genealogy of Pythagorean Triads">Genealogy of Pythagorean Triads</a></em> which showed that given any primitive Pythagorean triple (one that is not a multiple of another, smaller triple), you can produce three more primitive triples with the formulas:</p>
 <blockquote>
 <p>a – 2b + 2c, 2a – b + 2c, 2a – 2b + 3c
 a + 2b + 2c, 2a + b + 2c, 2a + 2b + 3c
 -a + 2b + 2c, -2a + b + 2c, -2a + 2b + 3c</p>
 </blockquote>
-
 <p>You can generate even more primitive triples from those in turn, as long as you choose to do so. In our case, we can stop each branch once the perimeter of the triple is larger than our target as they don&rsquo;t ever get smaller. So how do we turn that into code? We use Racket&rsquo;s <code><a href="http://docs.racket-lang.org/search/index.html?q=generators">generators</a></code>
 :</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(primitive-triples [max-sum <span style="color:#66d9ef">#f</span>])
-  (generator ()
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">primitive-triples</span> [max-sum <span style="color:#66d9ef">#f</span>])
+  (<span style="color:#a6e22e">generator</span> ()
     (<span style="color:#66d9ef">let </span>loop ([a <span style="color:#ae81ff">3</span>] [b <span style="color:#ae81ff">4</span>] [c <span style="color:#ae81ff">5</span>])
-      (when (<span style="color:#66d9ef">or </span>(not max-sum) (&lt;= (+ a b c) max-sum))
-        (yield (list (min a b) (max a b) c))
+      (<span style="color:#a6e22e">when</span> (<span style="color:#66d9ef">or </span>(not max-sum) (&lt;= (+ a b c) max-sum))
+        (<span style="color:#a6e22e">yield</span> (list (min a b) (max a b) c))
         <span style="color:#75715e">; a – 2b + 2c, 2a – b + 2c, 2a – 2b + 3c</span>
-        (loop (+ a (* <span style="color:#ae81ff">-2</span> b) (* <span style="color:#ae81ff">2</span> c))
+        (<span style="color:#a6e22e">loop</span> (+ a (* <span style="color:#ae81ff">-2</span> b) (* <span style="color:#ae81ff">2</span> c))
               (+ (* <span style="color:#ae81ff">2</span> a) (- b) (* <span style="color:#ae81ff">2</span> c))
               (+ (* <span style="color:#ae81ff">2</span> a) (* <span style="color:#ae81ff">-2</span> b) (* <span style="color:#ae81ff">3</span> c)))
         <span style="color:#75715e">; a + 2b + 2c, 2a + b + 2c, 2a + 2b + 3c</span>
-        (loop (+ a (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
+        (<span style="color:#a6e22e">loop</span> (+ a (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
               (+ (* <span style="color:#ae81ff">2</span> a) b (* <span style="color:#ae81ff">2</span> c))
               (+ (* <span style="color:#ae81ff">2</span> a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">3</span> c)))
         <span style="color:#75715e">; -a + 2b + 2c, -2a + b + 2c, -2a + 2b + 3c</span>
-        (loop (+ (- a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
+        (<span style="color:#a6e22e">loop</span> (+ (- a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
               (+ (* <span style="color:#ae81ff">-2</span> a) b (* <span style="color:#ae81ff">2</span> c))
               (+ (* <span style="color:#ae81ff">-2</span> a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">3</span> c)))))
-    (yield <span style="color:#66d9ef">#f</span>)))</code></pre></div>
-<p>Similar to Python&rsquo;s <code>yield</code>, this generator will create a sequence of primitive triples, scanning in a depth first manner down each branch of the aforementioned tree. From there, we just have to calculate each multiple to get a list of all Pythagorean triples with perimeters less than a given value:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(triples-under sum)
-  (for*/list ([trip (in-producer (primitive-triples sum) <span style="color:#66d9ef">#f</span>)]
-              [k (in-range <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
-    (map (<span style="color:#66d9ef">lambda </span>(n) (* n k)) trip)))</code></pre></div>
-<p>So if we wanted to test this with all 17 triples with perimeters under 100, we could:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (triples-under <span style="color:#ae81ff">100</span>)
+    (<span style="color:#a6e22e">yield</span> <span style="color:#66d9ef">#f</span>)))
+</code></pre></div><p>Similar to Python&rsquo;s <code>yield</code>, this generator will create a sequence of primitive triples, scanning in a depth first manner down each branch of the aforementioned tree. From there, we just have to calculate each multiple to get a list of all Pythagorean triples with perimeters less than a given value:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">triples-under</span> sum)
+  (<span style="color:#a6e22e">for*/list</span> ([trip (<span style="color:#a6e22e">in-producer</span> (<span style="color:#a6e22e">primitive-triples</span> sum) <span style="color:#66d9ef">#f</span>)]
+              [k (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
+    (map (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">n</span>) (* n k)) trip)))
+</code></pre></div><p>So if we wanted to test this with all 17 triples with perimeters under 100, we could:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">triples-under</span> <span style="color:#ae81ff">100</span>)
 <span style="color:#f92672">&#39;</span>((<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)    (<span style="color:#ae81ff">6</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">10</span>)   (<span style="color:#ae81ff">9</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">15</span>)  (<span style="color:#ae81ff">12</span> <span style="color:#ae81ff">16</span> <span style="color:#ae81ff">20</span>) (<span style="color:#ae81ff">15</span> <span style="color:#ae81ff">20</span> <span style="color:#ae81ff">25</span>) (<span style="color:#ae81ff">18</span> <span style="color:#ae81ff">24</span> <span style="color:#ae81ff">30</span>) (<span style="color:#ae81ff">21</span> <span style="color:#ae81ff">28</span> <span style="color:#ae81ff">35</span>)
   (<span style="color:#ae81ff">24</span> <span style="color:#ae81ff">32</span> <span style="color:#ae81ff">40</span>) (<span style="color:#ae81ff">5</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">13</span>)  (<span style="color:#ae81ff">10</span> <span style="color:#ae81ff">24</span> <span style="color:#ae81ff">26</span>) (<span style="color:#ae81ff">15</span> <span style="color:#ae81ff">36</span> <span style="color:#ae81ff">39</span>) (<span style="color:#ae81ff">7</span> <span style="color:#ae81ff">24</span> <span style="color:#ae81ff">25</span>)  (<span style="color:#ae81ff">9</span> <span style="color:#ae81ff">40</span> <span style="color:#ae81ff">41</span>)  (<span style="color:#ae81ff">20</span> <span style="color:#ae81ff">21</span> <span style="color:#ae81ff">29</span>)
-  (<span style="color:#ae81ff">8</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">17</span>)  (<span style="color:#ae81ff">16</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">34</span>) (<span style="color:#ae81ff">12</span> <span style="color:#ae81ff">35</span> <span style="color:#ae81ff">37</span>))</code></pre></div>
-<p>On the other hand though, we don&rsquo;t necessarily care what the actual triples are, we just want to know how many there are. So a slight modification to just count them:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(count-triples-under sum)
+  (<span style="color:#ae81ff">8</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">17</span>)  (<span style="color:#ae81ff">16</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">34</span>) (<span style="color:#ae81ff">12</span> <span style="color:#ae81ff">35</span> <span style="color:#ae81ff">37</span>))
+</code></pre></div><p>On the other hand though, we don&rsquo;t necessarily care what the actual triples are, we just want to know how many there are. So a slight modification to just count them:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">count-triples-under</span> sum)
   (<span style="color:#66d9ef">define </span>count <span style="color:#ae81ff">0</span>)
-  (for* ([trip (in-producer (primitive-triples sum) <span style="color:#66d9ef">#f</span>)]
-         [k (in-range <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
+  (<span style="color:#a6e22e">for*</span> ([trip (<span style="color:#a6e22e">in-producer</span> (<span style="color:#a6e22e">primitive-triples</span> sum) <span style="color:#66d9ef">#f</span>)]
+         [k (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
     (<span style="color:#66d9ef">set! </span>count (+ count <span style="color:#ae81ff">1</span>)))
-  count)</code></pre></div>
-<p>And that&rsquo;s it. We can finally answer the question originally asked of us:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (count-triples-under <span style="color:#ae81ff">1000000</span>))
+  count)
+</code></pre></div><p>And that&rsquo;s it. We can finally answer the question originally asked of us:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">count-triples-under</span> <span style="color:#ae81ff">1000000</span>))
 cpu time: <span style="color:#ae81ff">6116</span> real time: <span style="color:#ae81ff">6121</span> gc time: <span style="color:#ae81ff">1792</span>
-<span style="color:#ae81ff">808950</span></code></pre></div>
-<p>It&rsquo;s still not as fast as I&rsquo;d like, but it&rsquo;s certainly faster than it would have been without the fancier algorithm.</p>
-
+<span style="color:#ae81ff">808950</span>
+</code></pre></div><p>It&rsquo;s still not as fast as I&rsquo;d like, but it&rsquo;s certainly faster than it would have been without the fancier algorithm.</p>
 <p>And that&rsquo;s all there is to it. If you&rsquo;d like to download the entire source code for today, you can do so here: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pythagorean-triples.rkt">pythagorean-triples source</a></p>
-
 <p>Like I said before, it definitely did have the feel of a Project Euler problem, where the straight forward solution is not generally the best one and if you work at it, you can find something that will run in a fraction of the time.</p>
-
 <p>Perhaps I&rsquo;ll start publishing my Project Euler solutions here. I&rsquo;ve worked through a good chunk of the problems on two separate occasions, both in Python and in Scheme and it might be interesting to compare and contrast the different languages. Although since it&rsquo;s sort of a contest, that might be frowned upon. We&rsquo;ll see.</p>
-
 <p><strong>Edit:</strong></p>
-
 <p>Eesh. When programmingpraxis mentioned that generators were slow down in the comments, I remembered some chatter on the Racket mailing list (the thread from this message) talking about generator performance. But I hadn&rsquo;t realized it would be quite <em>this</em> extensive. It&rsquo;s easy enough to reimplement the code to make <code>primitive-triples</code> just return a list of all of the triples directly:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(primitive-triples-nogen max-sum)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">primitive-triples-nogen</span> max-sum)
   (<span style="color:#66d9ef">let </span>loop ([a <span style="color:#ae81ff">3</span>] [b <span style="color:#ae81ff">4</span>] [c <span style="color:#ae81ff">5</span>])
     (<span style="color:#66d9ef">if </span>(&gt; (+ a b c) max-sum)
         <span style="color:#f92672">&#39;</span>()
-        (append
+        (<span style="color:#a6e22e">append</span>
          (list (list (min a b) (max a b) c))
          <span style="color:#75715e">; a – 2b + 2c, 2a – b + 2c, 2a – 2b + 3c</span>
-         (loop (+ a (* <span style="color:#ae81ff">-2</span> b) (* <span style="color:#ae81ff">2</span> c))
+         (<span style="color:#a6e22e">loop</span> (+ a (* <span style="color:#ae81ff">-2</span> b) (* <span style="color:#ae81ff">2</span> c))
                (+ (* <span style="color:#ae81ff">2</span> a) (- b) (* <span style="color:#ae81ff">2</span> c))
                (+ (* <span style="color:#ae81ff">2</span> a) (* <span style="color:#ae81ff">-2</span> b) (* <span style="color:#ae81ff">3</span> c)))
          <span style="color:#75715e">; a + 2b + 2c, 2a + b + 2c, 2a + 2b + 3c</span>
-         (loop (+ a (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
+         (<span style="color:#a6e22e">loop</span> (+ a (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
                (+ (* <span style="color:#ae81ff">2</span> a) b (* <span style="color:#ae81ff">2</span> c))
                (+ (* <span style="color:#ae81ff">2</span> a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">3</span> c)))
          <span style="color:#75715e">; -a + 2b + 2c, -2a + b + 2c, -2a + 2b + 3c</span>
-         (loop (+ (- a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
+         (<span style="color:#a6e22e">loop</span> (+ (- a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">2</span> c))
                (+ (* <span style="color:#ae81ff">-2</span> a) b (* <span style="color:#ae81ff">2</span> c))
                (+ (* <span style="color:#ae81ff">-2</span> a) (* <span style="color:#ae81ff">2</span> b) (* <span style="color:#ae81ff">3</span> c)))))))
 
-(<span style="color:#66d9ef">define </span>(count-triples-under-nogen sum)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">count-triples-under-nogen</span> sum)
   (<span style="color:#66d9ef">define </span>count <span style="color:#ae81ff">0</span>)
-  (for* ([trip (in-list (primitive-triples-nogen sum))]
-         [k (in-range <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
+  (<span style="color:#a6e22e">for*</span> ([trip (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">primitive-triples-nogen</span> sum))]
+         [k (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
     (<span style="color:#66d9ef">set! </span>count (+ count <span style="color:#ae81ff">1</span>)))
-  count)</code></pre></div>
-<p>Then look at the performance we get:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (count-triples-under <span style="color:#ae81ff">1000000</span>))
+  count)
+</code></pre></div><p>Then look at the performance we get:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">count-triples-under</span> <span style="color:#ae81ff">1000000</span>))
 cpu time: <span style="color:#ae81ff">7109</span> real time: <span style="color:#ae81ff">7129</span> gc time: <span style="color:#ae81ff">2292</span>
 <span style="color:#ae81ff">808950</span>
 
-&gt; (time (count-triples-under-nogen <span style="color:#ae81ff">1000000</span>))
+&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">count-triples-under-nogen</span> <span style="color:#ae81ff">1000000</span>))
 cpu time: <span style="color:#ae81ff">352</span> real time: <span style="color:#ae81ff">348</span> gc time: <span style="color:#ae81ff">112</span>
-<span style="color:#ae81ff">808950</span></code></pre></div>
-<p>Yeah&hellip; So there is a bit of a performance penalty for generators after all (most likely due to the use of continuations to implement them according to the aforementioned thread). I&rsquo;ll have to keep that in mind.</p>
-
+<span style="color:#ae81ff">808950</span>
+</code></pre></div><p>Yeah&hellip; So there is a bit of a performance penalty for generators after all (most likely due to the use of continuations to implement them according to the aforementioned thread). I&rsquo;ll have to keep that in mind.</p>
 <p><strong>Edit 2:</strong></p>
-
 <p>So I decided to go for the best of both worlds and essentially make a generator while maintaining the state myself. Essentially, I&rsquo;ll use <code>set!</code> to update the list of triples we haven&rsquo;t yet tried, stored in the function&rsquo;s state.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(primitive-triples-state [max-sum <span style="color:#66d9ef">#f</span>])
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">primitive-triples-state</span> [max-sum <span style="color:#66d9ef">#f</span>])
   (<span style="color:#66d9ef">define </span>triples <span style="color:#f92672">&#39;</span>((<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">5</span>)))
   (<span style="color:#66d9ef">lambda </span>()
     (<span style="color:#66d9ef">let </span>loop ()
-      (cond
+      (<span style="color:#a6e22e">cond</span>
         [(null? triples) <span style="color:#66d9ef">#f</span>]
         [else
          (<span style="color:#66d9ef">define </span>a (caar triples))
          (<span style="color:#66d9ef">define </span>b (cadar triples))
          (<span style="color:#66d9ef">define </span>c (caddar triples))
-         (cond
+         (<span style="color:#a6e22e">cond</span>
            [(<span style="color:#66d9ef">and </span>max-sum (&gt; (+ a b c) max-sum))
             (<span style="color:#66d9ef">set! </span>triples (cdr triples))
-            (loop)]
+            (<span style="color:#a6e22e">loop</span>)]
            [else
             (<span style="color:#66d9ef">define </span>r (car triples))
             (<span style="color:#66d9ef">set! </span>triples
-                  (list*
+                  (<span style="color:#a6e22e">list*</span>
                    <span style="color:#75715e">; a – 2b + 2c, 2a – b + 2c, 2a – 2b + 3c</span>
                    (list (+ a (* <span style="color:#ae81ff">-2</span> b) (* <span style="color:#ae81ff">2</span> c))
                          (+ (* <span style="color:#ae81ff">2</span> a) (- b) (* <span style="color:#ae81ff">2</span> c))
@@ -231,21 +221,21 @@ cpu time: <span style="color:#ae81ff">352</span> real time: <span style="color:#
                    (cdr triples)))
             r])]))))
 
-(<span style="color:#66d9ef">define </span>(count-triples-under-state sum)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">count-triples-under-state</span> sum)
   (<span style="color:#66d9ef">define </span>count <span style="color:#ae81ff">0</span>)
-  (for* ([trip (in-producer (primitive-triples-state sum) <span style="color:#66d9ef">#f</span>)]
-         [k (in-range <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
+  (<span style="color:#a6e22e">for*</span> ([trip (<span style="color:#a6e22e">in-producer</span> (<span style="color:#a6e22e">primitive-triples-state</span> sum) <span style="color:#66d9ef">#f</span>)]
+         [k (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (quotient sum (apply + trip))))])
     (<span style="color:#66d9ef">set! </span>count (+ count <span style="color:#ae81ff">1</span>)))
-  count)</code></pre></div>
-<p>It&rsquo;s fractionally slower than the version that just directly returns the list (the overhead of the function calls, I&rsquo;m guessing), but not enough to be statistically significant.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (count-triples-under-nogen <span style="color:#ae81ff">1000000</span>))
+  count)
+</code></pre></div><p>It&rsquo;s fractionally slower than the version that just directly returns the list (the overhead of the function calls, I&rsquo;m guessing), but not enough to be statistically significant.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">count-triples-under-nogen</span> <span style="color:#ae81ff">1000000</span>))
 cpu time: <span style="color:#ae81ff">352</span> real time: <span style="color:#ae81ff">348</span> gc time: <span style="color:#ae81ff">112</span>
 <span style="color:#ae81ff">808950</span>
 
-&gt; (time (count-triples-under-state <span style="color:#ae81ff">1000000</span>))
+&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">count-triples-under-state</span> <span style="color:#ae81ff">1000000</span>))
 cpu time: <span style="color:#ae81ff">388</span> real time: <span style="color:#ae81ff">388</span> gc time: <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">808950</span></code></pre></div>
-<p>Now I&rsquo;m wondering how hard it would be a write a version of the <code>generator</code> macro that bundles this all up for you. It wouldn&rsquo;t be as general purpose, but I&rsquo;m will to bet it could be done.</p></div>
+<span style="color:#ae81ff">808950</span>
+</code></pre></div><p>Now I&rsquo;m wondering how hard it would be a write a version of the <code>generator</code> macro that bundles this all up for you. It wouldn&rsquo;t be as general purpose, but I&rsquo;m will to bet it could be done.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

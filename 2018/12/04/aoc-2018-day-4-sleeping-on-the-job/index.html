@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -73,20 +73,15 @@
 </div>
     </header>
 
-	<div class="entry-content"><h3 id="source-repose-record-https-adventofcode-com-2018-day-4">Source: <a href="https://adventofcode.com/2018/day/4">Repose Record</a></h3>
-
+	<div class="entry-content"><h3 id="source-repose-recordhttpsadventofcodecom2018day4">Source: <a href="https://adventofcode.com/2018/day/4">Repose Record</a></h3>
 <blockquote>
 <p><strong>Part 1:</strong> Given a log of guard shifts and times asleep/awake, calculate the guard that was asleep most often and which minute they were most asleep for.</p>
 </blockquote>
-
 <p>I&rsquo;ll admit, this one took me far longer than it should. Not because it&rsquo;s a particularly hard problem, but mostly because I missed a <em>very</em> important sentence in the puzzle description:</p>
-
 <blockquote>
 <p>While this example listed the entries in chronological order, your entries are in the order you found them. You&rsquo;ll need to organize them before they can be analyzed.</p>
 </blockquote>
-
 <p>Since the input looks like this:</p>
-
 <pre><code>[1518-02-23 00:02] Guard #1913 begins shift
 [1518-05-07 00:22] wakes up
 [1518-07-23 00:26] wakes up
@@ -96,24 +91,19 @@
 [1518-04-28 00:00] Guard #3301 begins shift
 [1518-02-04 00:49] wakes up
 [1518-09-08 00:13] falls asleep
-</code></pre>
-
-<p>I was dealing with all sorts of edge cases, such as:</p>
-
+</code></pre><p>I was dealing with all sorts of edge cases, such as:</p>
 <ul>
 <li>When a guard ends a shift while still asleep, add minutes up to the end of the hour</li>
 <li>If a guard logs waking up/falling asleep multiple times in a row, only take the last one</li>
 <li>If a guard sleeps across multiple days, log that properly</li>
 </ul>
-
 <p>But it turns out if you actually <em>read</em> the problem description and sort the input, the problem gets much easier&hellip; Each record starts with a <code>begins shift</code>, will alternate <code>falls asleep</code> and <code>wakes up</code>, and will <em>always</em> end awake. Much easier.</p>
-
 <p>Anyways. First thing we need is to read the data. I&rsquo;m going to actually write a quick helper function that will read a file and iterate over lines in sorted order:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Wrapper around in-lines to sort the values</span>
 <span style="color:#75715e">; This is very important!</span>
 (<span style="color:#66d9ef">define</span> (in-sorted-lines [in (current-input-port)])
-  (in-list (sort (port-&gt;lines) string&lt;?)))</code></pre></div>
-<p>After that, we can read in the guard data:</p>
+  (in-list (sort (port-&gt;lines) string&lt;?)))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>After that, we can read in the guard data:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Read guard data from stdin</span>
 (<span style="color:#66d9ef">define</span> (read-guard-data [in (current-input-port)])
   (<span style="color:#66d9ef">define-values</span> (guard-data _id _state _last-minute)
@@ -138,12 +128,10 @@
         [(regexp <span style="color:#e6db74">#px&#34;(\\d+)\\] wakes up&#34;</span> (list <span style="color:#66d9ef">_</span> raw-minute))
          (<span style="color:#66d9ef">define</span> minute (string-&gt;number raw-minute))
          (values (add-minutes data id last-minute minute) id <span style="color:#f92672">&#39;</span><span style="color:#e6db74">awake</span> minute)])))
-  guard-data)</code></pre></div>
-<p>The goal is to read the data into a nested hash. The first key is the <code>id</code> of the guard, the second is the <code>minute</code>. The values are how many times that guard was asleep for that minute.</p>
-
+  guard-data)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>The goal is to read the data into a nested hash. The first key is the <code>id</code> of the guard, the second is the <code>minute</code>. The values are how many times that guard was asleep for that minute.</p>
 <p><code><a href="http://docs.racket-lang.org/search/index.html?q=match">match</a></code>
  with <code>regexp</code> values is really nice for parsing values. I left in one bit of the more complicated code (what happens if they end the shift asleep), but in the end it wasn&rsquo;t actually necessary.</p>
-
 <p>In order to actually use this, we do have one more helper function that will increment the nested hash:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Add minutes to guard `id` from `start` to `end`</span>
 (<span style="color:#66d9ef">define</span> (add-minutes data id start end)
@@ -152,8 +140,8 @@
     (<span style="color:#66d9ef">for/fold</span> ([minute-hash minute-hash])
               ([minute (in-range start end)])
       (hash-update minute-hash minute add1 <span style="color:#ae81ff">0</span>)))
-  (hash-set data id updated-minute-hash))</code></pre></div>
-<p>Once we have all that data, we can solve the problem in what&rsquo;s probably an entirely overly verbose manner:</p>
+  (hash-set data id updated-minute-hash))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Once we have all that data, we can solve the problem in what&rsquo;s probably an entirely overly verbose manner:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Which guard was asleep for the most minutes</span>
 (<span style="color:#66d9ef">define</span> (most-asleep-minutes data)
   (<span style="color:#66d9ef">define-values</span> (max-id max-minutes)
@@ -183,21 +171,17 @@
 (printf <span style="color:#e6db74">&#34;[part 1] guard: ~a, minute: ~a, product: ~a</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>
         sleepiest-guard-id
         break-in-minute
-        (* sleepiest-guard-id break-in-minute))</code></pre></div>
-<p>Give it a run:</p>
+        (* sleepiest-guard-id break-in-minute))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Give it a run:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cat input.txt | racket snooze-detector.rkt
 
-<span style="color:#f92672">[</span>part <span style="color:#ae81ff">1</span><span style="color:#f92672">]</span> guard: <span style="color:#ae81ff">3187</span>, minute: <span style="color:#ae81ff">45</span>, product: <span style="color:#ae81ff">143415</span></code></pre></div>
-<p>Works fine!</p>
-
+<span style="color:#f92672">[</span>part 1<span style="color:#f92672">]</span> guard: 3187, minute: 45, product: <span style="color:#ae81ff">143415</span>
+</code></pre></div><p>Works fine!</p>
 <p>Of course, it took probably five failed attempts before I figured out the very important bit of information there&hellip;</p>
-
 <p>One bit of code I particularly like is using a <code>for/fold</code> along with a <code>#:when</code> clause to find a maximum value. Pretty nice!</p>
-
 <blockquote>
 <p><strong>Part 2:</strong> Find the one guard/minute that is mostly likely to be asleep.</p>
 </blockquote>
-
 <p>To me at least, this is actually easier. You just need to find the highest value of any value in that entire hash:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Find the overall sleepiest guard/minute</span>
 (<span style="color:#66d9ef">define-values</span> (max-guard-id max-minute _max-value)
@@ -212,13 +196,13 @@
 (printf <span style="color:#e6db74">&#34;[part 2] guard: ~a, minute ~a: product: ~a</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>
         max-guard-id
         max-minute
-        (* max-guard-id max-minute))</code></pre></div>
-<p>Same trick, simpler code. Weird that this was part 2. :shrug:</p>
+        (* max-guard-id max-minute))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Same trick, simpler code. Weird that this was part 2. 🤷</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cat input.txt | racket snooze-detector.rkt
 
-<span style="color:#f92672">[</span>part <span style="color:#ae81ff">1</span><span style="color:#f92672">]</span> guard: <span style="color:#ae81ff">3187</span>, minute: <span style="color:#ae81ff">45</span>, product: <span style="color:#ae81ff">143415</span>
-<span style="color:#f92672">[</span>part <span style="color:#ae81ff">2</span><span style="color:#f92672">]</span> guard: <span style="color:#ae81ff">2081</span>, minute <span style="color:#ae81ff">24</span>: product: <span style="color:#ae81ff">49944</span></code></pre></div>
-<p><em>NOTE</em>: You may have noticed that I only have a Racket solution. Writing both up when I&rsquo;m really just translating between the two took far more time than I expected; time I just don&rsquo;t have this month. So I&rsquo;ll do Racket and now and possibly backfill the Python solutions some day™.</p></div>
+<span style="color:#f92672">[</span>part 1<span style="color:#f92672">]</span> guard: 3187, minute: 45, product: <span style="color:#ae81ff">143415</span>
+<span style="color:#f92672">[</span>part 2<span style="color:#f92672">]</span> guard: 2081, minute 24: product: <span style="color:#ae81ff">49944</span>
+</code></pre></div><p><em>NOTE</em>: You may have noticed that I only have a Racket solution. Writing both up when I&rsquo;m really just translating between the two took far more time than I expected; time I just don&rsquo;t have this month. So I&rsquo;ll do Racket and now and possibly backfill the Python solutions some day™.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

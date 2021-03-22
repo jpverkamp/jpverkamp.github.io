@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,11 +74,8 @@
     </header>
 
 	<div class="entry-content"><p><a href="http://www.reddit.com/r/dailyprogrammer/comments/1kqxz9/080813_challenge_132_intermediate_tiny_assembler/">Today&rsquo;s challenge</a> at /r/dailyprogrammer asks to implement an assembler for a small virtual machine. It has only 16 <a href="https://en.wikipedia.org/wiki/Assembly%20language#Opcode%20mnemonics%20and%20extended%20mnemonics">mnemonics</a> which in unique <a href="https://en.wikipedia.org/wiki/Opcode">opcodes</a> (each instruction can have multiple forms for if they&rsquo;re accessing memory or literals), so it&rsquo;s a simple virtual machine indeed. As a challenge, you&rsquo;re supposed to write an interesting program (I actually wrote a virtual machine as well to test them). As an even better challenge, we&rsquo;re supposed to prove that Tiny is <a href="https://en.wikipedia.org/wiki/Turing%20complete">Turing complete</a>. Well, let&rsquo;s get to it!</p>
-
 <p>There&rsquo;s a bit more code than normal, so I made it into its own repository. You can check it out here: <a href="https://github.com/jpverkamp/tiny">tiny on GitHub</a></p>
-
 <p>First, here&rsquo;s a short version of the specification of the language showing just the opcodes. Many of these instructions have multiple versions depending on if you&rsquo;re accessing memory or using a literal. For example, <code>MOV [0] 5</code> moves the literal value 5 into memory index 0 while <code>MOV [0] [5]</code> moves the value in memory index 5 to 0. In the following table, <code>[a]</code> represents a memory address, <code>a</code> represents a literal and <code>[a]?</code> represents that a value can be either. Here are the opcodes:</p>
-
 <table>
 <thead>
 <tr>
@@ -87,56 +84,47 @@
 <th><code>0x00 - 0x05</code></th>
 </tr>
 </thead>
-
 <tbody>
 <tr>
 <td>NOT <code>[a]</code></td>
 <td><code>[a]</code> = not <code>[a]</code></td>
 <td><code>0x06</code></td>
 </tr>
-
 <tr>
 <td>MOV <code>[a]</code> <code>[b]?</code></td>
 <td><code>[a]</code> = <code>[b]?</code></td>
 <td><code>0x07 - 0x08</code></td>
 </tr>
-
 <tr>
 <td>RANDOM <code>[a]</code></td>
 <td><code>[a]</code> = a random byte</td>
 <td><code>0x09</code></td>
 </tr>
-
 <tr>
 <td>ADD/SUB <code>[a]</code> <code>[b]?</code></td>
 <td><code>[a]</code> = <code>[a]</code> plus/minus <code>[b]?</code></td>
 <td><code>0x0a - 0x0d</code></td>
 </tr>
-
 <tr>
 <td>JMP <code>[x]?</code></td>
 <td>jump to instruction <code>[x]?</code></td>
 <td><code>0x0e - 0x0f</code></td>
 </tr>
-
 <tr>
 <td>JZ <code>[x]?</code> <code>[a]?</code></td>
 <td>jump to instruction <code>[x]?</code> if <code>[a]?</code> is zero</td>
 <td><code>0x10 - 0x13</code></td>
 </tr>
-
 <tr>
 <td>JEQ/JLS/JGT <code>[x]?</code> <code>[a]</code> <code>[b]?</code></td>
 <td>jump to instruction <code>[x]?</code> if <code>[a]</code> = / &lt; / &gt; <code>[b]?</code></td>
 <td><code>0x14 - 0x1f</code></td>
 </tr>
-
 <tr>
 <td>HALT</td>
 <td>stop the program</td>
 <td><code>0xff</code></td>
 </tr>
-
 <tr>
 <td>APRINT/DPRINT <code>[a]?</code></td>
 <td>print <code>[a]?</code> as an ASCII character or a decimal</td>
@@ -144,114 +132,110 @@
 </tr>
 </tbody>
 </table>
-
 <p>That <code>a</code> can be literal for <code>JZ</code> is a little strange (why would we jump if a literal value is zero or not?), but other than that, everything seems pretty standard. So what&rsquo;s the first step? For me, I want to define the structure of the eventual virtual machine. The original code calls for 256 cells of memory, each of which can hold a byte. But since we eventually want to simulate an arbitrary Turing machine (one of the ways to prove Turing completeness), we&rsquo;re going to have unlimited memory instead. For that, we&rsquo;ll use a hash:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Represent memory as a hash to allow for unlimited memory</span>
-(<span style="color:#66d9ef">define </span>current-memory (make-parameter (make-hasheq)))
+(<span style="color:#66d9ef">define </span>current-memory (<span style="color:#a6e22e">make-parameter</span> (<span style="color:#a6e22e">make-hasheq</span>)))
 (<span style="color:#66d9ef">define </span>memory
-  (case-lambda
-    [(key)     (hash-ref! (current-memory) key <span style="color:#ae81ff">0</span>)]
-    [(key val) (hash-set! (current-memory) key val)]))</code></pre></div>
-<p>This gives us two important pieces. Whenever we run the function, we&rsquo;ll <code><a href="http://docs.racket-lang.org/search/index.html?q=paramterize">paramterize</a></code>
+  (<span style="color:#a6e22e">case-lambda</span>
+    [(<span style="color:#a6e22e">key</span>)     (<span style="color:#a6e22e">hash-ref!</span> (<span style="color:#a6e22e">current-memory</span>) key <span style="color:#ae81ff">0</span>)]
+    [(<span style="color:#a6e22e">key</span> val) (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">current-memory</span>) key val)]))
+</code></pre></div><p>This gives us two important pieces. Whenever we run the function, we&rsquo;ll <code><a href="http://docs.racket-lang.org/search/index.html?q=paramterize">paramterize</a></code>
  over <code>current-memory</code> so that each function has it&rsquo;s own memory space. Technically, this also allows for a future expansion I want to add: function calls. For now though, all we have to know is that <code>memory</code> acts as a parameter itself. Calling it with one argument reads a value (memory defaults to all zeros, <code>hash-ref!</code> sets a default in the hash if the value doesn&rsquo;t currently exist); calling it with two write a new value. So something like <code>(memory a (+ (memory a) (memory b))</code> is a direct translation of <code>ADD [a] [b]</code>.</p>
-
 <p>In addition to that, we want a program counter. That will just be another simple parameter:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Represent the current program counter</span>
-(<span style="color:#66d9ef">define </span>current-pc (make-parameter <span style="color:#ae81ff">0</span>))</code></pre></div>
-<p>And finally, a third parameter to help <code>HALT</code> along:</p>
+(<span style="color:#66d9ef">define </span>current-pc (<span style="color:#a6e22e">make-parameter</span> <span style="color:#ae81ff">0</span>))
+</code></pre></div><p>And finally, a third parameter to help <code>HALT</code> along:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Set this to halt the virtual machine</span>
-(<span style="color:#66d9ef">define </span>currently-running (make-parameter <span style="color:#66d9ef">#f</span>))</code></pre></div>
-<p>Okay, we have all of that. But now we need some instructions. I would like to abstract this out as much as possible (so we can easily change out for more languages), so everything will be stored in a pair of data structures. We&rsquo;ll have a hash from mnemonic to a list of possible implementations and a another that goes from opcodes to a specific version. Something like this:</p>
+(<span style="color:#66d9ef">define </span>currently-running (<span style="color:#a6e22e">make-parameter</span> <span style="color:#66d9ef">#f</span>))
+</code></pre></div><p>Okay, we have all of that. But now we need some instructions. I would like to abstract this out as much as possible (so we can easily change out for more languages), so everything will be stored in a pair of data structures. We&rsquo;ll have a hash from mnemonic to a list of possible implementations and a another that goes from opcodes to a specific version. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Store instructions for the current virtual machine</span>
-(define-struct multiop (arity ops) <span style="color:#f92672">#</span>:transparent)
-(define-struct op (name arity code pattern app) <span style="color:#f92672">#</span>:transparent)
-(<span style="color:#66d9ef">define </span>current-instructions (make-parameter (make-hasheq)))
-(<span style="color:#66d9ef">define </span>current-opcodes      (make-parameter (make-hasheq)))</code></pre></div>
-<p>A <code>multiop</code> associates a mnemonic with multiple <code>op</code>s, each of which has the opcode, variable pattern (which are memory references and which are literals), and an application for that function written in Racket. Of course, we don&rsquo;t want to have to enter there all manually, that&rsquo;s a lot of copying and pasting. We&rsquo;d rather type something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-op (AND a b)
-  [<span style="color:#f92672">#</span>x01 ([a] [b]) (? (a b) (memory a (bitwise-and (memory a) (memory b))))]
-  [<span style="color:#f92672">#</span>x02 ([a] b  ) (? (a b) (memory a (bitwise-and (memory a) b)))]))</code></pre></div>
-<p>So here&rsquo;s a macro that will do exactly that:</p>
+(<span style="color:#a6e22e">define-struct</span> multiop (<span style="color:#a6e22e">arity</span> ops) <span style="color:#f92672">#</span>:transparent)
+(<span style="color:#a6e22e">define-struct</span> op (<span style="color:#a6e22e">name</span> arity code pattern app) <span style="color:#f92672">#</span>:transparent)
+(<span style="color:#66d9ef">define </span>current-instructions (<span style="color:#a6e22e">make-parameter</span> (<span style="color:#a6e22e">make-hasheq</span>)))
+(<span style="color:#66d9ef">define </span>current-opcodes      (<span style="color:#a6e22e">make-parameter</span> (<span style="color:#a6e22e">make-hasheq</span>)))
+</code></pre></div><p>A <code>multiop</code> associates a mnemonic with multiple <code>op</code>s, each of which has the opcode, variable pattern (which are memory references and which are literals), and an application for that function written in Racket. Of course, we don&rsquo;t want to have to enter there all manually, that&rsquo;s a lot of copying and pasting. We&rsquo;d rather type something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">AND</span> a b)
+  [<span style="color:#f92672">#</span>x01 ([a] [b]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span> b) (<span style="color:#a6e22e">memory</span> a (<span style="color:#a6e22e">bitwise-and</span> (<span style="color:#a6e22e">memory</span> a) (<span style="color:#a6e22e">memory</span> b))))]
+  [<span style="color:#f92672">#</span>x02 ([a] b  ) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span> b) (<span style="color:#a6e22e">memory</span> a (<span style="color:#a6e22e">bitwise-and</span> (<span style="color:#a6e22e">memory</span> a) b)))]))
+</code></pre></div><p>So here&rsquo;s a macro that will do exactly that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Macro to define instructions</span>
 <span style="color:#75715e">; Add them both to the name -&gt; multiop hash and the opcode -&gt; op hash</span>
-(define-syntax-rule (define-op (NAME ARGS <span style="color:#f92672">...</span>) [OPCODE (PARAMS <span style="color:#f92672">...</span>) APP] <span style="color:#f92672">...</span>)
+(<span style="color:#a6e22e">define-syntax-rule</span> (<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">NAME</span> ARGS <span style="color:#f92672">...</span>) [OPCODE (<span style="color:#a6e22e">PARAMS</span> <span style="color:#f92672">...</span>) APP] <span style="color:#f92672">...</span>)
   (<span style="color:#66d9ef">let </span>()
     (<span style="color:#66d9ef">define </span>arity (length <span style="color:#f92672">&#39;</span>(ARGS <span style="color:#f92672">...</span>)))
 
     (<span style="color:#66d9ef">define </span>ops 
-      (for/list ([opcode  (in-list <span style="color:#f92672">&#39;</span>(OPCODE <span style="color:#f92672">...</span>))]
-                 [pattern (in-list <span style="color:#f92672">&#39;</span>((PARAMS <span style="color:#f92672">...</span>) <span style="color:#f92672">...</span>))]
-                 [app     (in-list (list APP <span style="color:#f92672">...</span>))])
-        (op <span style="color:#e6db74">&#39;NAME</span> arity opcode pattern app)))
+      (<span style="color:#a6e22e">for/list</span> ([opcode  (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(OPCODE <span style="color:#f92672">...</span>))]
+                 [pattern (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>((<span style="color:#a6e22e">PARAMS</span> <span style="color:#f92672">...</span>) <span style="color:#f92672">...</span>))]
+                 [app     (<span style="color:#a6e22e">in-list</span> (list APP <span style="color:#f92672">...</span>))])
+        (<span style="color:#a6e22e">op</span> <span style="color:#e6db74">&#39;NAME</span> arity opcode pattern app)))
 
-    (hash-set! (current-instructions) <span style="color:#e6db74">&#39;NAME</span> (multiop arity ops))
+    (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">current-instructions</span>) <span style="color:#e6db74">&#39;NAME</span> (<span style="color:#a6e22e">multiop</span> arity ops))
 
-    (for/list ([opcode (in-list <span style="color:#f92672">&#39;</span>(OPCODE <span style="color:#f92672">...</span>))]
-               [op     (in-list ops)])
-      (hash-set! (current-opcodes) opcode op))
+    (<span style="color:#a6e22e">for/list</span> ([opcode (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(OPCODE <span style="color:#f92672">...</span>))]
+               [op     (<span style="color:#a6e22e">in-list</span> ops)])
+      (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">current-opcodes</span>) opcode op))
 
-    (void)))</code></pre></div>
-<p>Essentially, it does exactly what it says on the tin: defines an op. To do that, we do some pattern matching magic to pull apart a sequence of rules. I&rsquo;m not going to go through it piece by piece, but trust that it does work.</p>
-
+    (<span style="color:#a6e22e">void</span>)))
+</code></pre></div><p>Essentially, it does exactly what it says on the tin: defines an op. To do that, we do some pattern matching magic to pull apart a sequence of rules. I&rsquo;m not going to go through it piece by piece, but trust that it does work.</p>
 <p>With that, we can define any of our opcodes. But we don&rsquo;t want to. There&rsquo;s still a heck of a lot of copying and pasting between different sets. For example, <code>AND</code>/<code>OR</code>/<code>XOR</code>/<code>ADD</code>/<code>SUB</code> (and <code>AND</code> actually) are all the same except for the operator they apply. So let&rsquo;s write another layer of macros to handle that:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-syntax-rule (define-simple-pair NAME OP1 OP2 f)
-  (define-op (NAME a b)
-    [OP1 ([a] [b]) (? (a b) (memory a (f (memory a) (memory b))))]
-    [OP2 ([a] b  ) (? (a b) (memory a (f (memory a) b)))]))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-syntax-rule</span> (<span style="color:#a6e22e">define-simple-pair</span> NAME OP1 OP2 f)
+  (<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">NAME</span> a b)
+    [OP1 ([a] [b]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span> b) (<span style="color:#a6e22e">memory</span> a (<span style="color:#a6e22e">f</span> (<span style="color:#a6e22e">memory</span> a) (<span style="color:#a6e22e">memory</span> b))))]
+    [OP2 ([a] b  ) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span> b) (<span style="color:#a6e22e">memory</span> a (<span style="color:#a6e22e">f</span> (<span style="color:#a6e22e">memory</span> a) b)))]))
 
-(define-simple-pair AND <span style="color:#f92672">#</span>x00 <span style="color:#f92672">#</span>x01 bitwise-and)
-(define-simple-pair OR  <span style="color:#f92672">#</span>x02 <span style="color:#f92672">#</span>x03 bitwise-ior)
-(define-simple-pair XOR <span style="color:#f92672">#</span>x04 <span style="color:#f92672">#</span>x05 bitwise-xor)
+(<span style="color:#a6e22e">define-simple-pair</span> AND <span style="color:#f92672">#</span>x00 <span style="color:#f92672">#</span>x01 bitwise-and)
+(<span style="color:#a6e22e">define-simple-pair</span> OR  <span style="color:#f92672">#</span>x02 <span style="color:#f92672">#</span>x03 bitwise-ior)
+(<span style="color:#a6e22e">define-simple-pair</span> XOR <span style="color:#f92672">#</span>x04 <span style="color:#f92672">#</span>x05 bitwise-xor)
 
-(define-simple-pair MOV <span style="color:#f92672">#</span>x07 <span style="color:#f92672">#</span>x08 (? (a b) b))
+(<span style="color:#a6e22e">define-simple-pair</span> MOV <span style="color:#f92672">#</span>x07 <span style="color:#f92672">#</span>x08 (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span> b) b))
 
-(define-simple-pair ADD <span style="color:#f92672">#</span>x0a <span style="color:#f92672">#</span>x0b +)
-(define-simple-pair SUB <span style="color:#f92672">#</span>x0c <span style="color:#f92672">#</span>x0d -)</code></pre></div>
-<p>Easy enough. Some though, we can&rsquo;t do this way and have to just write. Like <code>NOT</code> and <code>RANDOM</code>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-op (NOT a)
-  [<span style="color:#f92672">#</span>x06 ([a]) (? (a) (memory a (bitwise-not (memory a))))])
+(<span style="color:#a6e22e">define-simple-pair</span> ADD <span style="color:#f92672">#</span>x0a <span style="color:#f92672">#</span>x0b +)
+(<span style="color:#a6e22e">define-simple-pair</span> SUB <span style="color:#f92672">#</span>x0c <span style="color:#f92672">#</span>x0d -)
+</code></pre></div><p>Easy enough. Some though, we can&rsquo;t do this way and have to just write. Like <code>NOT</code> and <code>RANDOM</code>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">NOT</span> a)
+  [<span style="color:#f92672">#</span>x06 ([a]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span>) (<span style="color:#a6e22e">memory</span> a (<span style="color:#a6e22e">bitwise-not</span> (<span style="color:#a6e22e">memory</span> a))))])
 
-(define-op (RANDOM a)
-  [<span style="color:#f92672">#</span>x09 ([a]) (? (a) (memory a (random <span style="color:#ae81ff">256</span>)))])</code></pre></div>
-<p>Since they don&rsquo;t match any other parameter patterns, the first two jumps we have to define separately as well:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-op (JMP x)
-  [<span style="color:#f92672">#</span>x0e ([x]) (? (x) (current-pc (memory x)))]
-  [<span style="color:#f92672">#</span>x0f (x)   (? (x) (current-pc x))])
+(<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">RANDOM</span> a)
+  [<span style="color:#f92672">#</span>x09 ([a]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span>) (<span style="color:#a6e22e">memory</span> a (<span style="color:#a6e22e">random</span> <span style="color:#ae81ff">256</span>)))])
+</code></pre></div><p>Since they don&rsquo;t match any other parameter patterns, the first two jumps we have to define separately as well:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">JMP</span> x)
+  [<span style="color:#f92672">#</span>x0e ([x]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span>) (<span style="color:#a6e22e">current-pc</span> (<span style="color:#a6e22e">memory</span> x)))]
+  [<span style="color:#f92672">#</span>x0f (<span style="color:#a6e22e">x</span>)   (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span>) (<span style="color:#a6e22e">current-pc</span> x))])
 
-(define-op (JZ x a)
-  [<span style="color:#f92672">#</span>x10 ([x] [a]) (? (x a) (when (zero? (memory a)) (current-pc (memory x))))]
-  [<span style="color:#f92672">#</span>x11 ([x] a)   (? (x a) (when (zero? a) (current-pc (memory x))))]
-  [<span style="color:#f92672">#</span>x12 (x   [a]) (? (x a) (when (zero? (memory a)) (current-pc x)))]
-  [<span style="color:#f92672">#</span>x13 (x   a)   (? (x a) (when (zero? a) (current-pc x)))])</code></pre></div>
-<p>But now we can write a macro for the other three:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-syntax-rule (define-comparison-jump NAME OP1 OP2 OP3 OP4 f)
-  (define-op (NAME x a b)
-    [OP1 ([x] [a] [b]) (? (x a b) (when (f (memory a) (memory b)) (current-pc (memory x))))]
-    [OP2 (x   [a] [b]) (? (x a b) (when (f (memory a) (memory b)) (current-pc x)))]
-    [OP3 ([x] [a] b)   (? (x a b) (when (f (memory a) b) (current-pc (memory x))))]
-    [OP4 (x   [a] b)   (? (x a b) (when (f (memory a) b) (current-pc x)))]))
+(<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">JZ</span> x a)
+  [<span style="color:#f92672">#</span>x10 ([x] [a]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a) (<span style="color:#a6e22e">when</span> (zero? (<span style="color:#a6e22e">memory</span> a)) (<span style="color:#a6e22e">current-pc</span> (<span style="color:#a6e22e">memory</span> x))))]
+  [<span style="color:#f92672">#</span>x11 ([x] a)   (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a) (<span style="color:#a6e22e">when</span> (zero? a) (<span style="color:#a6e22e">current-pc</span> (<span style="color:#a6e22e">memory</span> x))))]
+  [<span style="color:#f92672">#</span>x12 (<span style="color:#a6e22e">x</span>   [a]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a) (<span style="color:#a6e22e">when</span> (zero? (<span style="color:#a6e22e">memory</span> a)) (<span style="color:#a6e22e">current-pc</span> x)))]
+  [<span style="color:#f92672">#</span>x13 (<span style="color:#a6e22e">x</span>   a)   (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a) (<span style="color:#a6e22e">when</span> (zero? a) (<span style="color:#a6e22e">current-pc</span> x)))])
+</code></pre></div><p>But now we can write a macro for the other three:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-syntax-rule</span> (<span style="color:#a6e22e">define-comparison-jump</span> NAME OP1 OP2 OP3 OP4 f)
+  (<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">NAME</span> x a b)
+    [OP1 ([x] [a] [b]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a b) (<span style="color:#a6e22e">when</span> (<span style="color:#a6e22e">f</span> (<span style="color:#a6e22e">memory</span> a) (<span style="color:#a6e22e">memory</span> b)) (<span style="color:#a6e22e">current-pc</span> (<span style="color:#a6e22e">memory</span> x))))]
+    [OP2 (<span style="color:#a6e22e">x</span>   [a] [b]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a b) (<span style="color:#a6e22e">when</span> (<span style="color:#a6e22e">f</span> (<span style="color:#a6e22e">memory</span> a) (<span style="color:#a6e22e">memory</span> b)) (<span style="color:#a6e22e">current-pc</span> x)))]
+    [OP3 ([x] [a] b)   (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a b) (<span style="color:#a6e22e">when</span> (<span style="color:#a6e22e">f</span> (<span style="color:#a6e22e">memory</span> a) b) (<span style="color:#a6e22e">current-pc</span> (<span style="color:#a6e22e">memory</span> x))))]
+    [OP4 (<span style="color:#a6e22e">x</span>   [a] b)   (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">x</span> a b) (<span style="color:#a6e22e">when</span> (<span style="color:#a6e22e">f</span> (<span style="color:#a6e22e">memory</span> a) b) (<span style="color:#a6e22e">current-pc</span> x)))]))
 
-(define-comparison-jump JEQ <span style="color:#f92672">#</span>x14 <span style="color:#f92672">#</span>x15 <span style="color:#f92672">#</span>x16 <span style="color:#f92672">#</span>x17 =)
-(define-comparison-jump JLS <span style="color:#f92672">#</span>x18 <span style="color:#f92672">#</span>x19 <span style="color:#f92672">#</span>x1a <span style="color:#f92672">#</span>x1b &lt;)
-(define-comparison-jump JGT <span style="color:#f92672">#</span>x1c <span style="color:#f92672">#</span>x1d <span style="color:#f92672">#</span>x1e <span style="color:#f92672">#</span>x1f &gt;)</code></pre></div>
-<p>Then finally, we have <code>HALT</code> and the print functions:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-op (HALT)
-  [<span style="color:#f92672">#</span>xff () (? () (currently-running <span style="color:#66d9ef">#f</span>))])
+(<span style="color:#a6e22e">define-comparison-jump</span> JEQ <span style="color:#f92672">#</span>x14 <span style="color:#f92672">#</span>x15 <span style="color:#f92672">#</span>x16 <span style="color:#f92672">#</span>x17 =)
+(<span style="color:#a6e22e">define-comparison-jump</span> JLS <span style="color:#f92672">#</span>x18 <span style="color:#f92672">#</span>x19 <span style="color:#f92672">#</span>x1a <span style="color:#f92672">#</span>x1b &lt;)
+(<span style="color:#a6e22e">define-comparison-jump</span> JGT <span style="color:#f92672">#</span>x1c <span style="color:#f92672">#</span>x1d <span style="color:#f92672">#</span>x1e <span style="color:#f92672">#</span>x1f &gt;)
+</code></pre></div><p>Then finally, we have <code>HALT</code> and the print functions:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">HALT</span>)
+  [<span style="color:#f92672">#</span>xff () (<span style="color:#a6e22e">?</span> () (<span style="color:#a6e22e">currently-running</span> <span style="color:#66d9ef">#f</span>))])
 
-(define-syntax-rule (define-print NAME OP1 OP2 f)
-  (define-op (NAME a)
-    [OP1 ([a]) (? (a) (f (memory a)))]
-    [OP2 (a)   (? (a) (f a))]))
+(<span style="color:#a6e22e">define-syntax-rule</span> (<span style="color:#a6e22e">define-print</span> NAME OP1 OP2 f)
+  (<span style="color:#a6e22e">define-op</span> (<span style="color:#a6e22e">NAME</span> a)
+    [OP1 ([a]) (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span>) (<span style="color:#a6e22e">f</span> (<span style="color:#a6e22e">memory</span> a)))]
+    [OP2 (<span style="color:#a6e22e">a</span>)   (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">a</span>) (<span style="color:#a6e22e">f</span> a))]))
 
-(define-print APRINT <span style="color:#f92672">#</span>x20 <span style="color:#f92672">#</span>x21 (? (byte) (display (integer-&gt;char byte))))
-(define-print DPRINT <span style="color:#f92672">#</span>x22 <span style="color:#f92672">#</span>x23 (? (byte) (display byte)))</code></pre></div>
-<p>There we have it. Everything is nicely defined. Now we can get into the real meat of the code: parsing, assembling, and running.</p>
-
+(<span style="color:#a6e22e">define-print</span> APRINT <span style="color:#f92672">#</span>x20 <span style="color:#f92672">#</span>x21 (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">byte</span>) (display (integer-&gt;char byte))))
+(<span style="color:#a6e22e">define-print</span> DPRINT <span style="color:#f92672">#</span>x22 <span style="color:#f92672">#</span>x23 (<span style="color:#a6e22e">?</span> (<span style="color:#a6e22e">byte</span>) (display byte)))
+</code></pre></div><p>There we have it. Everything is nicely defined. Now we can get into the real meat of the code: parsing, assembling, and running.</p>
 <p>First parsing. This is actually trivial. Since everything in the input is either a symbol, a number, or a list, Racket&rsquo;s <code>read</code> function will handle it just fine:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Parse instructions from input</span>
-(<span style="color:#66d9ef">define </span>(parse [in (current-input-port)])
-  (port-&gt;list read in))</code></pre></div>
-<p>All <code>port-&gt;list</code> will do is repeatedly call the first argument on the second. This will give us a list of symbols, numbers, and numbers in lists, something like this:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">parse</span> [in (<span style="color:#a6e22e">current-input-port</span>)])
+  (<span style="color:#a6e22e">port-&gt;list</span> read in))
+</code></pre></div><p>All <code>port-&gt;list</code> will do is repeatedly call the first argument on the second. This will give us a list of symbols, numbers, and numbers in lists, something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>TEST-CODE <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">MOV [0] 5
 </span><span style="color:#e6db74">MOV [1] 7
@@ -259,92 +243,90 @@
 </span><span style="color:#e6db74">DPRINT [0]
 </span><span style="color:#e6db74">HALT
 </span><span style="color:#e6db74">&#34;</span>)
-&gt; (call-with-input-string TEST-CODE parse)
-<span style="color:#f92672">&#39;</span>(MOV (<span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">5</span> MOV (<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">7</span> ADD (<span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">1</span>) DPRINT (<span style="color:#ae81ff">0</span>) HALT)</code></pre></div>
-<p>Next, we have to assemble the functions. Since that&rsquo;s the actual problem at hand, we&rsquo;ll look at that a little more carefully although it&rsquo;s not a terribly long function. First, the entire function:</p>
+&gt; (<span style="color:#a6e22e">call-with-input-string</span> TEST-CODE parse)
+<span style="color:#f92672">&#39;</span>(MOV (<span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">5</span> MOV (<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">7</span> ADD (<span style="color:#ae81ff">0</span>) (<span style="color:#ae81ff">1</span>) DPRINT (<span style="color:#ae81ff">0</span>) HALT)
+</code></pre></div><p>Next, we have to assemble the functions. Since that&rsquo;s the actual problem at hand, we&rsquo;ll look at that a little more carefully although it&rsquo;s not a terribly long function. First, the entire function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Assemble a list of ops</span>
-(<span style="color:#66d9ef">define </span>(assemble code)
-  (cond
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">assemble</span> code)
+  (<span style="color:#a6e22e">cond</span>
     [(null? code) <span style="color:#f92672">&#39;</span>()]
     [else
-     (<span style="color:#66d9ef">define </span>name (first code))
-     (<span style="color:#66d9ef">define </span>multiop (hash-ref (current-instructions) name))
-     (<span style="color:#66d9ef">define </span>params (take (rest code) (multiop-arity multiop)))
+     (<span style="color:#66d9ef">define </span>name (<span style="color:#a6e22e">first</span> code))
+     (<span style="color:#66d9ef">define </span>multiop (<span style="color:#a6e22e">hash-ref</span> (<span style="color:#a6e22e">current-instructions</span>) name))
+     (<span style="color:#66d9ef">define </span>params (<span style="color:#a6e22e">take</span> (<span style="color:#a6e22e">rest</span> code) (<span style="color:#a6e22e">multiop-arity</span> multiop)))
      (<span style="color:#66d9ef">define </span>op
-       (<span style="color:#66d9ef">let </span>loop ([ops (multiop-ops multiop)])
-         (cond
+       (<span style="color:#66d9ef">let </span>loop ([ops (<span style="color:#a6e22e">multiop-ops</span> multiop)])
+         (<span style="color:#a6e22e">cond</span>
            [(null? ops)                
-            (error <span style="color:#e6db74">&#39;assemble</span> <span style="color:#e6db74">&#34;unmatched pattern ~a for ~a\n&#34;</span> params name)]
-           [(matched-patterns? params (op-pattern (first ops))) 
-            (first ops)]
+            (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;assemble</span> <span style="color:#e6db74">&#34;unmatched pattern ~a for ~a\n&#34;</span> params name)]
+           [(<span style="color:#a6e22e">matched-patterns?</span> params (<span style="color:#a6e22e">op-pattern</span> (<span style="color:#a6e22e">first</span> ops))) 
+            (<span style="color:#a6e22e">first</span> ops)]
            [else
-            (loop (rest ops))])))
-     <span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>(op-code op) <span style="color:#f92672">,@</span>(flatten params) <span style="color:#f92672">.</span> <span style="color:#f92672">,</span>(assemble (drop code (+ <span style="color:#ae81ff">1</span> (multiop-arity multiop)))))]))</code></pre></div>
-<p>The first interesting part is the decoding. We&rsquo;ll pull the <code>first</code> thing in the current <code>code</code> list out as the mnemonic. That lets us access the <code>(current-instructions)</code> hash and figure out the arity of the function we&rsquo;re working on. After that, we&rsquo;ll use the <code>let loop</code> to find which op matches that (to get the op code). That needs the <code>matched-patterns?</code> function:</p>
+            (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">rest</span> ops))])))
+     <span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>(<span style="color:#a6e22e">op-code</span> op) <span style="color:#f92672">,@</span>(<span style="color:#a6e22e">flatten</span> params) <span style="color:#f92672">.</span> <span style="color:#f92672">,</span>(<span style="color:#a6e22e">assemble</span> (<span style="color:#a6e22e">drop</span> code (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">multiop-arity</span> multiop)))))]))
+</code></pre></div><p>The first interesting part is the decoding. We&rsquo;ll pull the <code>first</code> thing in the current <code>code</code> list out as the mnemonic. That lets us access the <code>(current-instructions)</code> hash and figure out the arity of the function we&rsquo;re working on. After that, we&rsquo;ll use the <code>let loop</code> to find which op matches that (to get the op code). That needs the <code>matched-patterns?</code> function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Match two patterns of possibly matching lists</span>
-(<span style="color:#66d9ef">define </span>(matched-patterns? ls1 ls2)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">matched-patterns?</span> ls1 ls2)
   (<span style="color:#66d9ef">or </span>(<span style="color:#66d9ef">and </span>(null? ls1) (null? ls2))
       (<span style="color:#66d9ef">and </span>(not (null? ls1))
            (not (null? ls2))
-           (<span style="color:#66d9ef">or </span>(<span style="color:#66d9ef">and </span>(list? (first ls1)) 
-                    (list? (first ls2))
-                    (matched-patterns? (rest ls1) (rest ls2)))
-               (<span style="color:#66d9ef">and </span>(not (list? (first ls1)))
-                    (not (list? (first ls2)))
-                    (matched-patterns? (rest ls1) (rest ls2)))))))</code></pre></div>
-<p>It looks complicated, but all it says is that the patterns have to be the same length and when there&rsquo;s a list in one, it has to be in both. That way <code>((a) b)</code> will match <code>((0) 5)</code> but not <code((0) (5))</code>.</p>
-
+           (<span style="color:#66d9ef">or </span>(<span style="color:#66d9ef">and </span>(list? (<span style="color:#a6e22e">first</span> ls1)) 
+                    (list? (<span style="color:#a6e22e">first</span> ls2))
+                    (<span style="color:#a6e22e">matched-patterns?</span> (<span style="color:#a6e22e">rest</span> ls1) (<span style="color:#a6e22e">rest</span> ls2)))
+               (<span style="color:#66d9ef">and </span>(not (list? (<span style="color:#a6e22e">first</span> ls1)))
+                    (not (list? (<span style="color:#a6e22e">first</span> ls2)))
+                    (<span style="color:#a6e22e">matched-patterns?</span> (<span style="color:#a6e22e">rest</span> ls1) (<span style="color:#a6e22e">rest</span> ls2)))))))
+</code></pre></div><p>It looks complicated, but all it says is that the patterns have to be the same length and when there&rsquo;s a list in one, it has to be in both. That way <code>((a) b)</code> will match <code>((0) 5)</code> but not &lt;code((0) (5))</code>.</p>
 <p>Finally, we build the opcode with this line:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>(op-code op) <span style="color:#f92672">,@</span>(flatten params) <span style="color:#f92672">.</span> <span style="color:#f92672">,</span>(assemble (drop code (+ <span style="color:#ae81ff">1</span> (multiop-arity multiop)))))</code></pre></div>
-<p>It uses quasiquote to build the list, but if you&rsquo;re not familiar with that, it&rsquo;s essentially the same as this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(append (list (op-code op)) (flatten params) (assemble (drop code (+ <span style="color:#ae81ff">1</span> (multiop-arity multiop)))))</code></pre></div>
-<p>And that&rsquo;s it. Now we can assemble the code:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (assemble (call-with-input-string TEST-CODE parse))
-<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">8</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">34</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">255</span>)</code></pre></div>
-<p>It doesn&rsquo;t print in hex, but those are the correct values. To see them in hex, we can use these:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(format-hex byte)
-  (format (<span style="color:#66d9ef">if </span>(&lt; byte <span style="color:#ae81ff">16</span>) <span style="color:#e6db74">&#34;0x0~x&#34;</span> <span style="color:#e6db74">&#34;0x~x&#34;</span>) byte))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">`</span>(<span style="color:#f92672">,</span>(<span style="color:#a6e22e">op-code</span> op) <span style="color:#f92672">,@</span>(<span style="color:#a6e22e">flatten</span> params) <span style="color:#f92672">.</span> <span style="color:#f92672">,</span>(<span style="color:#a6e22e">assemble</span> (<span style="color:#a6e22e">drop</span> code (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">multiop-arity</span> multiop)))))
+</code></pre></div><p>It uses quasiquote to build the list, but if you&rsquo;re not familiar with that, it&rsquo;s essentially the same as this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(append (list (<span style="color:#a6e22e">op-code</span> op)) (<span style="color:#a6e22e">flatten</span> params) (<span style="color:#a6e22e">assemble</span> (<span style="color:#a6e22e">drop</span> code (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">multiop-arity</span> multiop)))))
+</code></pre></div><p>And that&rsquo;s it. Now we can assemble the code:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">assemble</span> (<span style="color:#a6e22e">call-with-input-string</span> TEST-CODE parse))
+<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">8</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">34</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">255</span>)
+</code></pre></div><p>It doesn&rsquo;t print in hex, but those are the correct values. To see them in hex, we can use these:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">format-hex</span> byte)
+  (<span style="color:#a6e22e">format</span> (<span style="color:#66d9ef">if </span>(&lt; byte <span style="color:#ae81ff">16</span>) <span style="color:#e6db74">&#34;0x0~x&#34;</span> <span style="color:#e6db74">&#34;0x~x&#34;</span>) byte))
 
-(<span style="color:#66d9ef">define </span>(bytecode-&gt;string code)
-  (string-join (map format-hex code) <span style="color:#e6db74">&#34; &#34;</span>))</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (bytecode-&gt;string (assemble (call-with-input-string TEST-CODE parse)))
-<span style="color:#e6db74">&#34;0x08 0x00 0x05 0x08 0x01 0x07 0x0a 0x00 0x01 0x22 0x00 0xff&#34;</span></code></pre></div>
-<p>That would be the end of the actual challenge. But I already have all of these functions defined, so let&rsquo;s go ahead and run them! The <code>run</code> function isn&rsquo;t actually any longer than the <code>assemble</code> function:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">bytecode-&gt;string</span> code)
+  (<span style="color:#a6e22e">string-join</span> (map format-hex code) <span style="color:#e6db74">&#34; &#34;</span>))
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">bytecode-&gt;string</span> (<span style="color:#a6e22e">assemble</span> (<span style="color:#a6e22e">call-with-input-string</span> TEST-CODE parse)))
+<span style="color:#e6db74">&#34;0x08 0x00 0x05 0x08 0x01 0x07 0x0a 0x00 0x01 0x22 0x00 0xff&#34;</span>
+</code></pre></div><p>That would be the end of the actual challenge. But I already have all of these functions defined, so let&rsquo;s go ahead and run them! The <code>run</code> function isn&rsquo;t actually any longer than the <code>assemble</code> function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Run a given assembled code</span>
-(<span style="color:#66d9ef">define </span>(run code)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">run</span> code)
   (<span style="color:#66d9ef">define </span>vcode (list-&gt;vector code))
-  (parameterize ([current-pc <span style="color:#ae81ff">0</span>] [current-memory (make-hasheq)] [currently-running <span style="color:#66d9ef">#t</span>])
+  (<span style="color:#a6e22e">parameterize</span> ([current-pc <span style="color:#ae81ff">0</span>] [current-memory (<span style="color:#a6e22e">make-hasheq</span>)] [currently-running <span style="color:#66d9ef">#t</span>])
     (<span style="color:#66d9ef">let </span>loop ()
-      (<span style="color:#66d9ef">define </span>op (hash-ref (current-opcodes) (vector-ref vcode (current-pc))))
+      (<span style="color:#66d9ef">define </span>op (<span style="color:#a6e22e">hash-ref</span> (<span style="color:#a6e22e">current-opcodes</span>) (vector-ref vcode (<span style="color:#a6e22e">current-pc</span>))))
       (<span style="color:#66d9ef">define </span>args 
-        (for/list ([i (in-range (+ <span style="color:#ae81ff">1</span> (current-pc)) (+ <span style="color:#ae81ff">1</span> (current-pc) (op-arity op)))])
+        (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-range</span> (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">current-pc</span>)) (+ <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">current-pc</span>) (<span style="color:#a6e22e">op-arity</span> op)))])
           (vector-ref vcode i)))
-      (current-pc (+ (current-pc) <span style="color:#ae81ff">1</span> (op-arity op))) <span style="color:#75715e">; Apply first to not break jumps</span>
-      (apply (op-app op) args)
-      (when (currently-running)
-        (loop)))))</code></pre></div>
-<p>Essentially, we turn the code into a vector (since we&rsquo;re going to be jumping around a bit). Then we use the <code>(current-opcodes)</code> hash to look up the function. <code>args</code> come from the code vector</code>. About the only sneaky part of this code is that we update the <code>pc</code> before we run the code. As the note mentions, this is so that the jumps will work correctly when they override it. Then, so long as we haven&rsquo;t called <code>HALT</code> we just keep looping.</p>
-
+      (<span style="color:#a6e22e">current-pc</span> (+ (<span style="color:#a6e22e">current-pc</span>) <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">op-arity</span> op))) <span style="color:#75715e">; Apply first to not break jumps</span>
+      (apply (<span style="color:#a6e22e">op-app</span> op) args)
+      (<span style="color:#a6e22e">when</span> (<span style="color:#a6e22e">currently-running</span>)
+        (<span style="color:#a6e22e">loop</span>)))))
+</code></pre></div><p>Essentially, we turn the code into a vector (since we&rsquo;re going to be jumping around a bit). Then we use the <code>(current-opcodes)</code> hash to look up the function. <code>args</code> come from the code vector</code>. About the only sneaky part of this code is that we update the <code>pc</code> before we run the code. As the note mentions, this is so that the jumps will work correctly when they override it. Then, so long as we haven&rsquo;t called <code>HALT</code> we just keep looping.</p>
 <p>I did originally have a heck of a time getting this to work correctly since I wasn&rsquo;t updating the <code>pc</code> correctly. You need 1 for the opcode <strong>and</strong> 1 for each argument that you&rsquo;re consuming. Oops. 😄</p>
-
 <p>But now we can run our code:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (run (assemble (call-with-input-string TEST-CODE parse)))
-<span style="color:#ae81ff">12</span></code></pre></div>
-<p>If you remember correctly, this function was supposed to add 5 and 7. Looks like a job well done. 😄 For something a little more complicated though, why don&rsquo;t we try multiplying two numbers (the example given in the original problem). I wrote a function <code>tiny</code> which parses, assembles, and then runs any code you give it, here is the results:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">run</span> (<span style="color:#a6e22e">assemble</span> (<span style="color:#a6e22e">call-with-input-string</span> TEST-CODE parse)))
+<span style="color:#ae81ff">12</span>
+</code></pre></div><p>If you remember correctly, this function was supposed to add 5 and 7. Looks like a job well done. 😄 For something a little more complicated though, why don&rsquo;t we try multiplying two numbers (the example given in the original problem). I wrote a function <code>tiny</code> which parses, assembles, and then runs any code you give it, here is the results:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">source:
-MOV <span style="color:#f92672">[</span><span style="color:#ae81ff">0</span><span style="color:#f92672">]</span> <span style="color:#ae81ff">5</span>
-MOV <span style="color:#f92672">[</span><span style="color:#ae81ff">1</span><span style="color:#f92672">]</span> <span style="color:#ae81ff">7</span>
-MOV <span style="color:#f92672">[</span><span style="color:#ae81ff">2</span><span style="color:#f92672">]</span> <span style="color:#ae81ff">0</span>
-MOV <span style="color:#f92672">[</span><span style="color:#ae81ff">3</span><span style="color:#f92672">]</span> <span style="color:#ae81ff">0</span>
-DPRINT <span style="color:#f92672">[</span><span style="color:#ae81ff">0</span><span style="color:#f92672">]</span>
+MOV <span style="color:#f92672">[</span>0<span style="color:#f92672">]</span> <span style="color:#ae81ff">5</span>
+MOV <span style="color:#f92672">[</span>1<span style="color:#f92672">]</span> <span style="color:#ae81ff">7</span>
+MOV <span style="color:#f92672">[</span>2<span style="color:#f92672">]</span> <span style="color:#ae81ff">0</span>
+MOV <span style="color:#f92672">[</span>3<span style="color:#f92672">]</span> <span style="color:#ae81ff">0</span>
+DPRINT <span style="color:#f92672">[</span>0<span style="color:#f92672">]</span>
 APRINT <span style="color:#ae81ff">42</span>
-DPRINT <span style="color:#f92672">[</span><span style="color:#ae81ff">1</span><span style="color:#f92672">]</span>
+DPRINT <span style="color:#f92672">[</span>1<span style="color:#f92672">]</span>
 APRINT <span style="color:#ae81ff">61</span>
-JEQ <span style="color:#ae81ff">32</span> <span style="color:#f92672">[</span><span style="color:#ae81ff">1</span><span style="color:#f92672">]</span> <span style="color:#f92672">[</span><span style="color:#ae81ff">3</span><span style="color:#f92672">]</span>
-ADD <span style="color:#f92672">[</span><span style="color:#ae81ff">3</span><span style="color:#f92672">]</span> <span style="color:#ae81ff">1</span>
-ADD <span style="color:#f92672">[</span><span style="color:#ae81ff">2</span><span style="color:#f92672">]</span> <span style="color:#f92672">[</span><span style="color:#ae81ff">0</span><span style="color:#f92672">]</span>
+JEQ <span style="color:#ae81ff">32</span> <span style="color:#f92672">[</span>1<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>3<span style="color:#f92672">]</span>
+ADD <span style="color:#f92672">[</span>3<span style="color:#f92672">]</span> <span style="color:#ae81ff">1</span>
+ADD <span style="color:#f92672">[</span>2<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>0<span style="color:#f92672">]</span>
 JMP <span style="color:#ae81ff">20</span>
-MOV <span style="color:#f92672">[</span><span style="color:#ae81ff">0</span><span style="color:#f92672">]</span> <span style="color:#f92672">[</span><span style="color:#ae81ff">2</span><span style="color:#f92672">]</span>
-DPRINT <span style="color:#f92672">[</span><span style="color:#ae81ff">0</span><span style="color:#f92672">]</span>
+MOV <span style="color:#f92672">[</span>0<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>2<span style="color:#f92672">]</span>
+DPRINT <span style="color:#f92672">[</span>0<span style="color:#f92672">]</span>
 HALT
 
 bytecode:
@@ -360,25 +342,16 @@ bytecode:
 0x00 0xff
 
 running:
-<span style="color:#ae81ff">5</span>*7<span style="color:#f92672">=</span><span style="color:#ae81ff">35</span></code></pre></div>
-<p>Looks pretty good, eh?</p>
-
+5*7<span style="color:#f92672">=</span><span style="color:#ae81ff">35</span>
+</code></pre></div><p>Looks pretty good, eh?</p>
 <p>We still have one more step though. We want to be able to prove that Tiny is <a href="https://en.wikipedia.org/wiki/Turing%20complete">Turing complete</a>. One way to do that is to be able to simulate a Turing machine. That sounds simple(ish), let&rsquo;s do that. 😄</p>
-
 <p><strong>A while later.</strong></p>
-
 <p><del>Okay, so it&rsquo;s not so simple. It&rsquo;s possible to get close, but I don&rsquo;t think the language as stated is actually Turing complete&hellip; I don&rsquo;t have a format proof, but so far as informal goes, there&rsquo;s a strictly finite address space. Once you&rsquo;ve written a Tiny program, you know exactly how many memory address you will have (anything like this: <code>[a]</code>), which means simulating a Turing machine is out of the question so far as I can tell. I&rsquo;d love to be proven wrong though; leave a comment if you can figure out how to do it.</del></p>
-
 <p><strong>Update 22 August 2013</strong>: You can also prove it by only allowing for unbounded integers in memory cells: <a href="https://blog.jverkamp.com/2013/08/22/tiny-turing-completeness-without-mmov/">‘Tiny’ Turing completeness without MMOV</a></p>
-
 <p>Other than that, it seems like we need one more instruction. You could add a few to make it cleaner, but it can be done with just this:</p>
-
 <p><code>MMOV [a] [b]</code> - set <code>M[M[A]]</code> = <code>M[M[B]]</code></p>
-
 <p>Essentially, this gives us the ability to set memory based on an address also in memory. This way, we can actually encode vectors or any other manner of more complicated data structure. Given that though, we have enough to encode any arbitrary Turing machine in Tiny.</p>
-
 <p>To do so, we&rsquo;ll start with the definition for a Turing machine <a href="https://en.wikipedia.org/wiki/Turing%20machine">on Wikipedia</a>:</p>
-
 <ul>
 <li>Q is a finite, non-empty set of <strong>states</strong></li>
 <li>Γ is a finite, non-empty set of the <strong>tape alphabet/symbols</strong></li>
@@ -388,12 +361,10 @@ running:
 <li>F ⊆ Q is the set of <strong>final</strong> or <strong>accepting states</strong>.</li>
 <li>δ is a <a href="https://en.wikipedia.org/wiki/partial%20function">partial function</a> called the <strong><a href="https://en.wikipedia.org/wiki/transition%20function">transition function</a></strong>, where L is left shift, R is right shift. (A relatively uncommon variant allows &ldquo;no shift&rdquo;, say N, as a third element of the latter set.)</li>
 </ul>
-
 <p>We&rsquo;re going to simplify that a little bit by assuming that the blank symbol is 0 (and that 0 ∋ Γ), so b no longer needs to be defined and ∑ = Γ. Furthermore, we&rsquo;ll restrict F to only a single state. This is a valid transition since you can add transitions from all previous final states to F that do not modify the tape.</p>
-
 <p>With all that, we&rsquo;re going to have a function something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Convert a Turing machine into a Tiny program</span>
-(<span style="color:#66d9ef">define </span>(turing-&gt;tiny states      <span style="color:#75715e">; A list of values (must be eq?-able) denoting states</span>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">turing-&gt;tiny</span> states      <span style="color:#75715e">; A list of values (must be eq?-able) denoting states</span>
                       symbols     <span style="color:#75715e">; A list of values (ditto) denoting symbols on the tape, default is 0</span>
                       start-state <span style="color:#75715e">; The starting state (must be in states)</span>
                       final-state <span style="color:#75715e">; The halt state (ditto)</span>
@@ -402,13 +373,12 @@ running:
                                   <span style="color:#75715e">;   move-tape must be either L or R for left and right respectively</span>
                       initial     <span style="color:#75715e">; The initial tape (list of symbols)</span>
                       )
-  <span style="color:#f92672">...</span>)</code></pre></div>
-<p>Inside of that function, we&rsquo;ll first want to set up a few transition functions to convert from states and symbols to integers:</p>
+  <span style="color:#f92672">...</span>)
+</code></pre></div><p>Inside of that function, we&rsquo;ll first want to set up a few transition functions to convert from states and symbols to integers:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Assign an integer value to each state and symbol</span>
-(<span style="color:#66d9ef">define </span>state-&gt;index (for/hash ([i (in-naturals)] [v (in-list states)]) (values v i)))
-(<span style="color:#66d9ef">define </span>symbol-&gt;index (for/hash ([i (in-naturals)] [v (in-list symbols)]) (values v i)))</code></pre></div>
-<p>Then we can start converting. For my case, I&rsquo;m going to assign the first memory addresses as follows:</p>
-
+(<span style="color:#66d9ef">define </span>state-&gt;index (<span style="color:#a6e22e">for/hash</span> ([i (<span style="color:#a6e22e">in-naturals</span>)] [v (<span style="color:#a6e22e">in-list</span> states)]) (values v i)))
+(<span style="color:#66d9ef">define </span>symbol-&gt;index (<span style="color:#a6e22e">for/hash</span> ([i (<span style="color:#a6e22e">in-naturals</span>)] [v (<span style="color:#a6e22e">in-list</span> symbols)]) (values v i)))
+</code></pre></div><p>Then we can start converting. For my case, I&rsquo;m going to assign the first memory addresses as follows:</p>
 <ul>
 <li><code>M[0]</code> = current state, starts as <code>start-state</code></li>
 <li><code>M[1]</code> = current tape pointer, starts at 4</li>
@@ -416,10 +386,9 @@ running:
 <li><code>M[3]</code> = variable to store the current symbol, starts as 0</li>
 <li><code>M[4+]</code> = initial tape</li>
 </ul>
-
 <p>To generate this, we&rsquo;ll have to output the following code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">`</span>(<span style="color:#75715e">; Store the current state in M[0]</span>
-  MOV [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(hash-ref state-&gt;index start-state)
+  MOV [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(<span style="color:#a6e22e">hash-ref</span> state-&gt;index start-state)
   <span style="color:#75715e">; Store the current tape pointer in M[1]</span>
   MOV [<span style="color:#ae81ff">1</span>] <span style="color:#ae81ff">4</span>
   <span style="color:#75715e">; M[2] stores the 3 offset so we can use mmov, M[3] is for the current state</span>
@@ -427,40 +396,39 @@ running:
   <span style="color:#75715e">; Encode initial state in M[4] ... (tape expands infinitely to the right)</span>
   <span style="color:#f92672">,@</span>(apply 
      append
-     (for/list ([offset (in-naturals)]
-                [value (in-list initial)])
-       <span style="color:#f92672">`</span>(MOV [<span style="color:#f92672">,</span>(+ <span style="color:#ae81ff">4</span> offset)] <span style="color:#f92672">,</span>(hash-ref symbol-&gt;index value))))
-  <span style="color:#f92672">...</span>)</code></pre></div>
-<p>We&rsquo;re going straight to the parsed version of Tiny. It seems more sensible than outputting a string only to read it right back in&hellip; That&rsquo;s what Lisp-like languages do after all, treat code and data as one.</p>
-
+     (<span style="color:#a6e22e">for/list</span> ([offset (<span style="color:#a6e22e">in-naturals</span>)]
+                [value (<span style="color:#a6e22e">in-list</span> initial)])
+       <span style="color:#f92672">`</span>(<span style="color:#a6e22e">MOV</span> [<span style="color:#f92672">,</span>(+ <span style="color:#ae81ff">4</span> offset)] <span style="color:#f92672">,</span>(<span style="color:#a6e22e">hash-ref</span> symbol-&gt;index value))))
+  <span style="color:#f92672">...</span>)
+</code></pre></div><p>We&rsquo;re going straight to the parsed version of Tiny. It seems more sensible than outputting a string only to read it right back in&hellip; That&rsquo;s what Lisp-like languages do after all, treat code and data as one.</p>
 <p>Next, we want to do the main loop. Here we&rsquo;ll check if we&rsquo;re in the <code>final-state</code>. If so, <code>JMP</code> to a <code>HALT</code>. Otherwise, <code>JMP</code> to the first code block. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
 <span style="color:#75715e">; Halt if we&#39;re in the final state, otherwise enter the main body</span>
-JEQ <span style="color:#f92672">,</span>(+ <span style="color:#ae81ff">15</span> (* <span style="color:#ae81ff">3</span> (length initial))) [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(hash-ref state-&gt;index final-state)
+JEQ <span style="color:#f92672">,</span>(+ <span style="color:#ae81ff">15</span> (* <span style="color:#ae81ff">3</span> (length initial))) [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(<span style="color:#a6e22e">hash-ref</span> state-&gt;index final-state)
 JMP <span style="color:#f92672">,</span>(+ <span style="color:#ae81ff">16</span> (* <span style="color:#ae81ff">3</span> (length initial)))
 HALT
-<span style="color:#f92672">...</span></code></pre></div>
-<p>Finally, we need to encode the states. Essentially, we need to check two things: the current state and the symbol at the tape pointer. If they both match a given transition, use that. Otherwise, keep going. Here&rsquo;s where we need <code>MMOV</code>. We&rsquo;ll need it twice: first to copy the value from the tape pointer to <code>M[3]</code> so we can actually work with it then later to copy it back if we actually use this block. One particularly unfortunate bit about this code is the lack of relative offsets. There&rsquo;s a reason that compiler writers often seem just a bit mad&hellip; 😄</p>
+<span style="color:#f92672">...</span>
+</code></pre></div><p>Finally, we need to encode the states. Essentially, we need to check two things: the current state and the symbol at the tape pointer. If they both match a given transition, use that. Otherwise, keep going. Here&rsquo;s where we need <code>MMOV</code>. We&rsquo;ll need it twice: first to copy the value from the tape pointer to <code>M[3]</code> so we can actually work with it then later to copy it back if we actually use this block. One particularly unfortunate bit about this code is the lack of relative offsets. There&rsquo;s a reason that compiler writers often seem just a bit mad&hellip; 😄</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
 <span style="color:#75715e">; Encode the transitions</span>
-<span style="color:#f92672">,@</span>(apply
+<span style="color:#f92672">,@</span>(<span style="color:#a6e22e">apply</span>
    append
-   (for/list ([offset (in-naturals)]
-              [each (in-list transition)])
+   (<span style="color:#a6e22e">for/list</span> ([offset (<span style="color:#a6e22e">in-naturals</span>)]
+              [each (<span style="color:#a6e22e">in-list</span> transition)])
      <span style="color:#75715e">; Get the offset of this transition block</span>
      (<span style="color:#66d9ef">define </span>block-offset (+ <span style="color:#ae81ff">16</span> (* <span style="color:#ae81ff">3</span> (length initial)) (* <span style="color:#ae81ff">29</span> offset)))
      <span style="color:#75715e">; Unpack each transition</span>
-     (define-values (current-state current-symbol next-state write-symbol move-tape)
+     (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">current-state</span> current-symbol next-state write-symbol move-tape)
        (apply values each))
      <span style="color:#75715e">; Jump over if we don&#39;t match</span>
-     <span style="color:#f92672">`</span>(MMOV [<span style="color:#ae81ff">2</span>] [<span style="color:#ae81ff">1</span>] <span style="color:#75715e">; Set M[M[2]] = M[3] to M[M[1]] = M[tape index]</span>
-       JEQ <span style="color:#f92672">,</span>(+ block-offset <span style="color:#ae81ff">9</span>) [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(hash-ref state-&gt;index current-state)
+     <span style="color:#f92672">`</span>(<span style="color:#a6e22e">MMOV</span> [<span style="color:#ae81ff">2</span>] [<span style="color:#ae81ff">1</span>] <span style="color:#75715e">; Set M[M[2]] = M[3] to M[M[1]] = M[tape index]</span>
+       JEQ <span style="color:#f92672">,</span>(+ block-offset <span style="color:#ae81ff">9</span>) [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(<span style="color:#a6e22e">hash-ref</span> state-&gt;index current-state)
        JMP <span style="color:#f92672">,</span>(+ block-offset <span style="color:#ae81ff">29</span>)
-       JEQ <span style="color:#f92672">,</span>(+ block-offset <span style="color:#ae81ff">15</span>) [<span style="color:#ae81ff">3</span>] <span style="color:#f92672">,</span>(hash-ref symbol-&gt;index current-symbol)
+       JEQ <span style="color:#f92672">,</span>(+ block-offset <span style="color:#ae81ff">15</span>) [<span style="color:#ae81ff">3</span>] <span style="color:#f92672">,</span>(<span style="color:#a6e22e">hash-ref</span> symbol-&gt;index current-symbol)
        JMP <span style="color:#f92672">,</span>(+ block-offset <span style="color:#ae81ff">29</span>)
        <span style="color:#75715e">; We match, update the symbol and state</span>
-       MOV [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(hash-ref state-&gt;index next-state)
-       MOV [<span style="color:#ae81ff">3</span>] <span style="color:#f92672">,</span>(hash-ref symbol-&gt;index write-symbol)
+       MOV [<span style="color:#ae81ff">0</span>] <span style="color:#f92672">,</span>(<span style="color:#a6e22e">hash-ref</span> state-&gt;index next-state)
+       MOV [<span style="color:#ae81ff">3</span>] <span style="color:#f92672">,</span>(<span style="color:#a6e22e">hash-ref</span> symbol-&gt;index write-symbol)
        <span style="color:#75715e">; Write that value back into memory</span>
        MMOV [<span style="color:#ae81ff">1</span>] [<span style="color:#ae81ff">2</span>] <span style="color:#75715e">; Set M[M[1]] = M[tape index] to M[M[2]] = M[3]</span>
        <span style="color:#75715e">; Move the tape</span>
@@ -470,21 +438,19 @@ HALT
        <span style="color:#75715e">; Loop back to get a new function</span>
        JMP <span style="color:#f92672">,</span>(+ <span style="color:#ae81ff">9</span> (* <span style="color:#ae81ff">3</span> (length initial))))))
 <span style="color:#75715e">; Halt if we get an invalid transition</span>
-HALT))</code></pre></div>
-<p>And that&rsquo;s all there is to it. Theoretically, we have something that will let us take any Turing machine and compile it to a Tiny program. One problem is that it won&rsquo;t actually work with the bytecode as specified if the Turning machines start getting large. Since we only have direct addressing, we can&rsquo;t jump further than instruction 255. Since we&rsquo;re using 29 bytes per block and a header of 16 bytes, that only leaves us room for about 8 transitions&hellip; Still, the code I&rsquo;m using will work fine since under the hood I&rsquo;m not actually using bytes&ndash;so I&rsquo;m not going to fix it at the time being.</p>
-
+HALT))
+</code></pre></div><p>And that&rsquo;s all there is to it. Theoretically, we have something that will let us take any Turing machine and compile it to a Tiny program. One problem is that it won&rsquo;t actually work with the bytecode as specified if the Turning machines start getting large. Since we only have direct addressing, we can&rsquo;t jump further than instruction 255. Since we&rsquo;re using 29 bytes per block and a header of 16 bytes, that only leaves us room for about 8 transitions&hellip; Still, the code I&rsquo;m using will work fine since under the hood I&rsquo;m not actually using bytes&ndash;so I&rsquo;m not going to fix it at the time being.</p>
 <p>Let&rsquo;s try compiling a few test Turing programs.</p>
-
 <p>First, here&rsquo;s on that will turn a list of 1s into a list of 2s:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>ones-to-twos
-  (make-tiny-turing
+  (<span style="color:#a6e22e">make-tiny-turing</span>
    <span style="color:#f92672">&#39;</span>(start one halt)
    <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span>)
    <span style="color:#e6db74">&#39;start</span>
    <span style="color:#e6db74">&#39;halt</span>
-   <span style="color:#f92672">&#39;</span>((start <span style="color:#ae81ff">1</span> start <span style="color:#ae81ff">2</span> R)
-     (start <span style="color:#ae81ff">0</span> halt  <span style="color:#ae81ff">0</span> R))))</code></pre></div>
-<p>As long as it sees 1s, it will change them and move right. As soon as it sees a 0 (so we&rsquo;re off the input), it will stop. Let&rsquo;s try it:</p>
+   <span style="color:#f92672">&#39;</span>((<span style="color:#a6e22e">start</span> <span style="color:#ae81ff">1</span> start <span style="color:#ae81ff">2</span> R)
+     (<span style="color:#a6e22e">start</span> <span style="color:#ae81ff">0</span> halt  <span style="color:#ae81ff">0</span> R))))
+</code></pre></div><p>As long as it sees 1s, it will change them and move right. As soon as it sees a 0 (so we&rsquo;re off the input), it will stop. Let&rsquo;s try it:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">Tiny version:
 <span style="color:#ae81ff">0</span>: MOV (<span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0</span>
 <span style="color:#ae81ff">3</span>: MOV (<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">4</span>
@@ -544,39 +510,39 @@ Input:
 (<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
 
 Result:
-(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)</code></pre></div>
-<p>That&rsquo;s actually really cool looking&hellip; Let&rsquo;s try something a bit more complicated: a doubling function. Given a list of 1s of any length, double it.</p>
+(<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span>)
+</code></pre></div><p>That&rsquo;s actually really cool looking&hellip; Let&rsquo;s try something a bit more complicated: a doubling function. Given a list of 1s of any length, double it.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>double-list
-  (make-tiny-turing
+  (<span style="color:#a6e22e">make-tiny-turing</span>
    <span style="color:#f92672">&#39;</span>(start goto-end goto-start loop restart clear halt)
    <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> start old new)
    <span style="color:#e6db74">&#39;start</span>
    <span style="color:#e6db74">&#39;halt</span>
    <span style="color:#f92672">&#39;</span>(<span style="color:#75715e">; Mark the starting position</span>
-     (start      <span style="color:#ae81ff">1</span>     goto-end   start R) 
+     (<span style="color:#a6e22e">start</span>      <span style="color:#ae81ff">1</span>     goto-end   start R) 
      <span style="color:#75715e">; Go to the first 0, replace it with new</span>
-     (goto-end   old   goto-end   old   R)
-     (goto-end   new   goto-end   new   R)
-     (goto-end   <span style="color:#ae81ff">0</span>     goto-start new   L) 
-     (goto-end   <span style="color:#ae81ff">1</span>     goto-end   <span style="color:#ae81ff">1</span>     R)
+     (<span style="color:#a6e22e">goto-end</span>   old   goto-end   old   R)
+     (<span style="color:#a6e22e">goto-end</span>   new   goto-end   new   R)
+     (<span style="color:#a6e22e">goto-end</span>   <span style="color:#ae81ff">0</span>     goto-start new   L) 
+     (<span style="color:#a6e22e">goto-end</span>   <span style="color:#ae81ff">1</span>     goto-end   <span style="color:#ae81ff">1</span>     R)
      <span style="color:#75715e">; Go back to the start</span>
-     (goto-start start loop       start R)
-     (goto-start old   goto-start old   L) 
-     (goto-start new   goto-start new   L)
-     (goto-start <span style="color:#ae81ff">1</span>     goto-start <span style="color:#ae81ff">1</span>     L)
+     (<span style="color:#a6e22e">goto-start</span> start loop       start R)
+     (<span style="color:#a6e22e">goto-start</span> old   goto-start old   L) 
+     (<span style="color:#a6e22e">goto-start</span> new   goto-start new   L)
+     (<span style="color:#a6e22e">goto-start</span> <span style="color:#ae81ff">1</span>     goto-start <span style="color:#ae81ff">1</span>     L)
      <span style="color:#75715e">; Loop back or check if we&#39;re done</span>
-     (loop       old   loop       old   R)
-     (loop       new   restart    new   L)
-     (loop       <span style="color:#ae81ff">1</span>     goto-end   old   R)
+     (<span style="color:#a6e22e">loop</span>       old   loop       old   R)
+     (<span style="color:#a6e22e">loop</span>       new   restart    new   L)
+     (<span style="color:#a6e22e">loop</span>       <span style="color:#ae81ff">1</span>     goto-end   old   R)
      <span style="color:#75715e">; Go back to the start symbol</span>
-     (restart    old   restart    old   L)
-     (restart    start clear      <span style="color:#ae81ff">1</span>     R)
+     (<span style="color:#a6e22e">restart</span>    old   restart    old   L)
+     (<span style="color:#a6e22e">restart</span>    start clear      <span style="color:#ae81ff">1</span>     R)
      <span style="color:#75715e">; Write out all 1s</span>
-     (clear      old   clear      <span style="color:#ae81ff">1</span>     R)
-     (clear      new   clear      <span style="color:#ae81ff">1</span>     R)
-     (clear      <span style="color:#ae81ff">0</span>     halt       <span style="color:#ae81ff">0</span>     R))))</code></pre></div>
-<p>And here&rsquo;s it running:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (double-list <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
+     (<span style="color:#a6e22e">clear</span>      old   clear      <span style="color:#ae81ff">1</span>     R)
+     (<span style="color:#a6e22e">clear</span>      new   clear      <span style="color:#ae81ff">1</span>     R)
+     (<span style="color:#a6e22e">clear</span>      <span style="color:#ae81ff">0</span>     halt       <span style="color:#ae81ff">0</span>     R))))
+</code></pre></div><p>And here&rsquo;s it running:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">double-list</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>))
 Tiny version:
 <span style="color:#ae81ff">0</span>: MOV (<span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0</span>
 <span style="color:#ae81ff">3</span>: MOV (<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">4</span>
@@ -595,9 +561,9 @@ Input:
 (<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
 
 Result:
-(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)</code></pre></div>
-<p>You can&rsquo;t ask for better than that. 😄 I wonder how long it takes to run on a hundred element list?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (length (double-list (map (λ (_) <span style="color:#ae81ff">1</span>) (range <span style="color:#ae81ff">10</span>)))))
+(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
+</code></pre></div><p>You can&rsquo;t ask for better than that. 😄 I wonder how long it takes to run on a hundred element list?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (length (<span style="color:#a6e22e">double-list</span> (map (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">_</span>) <span style="color:#ae81ff">1</span>) (<span style="color:#a6e22e">range</span> <span style="color:#ae81ff">10</span>)))))
 Tiny version:
 <span style="color:#ae81ff">0</span>: MOV (<span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0</span>
 <span style="color:#ae81ff">3</span>: MOV (<span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">4</span>
@@ -619,11 +585,9 @@ Result:
 (<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">...</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span>)
 
 <span style="color:#ae81ff">200</span>
-cpu time: <span style="color:#ae81ff">3947</span> real time: <span style="color:#ae81ff">3922</span> gc time: <span style="color:#ae81ff">139</span></code></pre></div>
-<p>You can&rsquo;t really ask for better than that. 😄</p>
-
+cpu time: <span style="color:#ae81ff">3947</span> real time: <span style="color:#ae81ff">3922</span> gc time: <span style="color:#ae81ff">139</span>
+</code></pre></div><p>You can&rsquo;t really ask for better than that. 😄</p>
 <p>Well, that&rsquo;s it. If it I wanted to be more formal about it, I would have to prove that each possible Turning machine works, but we&rsquo;ll leave that as an exercise to the reader.</p>
-
 <p>The code for this post is a bit more substantial than normal, so I made a seperate GitHub for it. You can check it out here: <a href="https://github.com/jpverkamp/tiny">tiny on GitHub</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

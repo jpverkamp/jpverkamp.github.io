@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,80 +71,66 @@
     </header>
 
 	<div class="entry-content"><p><a href="http://www.reddit.com/r/dailyprogrammer/comments/1tiz4z/122313_challenge_140_intermediate_graph_radius/">Here&rsquo;s</a> a quick problem from the DailyProgrammer subreddit. Basically, we want to calculate the radius of a graph:</p>
-
 <blockquote>
 <span class="latex-inline">radius(g) = \min\limits_{n_0 \in g} \max\limits_{n_1 \in g} d_g(n_0, n_1)</span>
 
 </blockquote>
-
-<p>To make that a little less mathematical, we&rsquo;re trying to find the minimum distance it would take to get from one chosen graph to any other<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. Perhaps an example, the Butterfly graph:</p>
-
+<p>To make that a little less mathematical, we&rsquo;re trying to find the minimum distance it would take to get from one chosen graph to any other<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>. Perhaps an example, the Butterfly graph:</p>
 <p><img alt="" src="https://upload.wikimedia.org/wikipedia/commons/f/f9/Butterfly_graph.svg" class="alignnone" width="227" height="107" />
 <small><a href="https://en.wikipedia.org/wiki/source">File:Butterfly graph.svg</a></small></p>
-
 <p>If you consider the node in the top left, you can get to the bottom left or center in 1 unit or either right side in 2. That means that node has an <em>eccentricity</em> of 2. But the center node can get to any other in only 1. So it&rsquo;s eccentricity is 1. Since that&rsquo;s the lowest, the radius of the Butterfly graph is 1.</p>
-
 <p>How do we turn that into code though?</p>
-
 <p>Well, originally I started out to write a graph library for Racket. It was actually pretty neat, using the <code><a href="http://docs.racket-lang.org/search/index.html?q=define-generics">define-generics</a></code>
  form so that we could have a few different kinds of graphs.</p>
-
-<p>Then, I actually took a chance and looked at Racket&rsquo;s <a href="http://pkg.racket-lang.org/">pkg system</a>&hellip; and there it was: <a href="https://github.com/stchang/graph/tree/master">github:stchang/graph</a>. It&rsquo;s pretty much exactly what I would have done<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>, so why reinvent the wheel? Here&rsquo;s the documentation: <a href="http://stchang.github.io/graph/graph.html">graph documentation</a></p>
-
+<p>Then, I actually took a chance and looked at Racket&rsquo;s <a href="http://pkg.racket-lang.org/">pkg system</a>&hellip; and there it was: <a href="https://github.com/stchang/graph/tree/master">github:stchang/graph</a>. It&rsquo;s pretty much exactly what I would have done<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>, so why reinvent the wheel? Here&rsquo;s the documentation: <a href="http://stchang.github.io/graph/graph.html">graph documentation</a></p>
 <p>So, first we need a distance function. It&rsquo;s a bit funny looking, but hopefully, it&rsquo;s relatively straight forward:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Calculate the distance between n0 and n1 in the graph g</span>
-(<span style="color:#66d9ef">define </span>(distance g n0 n1)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">distance</span> g n0 n1)
   <span style="color:#75715e">; Start with 0 units to the origin</span>
-  (<span style="color:#66d9ef">let </span>loop ([distances (hash n0 <span style="color:#ae81ff">0</span>)])
-    (cond
+  (<span style="color:#66d9ef">let </span>loop ([distances (<span style="color:#a6e22e">hash</span> n0 <span style="color:#ae81ff">0</span>)])
+    (<span style="color:#a6e22e">cond</span>
       <span style="color:#75715e">; If we ever have a distance to the target, just return that directly</span>
-      [(hash-ref distances n1 <span style="color:#66d9ef">#f</span>) <span style="color:#66d9ef">=&gt; </span>identity]
+      [(<span style="color:#a6e22e">hash-ref</span> distances n1 <span style="color:#66d9ef">#f</span>) <span style="color:#66d9ef">=&gt; </span>identity]
       <span style="color:#75715e">; Otherwise, try to extend each node already in the graph</span>
       <span style="color:#75715e">; It would be more efficient to only expand each node once, but so it goes</span>
       [else
-       (<span style="color:#66d9ef">define </span>next-distances (hash-copy distances))
-       (for* ([(node distance) (in-hash distances)]
-              [neighbor (in-neighbors g node)]
-              <span style="color:#f92672">#</span>:unless (hash-has-key? distances neighbor))
-         (hash-set! next-distances neighbor (+ distance <span style="color:#ae81ff">1</span>)))
+       (<span style="color:#66d9ef">define </span>next-distances (<span style="color:#a6e22e">hash-copy</span> distances))
+       (<span style="color:#a6e22e">for*</span> ([(<span style="color:#a6e22e">node</span> distance) (<span style="color:#a6e22e">in-hash</span> distances)]
+              [neighbor (<span style="color:#a6e22e">in-neighbors</span> g node)]
+              <span style="color:#f92672">#</span>:unless (<span style="color:#a6e22e">hash-has-key?</span> distances neighbor))
+         (<span style="color:#a6e22e">hash-set!</span> next-distances neighbor (+ distance <span style="color:#ae81ff">1</span>)))
 
        <span style="color:#75715e">; If we have any new nodes, keep looking; otherwise we aren&#39;t connected</span>
-       (<span style="color:#66d9ef">if </span>(= (hash-count distances) (hash-count next-distances))
+       (<span style="color:#66d9ef">if </span>(= (<span style="color:#a6e22e">hash-count</span> distances) (<span style="color:#a6e22e">hash-count</span> next-distances))
            <span style="color:#66d9ef">#f</span>
-           (loop next-distances))])))</code></pre></div>
-<p>Basically, we set up a hash of distances and then recursively fill it in. If we&rsquo;ve already set a node, that means there is no shorter way to get there. If we ever get to the target, we&rsquo;ve found a distance, so we&rsquo;ll use the <code>=&gt;</code> form of the <code>cond</code> to pass the <code>hash-ref</code>&lsquo;ed value to <code>identity</code> (which just returns it).</p>
-
+           (<span style="color:#a6e22e">loop</span> next-distances))])))
+</code></pre></div><p>Basically, we set up a hash of distances and then recursively fill it in. If we&rsquo;ve already set a node, that means there is no shorter way to get there. If we ever get to the target, we&rsquo;ve found a distance, so we&rsquo;ll use the <code>=&gt;</code> form of the <code>cond</code> to pass the <code>hash-ref</code>&lsquo;ed value to <code>identity</code> (which just returns it).</p>
 <p>If that doesn&rsquo;t work, we hit an expansion phase. Originally, this directly modified the hash, but this caused issues with the iteration, so I create a copy and modify that one instead. Then we check if we actually made a change. If we didn&rsquo;t expand the distance graph, we never will. Otherwise, we keep looking.</p>
-
 <p>With that, we have enough to define the eccentricity function defined above (also known as <span class="latex-inline">\epsilon</span>
 ):</p>
-
 <div class="latex-block">\epsilon_g(n_0) = \max\limits_{n_1 \in g} d(n_0, n_1)</div>
 
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; The eccentricity of a node is the distance to the furthest other node</span>
-(<span style="color:#66d9ef">define </span>(eccentricity g n)
-  (apply max (map (curry distance g n) (in-vertices g))))</code></pre></div>
-<p>From inside to out, <code>in-vertices</code> returns a list of vertices (rather than a sequence as the name might suggest). <code>(curry distance g n)</code> creates a function of the form <code>(λ (x) (distance g n x))</code>, which we them map across the vertices to get a list of distances. If we don&rsquo;t actually have a connected graph, that will cause issues (since <code>distance</code> will return <code>#f</code>), but that&rsquo;s okay. Eccentricity is infinite for those cases anyways.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">eccentricity</span> g n)
+  (apply max (map (<span style="color:#a6e22e">curry</span> distance g n) (<span style="color:#a6e22e">in-vertices</span> g))))
+</code></pre></div><p>From inside to out, <code>in-vertices</code> returns a list of vertices (rather than a sequence as the name might suggest). <code>(curry distance g n)</code> creates a function of the form <code>(λ (x) (distance g n x))</code>, which we them map across the vertices to get a list of distances. If we don&rsquo;t actually have a connected graph, that will cause issues (since <code>distance</code> will return <code>#f</code>), but that&rsquo;s okay. Eccentricity is infinite for those cases anyways.</p>
 <p>What&rsquo;s interesting about this though, is that this is exactly the same code for the graph radius. Just loop again and use the eccentricity instead of the distance:</p>
-
 <div class="latex-block">radius(g) = \min\limits_{n_0 \in g} \epsilon_g(n_0) = \min\limits_{n_0 \in g} \max\limits_{n_1 \in g} d(n_0, n_1)</div>
 
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; The radius of a graph is the minimum eccentricity</span>
-(<span style="color:#66d9ef">define </span>(graph-radius g)
-  (apply min (map (curry eccentricity g) (in-vertices g))))</code></pre></div>
-<p>While we&rsquo;re at it, the <a href="https://en.wikipedia.org/wiki/Wikipedia%20page%20for%20graph%20radius">Distance (graph theory)</a> also mentions a graph&rsquo;s <code>diameter</code>:</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">graph-radius</span> g)
+  (apply min (map (<span style="color:#a6e22e">curry</span> eccentricity g) (<span style="color:#a6e22e">in-vertices</span> g))))
+</code></pre></div><p>While we&rsquo;re at it, the <a href="https://en.wikipedia.org/wiki/Wikipedia%20page%20for%20graph%20radius">Distance (graph theory)</a> also mentions a graph&rsquo;s <code>diameter</code>:</p>
 <div class="latex-block">radius(g) = \max\limits_{n_0 \in g} \epsilon_g(n_0) = \max\limits_{n_0 \in g} \max\limits_{n_1 \in g} d(n_0, n_1)</div>
 
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; The diameter of a graph is maximum eccentricity</span>
-(<span style="color:#66d9ef">define </span>(graph-diameter g)
-  (apply max (map (curry eccentricity g) (in-vertices g))))</code></pre></div>
-<p>Let&rsquo;s run it through a whole sequence of tests. Take the three given in the <a href="http://www.reddit.com/r/dailyprogrammer/comments/1tiz4z/122313_challenge_140_intermediate_graph_radius/">problem definition</a> plus a few more from the comments, we have a pretty good test bed:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(module+ test
-  (require rackunit)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">graph-diameter</span> g)
+  (apply max (map (<span style="color:#a6e22e">curry</span> eccentricity g) (<span style="color:#a6e22e">in-vertices</span> g))))
+</code></pre></div><p>Let&rsquo;s run it through a whole sequence of tests. Take the three given in the <a href="http://www.reddit.com/r/dailyprogrammer/comments/1tiz4z/122313_challenge_140_intermediate_graph_radius/">problem definition</a> plus a few more from the comments, we have a pretty good test bed:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">module+</span> test
+  (<span style="color:#a6e22e">require</span> rackunit)
 
-  (<span style="color:#66d9ef">define </span>petersen-graph (read-graph <span style="color:#e6db74">&#34;
+  (<span style="color:#66d9ef">define </span>petersen-graph (<span style="color:#a6e22e">read-graph</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">10
 </span><span style="color:#e6db74">0 1 0 0 1 1 0 0 0 0
 </span><span style="color:#e6db74">1 0 1 0 0 0 1 0 0 0
@@ -157,10 +143,10 @@
 </span><span style="color:#e6db74">0 0 0 1 0 1 1 0 0 0
 </span><span style="color:#e6db74">0 0 0 0 1 0 1 1 0 0
 </span><span style="color:#e6db74">&#34;</span>))
-  (check-equal? (graph-radius petersen-graph) <span style="color:#ae81ff">2</span>)
-  (check-equal? (graph-diameter petersen-graph) <span style="color:#ae81ff">2</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-radius</span> petersen-graph) <span style="color:#ae81ff">2</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-diameter</span> petersen-graph) <span style="color:#ae81ff">2</span>)
 
-  (<span style="color:#66d9ef">define </span>butterfly-graph (read-graph <span style="color:#e6db74">&#34;
+  (<span style="color:#66d9ef">define </span>butterfly-graph (<span style="color:#a6e22e">read-graph</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">5
 </span><span style="color:#e6db74">0 1 1 0 0
 </span><span style="color:#e6db74">1 0 1 0 0
@@ -168,10 +154,10 @@
 </span><span style="color:#e6db74">0 0 1 0 1
 </span><span style="color:#e6db74">0 0 1 1 0
 </span><span style="color:#e6db74">&#34;</span>))
-  (check-equal? (graph-radius butterfly-graph) <span style="color:#ae81ff">1</span>)
-  (check-equal? (graph-diameter butterfly-graph) <span style="color:#ae81ff">2</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-radius</span> butterfly-graph) <span style="color:#ae81ff">1</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-diameter</span> butterfly-graph) <span style="color:#ae81ff">2</span>)
 
-  (<span style="color:#66d9ef">define </span>sample-inputs/outputs (read-graph <span style="color:#e6db74">&#34;
+  (<span style="color:#66d9ef">define </span>sample-inputs/outputs (<span style="color:#a6e22e">read-graph</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">10
 </span><span style="color:#e6db74">0 1 0 0 1 1 0 0 0 0
 </span><span style="color:#e6db74">1 0 1 0 0 0 1 0 0 0
@@ -184,10 +170,10 @@
 </span><span style="color:#e6db74">0 0 0 1 0 1 1 0 0 0
 </span><span style="color:#e6db74">0 0 0 0 1 0 1 1 0 0
 </span><span style="color:#e6db74">&#34;</span>))
-  (check-equal? (graph-radius sample-inputs/outputs) <span style="color:#ae81ff">2</span>)
-  (check-equal? (graph-diameter sample-inputs/outputs) <span style="color:#ae81ff">2</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-radius</span> sample-inputs/outputs) <span style="color:#ae81ff">2</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-diameter</span> sample-inputs/outputs) <span style="color:#ae81ff">2</span>)
 
-  (<span style="color:#66d9ef">define </span>nauru-graph (read-graph <span style="color:#e6db74">&#34;
+  (<span style="color:#66d9ef">define </span>nauru-graph (<span style="color:#a6e22e">read-graph</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">24
 </span><span style="color:#e6db74">0 1 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0
 </span><span style="color:#e6db74">1 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0
@@ -214,10 +200,10 @@
 </span><span style="color:#e6db74">0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1
 </span><span style="color:#e6db74">0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 1 0
 </span><span style="color:#e6db74">&#34;</span>))
-  (check-equal? (graph-radius nauru-graph) <span style="color:#ae81ff">4</span>)
-  (check-equal? (graph-diameter nauru-graph) <span style="color:#ae81ff">4</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-radius</span> nauru-graph) <span style="color:#ae81ff">4</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-diameter</span> nauru-graph) <span style="color:#ae81ff">4</span>)
 
-  (<span style="color:#66d9ef">define </span>desargues-graph (read-graph <span style="color:#e6db74">&#34;
+  (<span style="color:#66d9ef">define </span>desargues-graph (<span style="color:#a6e22e">read-graph</span> <span style="color:#e6db74">&#34;
 </span><span style="color:#e6db74">20
 </span><span style="color:#e6db74">0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 1 0 0 0 0
 </span><span style="color:#e6db74">0 0 0 0 0 0 0 0 0 0 1 0 1 0 0 0 1 0 0 0
@@ -240,24 +226,23 @@
 </span><span style="color:#e6db74">0 0 0 1 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0
 </span><span style="color:#e6db74">0 0 0 0 1 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0
 </span><span style="color:#e6db74">&#34;</span>))
-  (check-equal? (graph-radius desargues-graph) <span style="color:#ae81ff">5</span>)
-  (check-equal? (graph-diameter desargues-graph) <span style="color:#ae81ff">5</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-radius</span> desargues-graph) <span style="color:#ae81ff">5</span>)
+  (<span style="color:#a6e22e">check-equal?</span> (<span style="color:#a6e22e">graph-diameter</span> desargues-graph) <span style="color:#ae81ff">5</span>)
 
-  )</code></pre></div>
-<p>100% passed!</p>
-
+  )
+</code></pre></div><p>100% passed!</p>
 <p>If you&rsquo;d like to see all of the code at once, you can do so here: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/graph-radius.rkt">graph-radius</a></p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Okay, so I&rsquo;m not great at making it less mathematical&hellip;
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">Although I was going for a more functional style / less mutation. So it goes.
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Okay, so I&rsquo;m not great at making it less mathematical&hellip; <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>Although I was going for a more functional style / less mutation. So it goes. <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

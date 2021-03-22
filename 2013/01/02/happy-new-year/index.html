@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,88 +74,83 @@
     </header>
 
 	<div class="entry-content"><p><a title="Happy New Year!" href="http://programmingpraxis.com/2013/01/01/happy-new-year/">Yesterday&rsquo;s post</a> from Programming Praxis asks us to build a very special sort of expression. Using the numbers 10, 9, 8, 7, 6, 5, 4, 3, 2, and 1 in that order along with the operators of multiplication, division, addition, subtraction, and concatenation, find all of the ways that we can write an expression totaling 2013. Here&rsquo;s one valid solution:</p>
-
 <div class="latex-block">109 - 8 * 7 + 654 * 3 - 2 / 1 = 2013</div>
 
-
 <p>Since I&rsquo;m going to be working in Racket, the first thing that we need is a program that can evaluate an infix expression. I&rsquo;m actually going to make the program far more general, able to use any combination of binary operators with any given precedence levels. It&rsquo;s similar to what I wrote quite a while ago about <a href="https://blog.jverkamp.com/2012/10/08/evaluating-prefix/infix/postfix-expressions/">evaluating infix expressions</a>, but the code is a little different, so I&rsquo;ll post it here as well.</p>
-
 <p>First, we need a function that can reduce an expression using all of the operators with the same precedence. Given an expression as a list and a list of pairs of operator names and functions, you can do it like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; reduce one level </span>
-(<span style="color:#66d9ef">define </span>(reduce expr ops)
-  (cond
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">reduce</span> expr ops)
+  (<span style="color:#a6e22e">cond</span>
     [(<span style="color:#66d9ef">or </span>(null? expr)
          (null? (cdr expr))
          (null? (cddr expr)))
      expr]
     [(assoc (cadr expr) ops)
-     <span style="color:#66d9ef">=&gt; </span>(<span style="color:#66d9ef">lambda </span>(pair)
-          (reduce (cons ((cadr pair) (car expr) (caddr expr)) (cdddr expr)) ops))]
+     <span style="color:#66d9ef">=&gt; </span>(<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">pair</span>)
+          (<span style="color:#a6e22e">reduce</span> (cons ((cadr pair) (car expr) (caddr expr)) (cdddr expr)) ops))]
     [else
-     (cons (car expr) (reduce (cdr expr) ops))]))</code></pre></div>
-<p>The first part means that we don&rsquo;t reduce if we&rsquo;re too close to the end of the expression. The <code>assoc</code> on the second part along with the <code>=&gt;</code> syntax means that we can find the first matching symbol in the operator list and apply it. If this doesn&rsquo;t work, the <code>else</code> will skip along.</p>
-
+     (cons (car expr) (<span style="color:#a6e22e">reduce</span> (cdr expr) ops))]))
+</code></pre></div><p>The first part means that we don&rsquo;t reduce if we&rsquo;re too close to the end of the expression. The <code>assoc</code> on the second part along with the <code>=&gt;</code> syntax means that we can find the first matching symbol in the operator list and apply it. If this doesn&rsquo;t work, the <code>else</code> will skip along.</p>
 <p>After that, we need a driver that can call this with each level of operator:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; step through each level of ops</span>
-(<span style="color:#66d9ef">define </span>(step expr ops)
-  (cond
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">step</span> expr ops)
+  (<span style="color:#a6e22e">cond</span>
     [(null? ops)
      expr]
     [else
-     (step (reduce expr (car ops)) (cdr ops))]))</code></pre></div>
-<p>Pretty straight forward recursion there. The only potentially confusing bit is that the variable <code>ops</code> means different things depending on which function you&rsquo;re dealing with.</p>
-
+     (<span style="color:#a6e22e">step</span> (<span style="color:#a6e22e">reduce</span> expr (car ops)) (cdr ops))]))
+</code></pre></div><p>Pretty straight forward recursion there. The only potentially confusing bit is that the variable <code>ops</code> means different things depending on which function you&rsquo;re dealing with.</p>
 <p>Finally, combine those together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; evaulate an infix expression given a list of ops</span>
 <span style="color:#75715e">; ops is a list of pairs of symbol -&gt; binary function</span>
 <span style="color:#75715e">; example: (((* *) (/ div))</span>
 <span style="color:#75715e">;           ((+ +) (- -)))</span>
-(<span style="color:#66d9ef">define </span>(evaluate expr ops)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">evaluate</span> expr ops)
   <span style="color:#75715e">; step through each level of ops</span>
-  (<span style="color:#66d9ef">define </span>(step expr ops)
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">step</span> expr ops)
     <span style="color:#f92672">...</span>)
 
   <span style="color:#75715e">; reduce one level </span>
-  (<span style="color:#66d9ef">define </span>(reduce expr ops)
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">reduce</span> expr ops)
     <span style="color:#f92672">...</span>)
 
   <span style="color:#75715e">; start out the main loop</span>
-  (car (step expr ops)))</code></pre></div>
-<p>And test it out:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (evaluate <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">10</span> ~ <span style="color:#ae81ff">9</span> - <span style="color:#ae81ff">8</span> * <span style="color:#ae81ff">7</span> + <span style="color:#ae81ff">6</span> ~ <span style="color:#ae81ff">5</span> ~ <span style="color:#ae81ff">4</span> * <span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> / <span style="color:#ae81ff">1</span>)
-            <span style="color:#f92672">`</span>(((~ <span style="color:#f92672">,</span>(<span style="color:#66d9ef">lambda </span>(x y) 
+  (car (<span style="color:#a6e22e">step</span> expr ops)))
+</code></pre></div><p>And test it out:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">evaluate</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">10</span> ~ <span style="color:#ae81ff">9</span> - <span style="color:#ae81ff">8</span> * <span style="color:#ae81ff">7</span> + <span style="color:#ae81ff">6</span> ~ <span style="color:#ae81ff">5</span> ~ <span style="color:#ae81ff">4</span> * <span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> / <span style="color:#ae81ff">1</span>)
+            <span style="color:#f92672">`</span>(((<span style="color:#a6e22e">~</span> <span style="color:#f92672">,</span>(<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">x</span> y) 
                      (string-&gt;number (string-append 
                                       (number-&gt;string x) 
                                       (number-&gt;string y))))))
               ((* <span style="color:#f92672">,</span>*) (/ <span style="color:#f92672">,</span>/))
               ((+ <span style="color:#f92672">,</span>+) (- <span style="color:#f92672">,</span>-))))
-<span style="color:#ae81ff">2013</span></code></pre></div>
-<p>So far, so good. So how about generating all of the possible expressions? This is a straight forward use of Racket&rsquo;s <code>for</code> macro to generate append each operator in turn onto the list of numbers. In this case, the list of operators is just a list of symbols.</p>
+<span style="color:#ae81ff">2013</span>
+</code></pre></div><p>So far, so good. So how about generating all of the possible expressions? This is a straight forward use of Racket&rsquo;s <code>for</code> macro to generate append each operator in turn onto the list of numbers. In this case, the list of operators is just a list of symbols.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; generate a list of expressions given an ordered list</span>
 <span style="color:#75715e">; of values and a list of possible operations between</span>
 <span style="color:#75715e">; them</span>
-(<span style="color:#66d9ef">define </span>(generate nums ops)
-  (cond
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">generate</span> nums ops)
+  (<span style="color:#a6e22e">cond</span>
     [(null? (cdr nums))
      (list nums)]
     [else
-     (for*/list ([op (in-list ops)]
-                 [res (in-list (generate (cdr nums) ops))])
-       (list* (car nums) op res))]))</code></pre></div>
-<p>Test it out (on a much smaller example, the full example has about 2 million possibilities):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (generate <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;</span>(+ -))
-<span style="color:#f92672">&#39;</span>((<span style="color:#ae81ff">3</span> + <span style="color:#ae81ff">2</span> + <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> + <span style="color:#ae81ff">2</span> - <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> + <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> - <span style="color:#ae81ff">1</span>))</code></pre></div>
-<p>Now, we have all of the pieces we need to tie everything together:</p>
+     (<span style="color:#a6e22e">for*/list</span> ([op (<span style="color:#a6e22e">in-list</span> ops)]
+                 [res (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">generate</span> (cdr nums) ops))])
+       (<span style="color:#a6e22e">list*</span> (car nums) op res))]))
+</code></pre></div><p>Test it out (on a much smaller example, the full example has about 2 million possibilities):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">generate</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&#39;</span>(+ -))
+<span style="color:#f92672">&#39;</span>((<span style="color:#ae81ff">3</span> + <span style="color:#ae81ff">2</span> + <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> + <span style="color:#ae81ff">2</span> - <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> + <span style="color:#ae81ff">1</span>) (<span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> - <span style="color:#ae81ff">1</span>))
+</code></pre></div><p>Now, we have all of the pieces we need to tie everything together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; given an ordered list of numbers, a list of ops on</span>
 <span style="color:#75715e">; them, and a target return all interspaced lists that</span>
 <span style="color:#75715e">; evaluate to the given target</span>
-(<span style="color:#66d9ef">define </span>(solve nums ops target)
-  (for ([expr (in-list (generate nums (map car (apply append ops))))]
-        <span style="color:#f92672">#</span>:when (= (evaluate expr ops) target))
-    (printf <span style="color:#e6db74">&#34;~s\n&#34;</span> expr)))</code></pre></div>
-<p>So we just generate each expression and test it against the target. If we&rsquo;re looking for 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 with the four standard operators plus concatenation and all working out to 2013, we want this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (solve <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">10</span> <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)
-         <span style="color:#f92672">`</span>(((~ <span style="color:#f92672">,</span>(<span style="color:#66d9ef">lambda </span>(x y)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">solve</span> nums ops target)
+  (<span style="color:#a6e22e">for</span> ([expr (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">generate</span> nums (map car (apply append ops))))]
+        <span style="color:#f92672">#</span>:when (= (<span style="color:#a6e22e">evaluate</span> expr ops) target))
+    (<span style="color:#a6e22e">printf</span> <span style="color:#e6db74">&#34;~s\n&#34;</span> expr)))
+</code></pre></div><p>So we just generate each expression and test it against the target. If we&rsquo;re looking for 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 with the four standard operators plus concatenation and all working out to 2013, we want this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">solve</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">10</span> <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">1</span>)
+         <span style="color:#f92672">`</span>(((<span style="color:#a6e22e">~</span> <span style="color:#f92672">,</span>(<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">x</span> y)
                   (string-&gt;number (string-append 
                                    (number-&gt;string x)
                                    (number-&gt;string y))))))
@@ -165,25 +160,21 @@
 (<span style="color:#ae81ff">10</span> ~ <span style="color:#ae81ff">9</span> - <span style="color:#ae81ff">8</span> * <span style="color:#ae81ff">7</span> + <span style="color:#ae81ff">6</span> ~ <span style="color:#ae81ff">5</span> ~ <span style="color:#ae81ff">4</span> * <span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> * <span style="color:#ae81ff">1</span>)
 (<span style="color:#ae81ff">10</span> ~ <span style="color:#ae81ff">9</span> - <span style="color:#ae81ff">8</span> * <span style="color:#ae81ff">7</span> + <span style="color:#ae81ff">6</span> ~ <span style="color:#ae81ff">5</span> ~ <span style="color:#ae81ff">4</span> * <span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> / <span style="color:#ae81ff">1</span>)
 (<span style="color:#ae81ff">10</span> * <span style="color:#ae81ff">9</span> ~ <span style="color:#ae81ff">8</span> / <span style="color:#ae81ff">7</span> * <span style="color:#ae81ff">6</span> / <span style="color:#ae81ff">5</span> * <span style="color:#ae81ff">4</span> * <span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> - <span style="color:#ae81ff">1</span>)
-(<span style="color:#ae81ff">10</span> * <span style="color:#ae81ff">9</span> * <span style="color:#ae81ff">8</span> * <span style="color:#ae81ff">7</span> / <span style="color:#ae81ff">6</span> / <span style="color:#ae81ff">5</span> * <span style="color:#ae81ff">4</span> * <span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> - <span style="color:#ae81ff">1</span>)</code></pre></div>
-<p>And there you have it. The four ways to write the expected expressions:</p>
-
+(<span style="color:#ae81ff">10</span> * <span style="color:#ae81ff">9</span> * <span style="color:#ae81ff">8</span> * <span style="color:#ae81ff">7</span> / <span style="color:#ae81ff">6</span> / <span style="color:#ae81ff">5</span> * <span style="color:#ae81ff">4</span> * <span style="color:#ae81ff">3</span> - <span style="color:#ae81ff">2</span> - <span style="color:#ae81ff">1</span>)
+</code></pre></div><p>And there you have it. The four ways to write the expected expressions:</p>
 <div class="latex-block">109 - 8 * 7 + 654 * 3 - 2 * 1 = 2013</div>
-
 
 <span class="latex-inline">109 - 8 * 7 &#43; 654 * 3 - 2 / 1 = 2013</span>
 
-
 <div class="latex-block">10 * 98 / 7 * 6 / 5 * 4 * 3 - 2 - 1 = 2013</div>
-
 
 <span class="latex-inline">10 * 9 * 8 * 7 / 6 / 5 * 4 * 3 - 2 - 1 = 2013</span>
 
-
 <p>It took about 20 seconds to run, which is slower than it could be (considering that I&rsquo;m evaluating the infix expressions myself and generating all of the possible solutions in memory at once), but it&rsquo;s well within a minute, so it&rsquo;s good enough.</p>
-
-<p>If you&rsquo;d like to download the source for today&rsquo;s post, you can do so here:
-- <a href="Happy New Year source on GitHub">happy-new-years.rkt</a></p></div>
+<p>If you&rsquo;d like to download the source for today&rsquo;s post, you can do so here:</p>
+<ul>
+<li><a href="Happy New Year source on GitHub">happy-new-years.rkt</a></li>
+</ul></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

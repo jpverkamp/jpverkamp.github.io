@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -70,24 +70,17 @@
 </div>
     </header>
 
-	<div class="entry-content"><p>When you&rsquo;re starting out on a simple web application, eventually<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup> you will reach the point where you need to store some form of persistant data. Basically, you have three options<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>:</p>
-
+	<div class="entry-content"><p>When you&rsquo;re starting out on a simple web application, eventually<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup> you will reach the point where you need to store some form of persistant data. Basically, you have three options<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>:</p>
 <ul>
 <li>Store the information in flat files on the file system</li>
 <li>Store the information in a database (<a href="https://www.mysql.com/">MySQL</a>, <a href="https://www.sqlite.org/">SQLite</a> etc)</li>
 <li>Store the information in a key/value store (<a href="https://www.mongodb.org/">mongoDB</a>, <a href="http://redis.io/">reddis</a>)</li>
 </ul>
-
 <p>There are all manner of pros and cons to each, in particular how easy they are to get started in, how well they fit the data you are using, and how well they will scale horizontally (adding more machines rather than bigger ones).</p>
-
 <p>For the project that I was working on (I&rsquo;ll post about it eventually), I didn&rsquo;t have terribly many different kinds of data to store, so it would be easy enough to start with anything. I started with a simple file system backing, with one json file per object that I was storing. That worked well enough, but I didn&rsquo;t particularly care for having to write all of the code myself to join / find child objects. I wanted something a little more powerful.</p>
-
 <p>Next, I considered using a database with an <a href="https://en.wikipedia.org/wiki/ORM">Object-relational mapping</a> layer. That would let me define everything as Python objects and let the library handle all of the mappings to the actual database. That way, I could write a bare minimum of code for my actual models. Unfortunately, the data wasn&rsquo;t particularly well structured for a relational database, being more hierarchical in struture. It&rsquo;s entirely possible to represent hierarchical data in a relational database, it&rsquo;s just not what they are best suited for.</p>
-
 <p>Finally, I came to Redis. I&rsquo;ve used Redis in a few projects at work and come to really like it. It works great as a simple key/value store and even better when you start taking advatage of some of their other data structures. In particular, Redis hashes and lists map nicely to Python dicts and lists. So that&rsquo;s what I ended up doing: Writing a pair of base classes (<code>RedisDict</code> and <code>RedisList</code>) which to the programmer act just like a Python dict or list, but actually store all of their data transparently in Redis.</p>
-
 <p>Let&rsquo;s get to it.</p>
-
 <p>First, there is a bit of shared code that both <code>RedisDict</code> and <code>RedisList</code> share, which we can factor out into a base class for the two of them: <code>RedisObject</code>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> base64
 <span style="color:#f92672">import</span> json
@@ -147,16 +140,13 @@
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">encode_value</span>(value):
         <span style="color:#e6db74">&#39;&#39;&#39;Encode a value using json.dumps, with default = str&#39;&#39;&#39;</span>
 
-        <span style="color:#66d9ef">return</span> str(value)</code></pre></div>
-<p>Most of that should be pretty straight forward. The basic idea is that any <code>RedisObject</code>, be it a <code>RedisDict</code> or a <code>RedisList</code> has an ID. This will be used as the key that Redis stores the object under. In particular, I&rsquo;ve used a neat (in my opinion) trick to generate random alphanumeric identifiers:</p>
+        <span style="color:#66d9ef">return</span> str(value)
+</code></pre></div><p>Most of that should be pretty straight forward. The basic idea is that any <code>RedisObject</code>, be it a <code>RedisDict</code> or a <code>RedisList</code> has an ID. This will be used as the key that Redis stores the object under. In particular, I&rsquo;ve used a neat (in my opinion) trick to generate random alphanumeric identifiers:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> base64<span style="color:#f92672">.</span>urlsafe_b64encode(os<span style="color:#f92672">.</span>urandom(<span style="color:#ae81ff">9</span>))<span style="color:#f92672">.</span>decode(<span style="color:#e6db74">&#39;utf-8&#39;</span>)
-<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;UQTfwq8XLZr6&#39;</span></code></pre></div>
-<p>Neat. Alternatively, if you want to use a specific value for an ID (such as a user&rsquo;s email address), you can just specify that instead. Next, the <code>__bool__</code> method will make a <code>RedisObject</code> &lsquo;truthy&rsquo;. You can use Python&rsquo;s <code>if</code> to tell if an object acutally exists or not. Finally, <code>delete</code>. I wanted to use <code>__del__</code> originally, but that actually gets called when an object is garbage collected, which doesn&rsquo;t quite work for this usage<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup></p>
-
+<span style="color:#e6db74">u</span><span style="color:#e6db74">&#39;UQTfwq8XLZr6&#39;</span>
+</code></pre></div><p>Neat. Alternatively, if you want to use a specific value for an ID (such as a user&rsquo;s email address), you can just specify that instead. Next, the <code>__bool__</code> method will make a <code>RedisObject</code> &lsquo;truthy&rsquo;. You can use Python&rsquo;s <code>if</code> to tell if an object acutally exists or not. Finally, <code>delete</code>. I wanted to use <code>__del__</code> originally, but that actually gets called when an object is garbage collected, which doesn&rsquo;t quite work for this usage<sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup></p>
 <p>Finally, static helper functions <code>decode_value</code> and <code>encode_value</code>. These will be used in a bit, since Redis only stores strings. Thus a <code>RedisObject</code> stores the type of each value and needs to know how to read/write that in a systematic way. For that, I&rsquo;m using Python&rsquo;s <code>json</code> encoding, falling back to <code>str</code> (and thus the <code>__str__</code> magic function on objects). This will deal nicely with most default Python objects and can be easily extended for all manner of more interesting ones if you&rsquo;d like (I&rsquo;ve done it for <code>RedisObject</code>s).</p>
-
 <p>One oddity that you&rsquo;ve probably noticed is that I&rsquo;ve hard coded the Reids IP to connect to. I&rsquo;m using <a href="https://github.com/docker/compose">docker-compose</a> to run my project, which sets up hostnames automagically within the various containers.</p>
-
 <p>Next, <code>RedisDict</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> json
 <span style="color:#f92672">import</span> redis
@@ -217,11 +207,9 @@
         <span style="color:#66d9ef">yield</span> (<span style="color:#e6db74">&#39;id&#39;</span>, self<span style="color:#f92672">.</span>id<span style="color:#f92672">.</span>rsplit(<span style="color:#e6db74">&#39;:&#39;</span>, <span style="color:#ae81ff">1</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>])
 
         <span style="color:#66d9ef">for</span> key <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>fields:
-            <span style="color:#66d9ef">yield</span> (key, self[key])</code></pre></div>
-<p>Basically, there are three interesting parts to this code: <code>__init__</code> stores the fields that this object has (and should be set by the constructors in subclasses) and can also be used as as a constructor for new objects. <code>__get/setitem__</code> will load/store items via Redis. Given the <code>encode/decode_value</code> functions in <code>RedisObject</code>, this is actually really straight forward.</p>
-
+            <span style="color:#66d9ef">yield</span> (key, self[key])
+</code></pre></div><p>Basically, there are three interesting parts to this code: <code>__init__</code> stores the fields that this object has (and should be set by the constructors in subclasses) and can also be used as as a constructor for new objects. <code>__get/setitem__</code> will load/store items via Redis. Given the <code>encode/decode_value</code> functions in <code>RedisObject</code>, this is actually really straight forward.</p>
 <p>So how would you use something like this?</p>
-
 <p>Here&rsquo;s is most of the <code>User</code> class from the project I am working on:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> bcrypt
 
@@ -270,8 +258,8 @@
             self[<span style="color:#e6db74">&#39;password&#39;</span>]<span style="color:#f92672">.</span>encode(<span style="color:#e6db74">&#39;utf-8&#39;</span>)
         )<span style="color:#f92672">.</span>decode(<span style="color:#e6db74">&#39;utf-8&#39;</span>)
 
-        <span style="color:#66d9ef">return</span> hashedTestPassword <span style="color:#f92672">==</span> self[<span style="color:#e6db74">&#39;password&#39;</span>]</code></pre></div>
-<p>A <code>User</code> will have four fields: a <code>name</code>, an <code>email</code>, a <code>password</code>, and a list of <code>friends</code> (we&rsquo;ll get to how that works in a bit). Then, I&rsquo;ve added some custom code to automatically store passwords using <a href="https://en.wikipedia.org/wiki/bcrypt">bcrypt</a><sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup>. You can use it just like you would a <code>dict</code>:</p>
+        <span style="color:#66d9ef">return</span> hashedTestPassword <span style="color:#f92672">==</span> self[<span style="color:#e6db74">&#39;password&#39;</span>]
+</code></pre></div><p>A <code>User</code> will have four fields: a <code>name</code>, an <code>email</code>, a <code>password</code>, and a list of <code>friends</code> (we&rsquo;ll get to how that works in a bit). Then, I&rsquo;ve added some custom code to automatically store passwords using <a href="https://en.wikipedia.org/wiki/bcrypt">bcrypt</a><sup id="fnref:4"><a href="#fn:4" class="footnote-ref" role="doc-noteref">4</a></sup>. You can use it just like you would a <code>dict</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> han <span style="color:#f92672">=</span> User(
 <span style="color:#f92672">...</span>     name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Luke Skywalker&#39;</span>,
 <span style="color:#f92672">...</span>     email <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;luke@rebel-alliance.io&#39;</span>,
@@ -300,33 +288,31 @@ True
 <span style="color:#f92672">&gt;&gt;&gt;</span> han[<span style="color:#e6db74">&#39;friends&#39;</span>]<span style="color:#f92672">.</span>append(luke)
 
 <span style="color:#f92672">&gt;&gt;&gt;</span> <span style="color:#66d9ef">print</span>(luke[<span style="color:#e6db74">&#39;friends&#39;</span>][<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#39;name&#39;</span>])
-<span style="color:#e6db74">&#39;Han Solo&#39;</span></code></pre></div>
-<p>Then we can go into the <code>redis-cli</code> to verify that everything saved correctly:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#ae81ff">127</span>.0.0.1:6379&gt; keys *
-<span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:han@rebel-alliance.io:friends&#34;</span>
-<span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:han@rebel-alliance.io&#34;</span>
-<span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:luke@rebel-alliance.io:friends&#34;</span>
-<span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:luke@rebel-alliance.io&#34;</span>
+<span style="color:#e6db74">&#39;Han Solo&#39;</span>
+</code></pre></div><p>Then we can go into the <code>redis-cli</code> to verify that everything saved correctly:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">127.0.0.1:6379&gt; keys *
+1<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:han@rebel-alliance.io:friends&#34;</span>
+2<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:han@rebel-alliance.io&#34;</span>
+3<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:luke@rebel-alliance.io:friends&#34;</span>
+4<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:luke@rebel-alliance.io&#34;</span>
 
-<span style="color:#ae81ff">127</span>.0.0.1:6379&gt; hgetall User:luke@rebel-alliance.io
-<span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;name&#34;</span>
-<span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;Luke Skywalker&#34;</span>
-<span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;email&#34;</span>
-<span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;luke@rebel-alliance.io&#34;</span>
-<span style="color:#ae81ff">5</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;password&#34;</span>
-<span style="color:#ae81ff">6</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;</span>$2<span style="color:#e6db74">b</span>$12$XQ1zDvl5PLS6g<span style="color:#e6db74">.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq&#34;</span>
+127.0.0.1:6379&gt; hgetall User:luke@rebel-alliance.io
+1<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;name&#34;</span>
+2<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;Luke Skywalker&#34;</span>
+3<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;email&#34;</span>
+4<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;luke@rebel-alliance.io&#34;</span>
+5<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;password&#34;</span>
+6<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;</span>$2<span style="color:#e6db74">b</span>$12$XQ1zDvl5PLS6g<span style="color:#e6db74">.K64H27xewPQMnkELa3LvzFSyay8p9kz0XXHVOFq&#34;</span>
 
-<span style="color:#ae81ff">127</span>.0.0.1:6379&gt; lrange User:luke@rebel-alliance.io:friends <span style="color:#ae81ff">0</span> -1
-<span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:han@rebel-alliance.io&#34;</span></code></pre></div>
-<p>There are two entires for each, since technically the <code>friends</code> list is a <code>RedisList</code>. Originally, I was storing these as JSON encoded lists, but as they got larger, this started to get a little unweildy.</p>
-
+127.0.0.1:6379&gt; lrange User:luke@rebel-alliance.io:friends <span style="color:#ae81ff">0</span> -1
+1<span style="color:#f92672">)</span> <span style="color:#e6db74">&#34;User:han@rebel-alliance.io&#34;</span>
+</code></pre></div><p>There are two entires for each, since technically the <code>friends</code> list is a <code>RedisList</code>. Originally, I was storing these as JSON encoded lists, but as they got larger, this started to get a little unweildy.</p>
 <p>Another plus is that since all of the objects are backed by Redis, you get automatic persistance. Stop Python completely, start it back up, and you can just load the same objects again (remember, for these objects, I&rsquo;m using the <code>email</code> as the ID):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> luke <span style="color:#f92672">=</span> User(<span style="color:#e6db74">&#39;luke@rebel-alliance.io&#39;</span>)
 
 <span style="color:#f92672">&gt;&gt;&gt;</span> <span style="color:#66d9ef">print</span>(luke[<span style="color:#e6db74">&#39;friends&#39;</span>][<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#39;name&#39;</span>])
-<span style="color:#e6db74">&#39;Han Solo&#39;</span></code></pre></div>
-<p>Very cool.</p>
-
+<span style="color:#e6db74">&#39;Han Solo&#39;</span>
+</code></pre></div><p>Very cool.</p>
 <p>So, speaking of <code>RedisList</code>, how does that work? Mostly the same as <code>RedisDict</code> (although I had a few more functions to implement):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">import</span> json
 <span style="color:#f92672">import</span> redis
@@ -423,29 +409,30 @@ True
         self<span style="color:#f92672">.</span>redis<span style="color:#f92672">.</span>rpush(self<span style="color:#f92672">.</span>id, RedisObject<span style="color:#f92672">.</span>encode_value(val))
 
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">append</span>(self, val):
-        self<span style="color:#f92672">.</span>rpush(val)</code></pre></div>
-<p>Basically, I&rsquo;m mapping a lot of the default Python <code>list</code> functionality to Redis lists and vice versa<sup class="footnote-ref" id="fnref:5"><a href="#fn:5">5</a></sup>. It&rsquo;s a little odd and some things aren&rsquo;t as efficient as I&rsquo;d like (you only get <code>O(1)</code> access to the beginning and end of the list), but so it goes. It works great, as you saw in the <code>friends</code> example above.</p>
-
+        self<span style="color:#f92672">.</span>rpush(val)
+</code></pre></div><p>Basically, I&rsquo;m mapping a lot of the default Python <code>list</code> functionality to Redis lists and vice versa<sup id="fnref:5"><a href="#fn:5" class="footnote-ref" role="doc-noteref">5</a></sup>. It&rsquo;s a little odd and some things aren&rsquo;t as efficient as I&rsquo;d like (you only get <code>O(1)</code> access to the beginning and end of the list), but so it goes. It works great, as you saw in the <code>friends</code> example above.</p>
 <p>The one interesting function is <code>as_child</code>. Since either a <code>RedisDict</code> or a <code>RedisList</code> expect a &lsquo;constructor-like&rsquo; function as the data type, I need something that will correctly store a <code>RedisList</code> inside of a <code>RedisDict</code> while generating a human readable ID (with <code>:friends</code> appended in the example above). I love <a href="https://en.wikipedia.org/wiki/higher%20order%20functions">higher order functions</a>.</p>
-
 <p>And&hellip; that&rsquo;s it. Eventually, I think I&rsquo;ll look into publishing this as a library to <code>pip</code> or the like. But since I&rsquo;ve never done that before and this post is already a little on the long sice, we&rsquo;ll leave that for another day. All of the code is included in the post, so you can copy and paste it into your project if you&rsquo;d like to try it out before I publish it. Once I have, I&rsquo;ll edit this post.</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Pretty quickly actually
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">Yes, there are a few other choices; these are the most common in practice
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
-<li id="fn:3">Although I did have a similar model with lazily loaded objects from disk that would only save when they were <code>del</code>eted. That was neat.
- <a class="footnote-return" href="#fnref:3"><sup>[return]</sup></a></li>
-<li id="fn:4">A combination hash+salt; never store plain text or unsalted passwords
- <a class="footnote-return" href="#fnref:4"><sup>[return]</sup></a></li>
-<li id="fn:5">I can never remember exactly how that&rsquo;s spelled&hellip;
- <a class="footnote-return" href="#fnref:5"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Pretty quickly actually <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>Yes, there are a few other choices; these are the most common in practice <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3" role="doc-endnote">
+<p>Although I did have a similar model with lazily loaded objects from disk that would only save when they were <code>del</code>eted. That was neat. <a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:4" role="doc-endnote">
+<p>A combination hash+salt; never store plain text or unsalted passwords <a href="#fnref:4" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:5" role="doc-endnote">
+<p>I can never remember exactly how that&rsquo;s spelled&hellip; <a href="#fnref:5" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,65 +71,55 @@
     </header>
 
 	<div class="entry-content"><p>Today I started working on a little webapp. It&rsquo;s mostly to get me back in practice writing website code, but it does hopefully have the side effect of being useful. More on that later though, perhaps when it&rsquo;s actually working.</p>
-
 <p>In any case, the first thing that I wanted to do for this app was to set up some sort of authentication system. Since I don&rsquo;t have HTTPS set up at the moment with my webhost (<a title="Dreamhost Homepage" href="http://dreamhost.com/">Dreamhost</a>; they really are pretty good to work with and far better than my previous host) and it doesn&rsquo;t really make as much sense to send passwords in plaintext over the network, I decided to go ahead and give OpenID a try. Granted, it&rsquo;s still sending the authentication information in plaintext for at least part of the trip, but it&rsquo;s still something that I think is worth learning.</p>
-
 <p>Since the backend of the website is written in PHP (I generally use Python for prototyping, but I have to admit that it&rsquo;s easier to just hammer out webpages  in PHP) so the first place that a simple web search landed me was <a title="Getting Started with OpenID and PHP" href="http://devzone.zend.com/1254/getting-started-with-openid-and-php/">this article</a> on DevZone, using <a title="Janrain's OpenID Library" href="http://janrain.com/openid-enabled/">Janrain&rsquo;s OpenID library</a>. I downloaded everything&hellip; and immediately ran into a roadblock. Turns out in hindsight, I wasn&rsquo;t actually sure how OpenID works, so just mashing the code into my own wasn&rsquo;t going as well as I&rsquo;d hoped.</p>
-
 <p>Off to <a href="https://en.wikipedia.org/wiki/Openid">Wikipedia</a>!</p>
-
 <p>It turns out that OpenID basically works like this:</p>
-
 <figure>
     <img src="/embeds/2012/openid.png"/> 
 </figure>
 
-
 <p>(<a href="https://en.wikipedia.org/wiki/File:OpenIDvs.Pseudo-AuthenticationusingOAuth.svg">source</a>, <a title="CC0 1.0 Universal (CC0 1.0)  Public Domain Dedication" href="http://creativecommons.org/publicdomain/zero/1.0/deed.en">license: CC0 1.0</a>)</p>
-
-<p>So basically there were a number of redirects going on behind the scenes that I was having issues setting up, partially due to the relative complexity of the library that I was using. Looking around on the Internet, I found that I wasn&rsquo;t alone in thinking that the library that I was using was particularly powerful, but also a bit more complicated to get started with. So I went in search of a new library and eventually came across <a title="LightOpenID on Google Code" href="http://code.google.com/p/lightopenid/">LightOpenID</a>, with the promise that I could &ldquo; code a functional client in less than ten lines of code&rdquo;. So off I went!</p>
-
+<p>So basically there were a number of redirects going on behind the scenes that I was having issues setting up, partially due to the relative complexity of the library that I was using. Looking around on the Internet, I found that I wasn&rsquo;t alone in thinking that the library that I was using was particularly powerful, but also a bit more complicated to get started with. So I went in search of a new library and eventually came across <a title="LightOpenID on Google Code" href="http://code.google.com/p/lightopenid/">LightOpenID</a>, with the promise that I could &quot; code a functional client in less than ten lines of code&quot;. So off I went!</p>
 <p>And really, it was only a tiny bit more than ten lines of code, based on the response to <a title="StackOverflow: Log-in the user with LightOpenID" href="http://stackoverflow.com/questions/3995011/log-in-the-user-with-lightopenid">this StackOverflow question</a>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">session_start();
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"><span style="color:#a6e22e">session_start</span>();
 
-$openid = new LightOpenID(&#39;http://example.com/&#39;);
-$openid-&gt;returnURL = &#39;http://example.com/&#39;;
+$openid <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">LightOpenID</span>(<span style="color:#e6db74">&#39;http://example.com/&#39;</span>);
+$openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">returnURL</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;http://example.com/&#39;</span>;
 
-// Login via google
-if(isset($_POST[&#39;login-google&#39;])) {
-        $_SESSION[&#39;provider&#39;] = &#39;Google&#39;;
-        $openid-&gt;identity = &#39;https://www.google.com/accounts/o8/id&#39;;
-        header(&#39;Location: &#39; . $openid-&gt;authUrl());
+<span style="color:#75715e">// Login via google
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">isset</span>($_POST[<span style="color:#e6db74">&#39;login-google&#39;</span>])) {
+        $_SESSION[<span style="color:#e6db74">&#39;provider&#39;</span>] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Google&#39;</span>;
+        $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">identity</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;https://www.google.com/accounts/o8/id&#39;</span>;
+        <span style="color:#a6e22e">header</span>(<span style="color:#e6db74">&#39;Location: &#39;</span> <span style="color:#f92672">.</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">authUrl</span>());
 }
 
-// We&#39;re returning from a login attempt
-elseif ($openid-&gt;validate()) {
-        $_SESSION[&#39;openid&#39;] = $openid-&gt;identity;
-}</code></pre></div>
-<p>That was easy. Next thing to get settled was what do I do with this information now that I have it? Well, the first problem is that the OpenID identifiers are kind of long winded. As an example, my OpenID from Google is 80 characters long, of which 39 are (as far as I can tell) the unique part of the ID. I could probably pull off just those 39 characters and that would be reasonable, but I wanted another solution.</p>
-
+<span style="color:#75715e">// We&#39;re returning from a login attempt
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">elseif</span> ($openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">validate</span>()) {
+        $_SESSION[<span style="color:#e6db74">&#39;openid&#39;</span>] <span style="color:#f92672">=</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">identity</span>;
+}
+</code></pre></div><p>That was easy. Next thing to get settled was what do I do with this information now that I have it? Well, the first problem is that the OpenID identifiers are kind of long winded. As an example, my OpenID from Google is 80 characters long, of which 39 are (as far as I can tell) the unique part of the ID. I could probably pull off just those 39 characters and that would be reasonable, but I wanted another solution.</p>
 <p>Lo and behold, I can get the user&rsquo;s email address using only 3 more lines of code, one to add the request and two to process it when I get the response back:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">session_start();
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"><span style="color:#a6e22e">session_start</span>();
 
-$openid = new LightOpenID(&#39;http://example.com/&#39;);
-$openid-&gt;required = array(&#39;contact/email&#39;);
-$openid-&gt;returnURL = &#39;http://example.com/&#39;;
+$openid <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">LightOpenID</span>(<span style="color:#e6db74">&#39;http://example.com/&#39;</span>);
+$openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">required</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">array</span>(<span style="color:#e6db74">&#39;contact/email&#39;</span>);
+$openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">returnURL</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;http://example.com/&#39;</span>;
 
-// Login via google
-if(isset($_POST[&#39;login-google&#39;])) {
-        $_SESSION[&#39;provider&#39;] = &#39;Google&#39;;
-        $openid-&gt;identity = &#39;https://www.google.com/accounts/o8/id&#39;;
-        header(&#39;Location: &#39; . $openid-&gt;authUrl());
+<span style="color:#75715e">// Login via google
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">isset</span>($_POST[<span style="color:#e6db74">&#39;login-google&#39;</span>])) {
+        $_SESSION[<span style="color:#e6db74">&#39;provider&#39;</span>] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Google&#39;</span>;
+        $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">identity</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;https://www.google.com/accounts/o8/id&#39;</span>;
+        <span style="color:#a6e22e">header</span>(<span style="color:#e6db74">&#39;Location: &#39;</span> <span style="color:#f92672">.</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">authUrl</span>());
 }
 
-// We&#39;re returning from a login attempt
-elseif ($openid-&gt;validate()) {
-	$attrs = $openid-&gt;getAttributes();
-	$_SESSION[&#39;id&#39;] = $attrs[&#39;contact/email&#39;];
-        $_SESSION[&#39;openid&#39;] = $openid-&gt;identity;
-}</code></pre></div>
-<p>I think this will also be helpful in the future as I can use it for this particular project to send out reports to the user whenever they might want them and use it for a sort of sharing system where users can share information with others based on their email address.</p>
-
+<span style="color:#75715e">// We&#39;re returning from a login attempt
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">elseif</span> ($openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">validate</span>()) {
+	$attrs <span style="color:#f92672">=</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">getAttributes</span>();
+	$_SESSION[<span style="color:#e6db74">&#39;id&#39;</span>] <span style="color:#f92672">=</span> $attrs[<span style="color:#e6db74">&#39;contact/email&#39;</span>];
+        $_SESSION[<span style="color:#e6db74">&#39;openid&#39;</span>] <span style="color:#f92672">=</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">identity</span>;
+}
+</code></pre></div><p>I think this will also be helpful in the future as I can use it for this particular project to send out reports to the user whenever they might want them and use it for a sort of sharing system where users can share information with others based on their email address.</p>
 <p>So two problems solved and everything seems peachy. So far I have it working with both Google and Yahoo, although adding more should be pretty much trivial. Not too bad for only an hour or so of work.</p>
 </div>
 </article></div>

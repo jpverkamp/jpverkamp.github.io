@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -77,108 +77,97 @@
     </header>
 
 	<div class="entry-content"><p>If a picture is worth a thousand words, surely an animated GIF is worth a few more than that. 😄</p>
-
 <figure>
     <img src="/embeds/2013/boom.gif"/> 
 </figure>
 
-
 <p>The short version: I finally figure out how to animation! It&rsquo;s terribly hacky&ndash;abusing both mutation on the module level and the Racket GUI event queue&ndash;and I really would love to know how to do it better. But for the moment, it works, which means that I can move forward with generating more content and weapons using the framework in future weeks.</p>
-
 <p>So how does it work?</p>
-
 <p>Well, the problem that I had the first few times around all revolved around the Racket GUI event queue not allowing me (rightfully so) to update the GUI while it was still processing. So I had to add in events to draw things. <code><a href="http://docs.racket-lang.org/search/index.html?q=queue-callback">queue-callback</a></code>
  to the rescue! It&rsquo;s a neat little function that lets you add an arbitrary thunk to the event queue. But I didn&rsquo;t want to make a content generator deal with that directly, so we need an API.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; animate.rkt</span>
 
-(provide animate! set-animate!)
+(<span style="color:#a6e22e">provide</span> animate! set-animate!)
 
-(<span style="color:#66d9ef">define </span>(animate! <span style="color:#f92672">.</span> thunks)
-  (void))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">animate!</span> <span style="color:#f92672">.</span> thunks)
+  (<span style="color:#a6e22e">void</span>))
 
-(<span style="color:#66d9ef">define </span>(set-animate! f)
-  (<span style="color:#66d9ef">set! </span>animate! f))</code></pre></div>
-<p>The first function will be what we call. The second is the ugliness that I was talking about earlier. Because we want access to the drawing functions, we need to have access to the scope in <code>gui.rkt</code>, but we want to be able to use <code>animate!</code> in any other file. Normally, that would get us circular imports.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">set-animate!</span> f)
+  (<span style="color:#66d9ef">set! </span>animate! f))
+</code></pre></div><p>The first function will be what we call. The second is the ugliness that I was talking about earlier. Because we want access to the drawing functions, we need to have access to the scope in <code>gui.rkt</code>, but we want to be able to use <code>animate!</code> in any other file. Normally, that would get us circular imports.</p>
 <p>So it&rsquo;s ugly. So it goes. What do we end up setting <code>animate!</code> to?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; gui.rkt</span>
 
 <span style="color:#75715e">; Correctly set the animation function</span>
-(set-animate!
+(<span style="color:#a6e22e">set-animate!</span>
  (<span style="color:#66d9ef">lambda </span>thunks
-   (for-each (<span style="color:#66d9ef">lambda </span>(thunk) (thunk)) thunks)
-   (send active-screen draw canvas)
-   (send frame refresh)
-   (yield)))</code></pre></div>
-<p>The first bits are easy enough, we take any number of thunks and then evaluate each of them in turn. Then we have the normal drawing functions. The only new part is the <code><a href="http://docs.racket-lang.org/search/index.html?q=yield">yield</a></code>
+   (for-each (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">thunk</span>) (<span style="color:#a6e22e">thunk</span>)) thunks)
+   (<span style="color:#a6e22e">send</span> active-screen draw canvas)
+   (<span style="color:#a6e22e">send</span> frame refresh)
+   (<span style="color:#a6e22e">yield</span>)))
+</code></pre></div><p>The first bits are easy enough, we take any number of thunks and then evaluate each of them in turn. Then we have the normal drawing functions. The only new part is the <code><a href="http://docs.racket-lang.org/search/index.html?q=yield">yield</a></code>
  function which sends control back to the event queue. I&rsquo;m not entirely sure it&rsquo;s necessary, but the original code didn&rsquo;t work and with <code>yield</code> it does.</p>
-
 <p>With that, now we can animate things. There are a few caveats to keep in mind:</p>
-
 <ul>
 <li>Any code you want to run, you have to wrap in thunks. Otherwise it would be evaluated once, at launch.</li>
 <li>Any changes to the GUI each have to be in their own <code>animate!</code> block, since the screen is only redrawn once per draw.</li>
 <li>The code will run as quickly as possible, so you&rsquo;ll often want to put in a call to <code>sleep</code> to actually make changes visible.</li>
 </ul>
-
 <p>So let&rsquo;s take an example in practice (the one in the GIF above): the bomb.</p>
-
 <p>All of this code will go into the act function in exploding-entity, adding to the previous damage code that was already there.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; entities.rkt</span>
 
 <span style="color:#75715e">; An exploding enemy blows up whenever the player gets close to them</span>
 <span style="color:#75715e">; Otherwise, they cannot move or attack (by default)</span>
-(define-thing exploding-enemy enemy
-  [(act me world)
+(<span style="color:#a6e22e">define-thing</span> exploding-enemy enemy
+  [(<span style="color:#a6e22e">act</span> me world)
    <span style="color:#f92672">...</span>
 
    <span style="color:#75715e">; Get the neighboring tiles</span>
    (<span style="color:#66d9ef">define </span>neighbors
-     (for*/list ([xd (in-range <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)]
-                 [yd (in-range <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)])
-       (<span style="color:#66d9ef">define </span>loc (+ (thing-get me <span style="color:#e6db74">&#39;location</span>) (pt xd yd)))
-       (send world tile-at (pt-x loc) (pt-y loc))))
+     (<span style="color:#a6e22e">for*/list</span> ([xd (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)]
+                 [yd (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">-1</span> <span style="color:#ae81ff">2</span>)])
+       (<span style="color:#66d9ef">define </span>loc (+ (<span style="color:#a6e22e">thing-get</span> me <span style="color:#e6db74">&#39;location</span>) (<span style="color:#a6e22e">pt</span> xd yd)))
+       (<span style="color:#a6e22e">send</span> world tile-at (<span style="color:#a6e22e">pt-x</span> loc) (<span style="color:#a6e22e">pt-y</span> loc))))
 
    <span style="color:#75715e">; Store the original color</span>
-   (for ([tile (in-list neighbors)])
-     (thing-set! tile <span style="color:#e6db74">&#39;original-color</span> (thing-get tile <span style="color:#e6db74">&#39;color</span>))
-     (thing-set! tile <span style="color:#e6db74">&#39;original-character</span> (thing-get tile <span style="color:#e6db74">&#39;character</span>))
-     (thing-set! tile <span style="color:#e6db74">&#39;character</span> <span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>*))
+   (<span style="color:#a6e22e">for</span> ([tile (<span style="color:#a6e22e">in-list</span> neighbors)])
+     (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;original-color</span> (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;color</span>))
+     (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;original-character</span> (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;character</span>))
+     (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;character</span> <span style="color:#f92672">#</span><span style="color:#960050;background-color:#1e0010">\</span>*))
 
    <span style="color:#75715e">; Animate through several colors</span>
-   (<span style="color:#66d9ef">define </span>(random-color) (vector-ref (vector <span style="color:#e6db74">&#34;red&#34;</span> <span style="color:#e6db74">&#34;yellow&#34;</span> <span style="color:#e6db74">&#34;white&#34;</span>) (random <span style="color:#ae81ff">3</span>)))
-   (for ([i (in-range <span style="color:#ae81ff">10</span>)])
-     (animate!
+   (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">random-color</span>) (vector-ref (vector <span style="color:#e6db74">&#34;red&#34;</span> <span style="color:#e6db74">&#34;yellow&#34;</span> <span style="color:#e6db74">&#34;white&#34;</span>) (<span style="color:#a6e22e">random</span> <span style="color:#ae81ff">3</span>)))
+   (<span style="color:#a6e22e">for</span> ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">10</span>)])
+     (<span style="color:#a6e22e">animate!</span>
       (<span style="color:#66d9ef">lambda </span>()
-        (for ([tile (in-list neighbors)])
-          (thing-set! tile <span style="color:#e6db74">&#39;color</span> (random-color))
-          (sleep <span style="color:#ae81ff">1</span>)))))
+        (<span style="color:#a6e22e">for</span> ([tile (<span style="color:#a6e22e">in-list</span> neighbors)])
+          (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;color</span> (<span style="color:#a6e22e">random-color</span>))
+          (<span style="color:#a6e22e">sleep</span> <span style="color:#ae81ff">1</span>)))))
 
    <span style="color:#75715e">; Clear them</span>
-   (animate!
+   (<span style="color:#a6e22e">animate!</span>
     (<span style="color:#66d9ef">lambda </span>()
-      (for ([tile (in-list neighbors)])
-        (thing-set! tile <span style="color:#e6db74">&#39;color</span> (thing-get tile <span style="color:#e6db74">&#39;original-color</span>))
-        (thing-set! tile <span style="color:#e6db74">&#39;character</span> (thing-get tile <span style="color:#e6db74">&#39;original-character</span>)))))
+      (<span style="color:#a6e22e">for</span> ([tile (<span style="color:#a6e22e">in-list</span> neighbors)])
+        (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;color</span> (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;original-color</span>))
+        (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;character</span> (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;original-character</span>)))))
 
-   <span style="color:#f92672">...</span></code></pre></div>
-<p>And that&rsquo;s it. Originally, I was storing the colors in the enclosing scope, but then I realized that the <code>thing</code> framework allows attaching arbitrary fields at runtime. So I could just store the original color as needed and then restore it. Just so long as no one else decides to mess with it mid-explosion, it should work just fine.</p>
-
+   <span style="color:#f92672">...</span>
+</code></pre></div><p>And that&rsquo;s it. Originally, I was storing the colors in the enclosing scope, but then I realized that the <code>thing</code> framework allows attaching arbitrary fields at runtime. So I could just store the original color as needed and then restore it. Just so long as no one else decides to mess with it mid-explosion, it should work just fine.</p>
 <p>And that&rsquo;s actually it for this week. It&rsquo;s a short post and rather little final code, but it took more than a little while to get entirely correct. I&rsquo;m still not thrilled with the hacks it took to get it to work, but it&rsquo;s a start. Perchance next week I&rsquo;ll take the time to actually add a bit more content. 😄</p>
-
-<p>As always, if you&rsquo;d like to see all of the code for this project, you can do so on GitHub:
-- <a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike/tree/day-8">Racket Roguelike - Day 8</a>
-- <a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike">Racket Roguelike - Up to date</a></p>
-
+<p>As always, if you&rsquo;d like to see all of the code for this project, you can do so on GitHub:</p>
+<ul>
+<li><a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike/tree/day-8">Racket Roguelike - Day 8</a></li>
+<li><a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike">Racket Roguelike - Up to date</a></li>
+</ul>
 <p>If you&rsquo;d like to try it yourself, you&rsquo;ll need to have both <a href="http://git-scm.com/">Git</a> and <a href="http://racket-lang.org/">Racket</a> and run the following series of commands:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">git clone git://github.com/jpverkamp/racket-roguelike.git
 cd racket-roguelike
 git checkout day-8
 git submodule init
 git submodule update
-racket main.rkt</code></pre></div>
-<p><strong>Edit:</strong></p>
-
+racket main.rkt
+</code></pre></div><p><strong>Edit:</strong></p>
 <p>It seems that the submodules wondered off at some point. Instead, you can install the three libraries this uses directly using <code><a href="http://docs.racket-lang.org/search/index.html?q=pkg">pkg</a></code>
 , and then run the code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">raco pkg install github://github.com:jpverkamp/ascii-canvas/master
@@ -187,8 +176,8 @@ raco pkg install github://github.com:jpverkamp/thing/master
 git clone git://github.com/jpverkamp/racket-roguelike.git
 cd racket-roguelike
 git checkout day-8
-racket main.rkt</code></pre></div>
-<p>For part 9, click here: <a href="https://blog.jverkamp.com/2013/06/28/racket-roguelike-9-daedalus-wrath/">Racket Roguelike 9: Daedalus&rsquo; wrath!</a></p></div>
+racket main.rkt
+</code></pre></div><p>For part 9, click here: <a href="https://blog.jverkamp.com/2013/06/28/racket-roguelike-9-daedalus-wrath/">Racket Roguelike 9: Daedalus' wrath!</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

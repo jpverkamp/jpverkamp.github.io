@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,13 +71,9 @@
     </header>
 
 	<div class="entry-content"><p>On 4 March 2014, YouTube deprecated the v2.0 API for YouTube (<a href="https://developers.google.com/youtube/2.0/developers_guide_protocol_deprecated">source</a>). One of the unfortunate side effects was that RSS feeds for user uploads were included in what was deprecated.</p>
-
 <p>Previously, you could get an RSS feed with a link of the form: <code>https://gdata.youtube.com/feeds/base/users/{user}/uploads</code> For the longest time, even after the deprecation, those links still worked, but a couple weeks ago, more and more of the video feeds I was subscribed to started redirecting to <a href="https://www.youtube.com/channel/UCMDQxm7cUx3yXkfeHa5zJIQ/videos">YouTube Help account</a>. As thrilling as that channel is, it&rsquo;s not what I&rsquo;m looking for.</p>
-
 <p>Let&rsquo;s fix it.</p>
-
 <p>First step, we need a YouTube Data API (v3) key. Unfortunately it doesn&rsquo;t look like they provide un-authenticated use of the API as before. That&rsquo;s easy enough though, just <a href="https://developers.google.com/youtube/registering_an_application">go through the steps to register an application</a>. Next, dig through the APIs. It doesn&rsquo;t look like there is a way to directly get a user&rsquo;s videos, but you can get a list of a users &lsquo;uploads&rsquo; playlist, which functions much the same way.</p>
-
 <p>Using Python&rsquo;s <a href="http://docs.python-requests.org/en/latest/">requests</a> library, we just have to hit the correct endpoint:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Use the channel to get the &#39;uploads&#39; playlist id</span>
 response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(
@@ -87,8 +83,8 @@ response <span style="color:#f92672">=</span> requests<span style="color:#f92672
         <span style="color:#e6db74">&#39;forUsername&#39;</span>: user,
         <span style="color:#e6db74">&#39;key&#39;</span>: API_KEY,
     }
-)</code></pre></div>
-<p>One example response:</p>
+)
+</code></pre></div><p>One example response:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">{<span style="color:#f92672">&#34;etag&#34;</span>: <span style="color:#e6db74">&#34;\&#34;tbWC5XrSXxe1WOAx6MK9z4hHSU8/6wRGj4eVz7tGNiDQjCMuhP6B4vQ\&#34;&#34;</span>,
  <span style="color:#f92672">&#34;items&#34;</span>: [{<span style="color:#f92672">&#34;contentDetails&#34;</span>: {<span style="color:#f92672">&#34;googlePlusUserId&#34;</span>: <span style="color:#e6db74">&#34;112244684143881021368&#34;</span>,
                                <span style="color:#f92672">&#34;relatedPlaylists&#34;</span>: {<span style="color:#f92672">&#34;likes&#34;</span>: <span style="color:#e6db74">&#34;LL6nSFpj9HTCZ5t-N3Rm3-HA&#34;</span>,
@@ -97,10 +93,10 @@ response <span style="color:#f92672">=</span> requests<span style="color:#f92672
             <span style="color:#f92672">&#34;id&#34;</span>: <span style="color:#e6db74">&#34;UC6nSFpj9HTCZ5t-N3Rm3-HA&#34;</span>,
             <span style="color:#f92672">&#34;kind&#34;</span>: <span style="color:#e6db74">&#34;youtube#channel&#34;</span>}],
  <span style="color:#f92672">&#34;kind&#34;</span>: <span style="color:#e6db74">&#34;youtube#channelListResponse&#34;</span>,
- <span style="color:#f92672">&#34;pageInfo&#34;</span>: {<span style="color:#f92672">&#34;resultsPerPage&#34;</span>: <span style="color:#ae81ff">5</span>, <span style="color:#f92672">&#34;totalResults&#34;</span>: <span style="color:#ae81ff">1</span>}}</code></pre></div>
-<p>That&rsquo;s some progress. Specifically, you can get the playlist ID for the user uploads:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">playlistId <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>json()[<span style="color:#e6db74">&#39;items&#39;</span>][<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#39;contentDetails&#39;</span>][<span style="color:#e6db74">&#39;relatedPlaylists&#39;</span>][<span style="color:#e6db74">&#39;uploads&#39;</span>]</code></pre></div>
-<p>From there, we can query the API again in order to get the most recent 20 items from that specific playlist:</p>
+ <span style="color:#f92672">&#34;pageInfo&#34;</span>: {<span style="color:#f92672">&#34;resultsPerPage&#34;</span>: <span style="color:#ae81ff">5</span>, <span style="color:#f92672">&#34;totalResults&#34;</span>: <span style="color:#ae81ff">1</span>}}
+</code></pre></div><p>That&rsquo;s some progress. Specifically, you can get the playlist ID for the user uploads:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">playlistId <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>json()[<span style="color:#e6db74">&#39;items&#39;</span>][<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#39;contentDetails&#39;</span>][<span style="color:#e6db74">&#39;relatedPlaylists&#39;</span>][<span style="color:#e6db74">&#39;uploads&#39;</span>]
+</code></pre></div><p>From there, we can query the API again in order to get the most recent 20 items from that specific playlist:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Get the most recent 20 videos on the &#39;uploads&#39; playlist</span>
 response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(
     <span style="color:#e6db74">&#39;https://www.googleapis.com/youtube/v3/playlistItems&#39;</span>,
@@ -110,8 +106,8 @@ response <span style="color:#f92672">=</span> requests<span style="color:#f92672
         <span style="color:#e6db74">&#39;playlistId&#39;</span>: playlistId,
         <span style="color:#e6db74">&#39;key&#39;</span>: API_KEY
     }
-)</code></pre></div>
-<p>Some snippets from that output (it&rsquo;s rather large):</p>
+)
+</code></pre></div><p>Some snippets from that output (it&rsquo;s rather large):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">{<span style="color:#f92672">&#34;etag&#34;</span>: <span style="color:#e6db74">&#34;\&#34;tbWC5XrSXxe1WOAx6MK9z4hHSU8/PH2ohKtd9aLBba_d7dVtVUfFle0\&#34;&#34;</span>,
  <span style="color:#f92672">&#34;items&#34;</span>: [{<span style="color:#f92672">&#34;etag&#34;</span>: <span style="color:#e6db74">&#34;\&#34;tbWC5XrSXxe1WOAx6MK9z4hHSU8/-LUTubHPIceTTTPMrBW-Qs9KOZQ\&#34;&#34;</span>,
             <span style="color:#f92672">&#34;id&#34;</span>: <span style="color:#e6db74">&#34;UUKzDohq4XHVIEl9O19Nd8rKuqCo1VravR&#34;</span>,
@@ -132,8 +128,8 @@ response <span style="color:#f92672">=</span> requests<span style="color:#f92672
                                        <span style="color:#960050;background-color:#1e0010">...</span>},
                        <span style="color:#f92672">&#34;title&#34;</span>: <span style="color:#e6db74">&#34;When Will We Run Out Of Names?&#34;</span>}},
            {<span style="color:#f92672">&#34;etag&#34;</span>: <span style="color:#e6db74">&#34;\&#34;tbWC5XrSXxe1WOAx6MK9z4hHSU8/kCpPYobMQgr7w9gfxaR-_cfkJkc\&#34;&#34;</span>,
-           <span style="color:#960050;background-color:#1e0010">...]</span>}</code></pre></div>
-<p>In that snippets blob, we have everything we need. Specifically, the <code>title</code>, <code>thumbnails</code>, and <code>link</code> (by way of <code>resourceID.videoId</code>). Specifically, we can start to construct an RSS feed using the <a href="https://pypi.python.org/pypi/feedgen/">feedgen</a> library<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>:</p>
+           <span style="color:#960050;background-color:#1e0010">...]</span>}
+</code></pre></div><p>In that snippets blob, we have everything we need. Specifically, the <code>title</code>, <code>thumbnails</code>, and <code>link</code> (by way of <code>resourceID.videoId</code>). Specifically, we can start to construct an RSS feed using the <a href="https://pypi.python.org/pypi/feedgen/">feedgen</a> library<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Generate a list of results that can be used as feed items</span>
 feed <span style="color:#f92672">=</span> feedgen<span style="color:#f92672">.</span>feed<span style="color:#f92672">.</span>FeedGenerator()
 feed<span style="color:#f92672">.</span>title(user <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39; (YRSS)&#39;</span>)
@@ -160,11 +156,10 @@ feed<span style="color:#f92672">.</span>id(<span style="color:#e6db74">&#39;YRSS
         url <span style="color:#f92672">=</span> video_url,
         img <span style="color:#f92672">=</span> thumbnail,
         title <span style="color:#f92672">=</span> title,
-    ))</code></pre></div>
-<p>And generate the feed:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">feed<span style="color:#f92672">.</span>atom_str()</code></pre></div>
-<p>I love how (relatively) elegant that was. You don&rsquo;t have to worry about or even know anything about how the underlying XML will be structured.</p>
-
+    ))
+</code></pre></div><p>And generate the feed:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">feed<span style="color:#f92672">.</span>atom_str()
+</code></pre></div><p>I love how (relatively) elegant that was. You don&rsquo;t have to worry about or even know anything about how the underlying XML will be structured.</p>
 <p>Since eventually I want this to be a web service, I used Flask to generate a simple API:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">app <span style="color:#f92672">=</span> flask<span style="color:#f92672">.</span>Flask(__name__)
 
@@ -173,19 +168,17 @@ feed<span style="color:#f92672">.</span>id(<span style="color:#e6db74">&#39;YRSS
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">generatefeed</span>(user):
     <span style="color:#f92672">...</span>
 
-    <span style="color:#66d9ef">return</span> feed<span style="color:#f92672">.</span>atom_str()</code></pre></div>
-<p>That way, if you go to <code>http://myserver.com/{user}.xml</code>, you would get an RSS feed for that user&rsquo;s most recent 20 videos. There are a few other considerations to keep in mind (For example, I have a cache that only re-queries the YouTube API once per hour and otherwise re-serves the same feed. And better error handling.)</p>
-
+    <span style="color:#66d9ef">return</span> feed<span style="color:#f92672">.</span>atom_str()
+</code></pre></div><p>That way, if you go to <code>http://myserver.com/{user}.xml</code>, you would get an RSS feed for that user&rsquo;s most recent 20 videos. There are a few other considerations to keep in mind (For example, I have a cache that only re-queries the YouTube API once per hour and otherwise re-serves the same feed. And better error handling.)</p>
 <p>If you&rsquo;d like to see the full source in all it&rsquo;s glory, it&rsquo;s available on GitHub: <a href="https://github.com/jpverkamp/yrss">jpverkamp/yrss</a>. You will have to supply an <code>API_KEY</code> as an environment variable to run it, but that should be relatively straight forward.</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">I originally used <a href="https://pypi.python.org/pypi/feedgenerator/1.2.1">feedgenerator</a>, but it doesn&rsquo;t seem to support Python3
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>I originally used <a href="https://pypi.python.org/pypi/feedgenerator/1.2.1">feedgenerator</a>, but it doesn&rsquo;t seem to support Python3 <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

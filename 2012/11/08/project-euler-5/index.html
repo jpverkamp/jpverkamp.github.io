@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -76,28 +76,23 @@
 	<div class="entry-content"><blockquote>
 <p>2520 is the smallest number that can be divided by each of the numbers from
 1 to 10 without any remainder.</p>
-
+</blockquote>
+<blockquote>
 <p>What is the smallest positive number that is evenly divisible by all of the
 numbers from 1 to 20?
 &ndash; <cite><a href="http://projecteuler.net/problem=5">PROJECT EULER #5</a></cite></p>
 </blockquote>
-
 <p>Pretty straight forward today. Basically, we&rsquo;re looking for the <a href="https://en.wikipedia.org/wiki/least%20common%20multiple">least common multiple</a> (<code>lcm</code>) of all of the numbers from 1 to 20. So, we&rsquo;ll start with that. Here&rsquo;s a way to define <code>lcm</code>, directly from the wikipedia article:</p>
-
 <div class="latex-block">lcm(a,b)=\frac{ |ab| }{gcd(a,b)}</div>
-
 
 <p>This translates pretty directly:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; find the least common multiple of two numbers</span>
 <span style="color:#75715e">; source: http://en.wikipedia.org/wiki/Least_common_multiple</span>
 (<span style="color:#66d9ef">define </span>(lcm a b)
-  (/ (abs (* a b)) (gcd a b)))</code></pre></div>
-<p>Luckily, <code>lcm</code> is commutative, so <code>(lcm (lcm a b) c)</code> is the same as <code>(lcm a (lcm b c))</code>, etc.</p>
-
+  (/ (abs (* a b)) (gcd a b)))
+</code></pre></div><p>Luckily, <code>lcm</code> is commutative, so <code>(lcm (lcm a b) c)</code> is the same as <code>(lcm a (lcm b c))</code>, etc.</p>
 <p>However, as you may have noticed, we need another function: <code>gcd</code> (the <a href="https://en.wikipedia.org/wiki/greatest%20common%20divisor">greatest common divisor</a>). Euclid&rsquo;s algorithm is both straight forward and nicely expressed in a recursive fashion:</p>
-
 <div class="latex-block">gcd(a,b) = \begin{cases} a &amp;\mbox{if } b=0 \\ gcd(b,mod(a,b)) &amp; \mbox{otherwise} \end{cases}</div>
-
 
 <p>And now in code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; find the greatest common divisor of two numbers</span>
@@ -105,23 +100,22 @@ numbers from 1 to 20?
 (<span style="color:#66d9ef">define </span>(gcd a b)
   (<span style="color:#66d9ef">if </span>(= b <span style="color:#ae81ff">0</span>)
       a
-      (gcd b (remainder a b))))</code></pre></div>
-<p>With that, it&rsquo;s nice and easy to calculate the least common multiple of 1 through any number n. Just use the same <code>for/fold</code> macro I talked about <a href="https://blog.jverkamp.com/2012/11/07/project-euler-4/">yesterday </a>(albeit without the <code>*</code>):</p>
+      (gcd b (remainder a b))))
+</code></pre></div><p>With that, it&rsquo;s nice and easy to calculate the least common multiple of 1 through any number n. Just use the same <code>for/fold</code> macro I talked about <a href="https://blog.jverkamp.com/2012/11/07/project-euler-4/">yesterday </a>(albeit without the <code>*</code>):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; calculate the least common multiple of a range</span>
-(<span style="color:#66d9ef">define </span>(least-common-multiple-up-to n)
-  (for/fold ([res <span style="color:#ae81ff">1</span>])
-            ([i (in-range <span style="color:#ae81ff">1</span> (+ n <span style="color:#ae81ff">1</span>))])
-    (lcm res i)))</code></pre></div>
-<p>So we start with the result <code>res</code> at 1 then repeatedly take the <code>lcm</code> of the current result and the new number. Check it on the small example given:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (least-common-multiple-up-to <span style="color:#ae81ff">10</span>))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">least-common-multiple-up-to</span> n)
+  (<span style="color:#a6e22e">for/fold</span> ([res <span style="color:#ae81ff">1</span>])
+            ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> (+ n <span style="color:#ae81ff">1</span>))])
+    (lcm res i)))
+</code></pre></div><p>So we start with the result <code>res</code> at 1 then repeatedly take the <code>lcm</code> of the current result and the new number. Check it on the small example given:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">least-common-multiple-up-to</span> <span style="color:#ae81ff">10</span>))
 cpu time: <span style="color:#ae81ff">0</span> real time: <span style="color:#ae81ff">0</span> gc time: <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">2520</span></code></pre></div>
-<p>Good to go. Extend it for the full example:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (least-common-multiple-up-to <span style="color:#ae81ff">20</span>))
+<span style="color:#ae81ff">2520</span>
+</code></pre></div><p>Good to go. Extend it for the full example:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">least-common-multiple-up-to</span> <span style="color:#ae81ff">20</span>))
 cpu time: <span style="color:#ae81ff">0</span> real time: <span style="color:#ae81ff">0</span> gc time: <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">232792560</span></code></pre></div>
-<p>And we&rsquo;re good to go. You can&rsquo;t really beat 0 ms.</p>
-
+<span style="color:#ae81ff">232792560</span>
+</code></pre></div><p>And we&rsquo;re good to go. You can&rsquo;t really beat 0 ms.</p>
 <p>As always, you can download my code for this or any Project Euler problem I’ve uploaded <a href="https://github.com/jpverkamp/small-projects/tree/master/project-euler" title="GitHub: jpverkamp: Project Euler">here</a>.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

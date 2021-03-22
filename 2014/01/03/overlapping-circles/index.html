@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,33 +74,29 @@
     </header>
 
 	<div class="entry-content"><p>Here&rsquo;s a quick little programming task that I came to via <a href="http://l2program.co.uk/671/overlapping-circles">a post</a> on L2Program (who in turn seems to have found it on Reddit). The basic idea is to take a given list of circles and to determine the area enclosed (while correctly accounting for overlap).</p>
-
 <p>It should be possible to calculate this directly / geometrically, but where&rsquo;s the fun in that? 😄 Instead, we&rsquo;ll go with a <a href="https://en.wikipedia.org/wiki/Monte%20Carlo%20simulation">Monte Carlo simulation</a>. Basically, generate a bunch of points and check if each is in any of the circles (much easier to calculate). Use the ratio of hits to misses to calculate the are.</p>
-
 <p>First, we&rsquo;ll start with a few structures to define points and circles:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(struct point     (x y)           <span style="color:#f92672">#</span>:transparent)
-(struct circle    (center radius) <span style="color:#f92672">#</span>:transparent)</code></pre></div>
-<p>Not strictly necessary, but it may make things a bit more clean.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">struct</span> point     (<span style="color:#a6e22e">x</span> y)           <span style="color:#f92672">#</span>:transparent)
+(<span style="color:#a6e22e">struct</span> circle    (<span style="color:#a6e22e">center</span> radius) <span style="color:#f92672">#</span>:transparent)
+</code></pre></div><p>Not strictly necessary, but it may make things a bit more clean.</p>
 <p>Next, we want a method that can test if a point is in a circle or not:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Test if circle contains a given point</span>
-(<span style="color:#66d9ef">define </span>(contains? c p)
-  (&lt;= (+ (sqr (- (point-x (circle-center c)) (point-x p)))
-         (sqr (- (point-y (circle-center c)) (point-y p))))
-      (sqr (circle-radius c))))</code></pre></div>
-<p>It&rsquo;s straight forward enough. About the most interesting part is that we&rsquo;re squaring the radius rather than taking the square root of the distance. It&rsquo;s just a bit quicker and as easy to think about, so we might as well.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">contains?</span> c p)
+  (&lt;= (+ (<span style="color:#a6e22e">sqr</span> (- (<span style="color:#a6e22e">point-x</span> (<span style="color:#a6e22e">circle-center</span> c)) (<span style="color:#a6e22e">point-x</span> p)))
+         (<span style="color:#a6e22e">sqr</span> (- (<span style="color:#a6e22e">point-y</span> (<span style="color:#a6e22e">circle-center</span> c)) (<span style="color:#a6e22e">point-y</span> p))))
+      (<span style="color:#a6e22e">sqr</span> (<span style="color:#a6e22e">circle-radius</span> c))))
+</code></pre></div><p>It&rsquo;s straight forward enough. About the most interesting part is that we&rsquo;re squaring the radius rather than taking the square root of the distance. It&rsquo;s just a bit quicker and as easy to think about, so we might as well.</p>
 <p>With that, it&rsquo;s easy to write a function that can compare an entire list, stopping as soon as we find any circle that matches:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Check if any circle in a given list cs contains a point (x y)</span>
-(<span style="color:#66d9ef">define </span>(any-contains? cs p)
-  (ormap (λ (c) (contains? c p)) cs))</code></pre></div>
-<p>Next, we need to be able to generate random points. First, here&rsquo;s a function that can generate any real number in the range [min, max) (so inclusive and exclusive, respectively):</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">any-contains?</span> cs p)
+  (<span style="color:#a6e22e">ormap</span> (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">c</span>) (<span style="color:#a6e22e">contains?</span> c p)) cs))
+</code></pre></div><p>Next, we need to be able to generate random points. First, here&rsquo;s a function that can generate any real number in the range [min, max) (so inclusive and exclusive, respectively):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Return a given number chosen uniformly from [min, max)</span>
-(<span style="color:#66d9ef">define </span>(rand-range min max)
-  (+ min (* (random) (- max min))))</code></pre></div>
-<p>And that&rsquo;s all we need to really crack the program. We&rsquo;ll have three basic parts:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">rand-range</span> min max)
+  (+ min (* (<span style="color:#a6e22e">random</span>) (- max min))))
+</code></pre></div><p>And that&rsquo;s all we need to really crack the program. We&rsquo;ll have three basic parts:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Calculate the area of a given circle</span>
-(<span style="color:#66d9ef">define </span>(area-of circles <span style="color:#f92672">#</span>:samples [samples <span style="color:#ae81ff">1</span>e6])
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">area-of</span> circles <span style="color:#f92672">#</span>:samples [samples <span style="color:#ae81ff">1</span>e6])
   <span style="color:#75715e">; Find the range of the circles</span>
   <span style="color:#f92672">...</span>
 
@@ -108,85 +104,84 @@
   <span style="color:#f92672">...</span>
 
   <span style="color:#75715e">; Use that ratio to calculate the area of the circles</span>
-  <span style="color:#f92672">...</span>)</code></pre></div>
-<p>The range is straight forward enough, but we need it to make sure we can choose random points that will cover the entire set of circles. There are a few ways to do it, but I&rsquo;m going to go with <code>for/fold</code>. We&rsquo;ll start with infinities on either end, and then take each new edge point in turn if it&rsquo;s smaller/larger.</p>
+  <span style="color:#f92672">...</span>)
+</code></pre></div><p>The range is straight forward enough, but we need it to make sure we can choose random points that will cover the entire set of circles. There are a few ways to do it, but I&rsquo;m going to go with <code>for/fold</code>. We&rsquo;ll start with infinities on either end, and then take each new edge point in turn if it&rsquo;s smaller/larger.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Find the range of the circles</span>
-(define-values (x-min x-max y-min y-max)
-  (for/fold ([x-min +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>] [x-max -inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>] [y-min +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>] [y-max -inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>])
-    ([c (in-list circles)])
-    (values (min x-min (- (point-x (circle-center c)) (circle-radius c)))
-            (max x-max (+ (point-x (circle-center c)) (circle-radius c)))
-            (min y-min (- (point-y (circle-center c)) (circle-radius c)))
-            (max y-max (+ (point-y (circle-center c)) (circle-radius c))))))</code></pre></div>
-<p>Next, throw a whole bunch of &lsquo;darts&rsquo; at the circles. Check each, using the <code>any-contains?</code> function we defined above.</p>
+(<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">x-min</span> x-max y-min y-max)
+  (<span style="color:#a6e22e">for/fold</span> ([x-min +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>] [x-max -inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>] [y-min +inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>] [y-max -inf<span style="color:#f92672">.</span><span style="color:#ae81ff">0</span>])
+    ([c (<span style="color:#a6e22e">in-list</span> circles)])
+    (values (min x-min (- (<span style="color:#a6e22e">point-x</span> (<span style="color:#a6e22e">circle-center</span> c)) (<span style="color:#a6e22e">circle-radius</span> c)))
+            (max x-max (+ (<span style="color:#a6e22e">point-x</span> (<span style="color:#a6e22e">circle-center</span> c)) (<span style="color:#a6e22e">circle-radius</span> c)))
+            (min y-min (- (<span style="color:#a6e22e">point-y</span> (<span style="color:#a6e22e">circle-center</span> c)) (<span style="color:#a6e22e">circle-radius</span> c)))
+            (max y-max (+ (<span style="color:#a6e22e">point-y</span> (<span style="color:#a6e22e">circle-center</span> c)) (<span style="color:#a6e22e">circle-radius</span> c))))))
+</code></pre></div><p>Next, throw a whole bunch of &lsquo;darts&rsquo; at the circles. Check each, using the <code>any-contains?</code> function we defined above.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Count how many random darts hit any circle</span>
 (<span style="color:#66d9ef">define </span>hits
-  (for/sum ([i (in-range samples)])
+  (<span style="color:#a6e22e">for/sum</span> ([i (<span style="color:#a6e22e">in-range</span> samples)])
     (<span style="color:#66d9ef">define </span>dart 
-      (point (rand-range x-max x-min)
-             (rand-range y-max y-min)))
-    (<span style="color:#66d9ef">if </span>(any-contains? circles dart) <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>)))</code></pre></div>
-<p>And that&rsquo;s it. The ratio of hits to total samples is the same as the ratio between area within the circles versus the entire rectangle. Multiply out&hellip; and we&rsquo;re good to go.</p>
+      (<span style="color:#a6e22e">point</span> (<span style="color:#a6e22e">rand-range</span> x-max x-min)
+             (<span style="color:#a6e22e">rand-range</span> y-max y-min)))
+    (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">any-contains?</span> circles dart) <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>)))
+</code></pre></div><p>And that&rsquo;s it. The ratio of hits to total samples is the same as the ratio between area within the circles versus the entire rectangle. Multiply out&hellip; and we&rsquo;re good to go.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Use that ratio to calculate the area of the circles</span>
 (* (/ hits samples)
    (* (- x-max x-min)
-      (- y-max y-min)))</code></pre></div>
-<p>Putting each of those where they go above (or you can see the entire code <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/overlapping-circles.rkt">here</a>) and we&rsquo;re good to go:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (area-of (list (circle (point <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
+      (- y-max y-min)))
+</code></pre></div><p>Putting each of those where they go above (or you can see the entire code <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/overlapping-circles.rkt">here</a>) and we&rsquo;re good to go:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
 <span style="color:#ae81ff">3.142516</span>
-&gt; (area-of (list (circle (point <span style="color:#ae81ff">-0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>) (circle (point  <span style="color:#ae81ff">0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
-<span style="color:#ae81ff">5.053098</span></code></pre></div>
-<p>We&rsquo;ll go ahead and run those (along with a few others) using the <code>test</code> module and <code><a href="http://docs.racket-lang.org/search/index.html?q=rackunit">rackunit</a></code>
+&gt; (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">-0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>) (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span>  <span style="color:#ae81ff">0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
+<span style="color:#ae81ff">5.053098</span>
+</code></pre></div><p>We&rsquo;ll go ahead and run those (along with a few others) using the <code>test</code> module and <code><a href="http://docs.racket-lang.org/search/index.html?q=rackunit">rackunit</a></code>
 :</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(module+ test
-  (require rackunit)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">module+</span> test
+  (<span style="color:#a6e22e">require</span> rackunit)
 
-  (check-=
-   (area-of (list (circle (point <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
+  (<span style="color:#a6e22e">check-=</span>
+   (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
    pi
    <span style="color:#ae81ff">0.1</span>
    <span style="color:#e6db74">&#34;Unit circle&#34;</span>)
 
-  (check-=
-   (area-of (list (circle (point <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">10</span>)))
+  (<span style="color:#a6e22e">check-=</span>
+   (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">10</span>)))
    (* pi <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">10</span>)
    <span style="color:#ae81ff">1</span>
    <span style="color:#e6db74">&#34;Big circle&#34;</span>)
 
-  (check-=
-   (area-of (list (circle (point <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0.1</span>)))
+  (<span style="color:#a6e22e">check-=</span>
+   (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0.1</span>)))
    (* pi <span style="color:#ae81ff">0.1</span> <span style="color:#ae81ff">0.1</span>)
    <span style="color:#ae81ff">0.01</span>
    <span style="color:#e6db74">&#34;Small circle&#34;</span>)
 
-  (check-=
-   (area-of (list (circle (point <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>) <span style="color:#ae81ff">1</span>)))
+  (<span style="color:#a6e22e">check-=</span>
+   (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">4</span>) <span style="color:#ae81ff">1</span>)))
    pi
    <span style="color:#ae81ff">0.1</span>
    <span style="color:#e6db74">&#34;Offset circle&#34;</span>)
 
-  (check-=
-   (area-of (list (circle (point <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)
-                  (circle (point <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0.5</span>)))
+  (<span style="color:#a6e22e">check-=</span>
+   (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)
+                  (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0.5</span>)))
    pi
    <span style="color:#ae81ff">0.1</span>
    <span style="color:#e6db74">&#34;Smaller circle completely enclosed&#34;</span>)
 
-  (check-=
-   (area-of (list (circle (point <span style="color:#ae81ff">-2</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)
-                  (circle (point  <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
+  (<span style="color:#a6e22e">check-=</span>
+   (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">-2</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)
+                  (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span>  <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
    (* <span style="color:#ae81ff">2</span> pi)
    <span style="color:#ae81ff">0.1</span>
    <span style="color:#e6db74">&#34;Two distinct circles&#34;</span>)
 
-  (check-=
-   (area-of (list (circle (point <span style="color:#ae81ff">-0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)
-                  (circle (point  <span style="color:#ae81ff">0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
+  (<span style="color:#a6e22e">check-=</span>
+   (<span style="color:#a6e22e">area-of</span> (list (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span> <span style="color:#ae81ff">-0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)
+                  (<span style="color:#a6e22e">circle</span> (<span style="color:#a6e22e">point</span>  <span style="color:#ae81ff">0.5</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>)))
    <span style="color:#ae81ff">5.0548</span>
    <span style="color:#ae81ff">0.1</span>
-   <span style="color:#e6db74">&#34;Overlapping circles&#34;</span>))</code></pre></div>
-<p>Run it&hellip; and all good. Every one in a while, you might get some errors (due to the random nature of the tests), but it should be extremely rare.</p>
-
+   <span style="color:#e6db74">&#34;Overlapping circles&#34;</span>))
+</code></pre></div><p>Run it&hellip; and all good. Every one in a while, you might get some errors (due to the random nature of the tests), but it should be extremely rare.</p>
 <p>That&rsquo;s it. If you&rsquo;d like to see the entire codebase, you can do so here: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/overlapping-circles.rkt">overlapping-circles.rkt</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

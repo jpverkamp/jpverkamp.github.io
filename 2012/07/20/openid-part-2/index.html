@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,42 +71,36 @@
     </header>
 
 	<div class="entry-content"><p>I <a href="https://blog.jverkamp.com/2012/07/19/adventures-in-openid-land/">wrote yesterday </a>about getting OpenID up and running, but when I played with the code a bit more today, I realized that something funny was going on. Yahoo worked exactly as I expected, when I clicked on the link for the first time, it would take me to the Yahoo login page and then to a page to grant the proper permissions. All well and good. The same with Google.</p>
-
 <p>But when I logged out of the app and tried to log back in, Google would show the same authentication screen each time. Granted, it was working so far as getting the authentication that I wanted from it, but it was still a little frustrating having to go through that step each time. And if it was frustrating for me, I could only imagine how bad it would be for any users down the line. The strangest part was that it worked fine when I was just getting the identity, but not when I also requested the email.</p>
-
 <p>I ended up spending about two hours (twice as long as getting everything set up in the first place) fruitlessly searching for something that would tell me what was going on, but I kept bouncing around on the same few StackOverflow <a title="LightOpenID forbidden when redirecting back" href="http://stackoverflow.com/questions/4696234/lightopenid-forbidden-when-redirecting-back">[1]</a> <a title="Log-in the user with LightOpenID" href="http://stackoverflow.com/questions/3995011/log-in-the-user-with-lightopenid">[2]</a> and Google App Engine <a title="Using Federated Authentication via OpenID in Google App Engine" href="https://developers.google.com/appengine/articles/openid">[1]</a> pages, none of which were particularly helpful to my particular case.</p>
-
 <p>Finally, the query &lsquo;<a title="Google Query for 'openid &quot;remember this approval&quot; not working'" href="http://www.google.com/search?q=openid+&quot;remember+this+approval&quot;+not+working">openid &ldquo;remember this approval&rdquo; not working</a>&rsquo; led me to <a title="&quot;Remember this approval&quot; being asked every auth " href="https://groups.google.com/forum/?fromgroups#!topic/google-federated-login-api/yvJ2tmdtr00">this 2009 discussion</a> on Google Groups (with almost that exact same subject line). The final response, which was only sent to the entire list &ldquo;because the answer may have general interest&rdquo;, has this little gem in it:</p>
-
 <p>I think the problem here is that you are not setting any value for &ldquo;openid.realm&rdquo;. As such, we are inferring the realm as the &ldquo;openid.return_to&rdquo; (as we should, per the OpenID spec). The problem is that your return_to includes some random number, so it is unique to each request. So basically, there is no fixed handle that allow us to use in storing the user&rsquo;s preferences.</p>
-
 <p>Interesting.</p>
-
 <p>After a few more minutes search and <a title="What should I set REALM to, using LightOpenID, for Google url's to remain consistent, for storage in my database?" href="http://stackoverflow.com/questions/5453156/what-should-i-set-realm-to-using-lightopenid-for-google-urls-to-remain-consis">another relevant StackOverflow post</a> (I really should get more involved with that site, it&rsquo;s an amazing resource for programmers), I realize that I had to set the LightOpenID realm to something consistent and relevant:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">$openid-&gt;realm = &#39;http://example.com/&#39;;</code></pre></div>
-<p>Bam. Now it works. It&rsquo;s always amazing when you spend hours working on a one line fix. Hopefully if anyone has this particular problem in the future, there&rsquo;s now one more post on the Internet about how to fix it.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">$openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">realm</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;http://example.com/&#39;</span>;
+</code></pre></div><p>Bam. Now it works. It&rsquo;s always amazing when you spend hours working on a one line fix. Hopefully if anyone has this particular problem in the future, there&rsquo;s now one more post on the Internet about how to fix it.</p>
 <p>For anyone interested, here is the complete code that I&rsquo;m using for OpenID now:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">session_start();
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"><span style="color:#a6e22e">session_start</span>();
 
-$openid = new LightOpenID(&#39;http://example.com/&#39;);
-$openid-&gt;realm = &#39;http://example.com/&#39;;
-$openid-&gt;required = array(&#39;contact/email&#39;);
-$openid-&gt;returnURL = &#39;http://example.com/&#39;;
+$openid <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> <span style="color:#a6e22e">LightOpenID</span>(<span style="color:#e6db74">&#39;http://example.com/&#39;</span>);
+$openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">realm</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;http://example.com/&#39;</span>;
+$openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">required</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">array</span>(<span style="color:#e6db74">&#39;contact/email&#39;</span>);
+$openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">returnURL</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;http://example.com/&#39;</span>;
 
-// Login via google
-if(isset($_POST[&#39;login-google&#39;])) {
-        $_SESSION[&#39;provider&#39;] = &#39;Google&#39;;
-        $openid-&gt;identity = &#39;https://www.google.com/accounts/o8/id&#39;;
-        header(&#39;Location: &#39; . $openid-&gt;authUrl());
+<span style="color:#75715e">// Login via google
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">if</span>(<span style="color:#a6e22e">isset</span>($_POST[<span style="color:#e6db74">&#39;login-google&#39;</span>])) {
+        $_SESSION[<span style="color:#e6db74">&#39;provider&#39;</span>] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Google&#39;</span>;
+        $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">identity</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;https://www.google.com/accounts/o8/id&#39;</span>;
+        <span style="color:#a6e22e">header</span>(<span style="color:#e6db74">&#39;Location: &#39;</span> <span style="color:#f92672">.</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">authUrl</span>());
 }
 
-// We&#39;re returning from a login attempt
-elseif ($openid-&gt;validate()) {
-	$attrs = $openid-&gt;getAttributes();
-	$_SESSION[&#39;id&#39;] = $attrs[&#39;contact/email&#39;];
-        $_SESSION[&#39;openid&#39;] = $openid-&gt;identity;
-}</code></pre></div></div>
+<span style="color:#75715e">// We&#39;re returning from a login attempt
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">elseif</span> ($openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">validate</span>()) {
+	$attrs <span style="color:#f92672">=</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">getAttributes</span>();
+	$_SESSION[<span style="color:#e6db74">&#39;id&#39;</span>] <span style="color:#f92672">=</span> $attrs[<span style="color:#e6db74">&#39;contact/email&#39;</span>];
+        $_SESSION[<span style="color:#e6db74">&#39;openid&#39;</span>] <span style="color:#f92672">=</span> $openid<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">identity</span>;
+}
+</code></pre></div></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

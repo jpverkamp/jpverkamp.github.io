@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,7 +71,6 @@
     </header>
 
 	<div class="entry-content"><p>Quite often, I&rsquo;ll find myself wanting to query and manipulate MySQL data entirely on the command line. I could be building up a pipeline or working on a task that I&rsquo;m going to eventually automate but haven&rsquo;t quite gotten to yet. Whenver I have to do something like that, I have a small pile of scripts I&rsquo;ve written over time that help out:</p>
-
 <ul>
 <li><code>skiphead</code>: Skip the first line of output, used to skip over headers in a query response</li>
 <li><code>skipuntil</code>: Skip all lines until we see one matching a pattern, used to resume partial tasks</li>
@@ -79,27 +78,21 @@
 <li><code>csv2json</code>: a <a href="https://blog.jverkamp.com/2015/12/11/csv-to-json/">previously posted</a> script for converting csv/tab delimited output to json</li>
 <li><code>jq</code>: not my script, but used to take the output of csv2json and query it further in ways that would be complicated to do with SQL</li>
 </ul>
-
 <p>Admitedly, the first two of those are one liners and I could easily remember them, but the advantage of a single command that does it is tab completion. <code>sk&lt;tab&gt;</code>, arrow to select which one I want, and off we go. I could put them as an alias, but I don&rsquo;t always use the same shell (mostly <a href="https://fishshell.com/">fish</a>, but sometimes Bash or Zsh).</p>
-
 <h1 id="skiphead"><code>skiphead</code></h1>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e">#!/bin/bash
 </span><span style="color:#75715e"></span>
-awk <span style="color:#e6db74">&#39;NR&gt;1&#39;</span></code></pre></div>
-<p>First, skip the header. You can use this after making a MySQL query to skip over the header. Perhaps you want to combine it with <code>commaify</code> (later):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ echo <span style="color:#e6db74">&#39;select * from messages where user_id in (&#39;</span> <span style="color:#66d9ef">$(</span>echo <span style="color:#e6db74">&#39;select id from users where email like &#34;%@example.com&#34;&#39;</span> | mysql ... | skiphead | commaify<span style="color:#66d9ef">)</span> <span style="color:#e6db74">&#39;)&#39;</span> | mysql... | ...</code></pre></div>
-<p>(I&rsquo;m purposely leaving out the details of the <code>mysql</code> command. I have a wrapper for that I use which I&rsquo;ll post about at some point.)</p>
-
+awk <span style="color:#e6db74">&#39;NR&gt;1&#39;</span>
+</code></pre></div><p>First, skip the header. You can use this after making a MySQL query to skip over the header. Perhaps you want to combine it with <code>commaify</code> (later):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ echo <span style="color:#e6db74">&#39;select * from messages where user_id in (&#39;</span> <span style="color:#66d9ef">$(</span>echo <span style="color:#e6db74">&#39;select id from users where email like &#34;%@example.com&#34;&#39;</span> | mysql ... | skiphead | commaify<span style="color:#66d9ef">)</span> <span style="color:#e6db74">&#39;)&#39;</span> | mysql... | ...
+</code></pre></div><p>(I&rsquo;m purposely leaving out the details of the <code>mysql</code> command. I have a wrapper for that I use which I&rsquo;ll post about at some point.)</p>
 <p>This will get users matching an email address, skip over the included header, turn into a comma delimited list and pass into another query (perhaps in another database).</p>
-
 <p><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/skiphead">skiphead on Github</a></p>
-
 <h1 id="skipuntil"><code>skipuntil</code></h1>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e">#!/bin/bash
 </span><span style="color:#75715e"></span>
-sed -n <span style="color:#e6db74">&#34;/</span>$@<span style="color:#e6db74">/,\$p&#34;</span></code></pre></div>
-<p>This will use a bit of <code>sed</code> trickery (<a href="https://stackoverflow.com/questions/5935742/how-to-ignore-all-lines-before-a-match-occurs-in-bash">source</a>) to skip lines until a line matches the given regular expression. If you have a long running process that is iterating over some sort of ID (which I often do) that crashes halfway through, you can run the next time with <code>skipuntil {last good id}</code> to resume from where you left off.</p>
-
+sed -n <span style="color:#e6db74">&#34;/</span>$@<span style="color:#e6db74">/,\$p&#34;</span>
+</code></pre></div><p>This will use a bit of <code>sed</code> trickery (<a href="https://stackoverflow.com/questions/5935742/how-to-ignore-all-lines-before-a-match-occurs-in-bash">source</a>) to skip lines until a line matches the given regular expression. If you have a long running process that is iterating over some sort of ID (which I often do) that crashes halfway through, you can run the next time with <code>skipuntil {last good id}</code> to resume from where you left off.</p>
 <p>If you wanted something a bit more Pythonic (and less opaquely depending on sed&rsquo;s lovely syntax):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
 
@@ -118,9 +111,8 @@ matched <span style="color:#f92672">=</span> False
   <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> matched <span style="color:#f92672">and</span> matcher<span style="color:#f92672">.</span>match(line):
     matched <span style="color:#f92672">=</span> True
   <span style="color:#66d9ef">if</span> matched:
-    sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>write(line)</code></pre></div>
-<p><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/skipuntil">skipuntil on Github</a></p>
-
+    sys<span style="color:#f92672">.</span>stdout<span style="color:#f92672">.</span>write(line)
+</code></pre></div><p><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/skipuntil">skipuntil on Github</a></p>
 <h1 id="commaify"><code>commaify</code></h1>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e">#!/usr/bin/env python3</span>
 
@@ -135,19 +127,13 @@ values <span style="color:#f92672">=</span> []
   <span style="color:#66d9ef">else</span>:
     values<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#39;&#34;{}&#34;&#39;</span><span style="color:#f92672">.</span>format(re<span style="color:#f92672">.</span>escape(line)))
 
-<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;,&#39;</span><span style="color:#f92672">.</span>join(values))</code></pre></div>
-<p>A powerful script that will take a list of items that come in newline delimted ids/numbers/strings and join them into an escaped and quoted (if necessary) list that can be passed to as a MySQL <code>in</code> clause. I can&rsquo;t guarantee that it&rsquo;s 100% safe against untrusted inputs, but then again, what is?</p>
-
+<span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;,&#39;</span><span style="color:#f92672">.</span>join(values))
+</code></pre></div><p>A powerful script that will take a list of items that come in newline delimted ids/numbers/strings and join them into an escaped and quoted (if necessary) list that can be passed to as a MySQL <code>in</code> clause. I can&rsquo;t guarantee that it&rsquo;s 100% safe against untrusted inputs, but then again, what is?</p>
 <p><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/commaify">commaify on Github</a></p>
-
-<h1 id="csv2json-jq"><code>csv2json</code> / <code>jq</code></h1>
-
+<h1 id="csv2json--jq"><code>csv2json</code> / <code>jq</code></h1>
 <p>As mentioned, this was a script I posted about <a href="https://blog.jverkamp.com/2015/12/11/csv-to-json/">a few years ago</a>, but it&rsquo;s still useful, particularly in combination with <a href="https://stedolan.github.io/jq/">jq</a>. You can combine data from multiple databases (which SQL generally won&rsquo;t do) or local data or even process in ways that are hard to do with SQL alone. Pretty handy that.</p>
-
 <p><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/csv2json">csv2json on Github</a></p>
-
 <h1 id="putting-it-all-togther">Putting it all togther</h1>
-
 <p>You can do all sorts of interesting things with these commands all together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e"># Take a CSV file containing multiple fields, extracxt the email column, get unique values, and turn those into user ids</span>
 $ echo <span style="color:#e6db74">&#39;select id from users where email in (&#39;</span> <span style="color:#f92672">(</span>cat some-user-data.csv | csv2json | jq <span style="color:#e6db74">&#39;.email&#39;</span> | tr -d <span style="color:#e6db74">&#39;&#34;&#39;</span> | sort | uniq | commaify<span style="color:#f92672">)</span> <span style="color:#e6db74">&#39;)&#39;</span> | mysql... | skiphead &gt; user-ids
@@ -161,16 +147,18 @@ $ echo <span style="color:#e6db74">&#39;
 </span><span style="color:#e6db74">    where
 </span><span style="color:#e6db74">      users.email in (&#39;</span> <span style="color:#f92672">(</span>cat emails | commaify<span style="color:#f92672">)</span> <span style="color:#e6db74">&#39;)
 </span><span style="color:#e6db74">      and users.id not in (&#39;</span> <span style="color:#f92672">(</span>cat safe_ids | commaify<span style="color:#f92672">)</span> <span style="color:#e6db74">&#39;)
-</span><span style="color:#e6db74">  &#39;</span> | mysql...</code></pre></div>
-<p>Pretty cool. Makes the Unix philosophy work for you:</p>
-
+</span><span style="color:#e6db74">  &#39;</span> | mysql...
+</code></pre></div><p>Pretty cool. Makes the Unix philosophy work for you:</p>
 <blockquote>
 <p>Write programs that do one thing and do it well.</p>
-
+</blockquote>
+<blockquote>
 <p>Write programs to work together.</p>
-
+</blockquote>
+<blockquote>
 <p>Write programs to handle text streams, because that is a universal interface.</p>
-
+</blockquote>
+<blockquote>
 <p>- Peter H. Salus in A Quarter-Century of Unix (1994)</p>
 </blockquote></div>
 </article></div>

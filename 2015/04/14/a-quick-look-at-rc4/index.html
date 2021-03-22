@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,11 +71,8 @@
     </header>
 
 	<div class="entry-content"><p>In cryptography work, <a href="https://en.wikipedia.org/wiki/RC4">RC4</a> (Rivest Cipher 4) is well known as both one of the easiest to implement and fastest to run <a href="https://en.wikipedia.org/wiki/symmetric%20encryption">symmetric encryption</a> algorithms. Unfortunately, over time there have been a number of attacks on RC4, both in poorly written protocols (such as in the case of <a href="https://en.wikipedia.org/wiki/WEP">WEP</a>) or statistical attacks against the protocol itself.</p>
-
 <p>Still, for how well it formed, it&rsquo;s an amazingly simple algorithm, so I decided to try my hand at implementing it.</p>
-
 <p>Basically, RC4 is what is known as a &lsquo;<a href="https://en.wikipedia.org/wiki/stream%20cipher">stream cipher</a>&rsquo;, implying that each byte in the input message is encrypted individually (generally taking into account feedback from previous bytes). This runs counter to the perhaps more well known <a href="https://en.wikipedia.org/wiki/block%20ciphers">block ciphers</a> such as DES and AES, where bytes are instead encrypted together (although feedback between blocks is still of course possible).</p>
-
 <p>The first step of the algorithm is to take your encryption key (a password or the like) and convert it into a sequence of bytes at least as long as your input. For RC4, this is done in two pieces. First, prepare the index:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rc4</span>(key, msg):
     S <span style="color:#f92672">=</span> list(range(<span style="color:#ae81ff">256</span>))
@@ -85,8 +82,8 @@
         j <span style="color:#f92672">=</span> (j <span style="color:#f92672">+</span> S[i] <span style="color:#f92672">+</span> key[i <span style="color:#f92672">%</span> len(key)]) <span style="color:#f92672">%</span> <span style="color:#ae81ff">256</span>
         S[i], S[j] <span style="color:#f92672">=</span> S[j], S[i]
 
-    <span style="color:#f92672">...</span></code></pre></div>
-<p>Or in Racket:</p>
+    <span style="color:#f92672">...</span>
+</code></pre></div><p>Or in Racket:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (rc4 key msg)
   (<span style="color:#66d9ef">define</span> (mod256 n) (modulo n <span style="color:#ae81ff">256</span>))
 
@@ -111,11 +108,9 @@
       (swap! i j)
       j))
 
-  <span style="color:#66d9ef">...</span>)</code></pre></div>
-<p>I made the Racket version a little more verbose with helper functions, since I know I&rsquo;ll both be indexing the permutation and swapping values again in the next step. That&rsquo;s one of the reasons that I&rsquo;ll sometimes go for Python over Racket in on off scripts.</p>
-
+  <span style="color:#66d9ef">...</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>I made the Racket version a little more verbose with helper functions, since I know I&rsquo;ll both be indexing the permutation and swapping values again in the next step. That&rsquo;s one of the reasons that I&rsquo;ll sometimes go for Python over Racket in on off scripts.</p>
 <p>Still, relatively simple in both cases.</p>
-
 <p>The next step is to turn that into a stream, essentially creating an infinite number generator. Luckily, both Python and Racket have generators, which are perfectly suited for this sort of thing (assuming in both cases that <code>S</code> / <code>permutation</code> are in scope from above):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rc4</span>(key, msg):
     <span style="color:#f92672">...</span>
@@ -128,7 +123,8 @@
             S[i], S[j] <span style="color:#f92672">=</span> S[j], S[i]
             <span style="color:#66d9ef">yield</span> S[(S[i] <span style="color:#f92672">+</span> S[j]) <span style="color:#f92672">%</span> <span style="color:#ae81ff">256</span>]
 
-    <span style="color:#66d9ef">return</span> prga <span style="color:#75715e"># DEBUG</span></code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (rc4 key msg)
+    <span style="color:#66d9ef">return</span> prga <span style="color:#75715e"># DEBUG</span>
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (rc4 key msg)
   <span style="color:#66d9ef">...</span>
 
   <span style="color:#75715e">; Pseudo-random generation algorithm</span>
@@ -139,48 +135,47 @@
         (yield (S (mod256 (+ (S i) (S j)))))
         (loop (mod256 (+ i <span style="color:#ae81ff">1</span>)) (mod256 (+ j (S (+ i <span style="color:#ae81ff">1</span>))))))))
 
-  prng) <span style="color:#75715e">; DEBUG</span></code></pre></div>
-<p>Now that we have a stream, we can generate a few bytes and take a look if we wanted:</p>
+  prng) <span style="color:#75715e">; DEBUG</span>
+</code></pre></div><p>Now that we have a stream, we can generate a few bytes and take a look if we wanted:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> <span style="color:#f92672">import</span> binascii<span style="color:#f92672">,</span> itertools
 <span style="color:#f92672">&gt;&gt;&gt;</span> prga <span style="color:#f92672">=</span> rc4(<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Secret&#39;</span>, <span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Attack at dawn&#39;</span>)
 <span style="color:#f92672">&gt;&gt;&gt;</span> <span style="color:#66d9ef">print</span>(binascii<span style="color:#f92672">.</span>hexlify(bytes(itertools<span style="color:#f92672">.</span>islice(prga(), <span style="color:#ae81ff">10</span>))))
-<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;04d46b053ca87b594172&#39;</span></code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (bytes-&gt;hex b*)
+<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;04d46b053ca87b594172&#39;</span>
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (bytes-&gt;hex b*)
   (apply ~a (<span style="color:#66d9ef">for/list</span> ([b (in-bytes b*)])
         (~a (number-&gt;string (quotient b <span style="color:#ae81ff">16</span>) <span style="color:#ae81ff">16</span>)
             (number-&gt;string (modulo b <span style="color:#ae81ff">16</span>) <span style="color:#ae81ff">16</span>)))))
 
 &gt; (<span style="color:#66d9ef">define</span> prga (rc4 <span style="color:#e6db74">&#34;Secret&#34;</span> <span style="color:#e6db74">&#34;Attack at dawn&#34;</span>))
 &gt; (bytes-&gt;hex (apply bytes (<span style="color:#66d9ef">for/list</span> ([i (in-range <span style="color:#ae81ff">10</span>)] [b (in-producer prga)]) b)))
-<span style="color:#e6db74">&#34;04d46b053ca87b594172&#34;</span></code></pre></div>
-<p>Both of them the same? Good sign. Both matching the example on the Wikipedia page? Even better!</p>
-
+<span style="color:#e6db74">&#34;04d46b053ca87b594172&#34;</span><span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Both of them the same? Good sign. Both matching the example on the Wikipedia page? Even better!</p>
 <p>So, we have an infinite stream of bytes. What next?</p>
-
 <p>Well, this is actually the crazy part: You just <a href="https://en.wikipedia.org/wiki/xor">xor</a> them.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">rc4</span>(key, msg):
     <span style="color:#f92672">...</span>
 
-    <span style="color:#66d9ef">return</span> bytes(msgbyte <span style="color:#f92672">^</span> keybyte <span style="color:#66d9ef">for</span> msgbyte, keybyte <span style="color:#f92672">in</span> zip(msg, prga()))</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (rc4 key msg)
+    <span style="color:#66d9ef">return</span> bytes(msgbyte <span style="color:#f92672">^</span> keybyte <span style="color:#66d9ef">for</span> msgbyte, keybyte <span style="color:#f92672">in</span> zip(msg, prga()))
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> (rc4 key msg)
   <span style="color:#66d9ef">...</span>
 
   <span style="color:#75715e">; Encryption</span>
   (apply bytes
     (<span style="color:#66d9ef">for/list</span> ([input-byte (in-bytes msg)] [key-byte (in-producer prga)])
-      (bitwise-xor input-byte key-byte))))</code></pre></div>
-<p>And now we can encrypt!</p>
+      (bitwise-xor input-byte key-byte))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>And now we can encrypt!</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> <span style="color:#66d9ef">print</span>(binascii<span style="color:#f92672">.</span>hexlify(rc4(<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Secret&#39;</span>, <span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Attack at dawn&#39;</span>)))
-<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;45a01f645fc35b383552544b9bf5&#39;</span></code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (bytes-&gt;hex (rc4 <span style="color:#e6db74">&#34;Secret&#34;</span> <span style="color:#e6db74">&#34;Attack at dawn&#34;</span>))
-<span style="color:#e6db74">&#34;45a01f645fc35b383552544b9bf5&#34;</span></code></pre></div>
-<p>And decrypt!</p>
+<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;45a01f645fc35b383552544b9bf5&#39;</span>
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (bytes-&gt;hex (rc4 <span style="color:#e6db74">&#34;Secret&#34;</span> <span style="color:#e6db74">&#34;Attack at dawn&#34;</span>))
+<span style="color:#e6db74">&#34;45a01f645fc35b383552544b9bf5&#34;</span><span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>And decrypt!</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> rc4(<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Secret&#39;</span>, rc4(<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Secret&#39;</span>, <span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Attack at dawn&#39;</span>))
-<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Attack at dawn&#39;</span></code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (rc4 <span style="color:#e6db74">&#34;Secret&#34;</span> (rc4 <span style="color:#e6db74">&#34;Secret&#34;</span> <span style="color:#e6db74">&#34;Attack at dawn&#34;</span>))
-<span style="color:#e6db74">#&#34;Attack at dawn&#34;</span></code></pre></div>
-<p>Very cool. I&rsquo;m really starting to see the appeal of RC4. A couple dozen lines of Python/Racket and you&rsquo;re encrypting. Bam. As mentioned, it&rsquo;s not really an algorithm you should use in encryption any more (the author has released a slightly more complicated algorithm called Spritz that works very similarly).</p>
-
+<span style="color:#e6db74">b</span><span style="color:#e6db74">&#39;Attack at dawn&#39;</span>
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (rc4 <span style="color:#e6db74">&#34;Secret&#34;</span> (rc4 <span style="color:#e6db74">&#34;Secret&#34;</span> <span style="color:#e6db74">&#34;Attack at dawn&#34;</span>))
+<span style="color:#e6db74">#&#34;Attack at dawn&#34;</span><span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Very cool. I&rsquo;m really starting to see the appeal of RC4. A couple dozen lines of Python/Racket and you&rsquo;re encrypting. Bam. As mentioned, it&rsquo;s not really an algorithm you should use in encryption any more (the author has released a slightly more complicated algorithm called Spritz that works very similarly).</p>
 <p>And that&rsquo;s it. If you&rsquo;d like to see the entire code in one place (along with some fiddling in both cases to deal with Unicode keys/messages as well as pure bytes), it&rsquo;s on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/rc4.py">rc4.py</a>, <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/rc4.rkt">rc4.rkt</a>.</p>
-
 <p><code>7b82 c5cf 12c4 e168 8a4a 5cbe 9300</code></p>
-
 <p>😄</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

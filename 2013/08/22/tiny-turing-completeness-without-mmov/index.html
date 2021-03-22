@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,36 +74,31 @@
     </header>
 
 	<div class="entry-content"><p>Something was bugging me about my proof from yesterday. If we take another tack on proving Turing completeness, all we would have to prove is that we can simulate <a href="https://en.wikipedia.org/wiki/Subleq#Subtract%20and%20branch%20if%20less%20than%20or%20equal%20to%20zero">`SUBLEQ`</a>. Since <code>SUBLEQ</code> is Turing complete, that&rsquo;s all we need&ndash;just convert each <code>SUBLEQ</code> into a <code>SUB</code>, <code>JZ</code>, and a <code>JLS</code>. So that means that Tiny as written should be Turing complete.</p>
-
 <p>So how does that work?</p>
-
 <p>The basic idea came from comment on a comment on <a href="https://blog.jverkamp.com/2013/08/21/a-tiny-virtual-machine-in-racket/">my previous post</a>. Essentially, we should be able to encode the Turing machine&rsquo;s tape in a single number. That way we don&rsquo;t have to use unlimited memory, we just have to have unbounded integers in each cell. Since that&rsquo;s actually how my implementation already works, it should be entirely doable.</p>
-
 <p>The full code is in the same place as yesterday (<a href="github.com/jpverkamp/tiny/">GitHub: jpverkamp/tiny</a>) and has much the same structure. We&rsquo;re just going to have to tweak the details.</p>
-
 <p>First, we&rsquo;re going to make the code a little cleaner by defining the memory addresses ahead of time:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>state <span style="color:#f92672">&#39;</span>[<span style="color:#ae81ff">0</span>]) <span style="color:#75715e">; M[0] is current state</span>
 (<span style="color:#66d9ef">define </span>left  <span style="color:#f92672">&#39;</span>[<span style="color:#ae81ff">1</span>]) <span style="color:#75715e">; M[1] is the leftward side of tape</span>
 (<span style="color:#66d9ef">define </span>curr  <span style="color:#f92672">&#39;</span>[<span style="color:#ae81ff">2</span>]) <span style="color:#75715e">; M[2] is the current state</span>
 (<span style="color:#66d9ef">define </span>right <span style="color:#f92672">&#39;</span>[<span style="color:#ae81ff">3</span>]) <span style="color:#75715e">; M[3] is the rightward side of the tap</span>
-(<span style="color:#66d9ef">define </span>(buffer n) <span style="color:#f92672">`</span>[<span style="color:#f92672">,</span>(+ n <span style="color:#ae81ff">4</span>)]) <span style="color:#75715e">; M[4+] are buffers</span></code></pre></div>
-<p>After that, we&rsquo;ll set up the initial state. This time we don&rsquo;t have a variable size header. It&rsquo;s a static 19 bytes (the numbers at the beginning of each comment are the offsets to make actually writing the jump offsets easier):</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">buffer</span> n) <span style="color:#f92672">`</span>[<span style="color:#f92672">,</span>(+ n <span style="color:#ae81ff">4</span>)]) <span style="color:#75715e">; M[4+] are buffers</span>
+</code></pre></div><p>After that, we&rsquo;ll set up the initial state. This time we don&rsquo;t have a variable size header. It&rsquo;s a static 19 bytes (the numbers at the beginning of each comment are the offsets to make actually writing the jump offsets easier):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">`</span>(<span style="color:#75715e">; 0: Create the initial state</span>
-  MOV <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(state-&gt;value <span style="color:#e6db74">&#39;start</span>)
+  MOV <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(<span style="color:#a6e22e">state-&gt;value</span> <span style="color:#e6db74">&#39;start</span>)
   MOV <span style="color:#f92672">,</span>left  <span style="color:#ae81ff">0</span>
-  MOV <span style="color:#f92672">,</span>curr  <span style="color:#f92672">,</span>(symbol-&gt;value (first initial))
-  MOV <span style="color:#f92672">,</span>right <span style="color:#f92672">,</span>(digits-&gt;number
-               (map symbol-&gt;value (reverse (rest initial)))
+  MOV <span style="color:#f92672">,</span>curr  <span style="color:#f92672">,</span>(<span style="color:#a6e22e">symbol-&gt;value</span> (<span style="color:#a6e22e">first</span> initial))
+  MOV <span style="color:#f92672">,</span>right <span style="color:#f92672">,</span>(<span style="color:#a6e22e">digits-&gt;number</span>
+               (map symbol-&gt;value (reverse (<span style="color:#a6e22e">rest</span> initial)))
                symbol-count)
 
   <span style="color:#75715e">; 12: Check for halt condiction</span>
-  JEQ <span style="color:#ae81ff">18</span> <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(state-&gt;value <span style="color:#e6db74">&#39;halt</span>)
+  JEQ <span style="color:#ae81ff">18</span> <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(<span style="color:#a6e22e">state-&gt;value</span> <span style="color:#e6db74">&#39;halt</span>)
   JMP <span style="color:#ae81ff">19</span>
   HALT
 
-  <span style="color:#f92672">...</span></code></pre></div>
-<p>Essentially, we&rsquo;re going to have something like this to represent the tape:</p>
-
+  <span style="color:#f92672">...</span>
+</code></pre></div><p>Essentially, we&rsquo;re going to have something like this to represent the tape:</p>
 <pre><code>(assuming 10 input symbols)
 
 tape = 8 6 7 5 3 0 9
@@ -118,148 +113,146 @@ pointer =   / \
 M[1] = 768
 M[2] = 5
 M[3] = 309
-</code></pre>
-
-<p>That&rsquo;s why we need <code>digits-&gt;number</code>. It&rsquo;s a general base conversion function, so we can do things like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (digits-&gt;number <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">8</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">9</span>) <span style="color:#ae81ff">16</span>)
+</code></pre><p>That&rsquo;s why we need <code>digits-&gt;number</code>. It&rsquo;s a general base conversion function, so we can do things like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">digits-&gt;number</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">8</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">9</span>) <span style="color:#ae81ff">16</span>)
 <span style="color:#ae81ff">140989193</span>
 &gt; <span style="color:#f92672">#</span>x8675309
-<span style="color:#ae81ff">140989193</span></code></pre></div>
-<p>After we have that, we want to decode the transitions. To make things cleaner again, we&rsquo;re going to alias the <code>left</code> and <code>right</code> addresses as <code>move-from</code> (the side we&rsquo;re reading form) and <code>move-to</code>:</p>
+<span style="color:#ae81ff">140989193</span>
+</code></pre></div><p>After we have that, we want to decode the transitions. To make things cleaner again, we&rsquo;re going to alias the <code>left</code> and <code>right</code> addresses as <code>move-from</code> (the side we&rsquo;re reading form) and <code>move-to</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
 
   <span style="color:#75715e">; 19: Decode state transitions</span>
-  <span style="color:#f92672">,@</span>(apply
+  <span style="color:#f92672">,@</span>(<span style="color:#a6e22e">apply</span>
      append
-     (for/list ([i (in-naturals)]
-                [transition (in-list transition)])
+     (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-naturals</span>)]
+                [transition (<span style="color:#a6e22e">in-list</span> transition)])
        <span style="color:#75715e">; Calculate the offset for the start of this block</span>
        (<span style="color:#66d9ef">define </span>block-size <span style="color:#ae81ff">72</span>)
        (<span style="color:#66d9ef">define </span>block (+ <span style="color:#ae81ff">19</span> (* i block-size)))
 
        <span style="color:#75715e">; Unpack the transition</span>
-       (define-values (current-state current-symbol next-state write-symbol move-tape)
+       (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">current-state</span> current-symbol next-state write-symbol move-tape)
          (apply values transition))
 
        <span style="color:#75715e">; Figure out which side we&#39;re moving from/to</span>
        (<span style="color:#66d9ef">define </span>move-to   (<span style="color:#66d9ef">if </span>(eq? move-tape <span style="color:#e6db74">&#39;L</span>) right left))
        (<span style="color:#66d9ef">define </span>move-from (<span style="color:#66d9ef">if </span>(eq? move-tape <span style="color:#e6db74">&#39;L</span>) left  right))
-       <span style="color:#f92672">...</span></code></pre></div>
-<p>Within each block, we&rsquo;ll have the same checking structure. It&rsquo;s a little cleaner this time since we directly have the current state and symbol available (the numbers now are offsets within the blocks):</p>
+       <span style="color:#f92672">...</span>
+</code></pre></div><p>Within each block, we&rsquo;ll have the same checking structure. It&rsquo;s a little cleaner this time since we directly have the current state and symbol available (the numbers now are offsets within the blocks):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
        <span style="color:#f92672">`</span>(<span style="color:#75715e">; +0: Check the current state and symbol</span>
-         JEQ <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">6</span>) <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(state-&gt;value current-state)
+         JEQ <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">6</span>) <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(<span style="color:#a6e22e">state-&gt;value</span> current-state)
          JMP <span style="color:#f92672">,</span>(+ block block-size)
-         JEQ <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">12</span>) <span style="color:#f92672">,</span>curr <span style="color:#f92672">,</span>(symbol-&gt;value current-symbol)
+         JEQ <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">12</span>) <span style="color:#f92672">,</span>curr <span style="color:#f92672">,</span>(<span style="color:#a6e22e">symbol-&gt;value</span> current-symbol)
          JMP <span style="color:#f92672">,</span>(+ block block-size)
-         <span style="color:#f92672">...</span></code></pre></div>
-<p>If we make it through those checks, then we want to update the state and symbol:</p>
+         <span style="color:#f92672">...</span>
+</code></pre></div><p>If we make it through those checks, then we want to update the state and symbol:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
          <span style="color:#75715e">; +12: Update the state and symbol</span>
-         MOV <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(state-&gt;value next-state)
-         MOV <span style="color:#f92672">,</span>curr  <span style="color:#f92672">,</span>(symbol-&gt;value write-symbol)
-         <span style="color:#f92672">...</span></code></pre></div>
-<p>After that comes the interesting part. Originally, I was going to limit the Turing machine to just 2 states, but I&rsquo;m not actually 100% sure that&rsquo;s still Turing complete. And it turns out that it&rsquo;s just as each to do any arbitrary number as base 2. So here we&rsquo;re going to take the current value (<code>M[2]</code>) and push it into the <code>move-to</code> value. To do that we need to multiply the current <code>move-to</code> by the base (the number of symbols) and then add in the current. Something like this:</p>
+         MOV <span style="color:#f92672">,</span>state <span style="color:#f92672">,</span>(<span style="color:#a6e22e">state-&gt;value</span> next-state)
+         MOV <span style="color:#f92672">,</span>curr  <span style="color:#f92672">,</span>(<span style="color:#a6e22e">symbol-&gt;value</span> write-symbol)
+         <span style="color:#f92672">...</span>
+</code></pre></div><p>After that comes the interesting part. Originally, I was going to limit the Turing machine to just 2 states, but I&rsquo;m not actually 100% sure that&rsquo;s still Turing complete. And it turns out that it&rsquo;s just as each to do any arbitrary number as base 2. So here we&rsquo;re going to take the current value (<code>M[2]</code>) and push it into the <code>move-to</code> value. To do that we need to multiply the current <code>move-to</code> by the base (the number of symbols) and then add in the current. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
          <span style="color:#75715e">; +18: Move the current state into the buffer</span>
          <span style="color:#75715e">;      Multiply by symbol count, add current</span>
-         MOV <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">0</span>) <span style="color:#f92672">,</span>(- symbol-count <span style="color:#ae81ff">1</span>)
-         MOV <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">1</span>) <span style="color:#f92672">,</span>move-to
-         JZ  <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">35</span>) <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">0</span>)
-         ADD <span style="color:#f92672">,</span>move-to <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">1</span>)
-         SUB <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>
+         MOV <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">,</span>(- symbol-count <span style="color:#ae81ff">1</span>)
+         MOV <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">,</span>move-to
+         JZ  <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">35</span>) <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">0</span>)
+         ADD <span style="color:#f92672">,</span>move-to <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">1</span>)
+         SUB <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>
          JMP <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">24</span>)
          ADD <span style="color:#f92672">,</span>move-to <span style="color:#f92672">,</span>curr
-         <span style="color:#f92672">...</span></code></pre></div>
-<p>Then we have to pull out the next current value from the other (<code>move-from</code>) buffer. To do this, we&rsquo;re going to essentially take the modulus of that array and the base:</p>
+         <span style="color:#f92672">...</span>
+</code></pre></div><p>Then we have to pull out the next current value from the other (<code>move-from</code>) buffer. To do this, we&rsquo;re going to essentially take the modulus of that array and the base:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
          <span style="color:#75715e">; +35: Get the next symbol from the other buffer</span>
          MOV <span style="color:#f92672">,</span>curr <span style="color:#f92672">,</span>move-from
          JLS <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">50</span>) <span style="color:#f92672">,</span>curr <span style="color:#f92672">,</span>symbol-count
          SUB <span style="color:#f92672">,</span>curr <span style="color:#f92672">,</span>symbol-count
          JMP <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">41</span>)
-         <span style="color:#f92672">...</span></code></pre></div>
-<p>And finally, remove that from the <code>move-from</code> buffer. Removing it is easy enough (just subtract), but to shift that array in memory we need to divide. It turns out that division is interesting (and slow) in Tiny. 😄</p>
+         <span style="color:#f92672">...</span>
+</code></pre></div><p>And finally, remove that from the <code>move-from</code> buffer. Removing it is easy enough (just subtract), but to shift that array in memory we need to divide. It turns out that division is interesting (and slow) in Tiny. 😄</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
          <span style="color:#75715e">; +47: Remove current from other buffer</span>
          <span style="color:#75715e">;      Subtract current, divide by symbol count</span>
          SUB <span style="color:#f92672">,</span>move-from <span style="color:#f92672">,</span>curr
-         MOV <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0</span>
+         MOV <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">0</span>
          JZ  <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">67</span>) <span style="color:#f92672">,</span>move-from
-         ADD <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>
+         ADD <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">0</span>) <span style="color:#ae81ff">1</span>
          SUB <span style="color:#f92672">,</span>move-from <span style="color:#f92672">,</span>symbol-count
          JMP <span style="color:#f92672">,</span>(+ block <span style="color:#ae81ff">56</span>)
-         MOV <span style="color:#f92672">,</span>move-from <span style="color:#f92672">,</span>(buffer <span style="color:#ae81ff">0</span>)
-         <span style="color:#f92672">...</span></code></pre></div>
-<p>Now everything is set for the next iteration. Jump back to decode another line in the transition. Also, put in the code to immediately <code>HALT</code> if we don&rsquo;t match any of the transitions:</p>
+         MOV <span style="color:#f92672">,</span>move-from <span style="color:#f92672">,</span>(<span style="color:#a6e22e">buffer</span> <span style="color:#ae81ff">0</span>)
+         <span style="color:#f92672">...</span>
+</code></pre></div><p>Now everything is set for the next iteration. Jump back to decode another line in the transition. Also, put in the code to immediately <code>HALT</code> if we don&rsquo;t match any of the transitions:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#f92672">...</span>
          <span style="color:#75715e">; +67: Jump back to the loop</span>
          JMP <span style="color:#ae81ff">12</span>
          )))
 
   <span style="color:#75715e">; If we don&#39;t match any transition, stop</span>
-  HALT)))</code></pre></div>
-<p>And that&rsquo;s what we need. We can test it with the same test cases as last time:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">&gt; <span style="color:#f92672">(</span>ones-to-twos <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span><span style="color:#f92672">))</span>
+  HALT)))
+</code></pre></div><p>And that&rsquo;s what we need. We can test it with the same test cases as last time:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">&gt; <span style="color:#f92672">(</span>ones-to-twos <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> 1<span style="color:#f92672">))</span>
 Tiny source:
-<span style="color:#ae81ff">0</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">3</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">6</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">9</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">12</span>: JEQ <span style="color:#ae81ff">18</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">16</span>: JMP <span style="color:#ae81ff">19</span>
-<span style="color:#ae81ff">18</span>: HALT
-<span style="color:#ae81ff">19</span>: JEQ <span style="color:#ae81ff">25</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">23</span>: JMP <span style="color:#ae81ff">91</span>
-<span style="color:#ae81ff">25</span>: JEQ <span style="color:#ae81ff">31</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">29</span>: JMP <span style="color:#ae81ff">91</span>
-<span style="color:#ae81ff">31</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">34</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">37</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">40</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">43</span>: JZ <span style="color:#ae81ff">54</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">46</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">49</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">52</span>: JMP <span style="color:#ae81ff">43</span>
-<span style="color:#ae81ff">54</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">57</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">60</span>: JLS <span style="color:#ae81ff">69</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">64</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">67</span>: JMP <span style="color:#ae81ff">60</span>
-<span style="color:#ae81ff">69</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">72</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">75</span>: JZ <span style="color:#ae81ff">86</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">78</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">81</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">84</span>: JMP <span style="color:#ae81ff">75</span>
-<span style="color:#ae81ff">86</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">89</span>: JMP <span style="color:#ae81ff">12</span>
-<span style="color:#ae81ff">91</span>: JEQ <span style="color:#ae81ff">97</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">95</span>: JMP <span style="color:#ae81ff">163</span>
-<span style="color:#ae81ff">97</span>: JEQ <span style="color:#ae81ff">103</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">101</span>: JMP <span style="color:#ae81ff">163</span>
-<span style="color:#ae81ff">103</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">106</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">109</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">112</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">115</span>: JZ <span style="color:#ae81ff">126</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">118</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">121</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">124</span>: JMP <span style="color:#ae81ff">115</span>
-<span style="color:#ae81ff">126</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">129</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">132</span>: JLS <span style="color:#ae81ff">141</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">136</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">139</span>: JMP <span style="color:#ae81ff">132</span>
-<span style="color:#ae81ff">141</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">144</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">147</span>: JZ <span style="color:#ae81ff">158</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">150</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">153</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">156</span>: JMP <span style="color:#ae81ff">147</span>
-<span style="color:#ae81ff">158</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">161</span>: JMP <span style="color:#ae81ff">12</span>
-<span style="color:#ae81ff">163</span>: HALT
+0: MOV <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+3: MOV <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+6: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+9: MOV <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+12: JEQ <span style="color:#ae81ff">18</span> <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+16: JMP <span style="color:#ae81ff">19</span>
+18: HALT
+19: JEQ <span style="color:#ae81ff">25</span> <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+23: JMP <span style="color:#ae81ff">91</span>
+25: JEQ <span style="color:#ae81ff">31</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+29: JMP <span style="color:#ae81ff">91</span>
+31: MOV <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+34: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+37: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+40: MOV <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span>
+43: JZ <span style="color:#ae81ff">54</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+46: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span>
+49: SUB <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+52: JMP <span style="color:#ae81ff">43</span>
+54: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+57: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+60: JLS <span style="color:#ae81ff">69</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+64: SUB <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+67: JMP <span style="color:#ae81ff">60</span>
+69: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+72: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+75: JZ <span style="color:#ae81ff">86</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+78: ADD <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+81: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+84: JMP <span style="color:#ae81ff">75</span>
+86: MOV <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+89: JMP <span style="color:#ae81ff">12</span>
+91: JEQ <span style="color:#ae81ff">97</span> <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+95: JMP <span style="color:#ae81ff">163</span>
+97: JEQ <span style="color:#ae81ff">103</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+101: JMP <span style="color:#ae81ff">163</span>
+103: MOV <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+106: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+109: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+112: MOV <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span>
+115: JZ <span style="color:#ae81ff">126</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+118: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span>
+121: SUB <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+124: JMP <span style="color:#ae81ff">115</span>
+126: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+129: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+132: JLS <span style="color:#ae81ff">141</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+136: SUB <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+139: JMP <span style="color:#ae81ff">132</span>
+141: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+144: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+147: JZ <span style="color:#ae81ff">158</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+150: ADD <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+153: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+156: JMP <span style="color:#ae81ff">147</span>
+158: MOV <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+161: JMP <span style="color:#ae81ff">12</span>
+163: HALT
 
 Bytecode:
 0x08 0x00 0x00 0x08
@@ -305,108 +298,107 @@ Bytecode:
 0x04 0x0f 0x0c 0xff
 
 Input:
-<span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
+<span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> 1<span style="color:#f92672">)</span>
 
 Result:
-<span style="color:#f92672">(</span><span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span><span style="color:#f92672">)</span></code></pre></div>
-<p>There are a few extra values on the resulting tape, but that&rsquo;s what we expected. Any time we read into new memory, we create an extra index to the right.</p>
-
+<span style="color:#f92672">(</span><span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span> 0<span style="color:#f92672">)</span>
+</code></pre></div><p>There are a few extra values on the resulting tape, but that&rsquo;s what we expected. Any time we read into new memory, we create an extra index to the right.</p>
 <p>Just because I can, here&rsquo;s another example Turing machine:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define </span>duck-duck-goose
-  (make-tiny-turing
+  (<span style="color:#a6e22e">make-tiny-turing</span>
    <span style="color:#f92672">&#39;</span>(start go-back halt)
    <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span> duck goose)
    <span style="color:#e6db74">&#39;start</span>
    <span style="color:#e6db74">&#39;halt</span>
-   <span style="color:#f92672">&#39;</span>((start   <span style="color:#ae81ff">0</span>    go-back <span style="color:#ae81ff">0</span>    L)
-     (start   <span style="color:#ae81ff">1</span>    start   duck R)
-     (go-back duck halt goose R))))</code></pre></div>
-<p>As you might be able to guess, this one will take a list of 1s and turn all but the last one into the symbol <code>duck</code>. The last one becomes <code>goose</code>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">&gt; <span style="color:#f92672">(</span>duck-duck-goose <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span><span style="color:#f92672">))</span>
+   <span style="color:#f92672">&#39;</span>((<span style="color:#a6e22e">start</span>   <span style="color:#ae81ff">0</span>    go-back <span style="color:#ae81ff">0</span>    L)
+     (<span style="color:#a6e22e">start</span>   <span style="color:#ae81ff">1</span>    start   duck R)
+     (<span style="color:#a6e22e">go-back</span> duck halt goose R))))
+</code></pre></div><p>As you might be able to guess, this one will take a list of 1s and turn all but the last one into the symbol <code>duck</code>. The last one becomes <code>goose</code>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">&gt; <span style="color:#f92672">(</span>duck-duck-goose <span style="color:#960050;background-color:#1e0010">&#39;</span><span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> 1<span style="color:#f92672">))</span>
 Tiny source:
-<span style="color:#ae81ff">0</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">3</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">6</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">9</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">85</span>
-<span style="color:#ae81ff">12</span>: JEQ <span style="color:#ae81ff">18</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">16</span>: JMP <span style="color:#ae81ff">19</span>
-<span style="color:#ae81ff">18</span>: HALT
-<span style="color:#ae81ff">19</span>: JEQ <span style="color:#ae81ff">25</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">23</span>: JMP <span style="color:#ae81ff">91</span>
-<span style="color:#ae81ff">25</span>: JEQ <span style="color:#ae81ff">31</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">29</span>: JMP <span style="color:#ae81ff">91</span>
-<span style="color:#ae81ff">31</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">34</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">37</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">40</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">43</span>: JZ <span style="color:#ae81ff">54</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">46</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">49</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">52</span>: JMP <span style="color:#ae81ff">43</span>
-<span style="color:#ae81ff">54</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">57</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">60</span>: JLS <span style="color:#ae81ff">69</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">64</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">67</span>: JMP <span style="color:#ae81ff">60</span>
-<span style="color:#ae81ff">69</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">72</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">75</span>: JZ <span style="color:#ae81ff">86</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">78</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">81</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">84</span>: JMP <span style="color:#ae81ff">75</span>
-<span style="color:#ae81ff">86</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">89</span>: JMP <span style="color:#ae81ff">12</span>
-<span style="color:#ae81ff">91</span>: JEQ <span style="color:#ae81ff">97</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">95</span>: JMP <span style="color:#ae81ff">163</span>
-<span style="color:#ae81ff">97</span>: JEQ <span style="color:#ae81ff">103</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">101</span>: JMP <span style="color:#ae81ff">163</span>
-<span style="color:#ae81ff">103</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">106</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">109</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">112</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">115</span>: JZ <span style="color:#ae81ff">126</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">118</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">121</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">124</span>: JMP <span style="color:#ae81ff">115</span>
-<span style="color:#ae81ff">126</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">129</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">132</span>: JLS <span style="color:#ae81ff">141</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">136</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">139</span>: JMP <span style="color:#ae81ff">132</span>
-<span style="color:#ae81ff">141</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">144</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">147</span>: JZ <span style="color:#ae81ff">158</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">150</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">153</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">156</span>: JMP <span style="color:#ae81ff">147</span>
-<span style="color:#ae81ff">158</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">161</span>: JMP <span style="color:#ae81ff">12</span>
-<span style="color:#ae81ff">163</span>: JEQ <span style="color:#ae81ff">169</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">167</span>: JMP <span style="color:#ae81ff">235</span>
-<span style="color:#ae81ff">169</span>: JEQ <span style="color:#ae81ff">175</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">173</span>: JMP <span style="color:#ae81ff">235</span>
-<span style="color:#ae81ff">175</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
-<span style="color:#ae81ff">178</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">181</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
-<span style="color:#ae81ff">184</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">187</span>: JZ <span style="color:#ae81ff">198</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">190</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">5</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">193</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">196</span>: JMP <span style="color:#ae81ff">187</span>
-<span style="color:#ae81ff">198</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">1</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">201</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">204</span>: JLS <span style="color:#ae81ff">213</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">208</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">211</span>: JMP <span style="color:#ae81ff">204</span>
-<span style="color:#ae81ff">213</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">2</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">216</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
-<span style="color:#ae81ff">219</span>: JZ <span style="color:#ae81ff">230</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">222</span>: ADD <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
-<span style="color:#ae81ff">225</span>: SUB <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
-<span style="color:#ae81ff">228</span>: JMP <span style="color:#ae81ff">219</span>
-<span style="color:#ae81ff">230</span>: MOV <span style="color:#f92672">(</span><span style="color:#ae81ff">3</span><span style="color:#f92672">)</span> <span style="color:#f92672">(</span><span style="color:#ae81ff">4</span><span style="color:#f92672">)</span>
-<span style="color:#ae81ff">233</span>: JMP <span style="color:#ae81ff">12</span>
-<span style="color:#ae81ff">235</span>: HALT
+0: MOV <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+3: MOV <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+6: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+9: MOV <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#ae81ff">85</span>
+12: JEQ <span style="color:#ae81ff">18</span> <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+16: JMP <span style="color:#ae81ff">19</span>
+18: HALT
+19: JEQ <span style="color:#ae81ff">25</span> <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+23: JMP <span style="color:#ae81ff">91</span>
+25: JEQ <span style="color:#ae81ff">31</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+29: JMP <span style="color:#ae81ff">91</span>
+31: MOV <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+34: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+37: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+40: MOV <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+43: JZ <span style="color:#ae81ff">54</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+46: ADD <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span>
+49: SUB <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+52: JMP <span style="color:#ae81ff">43</span>
+54: ADD <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+57: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span>
+60: JLS <span style="color:#ae81ff">69</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+64: SUB <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+67: JMP <span style="color:#ae81ff">60</span>
+69: SUB <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+72: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+75: JZ <span style="color:#ae81ff">86</span> <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span>
+78: ADD <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+81: SUB <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+84: JMP <span style="color:#ae81ff">75</span>
+86: MOV <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+89: JMP <span style="color:#ae81ff">12</span>
+91: JEQ <span style="color:#ae81ff">97</span> <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+95: JMP <span style="color:#ae81ff">163</span>
+97: JEQ <span style="color:#ae81ff">103</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+101: JMP <span style="color:#ae81ff">163</span>
+103: MOV <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+106: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+109: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+112: MOV <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span>
+115: JZ <span style="color:#ae81ff">126</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+118: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span>
+121: SUB <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+124: JMP <span style="color:#ae81ff">115</span>
+126: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+129: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+132: JLS <span style="color:#ae81ff">141</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+136: SUB <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+139: JMP <span style="color:#ae81ff">132</span>
+141: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+144: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+147: JZ <span style="color:#ae81ff">158</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+150: ADD <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+153: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+156: JMP <span style="color:#ae81ff">147</span>
+158: MOV <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+161: JMP <span style="color:#ae81ff">12</span>
+163: JEQ <span style="color:#ae81ff">169</span> <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+167: JMP <span style="color:#ae81ff">235</span>
+169: JEQ <span style="color:#ae81ff">175</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+173: JMP <span style="color:#ae81ff">235</span>
+175: MOV <span style="color:#f92672">(</span>0<span style="color:#f92672">)</span> <span style="color:#ae81ff">2</span>
+178: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+181: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">3</span>
+184: MOV <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span>
+187: JZ <span style="color:#ae81ff">198</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+190: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>5<span style="color:#f92672">)</span>
+193: SUB <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+196: JMP <span style="color:#ae81ff">187</span>
+198: ADD <span style="color:#f92672">(</span>1<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+201: MOV <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+204: JLS <span style="color:#ae81ff">213</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+208: SUB <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+211: JMP <span style="color:#ae81ff">204</span>
+213: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>2<span style="color:#f92672">)</span>
+216: MOV <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">0</span>
+219: JZ <span style="color:#ae81ff">230</span> <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span>
+222: ADD <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span> <span style="color:#ae81ff">1</span>
+225: SUB <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#ae81ff">4</span>
+228: JMP <span style="color:#ae81ff">219</span>
+230: MOV <span style="color:#f92672">(</span>3<span style="color:#f92672">)</span> <span style="color:#f92672">(</span>4<span style="color:#f92672">)</span>
+233: JMP <span style="color:#ae81ff">12</span>
+235: HALT
 
 Bytecode:
 0x08 0x00 0x00 0x08
@@ -470,15 +462,15 @@ Bytecode:
 0x04 0x0f 0x0c 0xff
 
 Input:
-<span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span><span style="color:#f92672">)</span>
+<span style="color:#f92672">(</span><span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">1</span> 1<span style="color:#f92672">)</span>
 
 Result:
-<span style="color:#f92672">(</span>duck duck duck duck goose <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">0</span><span style="color:#f92672">)</span></code></pre></div>
-<p>Unfortunately, it&rsquo;s wicked slow (that&rsquo;s what we get from encoding our entire memory structure in a single number and not having native multiplication or division functions). Still, it works. And that&rsquo;s all that matters.</p>
-
-<p>If you&rsquo;d like to see the full source, you can do so here:
-- <a href="github.com/jpverkamp/tiny/">GitHub: jpverkamp/tiny</a></p>
-
+<span style="color:#f92672">(</span>duck duck duck duck goose <span style="color:#ae81ff">0</span> 0<span style="color:#f92672">)</span>
+</code></pre></div><p>Unfortunately, it&rsquo;s wicked slow (that&rsquo;s what we get from encoding our entire memory structure in a single number and not having native multiplication or division functions). Still, it works. And that&rsquo;s all that matters.</p>
+<p>If you&rsquo;d like to see the full source, you can do so here:</p>
+<ul>
+<li><a href="github.com/jpverkamp/tiny/">GitHub: jpverkamp/tiny</a></li>
+</ul>
 <p>Let me know if you have any questions / comments / concerns.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

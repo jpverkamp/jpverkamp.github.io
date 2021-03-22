@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,9 +71,7 @@
     </header>
 
 	<div class="entry-content"><p>At the moment, I have an Apple Music subscription. It&rsquo;s great to be able to listen to more or less whatever music I want to. I switched from Spotify because they were missing a few artists that I actually did want to listen to. Unfortunately, there are a few things that Apple Music doesn&rsquo;t do that I would like to have&ndash;chief among them the ability to play on a Roku.</p>
-
 <p>One nice thing that Spotify does have though is a fairly powerful API: <a href="https://developer.spotify.com/web-api/">Spotify Web API</a>. Inspired by a post on <a href="http://aguo.us/writings/spotify-billboard.html">Spotify and billboard.py</a> which automatically creates Spotify playlists from the Billboard music ranking charts, I decided to write up a script that can sync my playlists from iTunes to Spotify.</p>
-
 <p>First, let&rsquo;s write a method that uses the Spotify web API to search for tracks (or actually any <code>type</code>, such as an artist):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@memory.cache</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">spotify_search</span>(type, retries <span style="color:#f92672">=</span> <span style="color:#ae81ff">3</span>, <span style="color:#f92672">**</span>params):
@@ -109,23 +107,19 @@
     <span style="color:#66d9ef">if</span> response<span style="color:#f92672">.</span>json()[type_plural][<span style="color:#e6db74">&#39;total&#39;</span>] <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>:
         <span style="color:#66d9ef">return</span> response<span style="color:#f92672">.</span>json()[type_plural][<span style="color:#e6db74">&#39;items&#39;</span>][<span style="color:#ae81ff">0</span>]
     <span style="color:#66d9ef">else</span>:
-        <span style="color:#66d9ef">return</span> None</code></pre></div>
-<p>Essentially, it&rsquo;s just a call to the API endpoint <code>/v1/search</code>. The only two odd parts are how the query string is formatted (it looks something like this: <code>Artist:Arist Name Song:Song Name</code>) and the <code>memory.cache</code> decorator.</p>
-
+        <span style="color:#66d9ef">return</span> None
+</code></pre></div><p>Essentially, it&rsquo;s just a call to the API endpoint <code>/v1/search</code>. The only two odd parts are how the query string is formatted (it looks something like this: <code>Artist:Arist Name Song:Song Name</code>) and the <code>memory.cache</code> decorator.</p>
 <p>The decorator comes from <a href="https://pypi.python.org/pypi/joblib">joblib</a> and is basically an easy way to make sure that I don&rsquo;t fetch this information more than once per song no matter how many times I call this method. It will save the results and return them directly for any future calls. To initialize it, all I have to do is run <code>memory = joblib.Memory(cachedir = 'cache', verbose = 0)</code> at the top of my code.</p>
-
 <p>Now that we have a way of looking up songs, lets write a few more helper methods to read from the iTunes library. The first thing that you have to do is check the Advanced setting to &lsquo;Share iTunes Library XML with other applications&rsquo;:</p>
-
 <figure>
     <img src="/embeds/2016/itunes-settings.png"/> 
 </figure>
 
-
 <p>This will make the file <code>iTunes Library.xml</code> / <code>iTunes Music Library.xml</code> (it changed between Yosemite and El Capitan) available in your iTunes folder. This is a <a href="https://en.wikipedia.org/wiki/plist">plist</a> file which means the built in <a href="https://docs.python.org/2/library/plistlib.html">plistlib</a> can read it directly:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">path <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>expanduser(<span style="color:#e6db74">&#39;~/Music/iTunes/iTunes Music Library.xml&#39;</span>)
 <span style="color:#66d9ef">with</span> open(path, <span style="color:#e6db74">&#39;rb&#39;</span>) <span style="color:#66d9ef">as</span> fin:
-    ITUNES_LIBRARY <span style="color:#f92672">=</span> plistlib<span style="color:#f92672">.</span>load(fin)</code></pre></div>
-<p>We can then use this directly to read in information about any given track that we have in our library.</p>
+    ITUNES_LIBRARY <span style="color:#f92672">=</span> plistlib<span style="color:#f92672">.</span>load(fin)
+</code></pre></div><p>We can then use this directly to read in information about any given track that we have in our library.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@memory.cache</span>
 <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_track</span>(track_id):
     <span style="color:#e6db74">&#39;&#39;&#39;Get a track by ID.&#39;&#39;&#39;</span>
@@ -147,9 +141,8 @@
     <span style="color:#66d9ef">if</span> spotify_data:
         track<span style="color:#f92672">.</span>update(spotify_data)
 
-    <span style="color:#66d9ef">return</span> track</code></pre></div>
-<p>Essentially, we pull the <code>Tracks</code> object out of the iTunes library which is indexed by a <code>track_id</code>. There&rsquo;s one kind of weird part here in that the <code>Tracks</code> object uses numeric strings as keys while the <code>Playlists</code> tracks (see below) are returned as <code>int</code>s. Thus the cast. We take the information from iTunes and then try to look up the song in Spotify. If the search returns, we shove the two objects together. If not, we return just the iTunes information and deal with that later.</p>
-
+    <span style="color:#66d9ef">return</span> track
+</code></pre></div><p>Essentially, we pull the <code>Tracks</code> object out of the iTunes library which is indexed by a <code>track_id</code>. There&rsquo;s one kind of weird part here in that the <code>Tracks</code> object uses numeric strings as keys while the <code>Playlists</code> tracks (see below) are returned as <code>int</code>s. Thus the cast. We take the information from iTunes and then try to look up the song in Spotify. If the search returns, we shove the two objects together. If not, we return just the iTunes information and deal with that later.</p>
 <p>Next, we want to look up playlists:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_playlists</span>():
     <span style="color:#e6db74">&#39;&#39;&#39;
@@ -170,9 +163,8 @@
                 <span style="color:#66d9ef">for</span> track <span style="color:#f92672">in</span> playlist[<span style="color:#e6db74">&#39;Playlist Items&#39;</span>]
                 <span style="color:#66d9ef">if</span> get_track(track[<span style="color:#e6db74">&#39;Track ID&#39;</span>])
             ]
-        }</code></pre></div>
-<p>This is a bit odd, since there are many different kinds of playlists in the iTunes library, not all of which have the same keys. With a bit of experimentation, I found that the list of keys above are the ones we want to avoid. Other than that, we will <code>yield</code> each playlist along with a list of track objects from <code>get_track</code>. This is why I cached those results, since a track can (and often will be) in multiple playlists and we don&rsquo;t want to re-fetch the track information if that&rsquo;s the case.</p>
-
+        }
+</code></pre></div><p>This is a bit odd, since there are many different kinds of playlists in the iTunes library, not all of which have the same keys. With a bit of experimentation, I found that the list of keys above are the ones we want to avoid. Other than that, we will <code>yield</code> each playlist along with a list of track objects from <code>get_track</code>. This is why I cached those results, since a track can (and often will be) in multiple playlists and we don&rsquo;t want to re-fetch the track information if that&rsquo;s the case.</p>
 <p>That&rsquo;s actually the lion&rsquo;s share of what I need. All that&rsquo;s left is the code to create / find Spotify playlists and then add the songs to them. For that, I&rsquo;m going to use the <a href="https://github.com/plamere/spotipy">spotipy</a> library rather than directly dealing with the endpoints. For the most part, it really helps with the OAuth tokens. All we have to do to create a Spotipy client is this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">token <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</span>util<span style="color:#f92672">.</span>prompt_for_user_token(
     os<span style="color:#f92672">.</span>env[<span style="color:#e6db74">&#39;SPOTIFY_USERNAME&#39;</span>],
@@ -182,9 +174,8 @@
     scope <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>env[<span style="color:#e6db74">&#39;SPOTIFY_SCOPE&#39;</span>],
 )
 
-sp <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</span>Spotify(auth <span style="color:#f92672">=</span> token)</code></pre></div>
-<p>You have to <a href="https://developer.spotify.com/my-applications/#!/applications">create a Spotify App</a>, but that&rsquo;s straight forward enough and free. The first time this is run, you will have to okay the permissions in your web browser, but after that it will keep track of your Spotify API token and will run transparently.</p>
-
+sp <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</span>Spotify(auth <span style="color:#f92672">=</span> token)
+</code></pre></div><p>You have to <a href="https://developer.spotify.com/my-applications/#!/applications">create a Spotify App</a>, but that&rsquo;s straight forward enough and free. The first time this is run, you will have to okay the permissions in your web browser, but after that it will keep track of your Spotify API token and will run transparently.</p>
 <p>I&rsquo;m going to use that to write one more helper method:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_spotify_playlist</span>(title):
     <span style="color:#e6db74">&#39;&#39;&#39;Get either an existing or new playlist by title.&#39;&#39;&#39;</span>
@@ -194,9 +185,8 @@ sp <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</sp
         <span style="color:#66d9ef">if</span> title <span style="color:#f92672">==</span> playlist[<span style="color:#e6db74">&#39;name&#39;</span>]:
             <span style="color:#66d9ef">return</span> playlist
 
-    <span style="color:#66d9ef">return</span> sp<span style="color:#f92672">.</span>user_playlist_create(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74">&#39;id&#39;</span>], title)</code></pre></div>
-<p><a href="http://aguo.us/writings/spotify-billboard.html">The article</a> that inspired this code only used the <code>user_playlist_create</code> method, but that will create a new playlist on each run. Instead, we want to check if there&rsquo;s already a playlist matching the name that we&rsquo;re trying to create. If so, return that playlist. If not, create a new one to return.</p>
-
+    <span style="color:#66d9ef">return</span> sp<span style="color:#f92672">.</span>user_playlist_create(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74">&#39;id&#39;</span>], title)
+</code></pre></div><p><a href="http://aguo.us/writings/spotify-billboard.html">The article</a> that inspired this code only used the <code>user_playlist_create</code> method, but that will create a new playlist on each run. Instead, we want to check if there&rsquo;s already a playlist matching the name that we&rsquo;re trying to create. If so, return that playlist. If not, create a new one to return.</p>
 <p>Now we have everything we need. We can write a script that will loop through any iTunes playlists specified on the command line (or all of them if none are specified) and sync them to Spotify:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">for</span> playlist <span style="color:#f92672">in</span> get_playlists():
     <span style="color:#66d9ef">if</span> len(sys<span style="color:#f92672">.</span>argv) <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">and</span> playlist[<span style="color:#e6db74">&#39;name&#39;</span>] <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> sys<span style="color:#f92672">.</span>argv:
@@ -215,9 +205,8 @@ sp <span style="color:#f92672">=</span> spotipy<span style="color:#f92672">.</sp
             <span style="color:#66d9ef">yield</span> items[start : start <span style="color:#f92672">+</span> size]
 
     <span style="color:#66d9ef">for</span> uri_chunk <span style="color:#f92672">in</span> chunks(uris, <span style="color:#ae81ff">100</span>):
-        sp<span style="color:#f92672">.</span>user_playlist_add_tracks(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74">&#39;id&#39;</span>], spotify_playlist[<span style="color:#e6db74">&#39;id&#39;</span>], uri_chunk)</code></pre></div>
-<p>I did hit one interesting temporary roadblock in that the Spotify API cannot accept more than 100 URIs at a time, but the <code>chunk</code> method took care of that. One thing that is nice is that the list of songs in a playlist form a set. So it doesn&rsquo;t matter if we add the same song to a playlist more than once, it will still only exist a single time. That&rsquo;s pretty cool!</p>
-
+        sp<span style="color:#f92672">.</span>user_playlist_add_tracks(sp<span style="color:#f92672">.</span>me()[<span style="color:#e6db74">&#39;id&#39;</span>], spotify_playlist[<span style="color:#e6db74">&#39;id&#39;</span>], uri_chunk)
+</code></pre></div><p>I did hit one interesting temporary roadblock in that the Spotify API cannot accept more than 100 URIs at a time, but the <code>chunk</code> method took care of that. One thing that is nice is that the list of songs in a playlist form a set. So it doesn&rsquo;t matter if we add the same song to a playlist more than once, it will still only exist a single time. That&rsquo;s pretty cool!</p>
 <p>And that&rsquo;s it. A quick run (it took a few minutes to get all of the information for the 500 songs I have in my iTunes library) and I now have a Spotify playlist for each of my iTunes ones. It&rsquo;s not perfect. There are still a few artists that are on Apple Music but not Spotify. But for a stopgap and when I&rsquo;m on computers that don&rsquo;t have my iTunes library, it works pretty well. I&rsquo;ll probably set this up to run periodically, just so I always have my playlists relatively up to date.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,14 +71,12 @@
     </header>
 
 	<div class="entry-content"><p>First, minor bug fixes and reorganization:</p>
-
 <ul>
 <li>Fixed a problem with line separators that was causing automatic indentation to fail on Windows</li>
 <li>Re-factored save/load code to the text area</li>
 <li>Store a hash of the saved contents with each text area so that we can recognize files that don&rsquo;t need to be saved</li>
 <li>Add an option to disable confirmation on save before either running or exiting (if disabled, just automatically save in both cases)</li>
 </ul>
-
 <p>In addition, I&rsquo;ve been having problems with the debugging procedures. Essentially if you used the short form of define, you wouldn&rsquo;t get a procedure name but the short name would.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">~ (<span style="color:#66d9ef">define </span>name
     (<span style="color:#66d9ef">lambda </span>(<span style="color:#f92672">...</span>)
@@ -87,33 +85,32 @@
 ~ name
 <span style="color:#f92672">#</span>
 
-~ (<span style="color:#66d9ef">define </span>(name2 <span style="color:#f92672">...</span>)
+~ (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">name2</span> <span style="color:#f92672">...</span>)
     <span style="color:#f92672">...</span>)
 
 ~ name2
-<span style="color:#f92672">#</span></code></pre></div>
-<p>I&rsquo;d really like to have the same behavior for both, so what did I do? I redefined define.</p>
+<span style="color:#f92672">#</span>
+</code></pre></div><p>I&rsquo;d really like to have the same behavior for both, so what did I do? I redefined define.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">define-syntax define </span>
-  (<span style="color:#66d9ef">syntax-rules </span>(lambda) 
+  (<span style="color:#66d9ef">syntax-rules </span>(<span style="color:#a6e22e">lambda</span>) 
     [(<span style="color:#66d9ef">define </span>name 
-       (<span style="color:#66d9ef">lambda </span>(args <span style="color:#f92672">...</span>) 
+       (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">args</span> <span style="color:#f92672">...</span>) 
          bodies <span style="color:#f92672">...</span>)) 
-     ($define$ (name args <span style="color:#f92672">...</span>) 
+     (<span style="color:#a6e22e">$define$</span> (<span style="color:#a6e22e">name</span> args <span style="color:#f92672">...</span>) 
        bodies <span style="color:#f92672">...</span>)] 
     [(<span style="color:#66d9ef">define </span>name 
-       (<span style="color:#66d9ef">lambda </span>(args <span style="color:#f92672">...</span> <span style="color:#f92672">.</span> dotted) 
+       (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">args</span> <span style="color:#f92672">...</span> <span style="color:#f92672">.</span> dotted) 
          bodies <span style="color:#f92672">...</span>)) 
-     ($define$ (name args <span style="color:#f92672">...</span> <span style="color:#f92672">.</span> dotted) 
+     (<span style="color:#a6e22e">$define$</span> (<span style="color:#a6e22e">name</span> args <span style="color:#f92672">...</span> <span style="color:#f92672">.</span> dotted) 
        bodies <span style="color:#f92672">...</span>)] 
     [(<span style="color:#66d9ef">define </span>name 
        (<span style="color:#66d9ef">lambda </span>arg 
          bodies <span style="color:#f92672">...</span>)) 
-     ($define$ (name <span style="color:#f92672">.</span> arg) 
+     (<span style="color:#a6e22e">$define$</span> (<span style="color:#a6e22e">name</span> <span style="color:#f92672">.</span> arg) 
        bodies <span style="color:#f92672">...</span>)] 
     [(<span style="color:#66d9ef">define </span>stuff <span style="color:#f92672">...</span>) 
-     ($define$ stuff <span style="color:#f92672">...</span>)])))</code></pre></div>
-<p>Probably not the best way to solve the problem, but it does work. I&rsquo;ve done some stress testing to see if it breaks anything else, but for the moment it doesn&rsquo;t seem to do so.</p>
-
+     (<span style="color:#a6e22e">$define$</span> stuff <span style="color:#f92672">...</span>)])))
+</code></pre></div><p>Probably not the best way to solve the problem, but it does work. I&rsquo;ve done some stress testing to see if it breaks anything else, but for the moment it doesn&rsquo;t seem to do so.</p>
 <p>The new version available is <a title="Wombat Download Page" href="http://www.cs.indiana.edu/cgi-pub/c211/wombat/">r190</a>.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

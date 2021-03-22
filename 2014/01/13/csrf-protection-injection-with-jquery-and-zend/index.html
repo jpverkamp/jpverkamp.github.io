@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,18 +71,15 @@
     </header>
 
 	<div class="entry-content"><p><a href="https://en.wikipedia.org/wiki/Csrf">Cross-site request forgery</a> attacks are among the most common vulnerabilities against websites, listed as <a href="https://www.owasp.org/index.php/Top_10_2013-A8-Cross-Site_Request_Forgery_(CSRF)">number 8</a> on <a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">OWASP&rsquo;s 2013 Top 10 list</a>.</p>
-
 <p>A CSRF attack involves an attacker identifying some state changing URL within a web application. Say, for example, that you have a website where you can change a user&rsquo;s nickname like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-html" data-lang="html">POST /change-nickname.php
 
-new-nickname=...</code></pre></div>
-<p>In that case, an attacker could copy the URL, edit the new nickname field, and send you a link via IM. So long as you&rsquo;re already logged into the site, when you click the link, the browser will helpfully send along your session information to the server and your username is changed.</p>
-
+new-nickname=...
+</code></pre></div><p>In that case, an attacker could copy the URL, edit the new nickname field, and send you a link via IM. So long as you&rsquo;re already logged into the site, when you click the link, the browser will helpfully send along your session information to the server and your username is changed.</p>
 <p>How can you fix that though? You need the browser to automatically send session information since HTTP is a stateless protocol. Without that, it&rsquo;s much more difficult to maintain long running sessions.</p>
-
 <p>What we really need is some bit of information that the client will send along with requests if they come from our server, but that won&rsquo;t be sent along if the user just clicks on a random link. You could do this by sending along a random token, stored in the session:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">// change-nickname.php
-<span style="color:#75715e">&lt;?php</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"><span style="color:#75715e">// change-nickname.php
+</span><span style="color:#75715e"></span><span style="color:#f92672">&lt;?</span><span style="color:#a6e22e">php</span>
 <span style="color:#a6e22e">session_start</span>();
 
 <span style="color:#75715e">// Choose a CSRF token if one hasn&#39;t already been assigned, tokens are unique to each user
@@ -102,30 +99,24 @@ new-nickname=...</code></pre></div>
 
 <span style="color:#75715e">// Otherwise, send the update nickname form
 </span><span style="color:#75715e"></span>} <span style="color:#66d9ef">else</span> {
-<span style="color:#75715e">?&gt;</span>
-&lt;<span style="color:#f92672">form</span> <span style="color:#a6e22e">method</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;POST&#34;</span> <span style="color:#a6e22e">action</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;/change-nickname.php&#34;</span>&gt;
-    &lt;<span style="color:#f92672">input</span> <span style="color:#a6e22e">type</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;hidden&#34;</span> <span style="color:#a6e22e">name</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;csrf-token&#34;</span> <span style="color:#a6e22e">value</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#75715e">&lt;?</span><span style="color:#f92672">=</span> $_SESSION[<span style="color:#e6db74">&#39;csrf-token&#39;</span>] <span style="color:#75715e">?&gt;</span><span style="color:#e6db74">&#34;</span> /&gt;
-    &lt;<span style="color:#f92672">input</span> <span style="color:#a6e22e">name</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;new-nickname&#34;</span> /&gt;
-    &lt;<span style="color:#f92672">input</span> <span style="color:#a6e22e">type</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;submit&#34;</span> /&gt;
-&lt;/<span style="color:#f92672">form</span>&gt;
-<span style="color:#75715e">&lt;?php</span>
-}
-<span style="color:#75715e">?&gt;</span>
-</code></pre></div>
-<p>This way, we&rsquo;ll send the CSRF token with the page and the client will automatically send it back&ndash;but only if they use our form. If the attacker could guess the session token, they could of course send it along as well, but assuming that we&rsquo;re using HTTPS for communication and a random (enough) token, this shouldn&rsquo;t be possible.</p>
-
+<span style="color:#75715e">?&gt;</span><span style="color:#960050;background-color:#1e0010">
+</span><span style="color:#960050;background-color:#1e0010">&lt;form method=&#34;POST&#34; action=&#34;/change-nickname.php&#34;&gt;
+</span><span style="color:#960050;background-color:#1e0010">    &lt;input type=&#34;hidden&#34; name=&#34;csrf-token&#34; value=&#34;&lt;?= $_SESSION[&#39;csrf-token&#39;] ?&gt;&#34; /&gt;
+</span><span style="color:#960050;background-color:#1e0010">    &lt;input name=&#34;new-nickname&#34; /&gt;
+</span><span style="color:#960050;background-color:#1e0010">    &lt;input type=&#34;submit&#34; /&gt;
+</span><span style="color:#960050;background-color:#1e0010">&lt;/form&gt;
+</span><span style="color:#960050;background-color:#1e0010">&lt;?php
+</span><span style="color:#960050;background-color:#1e0010">}
+</span><span style="color:#960050;background-color:#1e0010">?&gt;
+</span></code></pre></div><p>This way, we&rsquo;ll send the CSRF token with the page and the client will automatically send it back&ndash;but only if they use our form. If the attacker could guess the session token, they could of course send it along as well, but assuming that we&rsquo;re using HTTPS for communication and a random (enough) token, this shouldn&rsquo;t be possible.</p>
 <p>So this works. But what if you have a much larger code base? Do you really want to embed the CSRF token in every single form that you make? And what if you&rsquo;re using Ajax requests? It turns out that there&rsquo;s a much more elegant solution.</p>
-
 <p>What we want to do is use jQuery to inject CSRF tokens into every request and every form. Then on the PHP end, we&rsquo;ll use Zend&rsquo;s plugin framework to check every post request for this token. That way, every bit of code you write is automatically protected and the protection is centralized if you ever have to make a change. Sounds good, yes?</p>
-
 <p>First, the jQuery. We&rsquo;ll still need a bit of PHP to send the CSRF token from the server to the client. Something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">// index.php
-&lt;<span style="color:#f92672">script</span> <span style="color:#a6e22e">type</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;text/javascript&#34;</span>&gt;
-<span style="color:#a6e22e">csrf_token</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;</span><span style="color:#75715e">&lt;?</span><span style="color:#f92672">=</span> $_SESSION[<span style="color:#e6db74">&#39;csrf-token&#39;</span>]; <span style="color:#75715e">?&gt;</span><span style="color:#e6db74">&#39;</span>;
-&lt;/<span style="color:#f92672">script</span>&gt;
-</code></pre></div>
-<p>Yes, it&rsquo;s a global variable, but you could wrap that up in whatever other JavaScript objects you are already creating easily enough.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"><span style="color:#75715e">// index.php
+</span><span style="color:#75715e"></span><span style="color:#f92672">&lt;</span><span style="color:#a6e22e">script</span> <span style="color:#a6e22e">type</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;text/javascript&#34;</span><span style="color:#f92672">&gt;</span>
+<span style="color:#a6e22e">csrf_token</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;&lt;?= $_SESSION[&#39;</span><span style="color:#a6e22e">csrf</span><span style="color:#f92672">-</span><span style="color:#a6e22e">token</span><span style="color:#e6db74">&#39;]; ?&gt;&#39;</span>;
+<span style="color:#f92672">&lt;/</span><span style="color:#a6e22e">script</span><span style="color:#f92672">&gt;</span>
+</code></pre></div><p>Yes, it&rsquo;s a global variable, but you could wrap that up in whatever other JavaScript objects you are already creating easily enough.</p>
 <p>After that, we want to hook into all jQuery Ajax requests. The <code>ajaxPrefilter</code> function will do exactly what we want. It&rsquo;s called before any call to <code>$.ajax</code>, including functions that use it, such as <code>$.post</code> and friends.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#a6e22e">$</span>.<span style="color:#a6e22e">ajaxPrefilter</span>(<span style="color:#66d9ef">function</span>(<span style="color:#a6e22e">options</span>) {
     <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">options</span>.<span style="color:#a6e22e">type</span> <span style="color:#f92672">===</span> <span style="color:#e6db74">&#39;POST&#39;</span>) {
@@ -133,9 +124,7 @@ new-nickname=...</code></pre></div>
         <span style="color:#a6e22e">options</span>.<span style="color:#a6e22e">data</span>[<span style="color:#e6db74">&#39;csrf-token&#39;</span>] <span style="color:#f92672">=</span> <span style="color:#a6e22e">csrf_token</span>;
     }
 });
-</code></pre></div>
-<p>That will add an additional field to any POST request. It doesn&rsquo;t protect against other types (such as GET), but that should be easy enough to change.</p>
-
+</code></pre></div><p>That will add an additional field to any POST request. It doesn&rsquo;t protect against other types (such as GET), but that should be easy enough to change.</p>
 <p>For the other half (forms that don&rsquo;t use Ajax, as in the original example), we need to get a little more sneaky. What we want is to add a event listener for form submits that will globally trigger on any form&ndash;even those that are added dynamically. Luckily, jQuery&rsquo;s <code>on</code> has exactly what we need:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#a6e22e">$</span>(document).<span style="color:#a6e22e">on</span>(<span style="color:#e6db74">&#39;submit&#39;</span>, <span style="color:#e6db74">&#39;form&#39;</span>), <span style="color:#66d9ef">function</span>(<span style="color:#a6e22e">evt</span>) {
     <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">form</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">$</span>(<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">target</span>);
@@ -145,12 +134,10 @@ new-nickname=...</code></pre></div>
         );
     }
 });
-</code></pre></div>
-<p>One note for both of these methods is that they will add the CSRF token to <em>every</em> request, even those that are going to other sites. For the increasingly common practice of mashups, this won&rsquo;t be quite what you want, but it shouldn&rsquo;t be difficult to add.</p>
-
+</code></pre></div><p>One note for both of these methods is that they will add the CSRF token to <em>every</em> request, even those that are going to other sites. For the increasingly common practice of mashups, this won&rsquo;t be quite what you want, but it shouldn&rsquo;t be difficult to add.</p>
 <p>On the server side, we want to write a <code>Zend_Controller_Plugin_Abstract</code>, specifically the <code>preDispatch</code> function. Like the <code>ajaxPrefilter</code> function, this can be used to apply to <em>all</em> requests, globally enabling CSRF protection. We&rsquo;ll want something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php">// CSRFPlugin.php
-<span style="color:#75715e">&lt;?php</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-php" data-lang="php"><span style="color:#75715e">// CSRFPlugin.php
+</span><span style="color:#75715e"></span><span style="color:#f92672">&lt;?</span><span style="color:#a6e22e">php</span>
 <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">CSRFPlugin</span> <span style="color:#66d9ef">extends</span> <span style="color:#a6e22e">Zend_Controller_Plugin_Abstract</span> {
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">function</span> <span style="color:#a6e22e">preDispatch</span>(<span style="color:#a6e22e">Zend_Controller_Request_Abstract</span> $request) {
         <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">request</span><span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">getMethod</span>() <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;POST&#39;</span>) {
@@ -161,14 +148,13 @@ new-nickname=...</code></pre></div>
         }
    }
 }
-<span style="color:#75715e">?&gt;</span>
-
-// index.php
-<span style="color:#75715e">&lt;?php</span>
-<span style="color:#a6e22e">Zend_Controller_Front</span><span style="color:#f92672">::</span><span style="color:#a6e22e">getInstance</span>()<span style="color:#f92672">-&gt;</span><span style="color:#a6e22e">registerPlugin</span>(<span style="color:#66d9ef">new</span> <span style="color:#a6e22e">CSRFPlugin</span>());
-<span style="color:#75715e">?&gt;</span>
-</code></pre></div>
-<p>And that&rsquo;s all you need. Of course, in practice you&rsquo;d likely want to more tightly integrate this with your own code base (use structures that you&rsquo;re already creating / hooking into error reporting frameworks / better filtering for requests that need or don&rsquo;t need CSRF protection), but at least it&rsquo;s a start.</p></div>
+<span style="color:#75715e">?&gt;</span><span style="color:#960050;background-color:#1e0010">
+</span><span style="color:#960050;background-color:#1e0010">
+</span><span style="color:#960050;background-color:#1e0010">// index.php
+</span><span style="color:#960050;background-color:#1e0010">&lt;?php
+</span><span style="color:#960050;background-color:#1e0010">Zend_Controller_Front::getInstance()-&gt;registerPlugin(new CSRFPlugin());
+</span><span style="color:#960050;background-color:#1e0010">?&gt;
+</span></code></pre></div><p>And that&rsquo;s all you need. Of course, in practice you&rsquo;d likely want to more tightly integrate this with your own code base (use structures that you&rsquo;re already creating / hooking into error reporting frameworks / better filtering for requests that need or don&rsquo;t need CSRF protection), but at least it&rsquo;s a start.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

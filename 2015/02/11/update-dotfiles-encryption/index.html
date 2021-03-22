@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -68,11 +68,8 @@
     </header>
 
 	<div class="entry-content"><p>I do like having my <a href="https://blog.jverkamp.com/2015/02/11/update-dotfiles-encryption/">dotfiles</a> on GitHub. For one, it means that they&rsquo;re always available when I set up a new machine. For two, others can see them and take whatever is interesting for their own dotfiles. But all that has a disadvantage: what if I want to store my SSH configs?</p>
-
 <p>Technically, they&rsquo;re not secret. I don&rsquo;t have my actual SSH keys in there. But I do have some names of machines and at least not having those on the GitHub means that the spiders trolling the repos have at least one more step before finding them. Especially those running on non-standard ports.</p>
-
 <p>To that end, here&rsquo;s a quick script to AES encrypt / decrypt files with Python.</p>
-
 <p>First, we want something that can turn any password into an AES key. Since they have to be an exact number of bits a hashing function works particularly well here:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_key</span>():
     <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#39;AESKEY&#39;</span> <span style="color:#f92672">in</span> os<span style="color:#f92672">.</span>environ:
@@ -80,13 +77,10 @@
     <span style="color:#66d9ef">else</span>:
         key <span style="color:#f92672">=</span> getpass<span style="color:#f92672">.</span>getpass(<span style="color:#e6db74">&#39;AES passphrase: &#39;</span>)
 
-    <span style="color:#66d9ef">return</span> hashlib<span style="color:#f92672">.</span>sha256(key<span style="color:#f92672">.</span>encode(<span style="color:#e6db74">&#39;utf-8&#39;</span>))<span style="color:#f92672">.</span>digest()</code></pre></div>
-<p>(Yes, I should be using a <a href="https://en.wikipedia.org/wiki/Password-Based%20Key%20Derivation%20Function">Password-Based Key Derivation Function</a>. So it goes.)</p>
-
+    <span style="color:#66d9ef">return</span> hashlib<span style="color:#f92672">.</span>sha256(key<span style="color:#f92672">.</span>encode(<span style="color:#e6db74">&#39;utf-8&#39;</span>))<span style="color:#f92672">.</span>digest()
+</code></pre></div><p>(Yes, I should be using a <a href="https://en.wikipedia.org/wiki/Password-Based%20Key%20Derivation%20Function">Password-Based Key Derivation Function</a>. So it goes.)</p>
 <p>Next, the encryption function. We need to set up a random <a href="https://en.wikipedia.org/wiki/initialization%20vector">initialization vector</a>.</p>
-
 <p>Then, since the file might not be evenly divisible into blocks, we&rsquo;ll need to pad it. Since we want this to be able to deal with binary or other files, there&rsquo;s no guarantee that we can tell when a file has ended. So we&rsquo;ll use the <code>struct</code> library to store the file length as well. Given that we&rsquo;re storing the size as a 64-bit integer, we&rsquo;ll be able to store files up to 18.56 exabytes. Yeah, I think we&rsquo;ll be fine for a while.</p>
-
 <p>Finally, we want to add a hash so we can verify that the file was not tampered with via <a href="https://crypto.stackexchange.com/questions/202/should-we-mac-then-encrypt-or-encrypt-then-mac">encrypt-then-MAC</a>. All together:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">encrypt</span>(file):
 
@@ -109,9 +103,8 @@
 
     outfile <span style="color:#f92672">=</span> file <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;.aes&#39;</span>
     <span style="color:#66d9ef">with</span> open(outfile, <span style="color:#e6db74">&#39;wb&#39;</span>) <span style="color:#66d9ef">as</span> fout:
-        fout<span style="color:#f92672">.</span>write(content)</code></pre></div>
-<p>Straight forward.</p>
-
+        fout<span style="color:#f92672">.</span>write(content)
+</code></pre></div><p>Straight forward.</p>
 <p>Likewise, decryption pulls apart the parts of the file, checks the integrity with the hash, then decrypts:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">decrypt</span>(file):
 
@@ -141,9 +134,8 @@
 
     outfile <span style="color:#f92672">=</span> file[:<span style="color:#f92672">-</span><span style="color:#ae81ff">4</span>]
     <span style="color:#66d9ef">with</span> open(outfile, <span style="color:#e6db74">&#39;wb&#39;</span>) <span style="color:#66d9ef">as</span> fout:
-        fout<span style="color:#f92672">.</span>write(content)</code></pre></div>
-<p>Shiny. Now let&rsquo;s tweak the script that updates dotfiles to handle encrypted files:</p>
-
+        fout<span style="color:#f92672">.</span>write(content)
+</code></pre></div><p>Shiny. Now let&rsquo;s tweak the script that updates dotfiles to handle encrypted files:</p>
 <p>Basically, the only code that changes is if the user choose <code>y</code> to replace a file. If that file ends with <code>.aes</code>, ask for the password and try to decrypt it.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">...</span>
 
@@ -161,15 +153,11 @@
     <span style="color:#66d9ef">except</span>:
         <span style="color:#66d9ef">print</span>(<span style="color:#e6db74">&#39;{0} cannot decrypt, aes does not exist&#39;</span><span style="color:#f92672">.</span>format(path))
 
-<span style="color:#f92672">...</span></code></pre></div>
-<p>One caveat is that since the <code>aes</code> library is stored without the <code>py</code> suffix, we load it dynamically with the <code>imp</code> module. I love how that&rsquo;s possible (even easy) in Python.</p>
-
+<span style="color:#f92672">...</span>
+</code></pre></div><p>One caveat is that since the <code>aes</code> library is stored without the <code>py</code> suffix, we load it dynamically with the <code>imp</code> module. I love how that&rsquo;s possible (even easy) in Python.</p>
 <p>And that&rsquo;s about it. I&rsquo;ve moved my SSH configs over and vastly expended them with a number of servers that I work with on a daily basis. Also there&rsquo;s another level which allows for different environments (work or home) and operating systems (to deal with different keyboard standards).</p>
-
 <p>Very cool.</p>
-
 <p>If you&rsquo;d like to see the full source for either piece, you can on GitHub:</p>
-
 <ul>
 <li><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/aes">aes</a></li>
 <li><a href="https://github.com/jpverkamp/dotfiles/blob/master/bin/update-dotfiles">update-dotfiles</a></li>

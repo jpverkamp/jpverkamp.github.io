@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,100 +74,97 @@
     </header>
 
 	<div class="entry-content"><p><a href="http://programmingpraxis.com/2013/02/12/binary-search-tree-in-order-predecessor-and-successor/" title="Binary Search Tree: In-Order Predecessor And Successor">Yesterday&rsquo;s post</a> from Programming Praxis has us trying to find the predecessor and successor to a given value in a binary search tree. There are actually two general algorithms for doing this, depending on if you have parent pointers or not&ndash;but they&rsquo;re asking for the algorithm without.</p>
-
 <p>The basic idea is that as you recur down the tree looking for a node, you&rsquo;ll also keep track of the last time you branch in each direction (separately). In their examples, they have the code duplicated for each, but I wrote a single function that returns multiple <code>value</code>s so that behavior at least is shared.</p>
-
 <p>In any case, the first thing we need to do is set up a <code>tree</code> structure:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; set up a tree structure</span>
-(define-struct tree (value left right) <span style="color:#f92672">#</span>:transparent)
+(<span style="color:#a6e22e">define-struct</span> tree (<span style="color:#a6e22e">value</span> left right) <span style="color:#f92672">#</span>:transparent)
 
-(<span style="color:#66d9ef">define </span>(leaf val) (tree val (empty-tree) (empty-tree)))
-(<span style="color:#66d9ef">define </span>(leaf? tr) (<span style="color:#66d9ef">and </span>(tree? tr) (not (tree-left? tr)) (not (tree-right? tr))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">leaf</span> val) (<span style="color:#a6e22e">tree</span> val (<span style="color:#a6e22e">empty-tree</span>) (<span style="color:#a6e22e">empty-tree</span>)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">leaf?</span> tr) (<span style="color:#66d9ef">and </span>(<span style="color:#a6e22e">tree?</span> tr) (not (<span style="color:#a6e22e">tree-left?</span> tr)) (not (<span style="color:#a6e22e">tree-right?</span> tr))))
 
-(<span style="color:#66d9ef">define </span>*empty-tree* (tree (void) (void) (void)))
-(<span style="color:#66d9ef">define </span>(empty-tree) *empty-tree*)
-(<span style="color:#66d9ef">define </span>(empty? tr) (eq? tr *empty-tree*))
+(<span style="color:#66d9ef">define </span>*empty-tree* (<span style="color:#a6e22e">tree</span> (<span style="color:#a6e22e">void</span>) (<span style="color:#a6e22e">void</span>) (<span style="color:#a6e22e">void</span>)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">empty-tree</span>) *empty-tree*)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">empty?</span> tr) (eq? tr *empty-tree*))
 
 <span style="color:#75715e">; test if the left node of a tree is non-empty</span>
-(<span style="color:#66d9ef">define </span>(tree-left? tr)
-  (<span style="color:#66d9ef">and </span>(tree? tr)
-       (not (empty? (tree-left tr)))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">tree-left?</span> tr)
+  (<span style="color:#66d9ef">and </span>(<span style="color:#a6e22e">tree?</span> tr)
+       (not (<span style="color:#a6e22e">empty?</span> (<span style="color:#a6e22e">tree-left</span> tr)))))
 
 <span style="color:#75715e">; test if the right node of a tree is non-empty</span>
-(<span style="color:#66d9ef">define </span>(tree-right? tr)
-  (<span style="color:#66d9ef">and </span>(tree? tr)
-       (not (empty? (tree-right tr)))))</code></pre></div>
-<p>Here we have the basic struct along with a few helper functions for making an <code>empty-tree</code> and for testing if we have an <code>empty?</code> subtree, either left or right.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">tree-right?</span> tr)
+  (<span style="color:#66d9ef">and </span>(<span style="color:#a6e22e">tree?</span> tr)
+       (not (<span style="color:#a6e22e">empty?</span> (<span style="color:#a6e22e">tree-right</span> tr)))))
+</code></pre></div><p>Here we have the basic struct along with a few helper functions for making an <code>empty-tree</code> and for testing if we have an <code>empty?</code> subtree, either left or right.</p>
 <p>The next step will be to go ahead and write a function for finding the <code>minimum</code> and <code>maximum</code> value in a tree. This doesn&rsquo;t actually care at all how the values have been stored, it&rsquo;s just a matter of going left/right until you can&rsquo;t anymore. Here&rsquo;s <code>minimum</code>, you can see <code>maximum</code> <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bst-pred%2Bsucc.rkt" title="BST predecessor / successor source">on GitHub</a> (although it&rsquo;s essentially the same).</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; find the minimum value in a binary search tree</span>
-(<span style="color:#66d9ef">define </span>(minimum tr)
-  (cond
-    [(empty? tr) (void)]
-    [(tree-left? tr)
-     (minimum (tree-left tr))]
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">minimum</span> tr)
+  (<span style="color:#a6e22e">cond</span>
+    [(<span style="color:#a6e22e">empty?</span> tr) (<span style="color:#a6e22e">void</span>)]
+    [(<span style="color:#a6e22e">tree-left?</span> tr)
+     (<span style="color:#a6e22e">minimum</span> (<span style="color:#a6e22e">tree-left</span> tr))]
     [else
-     (tree-value tr)]))</code></pre></div>
-<p>Next, the core of the algorithm, we want to be able to find the node containing a value and the last time we went either left or right. Here&rsquo;s all of that in one function:</p>
+     (<span style="color:#a6e22e">tree-value</span> tr)]))
+</code></pre></div><p>Next, the core of the algorithm, we want to be able to find the node containing a value and the last time we went either left or right. Here&rsquo;s all of that in one function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; recur to a value, return:</span>
 <span style="color:#75715e">;   the last time we went left</span>
 <span style="color:#75715e">;   the node containing the search values</span>
 <span style="color:#75715e">;   the last time we went right</span>
-(<span style="color:#66d9ef">define </span>(find-nodes tr &lt; val)
-  (<span style="color:#66d9ef">let </span>loop ([tr tr] [last-left (void)] [last-right (void)])
-    (cond
-      [(empty? tr)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">find-nodes</span> tr &lt; val)
+  (<span style="color:#66d9ef">let </span>loop ([tr tr] [last-left (<span style="color:#a6e22e">void</span>)] [last-right (<span style="color:#a6e22e">void</span>)])
+    (<span style="color:#a6e22e">cond</span>
+      [(<span style="color:#a6e22e">empty?</span> tr)
        (values last-left tr last-right)]
-      [(equal? val (tree-value tr))
+      [(equal? val (<span style="color:#a6e22e">tree-value</span> tr))
        (values last-left tr last-right)]
-      [(&lt; val (tree-value tr))
-       (loop (tree-left tr) tr last-right)]
+      [(&lt; val (<span style="color:#a6e22e">tree-value</span> tr))
+       (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">tree-left</span> tr) tr last-right)]
       [else
-       (loop (tree-right tr) last-left tr)])))</code></pre></div>
-<p>From here, we actually have everything we need to build a <code>successor</code> function:</p>
+       (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">tree-right</span> tr) last-left tr)])))
+</code></pre></div><p>From here, we actually have everything we need to build a <code>successor</code> function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; get the successor to a value</span>
-(<span style="color:#66d9ef">define </span>(successor tr &lt; val)
-  (define-values (l v r) (find-nodes tr &lt; val))
-  (cond
-    [(tree-right? v)
-     (minimum (tree-right v))]
-    [(<span style="color:#66d9ef">and </span>(not (void? l)) (not (empty? l)))
-     (tree-value l)]))</code></pre></div>
-<p>Basically, we&rsquo;ll get the last left as <code>l</code>, the tree containing the value we&rsquo;re looking for as <code>v</code>, and the last right as <code>r</code>. Then, if we can go right from the value, the <code>minimum</code> node there is the successor. If we can&rsquo;t, that means that we went left at some point getting here. Find the most recent left branch (<code>l</code>) and find it&rsquo;s value instead.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">successor</span> tr &lt; val)
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">l</span> v r) (<span style="color:#a6e22e">find-nodes</span> tr &lt; val))
+  (<span style="color:#a6e22e">cond</span>
+    [(<span style="color:#a6e22e">tree-right?</span> v)
+     (<span style="color:#a6e22e">minimum</span> (<span style="color:#a6e22e">tree-right</span> v))]
+    [(<span style="color:#66d9ef">and </span>(not (<span style="color:#a6e22e">void?</span> l)) (not (<span style="color:#a6e22e">empty?</span> l)))
+     (<span style="color:#a6e22e">tree-value</span> l)]))
+</code></pre></div><p>Basically, we&rsquo;ll get the last left as <code>l</code>, the tree containing the value we&rsquo;re looking for as <code>v</code>, and the last right as <code>r</code>. Then, if we can go right from the value, the <code>minimum</code> node there is the successor. If we can&rsquo;t, that means that we went left at some point getting here. Find the most recent left branch (<code>l</code>) and find it&rsquo;s value instead.</p>
 <p>And that&rsquo;s it. Here&rsquo;s <code>predecessor</code> as well:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; get the predecessor to a value</span>
-(<span style="color:#66d9ef">define </span>(predecessor tr &lt; val)
-  (define-values (l v r) (find-nodes tr &lt; val))
-  (cond
-    [(tree-left? v)
-     (maximum (tree-left v))]
-    [(<span style="color:#66d9ef">and </span>(not (void? r)) (not (empty? r)))
-     (tree-value r)]))</code></pre></div>
-<p>One thing that&rsquo;s interesting about these is that you can actually use them to implement a form of tree sort. Start by finding the <code>minimum</code> value. After that, repeatedly find the <code>successor</code> until you have all of the values:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">predecessor</span> tr &lt; val)
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">l</span> v r) (<span style="color:#a6e22e">find-nodes</span> tr &lt; val))
+  (<span style="color:#a6e22e">cond</span>
+    [(<span style="color:#a6e22e">tree-left?</span> v)
+     (<span style="color:#a6e22e">maximum</span> (<span style="color:#a6e22e">tree-left</span> v))]
+    [(<span style="color:#66d9ef">and </span>(not (<span style="color:#a6e22e">void?</span> r)) (not (<span style="color:#a6e22e">empty?</span> r)))
+     (<span style="color:#a6e22e">tree-value</span> r)]))
+</code></pre></div><p>One thing that&rsquo;s interesting about these is that you can actually use them to implement a form of tree sort. Start by finding the <code>minimum</code> value. After that, repeatedly find the <code>successor</code> until you have all of the values:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; sort using a tree, using successor</span>
 <span style="color:#75715e">; this is actually O(n log n) believe it or not</span>
-(<span style="color:#66d9ef">define </span>(tree-sort &lt; ls)
-  (<span style="color:#66d9ef">define </span>tr (insert-all (empty-tree) &lt; ls))
-  (<span style="color:#66d9ef">let </span>loop ([x (minimum tr)])
-    (cond
-      [(void? x) <span style="color:#f92672">&#39;</span>()]
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">tree-sort</span> &lt; ls)
+  (<span style="color:#66d9ef">define </span>tr (<span style="color:#a6e22e">insert-all</span> (<span style="color:#a6e22e">empty-tree</span>) &lt; ls))
+  (<span style="color:#66d9ef">let </span>loop ([x (<span style="color:#a6e22e">minimum</span> tr)])
+    (<span style="color:#a6e22e">cond</span>
+      [(<span style="color:#a6e22e">void?</span> x) <span style="color:#f92672">&#39;</span>()]
       [else
-       (cons x (loop (successor tr &lt; x)))])))</code></pre></div>
-<p>It&rsquo;s actually still <code>O(n log n)</code> (there are <code>n O(log n)</code> insertions to build the tree, a <code>O(log n)</code> search to find the minimum, and a O(log n) search for each value). I feel like it will have a significantly higher constant than other <code>O(n log n)</code> sorts (particularly if the tree isn&rsquo;t well balanced), but it&rsquo;s surprisingly effective (at least experimentally on the same order as quicksort):</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>ls (shuffle (range <span style="color:#ae81ff">1000000</span>)))
-&gt; (time (quicksort &lt; ls))
+       (cons x (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">successor</span> tr &lt; x)))])))
+</code></pre></div><p>It&rsquo;s actually still <code>O(n log n)</code> (there are <code>n O(log n)</code> insertions to build the tree, a <code>O(log n)</code> search to find the minimum, and a O(log n) search for each value). I feel like it will have a significantly higher constant than other <code>O(n log n)</code> sorts (particularly if the tree isn&rsquo;t well balanced), but it&rsquo;s surprisingly effective (at least experimentally on the same order as quicksort):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>ls (<span style="color:#a6e22e">shuffle</span> (<span style="color:#a6e22e">range</span> <span style="color:#ae81ff">1000000</span>)))
+&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">quicksort</span> &lt; ls))
 cpu time: <span style="color:#ae81ff">13073</span> real time: <span style="color:#ae81ff">13113</span> gc time: <span style="color:#ae81ff">6739</span>
 <span style="color:#f92672">...</span>
-&gt; (time (tree-sort &lt; ls))
+&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">tree-sort</span> &lt; ls))
 cpu time: <span style="color:#ae81ff">56426</span> real time: <span style="color:#ae81ff">56795</span> gc time: <span style="color:#ae81ff">18085</span>
 <span style="color:#f92672">...</span>
-&gt; (time (insertion-sort &lt; ls))
-<span style="color:#75715e">; (Stopped after five minutes)</span></code></pre></div>
-<p>And that&rsquo;s it. It&rsquo;s a bit differently organized than the code that Programming Praxis posted as <a href="http://programmingpraxis.com/2013/02/12/binary-search-tree-in-order-predecessor-and-successor/2/" title="Binary Search Tree: In-Order Predecessor And Successor">their solution</a>, but I think it&rsquo;s still pretty straight forward.</p>
-
-<p>If you&rsquo;d like to check out the entire source, you can do so on GitHub:
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bst-pred%2Bsucc.rkt">BST predecessor / successor source</a></p></div>
+&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">insertion-sort</span> &lt; ls))
+<span style="color:#75715e">; (Stopped after five minutes)</span>
+</code></pre></div><p>And that&rsquo;s it. It&rsquo;s a bit differently organized than the code that Programming Praxis posted as <a href="http://programmingpraxis.com/2013/02/12/binary-search-tree-in-order-predecessor-and-successor/2/" title="Binary Search Tree: In-Order Predecessor And Successor">their solution</a>, but I think it&rsquo;s still pretty straight forward.</p>
+<p>If you&rsquo;d like to check out the entire source, you can do so on GitHub:</p>
+<ul>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/bst-pred%2Bsucc.rkt">BST predecessor / successor source</a></li>
+</ul></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

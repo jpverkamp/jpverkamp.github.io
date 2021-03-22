@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,21 +71,17 @@
     </header>
 
 	<div class="entry-content"><p>One thing that I often need to do is deal with a large collection of database servers in different clusters and in different environments. On top of that, sometimes, I want a UI, sometime I want a CLI to script. And sometimes I&rsquo;m on a VPN and sometimes I&rsquo;m not. All together, it&rsquo;s a rather complicated number of saved connections and CLI switches and everything else. All together, I want:</p>
-
 <ul>
 <li>Specify the cluster, environment, and mode (read/write/adhoc)</li>
 <li>Specify if I want to run via CLI or via UI</li>
 <li>Specify an optional user with safely stored and used passwords</li>
 <li>Automatically connected via SSH tunnel if I&rsquo;m not on VPN, but not if I am (for CLI or VPN)</li>
 </ul>
-
 <p>Let&rsquo;s do it!</p>
-
 <h1 id="parsing-command-line-parameters">Parsing command line parameters</h1>
-
 <p>First problem, let&rsquo;s get some command line arguments. I&rsquo;m going to use it like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ my-mysql <span style="color:#f92672">{</span>environment<span style="color:#f92672">}</span> <span style="color:#f92672">{</span>cluster<span style="color:#f92672">}</span> <span style="color:#f92672">{</span>mode<span style="color:#f92672">}</span> <span style="color:#f92672">[</span>--ui<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>--user <span style="color:#f92672">{</span>user<span style="color:#f92672">}]</span> <span style="color:#f92672">[</span>--verbose<span style="color:#f92672">]</span></code></pre></div>
-<p>So that means we need to <code><a href="https://docs.python.org/3/search.html?q=argparse">argparse</a></code>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ my-mysql <span style="color:#f92672">{</span>environment<span style="color:#f92672">}</span> <span style="color:#f92672">{</span>cluster<span style="color:#f92672">}</span> <span style="color:#f92672">{</span>mode<span style="color:#f92672">}</span> <span style="color:#f92672">[</span>--ui<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>--user <span style="color:#f92672">{</span>user<span style="color:#f92672">}]</span> <span style="color:#f92672">[</span>--verbose<span style="color:#f92672">]</span>
+</code></pre></div><p>So that means we need to <code><a href="https://docs.python.org/3/search.html?q=argparse">argparse</a></code>
  it like so:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">parser <span style="color:#f92672">=</span> argparse<span style="color:#f92672">.</span>ArgumentParser(description <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;MySQL wrapper, connects to a MySQL wrapper or runs a query from stdin&#39;</span>)
 parser<span style="color:#f92672">.</span>add_argument(dest <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;environment&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Environment to run in, if an IP is specified it will be used as hostname&#39;</span>)
@@ -95,9 +91,8 @@ parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db7
 parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;-u&#39;</span>, <span style="color:#e6db74">&#39;--user&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;default&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The credentials block to use&#39;</span>)
 parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;-s&#39;</span>, <span style="color:#e6db74">&#39;--sshtunnel&#39;</span>, default <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;my-tunnel&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;The SSH tunnel host to use&#39;</span>)
 parser<span style="color:#f92672">.</span>add_argument(<span style="color:#e6db74">&#39;-v&#39;</span>, <span style="color:#e6db74">&#39;--verbose&#39;</span>, action <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;store_true&#39;</span>, help <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;Run in verbose mode&#39;</span>)
-args <span style="color:#f92672">=</span> parser<span style="color:#f92672">.</span>parse_args()</code></pre></div>
-<h1 id="determining-db-hostname">Determining DB hostname</h1>
-
+args <span style="color:#f92672">=</span> parser<span style="color:#f92672">.</span>parse_args()
+</code></pre></div><h1 id="determining-db-hostname">Determining DB hostname</h1>
 <p>Our hostnames are made somewhat easier by the fact that our DB folks have named the hosts nicely with CNAMEs everywhere, so that <code>{cluster}-{mode}.{domain}</code> always resolves to what we need. We just need a map of <code>environment</code> to <code>domain</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">domain_map <span style="color:#f92672">=</span> {
     <span style="color:#e6db74">&#39;prod&#39;</span>: <span style="color:#e6db74">&#39;domain.com&#39;</span>,
@@ -113,15 +108,12 @@ args <span style="color:#f92672">=</span> parser<span style="color:#f92672">.</s
 	    db <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>database,
 	    mode <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>mode,
 	    domain <span style="color:#f92672">=</span> domain_map<span style="color:#f92672">.</span>get(args<span style="color:#f92672">.</span>environment) <span style="color:#f92672">or</span> args<span style="color:#f92672">.</span>environment,
-	)</code></pre></div>
-<p>That takes care of connecting to the correct DB mode/host, but next we need to determine if we&rsquo;re on a VPN or not:</p>
-
+	)
+</code></pre></div><p>That takes care of connecting to the correct DB mode/host, but next we need to determine if we&rsquo;re on a VPN or not:</p>
 <h1 id="vpn-detection">VPN detection</h1>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">on_vpn <span style="color:#f92672">=</span> (os<span style="color:#f92672">.</span>system(<span style="color:#e6db74">&#39;dig +short myip.opendns.com @resolver1.opendns.com | egrep &#34;^(10|50|52)</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">.&#34; &gt; /dev/null&#39;</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)</code></pre></div>
-<p>It&rsquo;s a trick I&rsquo;d previously used in <a href="https://blog.jverkamp.com/2017/12/13/dynamic-automatic-proxies/">Dynamic Automatic Proxy</a> and <a href="https://blog.jverkamp.com/2017/12/18/ssh-config-proxycommand-tricks/">SSH Config Tricks</a>, using DNS to tell what my local IP is. If it&rsquo;s in a private range (or in this case, an AWS IP starting with <code>50</code> or <code>52</code>), then I&rsquo;m already on VPN and don&rsquo;t need another step. Otherwise, I do.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">on_vpn <span style="color:#f92672">=</span> (os<span style="color:#f92672">.</span>system(<span style="color:#e6db74">&#39;dig +short myip.opendns.com @resolver1.opendns.com | egrep &#34;^(10|50|52)</span><span style="color:#ae81ff">\\</span><span style="color:#e6db74">.&#34; &gt; /dev/null&#39;</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>)
+</code></pre></div><p>It&rsquo;s a trick I&rsquo;d previously used in <a href="https://blog.jverkamp.com/2017/12/13/dynamic-automatic-proxies/">Dynamic Automatic Proxy</a> and <a href="https://blog.jverkamp.com/2017/12/18/ssh-config-proxycommand-tricks/">SSH Config Tricks</a>, using DNS to tell what my local IP is. If it&rsquo;s in a private range (or in this case, an AWS IP starting with <code>50</code> or <code>52</code>), then I&rsquo;m already on VPN and don&rsquo;t need another step. Otherwise, I do.</p>
 <h1 id="connecting-to-the-mysql-client">Connecting to the <code>mysql</code> client</h1>
-
 <p>Let&rsquo;s start with the CLI mode. If we&rsquo;re on VPN, connect directly. If not, we want to establish an SSH tunnel with the <code><a href="https://docs.python.org/3/search.html?q=sshtunnel">sshtunnel</a></code>
  library and then connect via that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">env <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>environ<span style="color:#f92672">.</span>copy()
@@ -139,27 +131,21 @@ env[<span style="color:#e6db74">&#39;MYSQL_PWD&#39;</span>] <span style="color:#
         subprocess<span style="color:#f92672">.</span>check_call(
             [<span style="color:#e6db74">&#39;mysql&#39;</span>, <span style="color:#e6db74">&#39;-A&#39;</span>, <span style="color:#e6db74">&#39;-h&#39;</span>, <span style="color:#e6db74">&#39;127.0.0.1&#39;</span>, <span style="color:#e6db74">&#39;-P&#39;</span>, str(tunnel<span style="color:#f92672">.</span>local_bind_port), <span style="color:#e6db74">&#39;-u&#39;</span>, credentials[<span style="color:#e6db74">&#39;user&#39;</span>], db_map<span style="color:#f92672">.</span>get(args<span style="color:#f92672">.</span>database) <span style="color:#f92672">or</span> args<span style="color:#f92672">.</span>database],
             env <span style="color:#f92672">=</span> env,
-        )</code></pre></div>
-<p>On additional trick is setting the <code>MYSQL_PWD</code> environment variable before calling the command with <code><a href="https://docs.python.org/3/search.html?q=subprocess">subprocess</a></code>
+        )
+</code></pre></div><p>On additional trick is setting the <code>MYSQL_PWD</code> environment variable before calling the command with <code><a href="https://docs.python.org/3/search.html?q=subprocess">subprocess</a></code>
 . That way we can pass the password without it being displayed when we&rsquo;re in verbose mode.</p>
-
 <p>Connecting via the SSH tunnel was something that I was particularly proud of. Essentially, we can make an SSH tunnel via a <a href="https://en.wikipedia.org/wiki/bastion%20host">bastion host</a> to the MySQL host inside a private network and then connecting to that tunnel, which in turn forwards the connection through the tunnel. It doesn&rsquo;t even cost that much performancewise.</p>
-
 <p>Because we&rsquo;re using <code>subprocess</code>, we can actually do fun things with pipes:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ echo <span style="color:#e6db74">&#39;select * from users where user_id = 1337&#39;</span> | my-mysql prod primary adhoc
 ...
 
 $ echo <span style="color:#e6db74">&#39;select * from files where creator_id in (&#39;</span> <span style="color:#ae81ff">\
 </span><span style="color:#ae81ff"></span>    <span style="color:#f92672">(</span>echo <span style="color:#e6db74">&#39;select user_id from users where creation_date &gt; &#34;2020-01-01&#34;&#39;</span> | my-mysql prod primary adhoc | skiphead | commaify<span style="color:#f92672">)</span> <span style="color:#ae81ff">\
-</span><span style="color:#ae81ff"></span>    | my-mysql prod secondary adhoc</code></pre></div>
-<p>References for <code>skiphead</code> and <code>commaify</code>: <a href="https://blog.jverkamp.com/2019/04/27/tiny-helper-scripts-for-command-line-mysql/">Tiny Helper Scripts for Command Line MySQL</a></p>
-
+</span><span style="color:#ae81ff"></span>    | my-mysql prod secondary adhoc
+</code></pre></div><p>References for <code>skiphead</code> and <code>commaify</code>: <a href="https://blog.jverkamp.com/2019/04/27/tiny-helper-scripts-for-command-line-mysql/">Tiny Helper Scripts for Command Line MySQL</a></p>
 <p>Pretty cool.</p>
-
 <h1 id="connecting-via-sequelpro">Connecting via SequelPro</h1>
-
 <p>Next, I want to use a UI sometimes. Since I&rsquo;m on a Mac, the best client I&rsquo;ve found by far is <a href="http://sequelpro.com/">SequelPro</a>. At first, I despired at finding a way to launch SequelPro from a script, it doesn&rsquo;t have helpful switches for that. But then I came across <code>.spf</code> file associations. It turns out that <code>.spf</code> files are associated with SequelPro by default. So what is a SPF file?</p>
-
 <p>XML (more specifically a <a href="https://en.wikipedia.org/wiki/plist">plist</a>!</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#75715e">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
 <span style="color:#75715e">&lt;!DOCTYPE plist PUBLIC &#34;-//Apple//DTD PLIST 1.0//EN&#34; &#34;http://www.apple.com/DTDs/PropertyList-1.0.dtd&#34;&gt;</span>
@@ -195,8 +181,8 @@ $ echo <span style="color:#e6db74">&#39;select * from files where creator_id in 
 	<span style="color:#f92672">&lt;key&gt;</span>queryFavorites<span style="color:#f92672">&lt;/key&gt;&lt;array/&gt;</span>
 	<span style="color:#f92672">&lt;key&gt;</span>queryHistory<span style="color:#f92672">&lt;/key&gt;&lt;array/&gt;</span>
 <span style="color:#f92672">&lt;/dict&gt;</span>
-<span style="color:#f92672">&lt;/plist&gt;</span></code></pre></div>
-<p>It took a bit to work out coloring so that I could tell different type of connections apart (if you have enough tabs open, things go all sorts of sideways). We do have to have a file somewhere, so I used <code><a href="https://docs.python.org/3/search.html?q=tempfile">tempfile</a></code>
+<span style="color:#f92672">&lt;/plist&gt;</span>
+</code></pre></div><p>It took a bit to work out coloring so that I could tell different type of connections apart (if you have enough tabs open, things go all sorts of sideways). We do have to have a file somewhere, so I used <code><a href="https://docs.python.org/3/search.html?q=tempfile">tempfile</a></code>
  to make a quick file and then tell the <code>system</code> to <code>open</code> it. It works pretty well.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">path <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>join(tempfile<span style="color:#f92672">.</span>tempdir <span style="color:#f92672">or</span> <span style="color:#e6db74">&#39;/tmp&#39;</span>, <span style="color:#e6db74">&#39;db-{}-{}.spf&#39;</span><span style="color:#f92672">.</span>format(host, args<span style="color:#f92672">.</span>mode))
 os<span style="color:#f92672">.</span>makedirs(os<span style="color:#f92672">.</span>path<span style="color:#f92672">.</span>dirname(path), exist_ok <span style="color:#f92672">=</span> True)
@@ -213,11 +199,9 @@ logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39
         tunnel <span style="color:#f92672">=</span> args<span style="color:#f92672">.</span>sshtunnel,
     ))
 
-os<span style="color:#f92672">.</span>system(<span style="color:#e6db74">&#39;open &#34;{}&#34;&#39;</span><span style="color:#f92672">.</span>format(path))</code></pre></div>
-<p><code>tempfile</code> should automatically clean up the files (since they have passwords stored&hellip;), but just in case, we should deal with them ourselfs.</p>
-
+os<span style="color:#f92672">.</span>system(<span style="color:#e6db74">&#39;open &#34;{}&#34;&#39;</span><span style="color:#f92672">.</span>format(path))
+</code></pre></div><p><code>tempfile</code> should automatically clean up the files (since they have passwords stored&hellip;), but just in case, we should deal with them ourselfs.</p>
 <p>Now, there is a gotcha here. We always use the SSH tunnel. I could very easily select a template just without the <code>SPSSHTunnelConnection</code> key, it just hasn&rsquo;t really come up.</p>
-
 <p>And that&rsquo;s about it. Handy for me. Hope there is at lteast something interesting in there for you.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,118 +74,107 @@
     </header>
 
 	<div class="entry-content"><p>Today we get away from the word games for a little while and get back to talking about random number generators (previous posts <a href="https://blog.jverkamp.com/2012/08/22/two-random-exercises/">here</a> and <a href="https://blog.jverkamp.com/2012/08/23/two-more-random-exercises/">here</a>). Or rather one random number generator in specific: a <a href="https://en.wikipedia.org/wiki/Rule%2030">Rule 30</a> <a href="https://en.wikipedia.org/wiki/PRNG">psuedo-random number generator</a> (PRNG). (Here&rsquo;s the <a href="http://programmingpraxis.com/2011/04/29/rule-30-rng/" title="Programming Praxis: Rule 30 RNG">motivating post</a> from Programming Praxis.)</p>
-
 <p>Remember the previous post I made about <a href="https://blog.jverkamp.com/2012/10/03/elementary-cellular-automaton/">cellular automaton</a>? The basic idea is to turn those into a random number generator. If you go back to the linked post in particular and give it Rule 30 with a random initial state, you can see how chaotic the rows seem to be. Perfect for a PRNG.</p>
-
 <p>So how do we go about it?</p>
-
 <p>First, since everything we&rsquo;re about to do deals with bits at some level or another, we want a pair of functions that can convert from binary to decimal and vice versa. Easy enough:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; convert a decimal number to a binary list</span>
 <span style="color:#75715e">; 10 =&gt; &#39;(1 0 1 0)</span>
-(<span style="color:#66d9ef">define </span>(dec-&gt;bin d)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">dec-&gt;bin</span> d)
   (reverse 
    (<span style="color:#66d9ef">let </span>loop ([d d])
      (<span style="color:#66d9ef">if </span>(= d <span style="color:#ae81ff">0</span>)
          <span style="color:#f92672">&#39;</span>()
-         (cons (remainder d <span style="color:#ae81ff">2</span>) (loop (quotient d <span style="color:#ae81ff">2</span>)))))))
+         (cons (remainder d <span style="color:#ae81ff">2</span>) (<span style="color:#a6e22e">loop</span> (quotient d <span style="color:#ae81ff">2</span>)))))))
 
 <span style="color:#75715e">; convert a binary list to a decimal number</span>
 <span style="color:#75715e">; &#39;(1 0 1 0) =&gt; 10</span>
-(<span style="color:#66d9ef">define </span>(bin-&gt;dec b)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">bin-&gt;dec</span> b)
   (<span style="color:#66d9ef">let </span>loop ([b (reverse b)] [p <span style="color:#ae81ff">1</span>])
     (<span style="color:#66d9ef">if </span>(null? b)
         <span style="color:#ae81ff">0</span>
-        (+ (* (car b) p) (loop (cdr b) (* p <span style="color:#ae81ff">2</span>))))))</code></pre></div>
-<p>But that doesn&rsquo;t help if we have a number like 10 and we really need an 8-bit binary state. So one more function that will pad the width out to the correct length.</p>
+        (+ (* (car b) p) (<span style="color:#a6e22e">loop</span> (cdr b) (* p <span style="color:#ae81ff">2</span>))))))
+</code></pre></div><p>But that doesn&rsquo;t help if we have a number like 10 and we really need an 8-bit binary state. So one more function that will pad the width out to the correct length.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; pad a list out to a given length with a given value</span>
-(<span style="color:#66d9ef">define </span>(pad-to n ls with)
-  (append (make-list (- n (length ls)) with) ls))</code></pre></div>
-<p>Yes, it&rsquo;s inefficient with calls to <code>append</code> and <code>length</code>, but with how little it&rsquo;s going to be used, it&rsquo;s all good.</p>
-
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">pad-to</span> n ls with)
+  (append (<span style="color:#a6e22e">make-list</span> (- n (length ls)) with) ls))
+</code></pre></div><p>Yes, it&rsquo;s inefficient with calls to <code>append</code> and <code>length</code>, but with how little it&rsquo;s going to be used, it&rsquo;s all good.</p>
 <p>With that, we&rsquo;re just about there. The goal will be to set up the state in an initial function and then return a thunk that will return each random number in turn. To do that, we&rsquo;ll loop across the internal state, updating each value according to the rule. Unfortunately, the edge cases are going to be a little problematic, so we&rsquo;re just going to wrap the references around so that a negative indexes start off the right end and too large indexes come back around to the left.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; wrap the edges of a vector around rather than returning an error</span>
-(<span style="color:#66d9ef">define </span>(wrapped-vector-ref v i)
-  (vector-ref v (remainder (+ i (vector-length v)) (vector-length v))))</code></pre></div>
-<p>Okay, we&rsquo;re golden. Let&rsquo;s see if we can turn that into a function:</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">wrapped-vector-ref</span> v i)
+  (vector-ref v (remainder (+ i (vector-length v)) (vector-length v))))
+</code></pre></div><p>Okay, we&rsquo;re golden. Let&rsquo;s see if we can turn that into a function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; create a new random number generator</span>
 <span style="color:#75715e">; rule is the rule to use to generate the next state</span>
 <span style="color:#75715e">; width is the number of bits in the generator</span>
 <span style="color:#75715e">; seed is the initial value for the generator</span>
-(<span style="color:#66d9ef">define </span>(make-rng [rule <span style="color:#ae81ff">30</span>] [width <span style="color:#ae81ff">32</span>] [seed <span style="color:#66d9ef">#f</span>])
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">make-rng</span> [rule <span style="color:#ae81ff">30</span>] [width <span style="color:#ae81ff">32</span>] [seed <span style="color:#66d9ef">#f</span>])
   <span style="color:#75715e">; start by converting the initial state into an internal vector</span>
   <span style="color:#75715e">; and the rule into a function that will convert states</span>
   (<span style="color:#66d9ef">let </span>([state 
          (list-&gt;vector 
-          (pad-to width 
+          (<span style="color:#a6e22e">pad-to</span> width 
                   (<span style="color:#66d9ef">if </span>seed
-                      (dec-&gt;bin seed)
-                      (for/list ([i width]) (random <span style="color:#ae81ff">2</span>)))
+                      (<span style="color:#a6e22e">dec-&gt;bin</span> seed)
+                      (<span style="color:#a6e22e">for/list</span> ([i width]) (<span style="color:#a6e22e">random</span> <span style="color:#ae81ff">2</span>)))
                   <span style="color:#ae81ff">0</span>))]
         [rule 
-         (<span style="color:#66d9ef">let </span>([rule (list-&gt;vector (reverse (pad-to <span style="color:#ae81ff">8</span> (dec-&gt;bin rule) <span style="color:#ae81ff">0</span>)))])
-           (<span style="color:#66d9ef">lambda </span>(a b c)
+         (<span style="color:#66d9ef">let </span>([rule (list-&gt;vector (reverse (<span style="color:#a6e22e">pad-to</span> <span style="color:#ae81ff">8</span> (<span style="color:#a6e22e">dec-&gt;bin</span> rule) <span style="color:#ae81ff">0</span>)))])
+           (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">a</span> b c)
              (vector-ref rule (+ (* <span style="color:#ae81ff">4</span> a) (* <span style="color:#ae81ff">2</span> b) c))))])
     <span style="color:#75715e">; return a thunk that will generate each number</span>
     <span style="color:#75715e">; calculate the next state, store it, and return a decimal version</span>
     (<span style="color:#66d9ef">lambda </span>()
       (<span style="color:#66d9ef">define </span>next
-        (for/vector ([i width])
-          (rule (wrapped-vector-ref state (- i <span style="color:#ae81ff">1</span>))
-                (wrapped-vector-ref state i)
-                (wrapped-vector-ref state (+ i <span style="color:#ae81ff">1</span>)))))
+        (<span style="color:#a6e22e">for/vector</span> ([i width])
+          (<span style="color:#a6e22e">rule</span> (<span style="color:#a6e22e">wrapped-vector-ref</span> state (- i <span style="color:#ae81ff">1</span>))
+                (<span style="color:#a6e22e">wrapped-vector-ref</span> state i)
+                (<span style="color:#a6e22e">wrapped-vector-ref</span> state (+ i <span style="color:#ae81ff">1</span>)))))
       (<span style="color:#66d9ef">set! </span>state next)
-      (bin-&gt;dec (vector-&gt;list next)))))</code></pre></div>
-<p>A few interesting parts.</p>
-
+      (<span style="color:#a6e22e">bin-&gt;dec</span> (vector-&gt;list next)))))
+</code></pre></div><p>A few interesting parts.</p>
 <p>First, we have default parameters. I really like this about Racket and miss it when I move back to other Schemes. In this case, you can call <code>make-rng</code> with 0, 1, 2, or 3 parameters. As noted in the comments, the first parameter controls the rule that we&rsquo;ll use to update the state (the eponymous Rule 30 by default), the second sets the width of the internal state in bits (set to a 32-bit integer by default), and the third sets the initial value (if it&rsquo;s not specified, generate random bits using a more traditional method).</p>
-
 <p>The next interesting part is the mess I made of the <code>rule</code> variable. It starts as a decimal version of the rule, but is quickly changed first into a binary vector:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">let </span>([rule (list-&gt;vector (reverse (pad-to <span style="color:#ae81ff">8</span> (dec-&gt;bin rule) <span style="color:#ae81ff">0</span>)))])
-  <span style="color:#f92672">...</span>)</code></pre></div>
-<p>After that, we turn it into a three-argument function, taking the left, center, and right bits above it and returning the bit that we want. Perhaps it&rsquo;s not optimal, what with all three variables having the same name, but since they all represent the same thing and we won&rsquo;t be using the original version, it seems reasonable.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#66d9ef">let </span>([rule (list-&gt;vector (reverse (<span style="color:#a6e22e">pad-to</span> <span style="color:#ae81ff">8</span> (<span style="color:#a6e22e">dec-&gt;bin</span> rule) <span style="color:#ae81ff">0</span>)))])
+  <span style="color:#f92672">...</span>)
+</code></pre></div><p>After that, we turn it into a three-argument function, taking the left, center, and right bits above it and returning the bit that we want. Perhaps it&rsquo;s not optimal, what with all three variables having the same name, but since they all represent the same thing and we won&rsquo;t be using the original version, it seems reasonable.</p>
 <p>The final part is calculating the next state each time. As I&rsquo;ve said before, Racket&rsquo;s <code>for</code> family of macros is all sorts of fun.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(for/vector ([i width])
-  (rule (safe-vector-ref state (- i <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">0</span>)
-        (safe-vector-ref state i <span style="color:#ae81ff">0</span>)
-        (safe-vector-ref state (+ i <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">0</span>)))</code></pre></div>
-<p>And that&rsquo;s it, we&rsquo;re good to go. Let&rsquo;s go ahead and give it a try, making a 32-bit Rule-30 generator:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-30-rng (make-rng <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">32</span>))
-&gt; (for/list ([i <span style="color:#ae81ff">20</span>]) (rule-30-rng))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">for/vector</span> ([i width])
+  (<span style="color:#a6e22e">rule</span> (<span style="color:#a6e22e">safe-vector-ref</span> state (- i <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">0</span>)
+        (<span style="color:#a6e22e">safe-vector-ref</span> state i <span style="color:#ae81ff">0</span>)
+        (<span style="color:#a6e22e">safe-vector-ref</span> state (+ i <span style="color:#ae81ff">1</span>) <span style="color:#ae81ff">0</span>)))
+</code></pre></div><p>And that&rsquo;s it, we&rsquo;re good to go. Let&rsquo;s go ahead and give it a try, making a 32-bit Rule-30 generator:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-30-rng (<span style="color:#a6e22e">make-rng</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">32</span>))
+&gt; (<span style="color:#a6e22e">for/list</span> ([i <span style="color:#ae81ff">20</span>]) (<span style="color:#a6e22e">rule-30-rng</span>))
 
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">2081921567</span> <span style="color:#ae81ff">3258217264</span> <span style="color:#ae81ff">2808532712</span> <span style="color:#ae81ff">3160193164</span> <span style="color:#ae81ff">2731779546</span>
   <span style="color:#ae81ff">3063823635</span> <span style="color:#ae81ff">2767282622</span> <span style="color:#ae81ff">3213579041</span> <span style="color:#ae81ff">2690277107</span> <span style="color:#ae81ff">2966671502</span>
   <span style="color:#ae81ff">2845710809</span> <span style="color:#ae81ff">2943432471</span> <span style="color:#ae81ff">2823546036</span> <span style="color:#ae81ff">2902073254</span> <span style="color:#ae81ff">2877501501</span>
-  <span style="color:#ae81ff">2856773729</span> <span style="color:#ae81ff">2884406483</span> <span style="color:#ae81ff">2852903838</span> <span style="color:#ae81ff">2870612593</span> <span style="color:#ae81ff">2863873995</span>)</code></pre></div>
-<p>Some rules are a bit less interesting:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-220-rng (make-rng <span style="color:#ae81ff">220</span> <span style="color:#ae81ff">32</span>))
-&gt; (for/list ([i <span style="color:#ae81ff">20</span>]) (rule-220-rng))
+  <span style="color:#ae81ff">2856773729</span> <span style="color:#ae81ff">2884406483</span> <span style="color:#ae81ff">2852903838</span> <span style="color:#ae81ff">2870612593</span> <span style="color:#ae81ff">2863873995</span>)
+</code></pre></div><p>Some rules are a bit less interesting:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-220-rng (<span style="color:#a6e22e">make-rng</span> <span style="color:#ae81ff">220</span> <span style="color:#ae81ff">32</span>))
+&gt; (<span style="color:#a6e22e">for/list</span> ([i <span style="color:#ae81ff">20</span>]) (<span style="color:#a6e22e">rule-220-rng</span>))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">3181303643</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span>
   <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span>
   <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span>
-  <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span>)</code></pre></div>
-<p>Still, it&rsquo;s not bad from at least a theoretical point of view.</p>
-
+  <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span> <span style="color:#ae81ff">3185497947</span>)
+</code></pre></div><p>Still, it&rsquo;s not bad from at least a theoretical point of view.</p>
 <p>You can also make smaller generators:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-30-small-rng (make-rng <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">8</span>))
-&gt; (for/list ([i <span style="color:#ae81ff">20</span>]) (rule-30-small-rng))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-30-small-rng (<span style="color:#a6e22e">make-rng</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">8</span>))
+&gt; (<span style="color:#a6e22e">for/list</span> ([i <span style="color:#ae81ff">20</span>]) (<span style="color:#a6e22e">rule-30-small-rng</span>))
 
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">237</span> <span style="color:#ae81ff">137</span> <span style="color:#ae81ff">223</span> <span style="color:#ae81ff">144</span> <span style="color:#ae81ff">248</span> <span style="color:#ae81ff">132</span> <span style="color:#ae81ff">206</span> <span style="color:#ae81ff">185</span> <span style="color:#ae81ff">167</span> <span style="color:#ae81ff">188</span>
-  <span style="color:#ae81ff">162</span> <span style="color:#ae81ff">183</span> <span style="color:#ae81ff">164</span> <span style="color:#ae81ff">190</span> <span style="color:#ae81ff">161</span> <span style="color:#ae81ff">179</span> <span style="color:#ae81ff">174</span> <span style="color:#ae81ff">169</span> <span style="color:#ae81ff">175</span> <span style="color:#ae81ff">168</span>)</code></pre></div>
-<p>Or significantly larger ones:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-30-large-rng (make-rng <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">32</span>))
-&gt; (for/list ([i <span style="color:#ae81ff">4</span>]) (rule-30-large-rng))
+  <span style="color:#ae81ff">162</span> <span style="color:#ae81ff">183</span> <span style="color:#ae81ff">164</span> <span style="color:#ae81ff">190</span> <span style="color:#ae81ff">161</span> <span style="color:#ae81ff">179</span> <span style="color:#ae81ff">174</span> <span style="color:#ae81ff">169</span> <span style="color:#ae81ff">175</span> <span style="color:#ae81ff">168</span>)
+</code></pre></div><p>Or significantly larger ones:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>rule-30-large-rng (<span style="color:#a6e22e">make-rng</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">32</span>))
+&gt; (<span style="color:#a6e22e">for/list</span> ([i <span style="color:#ae81ff">4</span>]) (<span style="color:#a6e22e">rule-30-large-rng</span>))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">89023152286745644506872318191753884006989667221527067666095402290895880008920</span>
   <span style="color:#ae81ff">79429241104291927956174027620442798020819263458393486404866413705199432492948</span>
   <span style="color:#ae81ff">76190546924302348594483004811252023470674220283715618311175239657740025994358</span>
   <span style="color:#ae81ff">78165092849222814468761907530085892160685112152512879137896641918045191418565</span>
-  <span style="color:#ae81ff">77670707617636225778606052617006557506563209338194205599967259022343124184749</span>)</code></pre></div>
-<p>It&rsquo;s all good.</p>
-
+  <span style="color:#ae81ff">77670707617636225778606052617006557506563209338194205599967259022343124184749</span>)
+</code></pre></div><p>It&rsquo;s all good.</p>
 <p>I wouldn&rsquo;t at all recommend using this for anything that needs even semi-secure random numbers, but at the very least it&rsquo;s interesting as a thought experiment.</p>
-
 <p>If you&rsquo;d like the entire source code, you can access it here:</p>
-
 <ul>
 <li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/rule-30-rng.rkt" title="rule-30-rng source code">rule-30-rng source code</a></li>
 </ul></div>

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,16 +74,12 @@
     </header>
 
 	<div class="entry-content"><p>After <a href="https://blog.jverkamp.com/2015/01/22/ios-backups-in-racket-groundwork/">yesterday&rsquo;s post</a> laying the groundwork for looking into <a href="https://blog.jverkamp.com/2015/01/29/ios-backups-in-racket-apps/">iOS Backups</a>, today why don&rsquo;t we actually start digging into one of the more interesting files: your list of contacts.</p>
-
 <p>First things first, we have to find where the list of contacts is stored. That&rsquo;s the problem with the backup format&ndash;we have a giant list of files each of which is a SHA-1 hash. But of what?</p>
-
-<p>Doing a little bit of digging, it looks like each of those hashes is based more or less on the filename of the source file. So if we happened to know that contacts are stored in the file <code>Library/AddressBook/AddressBook.sqlitedb</code><sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>, we should just be able to hash that:</p>
+<p>Doing a little bit of digging, it looks like each of those hashes is based more or less on the filename of the source file. So if we happened to know that contacts are stored in the file <code>Library/AddressBook/AddressBook.sqlitedb</code><sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>, we should just be able to hash that:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (call-with-input-string <span style="color:#e6db74">&#34;Library/AddressBook/AddressBook.sqlitedb&#34;</span> sha1)
-<span style="color:#e6db74">&#34;adb8c77534444e97c31ff15924d50f3ed1fbd3b1&#34;</span></code></pre></div>
-<p>Hmm. That file doesn&rsquo;t exist. But all of my sources are telling me that <code>AddressBook.sqlitedb</code> is in <code>HomeDomain</code>. What does that mean? Well it seems that iOS has some amount of sandboxing in it&rsquo;s filesystem, rather than a more traditional Unix style. Basically, the path is actually:</p>
-
+<span style="color:#e6db74">&#34;adb8c77534444e97c31ff15924d50f3ed1fbd3b1&#34;</span><span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Hmm. That file doesn&rsquo;t exist. But all of my sources are telling me that <code>AddressBook.sqlitedb</code> is in <code>HomeDomain</code>. What does that mean? Well it seems that iOS has some amount of sandboxing in it&rsquo;s filesystem, rather than a more traditional Unix style. Basically, the path is actually:</p>
 <p><code>Domain-Path</code></p>
-
 <p>Specifically:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Hash attachments so that we can find the local path</span>
 (<span style="color:#66d9ef">define</span> (hash-filename path [domain <span style="color:#e6db74">&#34;MediaDomain&#34;</span>])
@@ -93,12 +89,11 @@
                <span style="color:#66d9ef">#:when</span> (<span style="color:#66d9ef">and</span> (&gt; (string-length path) (string-length <span style="color:#66d9ef">prefix</span>))
                            (equal? (substring path <span style="color:#ae81ff">0</span> (string-length <span style="color:#66d9ef">prefix</span>)) <span style="color:#66d9ef">prefix</span>)))
     (<span style="color:#66d9ef">define</span> path-w/o-prefix (substring path (string-length <span style="color:#66d9ef">prefix</span>)))
-    (call-with-input-string (~a domain <span style="color:#e6db74">&#34;-&#34;</span> path-w/o-prefix) sha1)))</code></pre></div>
-<p>There&rsquo;s a bit of complication there. If a file uses a traditional Unix path, starting with with <code>/var/mobile/</code> or <code>~/</code> (the home directory), that is stripped off before adding the domain. If we try it again:</p>
+    (call-with-input-string (~a domain <span style="color:#e6db74">&#34;-&#34;</span> path-w/o-prefix) sha1)))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>There&rsquo;s a bit of complication there. If a file uses a traditional Unix path, starting with with <code>/var/mobile/</code> or <code>~/</code> (the home directory), that is stripped off before adding the domain. If we try it again:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (hash-filename <span style="color:#e6db74">&#34;Library/AddressBook/AddressBook.sqlitedb&#34;</span> <span style="color:#e6db74">&#34;HomeDomain&#34;</span>)
-<span style="color:#e6db74">&#34;31bb7ba8914766d4ba40d6dfb6113c8b614be442&#34;</span></code></pre></div>
-<p>Ah hah! That file actually exists (and matches the hash I&rsquo;ve found online).</p>
-
+<span style="color:#e6db74">&#34;31bb7ba8914766d4ba40d6dfb6113c8b614be442&#34;</span><span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Ah hah! That file actually exists (and matches the hash I&rsquo;ve found online).</p>
 <p>Let&rsquo;s poke around. First things first, let&rsquo;s load it up in <code>sqlite3</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">sqlite<span style="color:#f92672">&gt;</span> .tables
 ABAccount                        ABPersonFullTextSearch_segdir
@@ -114,8 +109,8 @@ ABPersonBasicChanges             FirstSortSectionCount
 ABPersonChanges                  FirstSortSectionCountTotal
 ABPersonFullTextSearch           LastSortSectionCount
 ABPersonFullTextSearch_content   LastSortSectionCountTotal
-ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties</code></pre></div>
-<p>A lot of those are indicies or other things that we don&rsquo;t necessarily care about, but the first one that jumps out to me is <code>ABPerson</code>:</p>
+ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties
+</code></pre></div><p>A lot of those are indicies or other things that we don&rsquo;t necessarily care about, but the first one that jumps out to me is <code>ABPerson</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">sqlite<span style="color:#f92672">&gt;</span> .<span style="color:#66d9ef">schema</span> ABPerson
 <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> ABPerson (
   ROWID INTEGER <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> AUTOINCREMENT,
@@ -158,9 +153,8 @@ ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties</code></pre></div>
   MapsData TEXT,
   <span style="color:#66d9ef">UNIQUE</span>(guid)
 );
-...</code></pre></div>
-<p>There is rather a pile of other statements after that, but that&rsquo;s the table that we&rsquo;re interested in. Specifically, that at least has the names and organizations (which at the moment is what I&rsquo;m really interested in). What&rsquo;s suspiciously absent though, is the phone numbers. Hmm&hellip;</p>
-
+...
+</code></pre></div><p>There is rather a pile of other statements after that, but that&rsquo;s the table that we&rsquo;re interested in. Specifically, that at least has the names and organizations (which at the moment is what I&rsquo;m really interested in). What&rsquo;s suspiciously absent though, is the phone numbers. Hmm&hellip;</p>
 <p>After a little bit of digging, I came across this table:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">sqlite<span style="color:#f92672">&gt;</span> .<span style="color:#66d9ef">schema</span> ABMultiValue
 <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> ABMultiValue (
@@ -172,9 +166,8 @@ ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties</code></pre></div>
   value TEXT,
   guid TEXT <span style="color:#66d9ef">DEFAULT</span> (ab_generate_guid()),
   <span style="color:#66d9ef">UNIQUE</span>(guid)
-);</code></pre></div>
-<p>Specifically, <code>record_id</code> matches <code>ABPerson.ROWID</code> and <code>value</code> contains phone numbers, email address, etc. (This is the real reason that I wrote the <code>normalize-contact</code> function).</p>
-
+);
+</code></pre></div><p>Specifically, <code>record_id</code> matches <code>ABPerson.ROWID</code> and <code>value</code> contains phone numbers, email address, etc. (This is the real reason that I wrote the <code>normalize-contact</code> function).</p>
 <p>Okay. That should be enough for the moment. Let&rsquo;s switch gears and lay out a similar framework to <code>backup</code>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">(<span style="color:#66d9ef">define</span> CONTACTS-DB
   (hash-filename <span style="color:#e6db74">&#34;Library/AddressBook/AddressBook.sqlitedb&#34;</span> <span style="color:#e6db74">&#34;HomeDomain&#34;</span>))
@@ -185,8 +178,8 @@ ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties</code></pre></div>
 
 <span style="color:#75715e">; Store a separate list of contacts for each backup (potentially)</span>
 (<span style="color:#66d9ef">define</span> contacts-by-backup (make-hash))
-(hash-set! contacts-by-backup <span style="color:#66d9ef">#f</span> <span style="color:#f92672">&#39;</span>())</code></pre></div>
-<p>Cool. Now we want to load the specific list of contacts, caching them the same way we did with the backups themselves:</p>
+(hash-set! contacts-by-backup <span style="color:#66d9ef">#f</span> <span style="color:#f92672">&#39;</span>())<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Cool. Now we want to load the specific list of contacts, caching them the same way we did with the backups themselves:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Load all contacts stored in a specific backup</span>
 (<span style="color:#66d9ef">define</span> (list-contacts)
   (hash-ref!
@@ -219,13 +212,11 @@ ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties</code></pre></div>
                      <span style="color:#66d9ef">#:when</span> value)
            value))
 
-       (contact name identifiers)))))</code></pre></div>
-<p>Basically, we want to make a nested set of queries, first one for each user and then another for all contact information for that user. It&rsquo;s Not the perfect way of doing itl as theoretically we could have done a sql join, but it works well enough.</p>
-
+       (contact name identifiers)))))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Basically, we want to make a nested set of queries, first one for each user and then another for all contact information for that user. It&rsquo;s Not the perfect way of doing itl as theoretically we could have done a sql join, but it works well enough.</p>
 <p>As far as the name formatting, that&rsquo;s just the way I needed it to work. When I get around to it, I&rsquo;ll probably write a <code>name-display-format</code> parameter akin to <code><a href="http://docs.racket-lang.org/search/index.html?q=date-display-format">date-display-format</a></code>
  from <code><a href="http://docs.racket-lang.org/search/index.html?q=racket/date">racket/date</a></code>
 . Not today though!</p>
-
 <p>So let&rsquo;s see how it works:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (with-backup <span style="color:#e6db74">&#34;86b18eea28a991f4dd569d1f59737a842e24aa36&#34;</span>
     (list-contacts))
@@ -234,28 +225,24 @@ ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties</code></pre></div>
   <span style="color:#f92672">#s</span>(<span style="color:#e6db74">contact</span> <span style="color:#e6db74">&#34;Mary Orndorff&#34;</span> (<span style="color:#e6db74">&#34;555.555.0000&#34;</span>))
   <span style="color:#f92672">#s</span>(<span style="color:#e6db74">contact</span> <span style="color:#e6db74">&#34;Pizza Palace&#34;</span> (<span style="color:#e6db74">&#34;555.555.1123&#34;</span>))
   <span style="color:#f92672">#s</span>(<span style="color:#e6db74">contact</span> <span style="color:#e6db74">&#34;Willie S. Culpepper&#34;</span> (<span style="color:#e6db74">&#34;555.555.1491&#34;</span>))
-  <span style="color:#e6db74">...</span>)</code></pre></div>
-<p>Sweet.</p>
-
+  <span style="color:#e6db74">...</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Sweet.</p>
 <p>And as a bonus, let&rsquo;s include a basic search function:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket"><span style="color:#75715e">; Load a user by name or value</span>
 (<span style="color:#66d9ef">define</span> (find-contact key)
   (<span style="color:#66d9ef">for/first</span> ([contact (in-list (list-contacts))]
               <span style="color:#66d9ef">#:when</span> (<span style="color:#66d9ef">or</span> (equal? key (contact-name contact))
                          (member key (contact-identifiers contact))))
-    contact))</code></pre></div>
-<p>Again, it&rsquo;s not a fuzzy match (you have to have the name exact), but that&rsquo;s something I&rsquo;ll probably clean up later.</p>
+    contact))<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>Again, it&rsquo;s not a fuzzy match (you have to have the name exact), but that&rsquo;s something I&rsquo;ll probably clean up later.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-racket" data-lang="racket">&gt; (with-backup <span style="color:#e6db74">&#34;86b18eea28a991f4dd569d1f59737a842e24aa36&#34;</span>
     (find-contact <span style="color:#e6db74">&#34;Charles I. Clarke&#34;</span>))
 <span style="color:#f92672">#s</span>(<span style="color:#e6db74">contact</span>
    <span style="color:#e6db74">&#34;Charles I. Clarke&#34;</span>
-   (<span style="color:#e6db74">&#34;555.555.1234&#34;</span> <span style="color:#e6db74">&#34;charlie.c@example.com&#34;</span>)</code></pre></div>
-<p>And there you have it. Contacts. We&rsquo;re really starting to get somewhere here. Next week (probably Monday or Tuesday), I&rsquo;ll write up messages (both SMS and iMessage). That one will really be fun.</p>
-
+   (<span style="color:#e6db74">&#34;555.555.1234&#34;</span> <span style="color:#e6db74">&#34;charlie.c@example.com&#34;</span>)<span style="color:#960050;background-color:#1e0010">
+</span></code></pre></div><p>And there you have it. Contacts. We&rsquo;re really starting to get somewhere here. Next week (probably Monday or Tuesday), I&rsquo;ll write up messages (both SMS and iMessage). That one will really be fun.</p>
 <p>As always entire code for today&rsquo;s post is available on GitHub: <a href="https://github.com/jpverkamp/ios-backup">ios-backup</a></p>
-
 <p>Here is a list of all of the posts in this series:</p>
-
 <div class="ranking">
     <h3 class="title">Posts in <a href="/series/ios-backups-in-racket/">iOS Backups in Racket</a>:</h3>
     <div class="content">
@@ -263,15 +250,14 @@ ABPersonFullTextSearch_docsize   _SqliteDatabaseProperties</code></pre></div>
     </div>
 </div>
 
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1"><a href="https://theiphonewiki.com/wiki/ITunes_Backup#Files">theiphonewiki.com</a>
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p><a href="https://theiphonewiki.com/wiki/ITunes_Backup#Files">theiphonewiki.com</a> <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

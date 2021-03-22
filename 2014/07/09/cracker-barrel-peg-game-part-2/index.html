@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,37 +74,36 @@
     </header>
 
 	<div class="entry-content"><p>Hey, remember that post a few days ago about the <a href="https://blog.jverkamp.com/2014/07/10/cracker-barrel-peg-game-part-3/">Cracker Barrel peg game</a>? Right at the end, I mentioned that there would be a part two, all about how to bend the puzzle at least a bit to your advantage. Basically, rather than finding the first solution to the peg game, we&rsquo;re going to find <em>all</em> of them. From there, we can determine which moves are easier to win from, which are harder, and which are downright impossible. Let&rsquo;s do it!</p>
-
 <p>Okay, first things first. Remember how we represented the puzzles as either a 15 element vector or 15 bit integer? Well that gives us a pretty solid upper bound on how many possible ways that the puzzle can end up being arrange. Specifically, <span class="latex-inline">2^{15</span>
  = 32768} total states. For a computer&hellip; that&rsquo;s actually not that big of a number. First, let&rsquo;s see how many of those we can actually reach.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Count how many total states are reachable from any initial state</span>
 <span style="color:#75715e">; By default, start with one copy of each peg missing</span>
-(<span style="color:#66d9ef">define </span>(reachable [queue (for/list ([i (in-range <span style="color:#ae81ff">15</span>)])
-                            (invert (make-puzzle (expt <span style="color:#ae81ff">2</span> i))))])
-  (<span style="color:#66d9ef">let </span>loop ([reached (hash)] [queue queue])
-    (cond
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">reachable</span> [queue (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">15</span>)])
+                            (<span style="color:#a6e22e">invert</span> (<span style="color:#a6e22e">make-puzzle</span> (expt <span style="color:#ae81ff">2</span> i))))])
+  (<span style="color:#66d9ef">let </span>loop ([reached (<span style="color:#a6e22e">hash</span>)] [queue queue])
+    (<span style="color:#a6e22e">cond</span>
       <span style="color:#75715e">; Queue is empty, done</span>
       [(null? queue)
        reached]
       <span style="color:#75715e">; Already checked this state, check the rest</span>
-      [(hash-ref reached (index (first queue)) <span style="color:#66d9ef">#f</span>)
-       (loop reached (rest queue))]
+      [(<span style="color:#a6e22e">hash-ref</span> reached (<span style="color:#a6e22e">index</span> (<span style="color:#a6e22e">first</span> queue)) <span style="color:#66d9ef">#f</span>)
+       (<span style="color:#a6e22e">loop</span> reached (<span style="color:#a6e22e">rest</span> queue))]
       <span style="color:#75715e">; New state, add it to the hash and all next states to the queue</span>
       [else
-       (loop (hash-set reached (index (first queue)) <span style="color:#66d9ef">#t</span>)
-             (append (rest queue) (next (first queue))))])))</code></pre></div>
-<p>Hopefully straight forward algorithm, basically we start with an (empty) index of which nodes we&rsquo;ve visited&ndash;a hash in our case. Start with each of the fifteen opening moves in a queue. Then, keep taking one nodes off the queue. For new nodes, add that to the list of visited nodes and all its neighbors to the queue. A <a href="https://en.wikipedia.org/wiki/Breadth-first_search">breadth-first search</a>. Give it a run:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (hash-count (reachable))
-<span style="color:#ae81ff">13935</span></code></pre></div>
-<p>So only 42.5%. Huh. A few examples of states that can&rsquo;t be reached:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>r (reachable))
-&gt; (for/list ([i (in-range <span style="color:#ae81ff">5</span>)])
+       (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">hash-set</span> reached (<span style="color:#a6e22e">index</span> (<span style="color:#a6e22e">first</span> queue)) <span style="color:#66d9ef">#t</span>)
+             (append (<span style="color:#a6e22e">rest</span> queue) (<span style="color:#a6e22e">next</span> (<span style="color:#a6e22e">first</span> queue))))])))
+</code></pre></div><p>Hopefully straight forward algorithm, basically we start with an (empty) index of which nodes we&rsquo;ve visited&ndash;a hash in our case. Start with each of the fifteen opening moves in a queue. Then, keep taking one nodes off the queue. For new nodes, add that to the list of visited nodes and all its neighbors to the queue. A <a href="https://en.wikipedia.org/wiki/Breadth-first_search">breadth-first search</a>. Give it a run:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">hash-count</span> (<span style="color:#a6e22e">reachable</span>))
+<span style="color:#ae81ff">13935</span>
+</code></pre></div><p>So only 42.5%. Huh. A few examples of states that can&rsquo;t be reached:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>r (<span style="color:#a6e22e">reachable</span>))
+&gt; (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">5</span>)])
     (<span style="color:#66d9ef">let </span>loop ()
-      (<span style="color:#66d9ef">define </span>p (make-puzzle (random (expt <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span>))))
-      (<span style="color:#66d9ef">if </span>(hash-ref r (index p) <span style="color:#66d9ef">#f</span>)
-          (render p)
-          (loop))))</code></pre></div>
-<p><figure>
+      (<span style="color:#66d9ef">define </span>p (<span style="color:#a6e22e">make-puzzle</span> (<span style="color:#a6e22e">random</span> (expt <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span>))))
+      (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">hash-ref</span> r (<span style="color:#a6e22e">index</span> p) <span style="color:#66d9ef">#f</span>)
+          (<span style="color:#a6e22e">render</span> p)
+          (<span style="color:#a6e22e">loop</span>))))
+</code></pre></div><p><figure>
     <img src="/embeds/2014/unreachable-1.png"/> 
 </figure>
  <figure>
@@ -120,29 +119,27 @@
     <img src="/embeds/2014/unreachable-5.png"/> 
 </figure>
 </p>
-
 <p>But that doesn&rsquo;t necessary tell us which starting positions are easier. For that, we need something more like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (require plot)
-&gt; (plot (discrete-histogram
-         (for/list ([i (in-range <span style="color:#ae81ff">15</span>)])
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">require</span> plot)
+&gt; (<span style="color:#a6e22e">plot</span> (<span style="color:#a6e22e">discrete-histogram</span>
+         (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">15</span>)])
            (vector (+ i <span style="color:#ae81ff">1</span>) 
-                   (hash-count (reachable (list (invert (make-puzzle (expt <span style="color:#ae81ff">2</span> i))))))))))</code></pre></div>
-<figure>
+                   (<span style="color:#a6e22e">hash-count</span> (<span style="color:#a6e22e">reachable</span> (list (<span style="color:#a6e22e">invert</span> (<span style="color:#a6e22e">make-puzzle</span> (expt <span style="color:#ae81ff">2</span> i))))))))))
+</code></pre></div><figure>
     <img src="/embeds/2014/reachable-by-initial.png"/> 
 </figure>
 
-
 <p>Interesting. So there are three states that reach the most (4, 6, and 13), three on the next tier (1, 11, and 15), 6 on the next, and 3 that reach the least (5, 8, and 9). If you think about it, that makes a lot of sense. For each position, there are two other identical positions&ndash;rotations:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Rotate a puzzle clockwise</span>
-(<span style="color:#66d9ef">define </span>(rotate p)
-  (puzzle (for/vector ([i (in-list <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">11</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">13</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">14</span> <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span>))])
-            (vector-ref (puzzle-data p) (- i <span style="color:#ae81ff">1</span>)))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">rotate</span> p)
+  (<span style="color:#a6e22e">puzzle</span> (<span style="color:#a6e22e">for/vector</span> ([i (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">11</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">13</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">14</span> <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">1</span>))])
+            (vector-ref (<span style="color:#a6e22e">puzzle-data</span> p) (- i <span style="color:#ae81ff">1</span>)))))
 
-&gt; (<span style="color:#66d9ef">define </span>random-puzzle (make-puzzle (random (expt <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span>))))
+&gt; (<span style="color:#66d9ef">define </span>random-puzzle (<span style="color:#a6e22e">make-puzzle</span> (<span style="color:#a6e22e">random</span> (expt <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span>))))
 &gt; (map render (list random-puzzle 
-                    (rotate random-puzzle)
-                    (rotate (rotate random-puzzle))))</code></pre></div>
-<p><figure>
+                    (<span style="color:#a6e22e">rotate</span> random-puzzle)
+                    (<span style="color:#a6e22e">rotate</span> (<span style="color:#a6e22e">rotate</span> random-puzzle))))
+</code></pre></div><p><figure>
     <img src="/embeds/2014/rotation-example-1.png"/> 
 </figure>
  <figure>
@@ -152,118 +149,111 @@
     <img src="/embeds/2014/rotation-example-3.png"/> 
 </figure>
 </p>
-
 <p>Further than that, there are also reflections:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Reflect a puzzle left to right</span>
-(<span style="color:#66d9ef">define </span>(reflect p)
-  (puzzle (for/vector ([i (in-list <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">14</span> <span style="color:#ae81ff">13</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">11</span>))])
-            (vector-ref (puzzle-data p) (- i <span style="color:#ae81ff">1</span>)))))</code></pre></div>
-<p><figure>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">reflect</span> p)
+  (<span style="color:#a6e22e">puzzle</span> (<span style="color:#a6e22e">for/vector</span> ([i (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">5</span> <span style="color:#ae81ff">4</span> <span style="color:#ae81ff">10</span> <span style="color:#ae81ff">9</span> <span style="color:#ae81ff">8</span> <span style="color:#ae81ff">7</span> <span style="color:#ae81ff">15</span> <span style="color:#ae81ff">14</span> <span style="color:#ae81ff">13</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">11</span>))])
+            (vector-ref (<span style="color:#a6e22e">puzzle-data</span> p) (- i <span style="color:#ae81ff">1</span>)))))
+</code></pre></div><p><figure>
     <img src="/embeds/2014/reflection-example-2.png"/> 
 </figure>
  <figure>
     <img src="/embeds/2014/reflection-example-1.png"/> 
 </figure>
 </p>
-
 <p>This is what I meant last time, when I said that there were only four initial states (1, 2, 4, and 5). All of the rest are reflections and/or rotations of one of those 4.</p>
-
 <p>Finally, if you combine these two functions, it should be possible to get a real idea of how many truly unique states there are. Since each puzzle has a numeric form and each puzzle has up to six unique states (three rotations, each with two reflections), we can consistently find the one of those six with the lowest value. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Minimize a puzzle by finding the reflection/rotation with the minimal vector</span>
-(<span style="color:#66d9ef">define </span>(minify p)
-  (<span style="color:#66d9ef">define </span>r1 (rotate p))
-  (<span style="color:#66d9ef">define </span>r2 (rotate r1))
-  (first (sort (list p r1 r2 (reflect p) (reflect r1) (reflect r2))
-               (λ (p1 p2)
-                 (&lt; (index p1) (index p2))))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">minify</span> p)
+  (<span style="color:#66d9ef">define </span>r1 (<span style="color:#a6e22e">rotate</span> p))
+  (<span style="color:#66d9ef">define </span>r2 (<span style="color:#a6e22e">rotate</span> r1))
+  (<span style="color:#a6e22e">first</span> (<span style="color:#a6e22e">sort</span> (list p r1 r2 (<span style="color:#a6e22e">reflect</span> p) (<span style="color:#a6e22e">reflect</span> r1) (<span style="color:#a6e22e">reflect</span> r2))
+               (<span style="color:#a6e22e">λ</span> (<span style="color:#a6e22e">p1</span> p2)
+                 (&lt; (<span style="color:#a6e22e">index</span> p1) (<span style="color:#a6e22e">index</span> p2))))))
 
 &gt; (map index (list random-puzzle
-                   (reflect random-puzzle)
-                   (rotate random-puzzle)
-                   (reflect (rotate random-puzzle))
-                   (rotate (rotate random-puzzle))
-                   (reflect (rotate (rotate random-puzzle)))))
+                   (<span style="color:#a6e22e">reflect</span> random-puzzle)
+                   (<span style="color:#a6e22e">rotate</span> random-puzzle)
+                   (<span style="color:#a6e22e">reflect</span> (<span style="color:#a6e22e">rotate</span> random-puzzle))
+                   (<span style="color:#a6e22e">rotate</span> (<span style="color:#a6e22e">rotate</span> random-puzzle))
+                   (<span style="color:#a6e22e">reflect</span> (<span style="color:#a6e22e">rotate</span> (<span style="color:#a6e22e">rotate</span> random-puzzle)))))
 <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">26794</span> <span style="color:#ae81ff">21322</span> <span style="color:#ae81ff">10025</span> <span style="color:#ae81ff">7474</span> <span style="color:#ae81ff">12412</span> <span style="color:#ae81ff">12679</span>)
-&gt; (index (minify random-puzzle))
+&gt; (<span style="color:#a6e22e">index</span> (<span style="color:#a6e22e">minify</span> random-puzzle))
 <span style="color:#ae81ff">7474</span>
-&gt; (render (minify random-puzzle))</code></pre></div>
-<figure>
+&gt; (<span style="color:#a6e22e">render</span> (<span style="color:#a6e22e">minify</span> random-puzzle))
+</code></pre></div><figure>
     <img src="/embeds/2014/minimum-random-puzzle.png"/> 
 </figure>
 
-
 <p>So how many states do we get if we take only the minimum form? Both overall and reachable?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (set-count 
-   (for/set ([i (in-range (expt <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span>))])
-     (index (minify (make-puzzle i)))))
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">set-count</span> 
+   (<span style="color:#a6e22e">for/set</span> ([i (<span style="color:#a6e22e">in-range</span> (expt <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">15</span>))])
+     (<span style="color:#a6e22e">index</span> (<span style="color:#a6e22e">minify</span> (<span style="color:#a6e22e">make-puzzle</span> i)))))
 <span style="color:#ae81ff">5728</span>
 
 <span style="color:#75715e">; Modification of reachable states, only minified </span>
 <span style="color:#75715e">; By default, start with one copy of each peg missing</span>
-(<span style="color:#66d9ef">define </span>(reachable-min [queue (for/list ([i (in-range <span style="color:#ae81ff">15</span>)])
-                                (invert (make-puzzle (expt <span style="color:#ae81ff">2</span> i))))])
-  (<span style="color:#66d9ef">let </span>loop ([reached (hash)] [queue queue])
-    (cond
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">reachable-min</span> [queue (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">15</span>)])
+                                (<span style="color:#a6e22e">invert</span> (<span style="color:#a6e22e">make-puzzle</span> (expt <span style="color:#ae81ff">2</span> i))))])
+  (<span style="color:#66d9ef">let </span>loop ([reached (<span style="color:#a6e22e">hash</span>)] [queue queue])
+    (<span style="color:#a6e22e">cond</span>
       <span style="color:#75715e">; Queue is empty, done</span>
       [(null? queue)
        reached]
       <span style="color:#75715e">; Already checked this state, check the rest</span>
       [else
-       (<span style="color:#66d9ef">define </span>p (minify (first queue)))
-       (<span style="color:#66d9ef">define </span>i (index p))
-       (cond
-         [(hash-ref reached i <span style="color:#66d9ef">#f</span>) 
-          (loop reached (rest queue))]
+       (<span style="color:#66d9ef">define </span>p (<span style="color:#a6e22e">minify</span> (<span style="color:#a6e22e">first</span> queue)))
+       (<span style="color:#66d9ef">define </span>i (<span style="color:#a6e22e">index</span> p))
+       (<span style="color:#a6e22e">cond</span>
+         [(<span style="color:#a6e22e">hash-ref</span> reached i <span style="color:#66d9ef">#f</span>) 
+          (<span style="color:#a6e22e">loop</span> reached (<span style="color:#a6e22e">rest</span> queue))]
          [else
-          (loop (hash-set reached i <span style="color:#66d9ef">#t</span>)
-                (append (rest queue) (next p)))])])))
+          (<span style="color:#a6e22e">loop</span> (<span style="color:#a6e22e">hash-set</span> reached i <span style="color:#66d9ef">#t</span>)
+                (append (<span style="color:#a6e22e">rest</span> queue) (<span style="color:#a6e22e">next</span> p)))])])))
 
-&gt; (hash-count (reachable-min))
-<span style="color:#ae81ff">2383</span></code></pre></div>
-<p>Still about the same (technically slightly lower, it&rsquo;s only 41.6%). That&rsquo;s a good sign. We&rsquo;re all of the way down to 2,383 states from the original potential 32,768. A lot more manageable.</p>
-
+&gt; (<span style="color:#a6e22e">hash-count</span> (<span style="color:#a6e22e">reachable-min</span>))
+<span style="color:#ae81ff">2383</span>
+</code></pre></div><p>Still about the same (technically slightly lower, it&rsquo;s only 41.6%). That&rsquo;s a good sign. We&rsquo;re all of the way down to 2,383 states from the original potential 32,768. A lot more manageable.</p>
 <p>Next, let&rsquo;s shift to moves rather than states. Given two states, they are connected with a move if you could make a single jump to get from one to the other. So now rather than a set, we have a graph. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Find a map of all possible moves from a given puzzle</span>
-(<span style="color:#66d9ef">define </span>(all-moves p)
-  (<span style="color:#66d9ef">define </span>moves (make-hash))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">all-moves</span> p)
+  (<span style="color:#66d9ef">define </span>moves (<span style="color:#a6e22e">make-hash</span>))
   (<span style="color:#66d9ef">let </span>loop ([p p])
-    (<span style="color:#66d9ef">let </span>([p (minify p)])
-      (<span style="color:#66d9ef">define </span>i (index (minify p)))
-      (when (not (hash-has-key? moves i))
-        (<span style="color:#66d9ef">define </span>next-ps (next p))
-        (hash-set! moves i (list-&gt;set (map index (map minify next-ps))))
+    (<span style="color:#66d9ef">let </span>([p (<span style="color:#a6e22e">minify</span> p)])
+      (<span style="color:#66d9ef">define </span>i (<span style="color:#a6e22e">index</span> (<span style="color:#a6e22e">minify</span> p)))
+      (<span style="color:#a6e22e">when</span> (not (<span style="color:#a6e22e">hash-has-key?</span> moves i))
+        (<span style="color:#66d9ef">define </span>next-ps (<span style="color:#a6e22e">next</span> p))
+        (<span style="color:#a6e22e">hash-set!</span> moves i (<span style="color:#a6e22e">list-&gt;set</span> (map index (map minify next-ps))))
         (map loop next-ps))))
-  moves)</code></pre></div>
-<p>From there, we can recursively build up a count for each state how many times we win (end up with only a single peg) and how many times we lose.</p>
+  moves)
+</code></pre></div><p>From there, we can recursively build up a count for each state how many times we win (end up with only a single peg) and how many times we lose.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Count the number of winning and losing states from a given puzzle</span>
-(<span style="color:#66d9ef">define </span>(score p)
-  (<span style="color:#66d9ef">define </span>moves (all-moves p))
-  (define-values (wins losses)
-    (<span style="color:#66d9ef">let </span>loop ([i (index (minify p))])
-      (<span style="color:#66d9ef">define </span>nxt (hash-ref moves i (set)))
-      (cond
-        [(set-empty? nxt)
-         (<span style="color:#66d9ef">if </span>(= <span style="color:#ae81ff">1</span> (count (make-puzzle i)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">score</span> p)
+  (<span style="color:#66d9ef">define </span>moves (<span style="color:#a6e22e">all-moves</span> p))
+  (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">wins</span> losses)
+    (<span style="color:#66d9ef">let </span>loop ([i (<span style="color:#a6e22e">index</span> (<span style="color:#a6e22e">minify</span> p))])
+      (<span style="color:#66d9ef">define </span>nxt (<span style="color:#a6e22e">hash-ref</span> moves i (<span style="color:#a6e22e">set</span>)))
+      (<span style="color:#a6e22e">cond</span>
+        [(<span style="color:#a6e22e">set-empty?</span> nxt)
+         (<span style="color:#66d9ef">if </span>(= <span style="color:#ae81ff">1</span> (<span style="color:#a6e22e">count</span> (<span style="color:#a6e22e">make-puzzle</span> i)))
              (values <span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0</span>)
              (values <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">1</span>))]
         [else
-         (for/fold ([wins <span style="color:#ae81ff">0</span>] [losses <span style="color:#ae81ff">0</span>]) ([n (in-set nxt)])
-           (define-values (r-wins r-losses) (loop n))
+         (<span style="color:#a6e22e">for/fold</span> ([wins <span style="color:#ae81ff">0</span>] [losses <span style="color:#ae81ff">0</span>]) ([n (<span style="color:#a6e22e">in-set</span> nxt)])
+           (<span style="color:#a6e22e">define-values</span> (<span style="color:#a6e22e">r-wins</span> r-losses) (<span style="color:#a6e22e">loop</span> n))
            (values (+ wins   r-wins)
                    (+ losses r-losses)))])))
-  (* <span style="color:#ae81ff">1.0</span> (/ wins (+ wins losses))))</code></pre></div>
-<p>That way we can tell how &lsquo;hard&rsquo; each puzzle is, assuming that you always rotate/reflect to avoid potential duplicate state:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (for/list ([i (in-list <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>))])
-    (list i (score (invert (make-puzzle i)))))
+  (* <span style="color:#ae81ff">1.0</span> (/ wins (+ wins losses))))
+</code></pre></div><p>That way we can tell how &lsquo;hard&rsquo; each puzzle is, assuming that you always rotate/reflect to avoid potential duplicate state:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">for/list</span> ([i (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">2</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">5</span>))])
+    (list i (<span style="color:#a6e22e">score</span> (<span style="color:#a6e22e">invert</span> (<span style="color:#a6e22e">make-puzzle</span> i)))))
 
 <span style="color:#f92672">&#39;</span>((<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">0.05239514926876435</span>)
   (<span style="color:#ae81ff">2</span> <span style="color:#ae81ff">0.05138285262741999</span>)
   (<span style="color:#ae81ff">3</span> <span style="color:#ae81ff">0.08392304995059131</span>)
-  (<span style="color:#ae81ff">5</span> <span style="color:#ae81ff">0.08392304995059131</span>))</code></pre></div>
-<p>So there you have it. If you&rsquo;re playing optimally, it&rsquo;s slightly easier to do so starting with a corner or the second. The center or center of each edge are slightly harder.</p>
-
+  (<span style="color:#ae81ff">5</span> <span style="color:#ae81ff">0.08392304995059131</span>))
+</code></pre></div><p>So there you have it. If you&rsquo;re playing optimally, it&rsquo;s slightly easier to do so starting with a corner or the second. The center or center of each edge are slightly harder.</p>
 <p>And that&rsquo;s all we have for today. Originally, I meant to use the graph library I&rsquo;ve used a number of times before to visualize the solution space (there&rsquo;s a function that will do that on GitHub), but the graphs honestly aren&rsquo;t that helpful. There nodes are too nested and there are just too many to helpfully visualize. So it goes. Still, I think we found a few interesting things.</p>
-
 <p>As always, the code is available on GitHub: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/pegs.rkt">pegs.rkt</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

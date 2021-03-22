@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,61 +74,57 @@
     </header>
 
 	<div class="entry-content"><p>There&rsquo;s been a bit of hubbub in the in the math world the last few weeks with <a href="https://en.wikipedia.org/wiki/Shinichi%20Mochizuki">Shinichi Mochizuki&#39;s</a> 500 page proof that of the <a href="https://en.wikipedia.org/wiki/ABC%20conjecture">ABC conjecture</a>. Basically, the conjecture states that given three positive coprime integers <em>a</em>, <em>b</em>, and <em>c</em> such that <em>a</em> + <em>b</em> = <em>c</em>, the product of the distinct prime factors of <em>a</em>, <em>b</em>, and <em>c</em> is rarely much smaller than <em>c</em>. While this may sound strange, there are a number of interesting consequences that you can read about <a href="https://en.wikipedia.org/wiki/Abc%20conjecture#Some%20consequences">here</a>.</p>
-
 <p>To make a long story shorter, there was a challenge on <a href="http://programmingpraxis.com/2012/09/18/abc-conjecture/" title="ABC Conjecture">Programming Praxis</a> that intrigued me, which was to write code that given a upper bound on <em>c</em> would generate a list of all of the triples <em>(a, b, c)</em> such that the product is larger.</p>
-
 <p>I&rsquo;ve been getting more into the hang of Racket, particularly the <code>for</code> family of macros they have, so here&rsquo;s my Racket code for generating such a list.</p>
-
 <p>First, we could use a set of helper functions:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; keep only unique items in a list</span>
-(<span style="color:#66d9ef">define </span>(unique l) (foldl (<span style="color:#66d9ef">lambda </span>(x l) (<span style="color:#66d9ef">if </span>(member x l) l (cons x l))) <span style="color:#f92672">&#39;</span>() l))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">unique</span> l) (<span style="color:#a6e22e">foldl</span> (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">x</span> l) (<span style="color:#66d9ef">if </span>(member x l) l (cons x l))) <span style="color:#f92672">&#39;</span>() l))
 
 <span style="color:#75715e">; test if i evenly divides n</span>
-(<span style="color:#66d9ef">define </span>(div? n i) (zero? (remainder n i)))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">div?</span> n i) (zero? (remainder n i)))
 
 <span style="color:#75715e">; test if any item in l satisifies the predicate ?</span>
-(<span style="color:#66d9ef">define </span>(any? ? l) (not (null? (filter ? l))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">any?</span> ? l) (not (null? (<span style="color:#a6e22e">filter</span> ? l))))
 
 <span style="color:#75715e">; return the prime factors of n</span>
-(<span style="color:#66d9ef">define </span>(factor n)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">factor</span> n)
   (<span style="color:#66d9ef">let </span>loop ([i <span style="color:#ae81ff">2</span>])
-    (cond
+    (<span style="color:#a6e22e">cond</span>
       [(&gt; (* i i) n) (list n)]
-      [(div? n i)
-       (append (factor i) (factor (/ n i)))]
+      [(<span style="color:#a6e22e">div?</span> n i)
+       (append (<span style="color:#a6e22e">factor</span> i) (<span style="color:#a6e22e">factor</span> (/ n i)))]
       [<span style="color:#66d9ef">else </span>
-       (loop (+ i <span style="color:#ae81ff">1</span>))])))
+       (<span style="color:#a6e22e">loop</span> (+ i <span style="color:#ae81ff">1</span>))])))
 
 <span style="color:#75715e">; calculate the greatest common demoninator of a and b</span>
 (<span style="color:#66d9ef">define </span>(gcd a b)
-  (cond
+  (<span style="color:#a6e22e">cond</span>
     [(= a b) a]
     [(&lt; a b) (gcd a (- b a))]
     [<span style="color:#66d9ef">else </span>(gcd (- a b) b)]))
 
 <span style="color:#75715e">; test if two numbers are co-prime (share no common factors except 1)</span>
-(<span style="color:#66d9ef">define </span>(coprime? a b) (= <span style="color:#ae81ff">1</span> (gcd a b)))</code></pre></div>
-<p>Next we need the two functions from the actual proof. The neat thing is that with all of the helper functions above, these have become essentially trivial to write.</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">coprime?</span> a b) (= <span style="color:#ae81ff">1</span> (gcd a b)))
+</code></pre></div><p>Next we need the two functions from the actual proof. The neat thing is that with all of the helper functions above, these have become essentially trivial to write.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; calculate the radical (product of unique prime factors) of a number</span>
-(<span style="color:#66d9ef">define </span>(rad n) (apply * (unique (factor n))))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">rad</span> n) (apply * (<span style="color:#a6e22e">unique</span> (<span style="color:#a6e22e">factor</span> n))))
 
 <span style="color:#75715e">; calculate the ration of radicals for a set of coprime a + b = c</span>
-(<span style="color:#66d9ef">define </span>(q a b c) (/ (log c) (log (rad (* a b c)))))</code></pre></div>
-<p>Finally, the meat of the function. The best part for me was using Racket&rsquo;s excellent <code>for*/list</code> function to build the list.</p>
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">q</span> a b c) (/ (log c) (log (<span style="color:#a6e22e">rad</span> (* a b c)))))
+</code></pre></div><p>Finally, the meat of the function. The best part for me was using Racket&rsquo;s excellent <code>for*/list</code> function to build the list.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; run the test</span>
 <span style="color:#75715e">; for all b, for all a &lt; b; </span>
 <span style="color:#75715e">;   if a+b &lt; limit, a and b are coprime, and q &gt; 1, store the result </span>
-(<span style="color:#66d9ef">define </span>(abc n)
-  (sort 
-   (for*/list ([b (in-range <span style="color:#ae81ff">1</span> n)]
-               [a (in-range <span style="color:#ae81ff">1</span> b)]
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">abc</span> n)
+  (<span style="color:#a6e22e">sort</span> 
+   (<span style="color:#a6e22e">for*/list</span> ([b (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> n)]
+               [a (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> b)]
                <span style="color:#f92672">#</span>:when (<span style="color:#66d9ef">and </span>(&lt; (+ a b) n)
-                           (coprime? a b)
-                           (&gt; (q a b (+ a b)) <span style="color:#ae81ff">1</span>)))
-     (list (q a b (+ a b)) a b (+ a b)))
-   (<span style="color:#66d9ef">lambda </span>(x y) (&gt; (car x) (car y)))))</code></pre></div>
-<p>Now, to test it:</p>
-
+                           (<span style="color:#a6e22e">coprime?</span> a b)
+                           (&gt; (<span style="color:#a6e22e">q</span> a b (+ a b)) <span style="color:#ae81ff">1</span>)))
+     (list (<span style="color:#a6e22e">q</span> a b (+ a b)) a b (+ a b)))
+   (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">x</span> y) (&gt; (car x) (car y)))))
+</code></pre></div><p>Now, to test it:</p>
 <pre><code>&gt; (abc 1000)
 '((1.4265653296335432 3 125 128)
   (1.3175706029138485 1 512 513)
@@ -162,20 +158,15 @@
   (1.0084113092374762 200 529 729)
   (1.004797211020379 1 960 961))
 
-</code></pre>
-
-<p>Which are exactly the results that Programming Praxis got in <a href="http://programmingpraxis.com/2012/09/18/abc-conjecture/2/" title="Programming Praxis: abc conjecture">their solution</a>, so all is well in the world.</p>
-
+</code></pre><p>Which are exactly the results that Programming Praxis got in <a href="http://programmingpraxis.com/2012/09/18/abc-conjecture/2/" title="Programming Praxis: abc conjecture">their solution</a>, so all is well in the world.</p>
 <p>Just out of curiosity (since they did something clever in generating a and b while I just brute forced it) I ran timings of both of them on my machine:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (abc <span style="color:#ae81ff">1000</span>)) <span style="color:#75715e">; my code</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">abc</span> <span style="color:#ae81ff">1000</span>)) <span style="color:#75715e">; my code</span>
 cpu time: <span style="color:#ae81ff">8206</span> real time: <span style="color:#ae81ff">8269</span> gc time: <span style="color:#ae81ff">139</span>
 
-&gt; (time (abc <span style="color:#ae81ff">1000</span>)) <span style="color:#75715e">; their code</span>
-cpu time: <span style="color:#ae81ff">10280</span> real time: <span style="color:#ae81ff">10321</span> gc time: <span style="color:#ae81ff">189</span></code></pre></div>
-<p>Basically, they&rsquo;re pretty close. Mine is a bit faster, which surprised me slightly, but it&rsquo;s really not that big of a difference in the grand scheme of things.</p>
-
+&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">abc</span> <span style="color:#ae81ff">1000</span>)) <span style="color:#75715e">; their code</span>
+cpu time: <span style="color:#ae81ff">10280</span> real time: <span style="color:#ae81ff">10321</span> gc time: <span style="color:#ae81ff">189</span>
+</code></pre></div><p>Basically, they&rsquo;re pretty close. Mine is a bit faster, which surprised me slightly, but it&rsquo;s really not that big of a difference in the grand scheme of things.</p>
 <p>In any case, it was a neat little exercise. Perhaps I&rsquo;ll go and actually read the proof of the conjecture&hellip; No, probably not. It&rsquo;s still an interesting result though. 😄</p>
-
 <p>If you&rsquo;d like, you can download the entire source of the project here: <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/abc.ss" title="abc source">abc source</a></p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -70,16 +70,11 @@
 </div>
     </header>
 
-	<div class="entry-content"><p>Based on <a title="Programming Praxis: Stepwise Program Development: A Heuristic Algorithm" href="http://programmingpraxis.com/2012/12/11/stepwise-program-development-a-heuristic-algorithm/">this post</a> from Programming Praxis, today&rsquo;s goal is to write an algorithm that, given a number *N* and an alphabet <em>A</em>, will generate all strings of length N made of letters from A with no adjacent substrings that repeat.</p>
-
+	<div class="entry-content"><p>Based on <a title="Programming Praxis: Stepwise Program Development: A Heuristic Algorithm" href="http://programmingpraxis.com/2012/12/11/stepwise-program-development-a-heuristic-algorithm/">this post</a> from Programming Praxis, today&rsquo;s goal is to write an algorithm that, given a number <em>N</em> and an alphabet <em>A</em>, will generate all strings of length N made of letters from A with no adjacent substrings that repeat.</p>
 <p>So for example, given <em>N = 5</em> and <em>A = {a, b, c}</em> the string <em>abcba</em> will be allowed, but none of <em>abcbc</em>, <em>ababc</em>, nor even <em>aabcb</em> will be allowed (the <em>bc</em>, <em>ab</em>, and <em>a</em> repeat).</p>
-
 <p>It&rsquo;s a little more general even than the version Programming Praxis specifies (they limit the alphabet to exactly *A = {1, 2, 3} *and more more general still than their original source which requires only one possible string, but I think it&rsquo;s worth the extra complications.</p>
-
 <p>To start out with, let&rsquo;s just brute force the problem. Generate all possible sequences of characters in turn. For each, loop over every possible splitting point and every possible length at that splitting point. If any of those result in a duplicate substring, throw it out. We&rsquo;re doing more work than we have to, generating strings where we can already tell after just the first two characters that they repeat, but that&rsquo;s for future optimizations, yes?</p>
-
 <p>So we&rsquo;ll start with code that given a length and an alphabet will give us all possible strings. This is a perfect use of recursion and generators (in the Python version).</p>
-
 <p>Python:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">combinations</span>(N, A):
 	<span style="color:#e6db74">&#39;&#39;&#39;Generate all strings from A of length N.&#39;&#39;&#39;</span>
@@ -88,22 +83,20 @@
 	<span style="color:#66d9ef">else</span>:
 		<span style="color:#66d9ef">for</span> c <span style="color:#f92672">in</span> A:
 			<span style="color:#66d9ef">for</span> s <span style="color:#f92672">in</span> combinations(N <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, A):
-				<span style="color:#66d9ef">yield</span> c <span style="color:#f92672">+</span> s</code></pre></div>
-<p>Racket:</p>
+				<span style="color:#66d9ef">yield</span> c <span style="color:#f92672">+</span> s
+</code></pre></div><p>Racket:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; generate all strings from A of length N</span>
-(<span style="color:#66d9ef">define </span>(combinations n a)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">combinations</span> n a)
   (map list-&gt;string
        (<span style="color:#66d9ef">let </span>loop ([n n])
-         (cond
+         (<span style="color:#a6e22e">cond</span>
            [(zero? n) <span style="color:#f92672">&#39;</span>(())]
            [else
-            (for*/list ([c (in-string a)]
-                        [r (in-list (loop (- n <span style="color:#ae81ff">1</span>)))])
-              (cons c r))]))))</code></pre></div>
-<p>In the case of Racket, I nest the helper <em>loop</em> just so that I can map <em>list-&gt;string</em> at the end. If I were just looking for lists or if I had used <em>string-append</em> rather than <em>cons</em> that wouldn&rsquo;t have been necessary.</p>
-
+            (<span style="color:#a6e22e">for*/list</span> ([c (<span style="color:#a6e22e">in-string</span> a)]
+                        [r (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">loop</span> (- n <span style="color:#ae81ff">1</span>)))])
+              (cons c r))]))))
+</code></pre></div><p>In the case of Racket, I nest the helper <em>loop</em> just so that I can map <em>list-&gt;string</em> at the end. If I were just looking for lists or if I had used <em>string-append</em> rather than <em>cons</em> that wouldn&rsquo;t have been necessary.</p>
 <p>Next, we want a function that can check if there are any duplicate substrings. As aforementioned, we&rsquo;ll generate each index in the string (ignoring the very first and last) and check each length substring before and after that index.</p>
-
 <p>Python:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">has_repeat</span>(s):
 	<span style="color:#e6db74">&#39;&#39;&#39;Check if a string has a non-empty repeating substring.&#39;&#39;&#39;</span>
@@ -114,23 +107,21 @@
 			<span style="color:#66d9ef">if</span> s[i<span style="color:#f92672">-</span>j:i] <span style="color:#f92672">==</span> s[i:i<span style="color:#f92672">+</span>j]:
 				<span style="color:#66d9ef">return</span> True
 
-	<span style="color:#66d9ef">return</span> False</code></pre></div>
-<p>Racket:</p>
+	<span style="color:#66d9ef">return</span> False
+</code></pre></div><p>Racket:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; check if a string has a non-empty repeating substring</span>
-(<span style="color:#66d9ef">define </span>(repeats? s)
-  (call/cc
-   (<span style="color:#66d9ef">lambda </span>(return)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">repeats?</span> s)
+  (<span style="color:#a6e22e">call/cc</span>
+   (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">return</span>)
      (<span style="color:#66d9ef">define </span>N (string-length s))
-     (for* ([i (in-range <span style="color:#ae81ff">1</span> N)]
-            [j (in-range <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (min i (- N i))))])
-       (when (equal? (substring s (- i j) i)
+     (<span style="color:#a6e22e">for*</span> ([i (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> N)]
+            [j (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">1</span> (+ <span style="color:#ae81ff">1</span> (min i (- N i))))])
+       (<span style="color:#a6e22e">when</span> (equal? (substring s (- i j) i)
                      (substring s i (+ i j)))
-         (return <span style="color:#66d9ef">#t</span>)))
-     (return <span style="color:#66d9ef">#f</span>))))</code></pre></div>
-<p>Using <em>call/cc</em> like this is a trick to bail out of the loop early. Otherwise, we could have used <em>andmap</em>, but I much prefer being able to use *for**.</p>
-
+         (<span style="color:#a6e22e">return</span> <span style="color:#66d9ef">#t</span>)))
+     (<span style="color:#a6e22e">return</span> <span style="color:#66d9ef">#f</span>))))
+</code></pre></div><p>Using <em>call/cc</em> like this is a trick to bail out of the loop early. Otherwise, we could have used <em>andmap</em>, but I much prefer being able to use <em>for</em>*.</p>
 <p>And now that the hard part is out of the way, we can put it all together:</p>
-
 <p>Python:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">non_repeating_direct</span>(N, A):
 	<span style="color:#e6db74">&#39;&#39;&#39;
@@ -138,32 +129,32 @@
 </span><span style="color:#e6db74">	such that no adjacent substrings are repeated.
 </span><span style="color:#e6db74">	&#39;&#39;&#39;</span>
 
-	<span style="color:#66d9ef">return</span> [s <span style="color:#66d9ef">for</span> s <span style="color:#f92672">in</span> combinations(N, A) <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> has_repeat(s)]</code></pre></div>
-<p>Racket:</p>
+	<span style="color:#66d9ef">return</span> [s <span style="color:#66d9ef">for</span> s <span style="color:#f92672">in</span> combinations(N, A) <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> has_repeat(s)]
+</code></pre></div><p>Racket:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; generate all strings of length N from alphabet A with no repeating substrings</span>
-(<span style="color:#66d9ef">define </span>(non-repeating-direct N A)
-  (for/list ([s (in-list (combinations N A))]
-             <span style="color:#f92672">#</span>:when (not (repeats? s)))
-    s))</code></pre></div>
-<p>So how does it work out?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (time (non-repeating-direct <span style="color:#ae81ff">5</span> <span style="color:#e6db74">&#34;abc&#34;</span>))
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">non-repeating-direct</span> N A)
+  (<span style="color:#a6e22e">for/list</span> ([s (<span style="color:#a6e22e">in-list</span> (<span style="color:#a6e22e">combinations</span> N A))]
+             <span style="color:#f92672">#</span>:when (not (<span style="color:#a6e22e">repeats?</span> s)))
+    s))
+</code></pre></div><p>So how does it work out?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">time</span> (<span style="color:#a6e22e">non-repeating-direct</span> <span style="color:#ae81ff">5</span> <span style="color:#e6db74">&#34;abc&#34;</span>))
 cpu time: <span style="color:#ae81ff">0</span> real time: <span style="color:#ae81ff">2</span> gc time: <span style="color:#ae81ff">0</span>
 <span style="color:#f92672">&#39;</span>(<span style="color:#e6db74">&#34;abaca&#34;</span> <span style="color:#e6db74">&#34;abacb&#34;</span> <span style="color:#e6db74">&#34;abcab&#34;</span> <span style="color:#e6db74">&#34;abcac&#34;</span> <span style="color:#e6db74">&#34;abcba&#34;</span>
   <span style="color:#e6db74">&#34;acaba&#34;</span> <span style="color:#e6db74">&#34;acabc&#34;</span> <span style="color:#e6db74">&#34;acbab&#34;</span> <span style="color:#e6db74">&#34;acbac&#34;</span> <span style="color:#e6db74">&#34;acbca&#34;</span>
   <span style="color:#e6db74">&#34;babca&#34;</span> <span style="color:#e6db74">&#34;babcb&#34;</span> <span style="color:#e6db74">&#34;bacab&#34;</span> <span style="color:#e6db74">&#34;bacba&#34;</span> <span style="color:#e6db74">&#34;bacbc&#34;</span>
   <span style="color:#e6db74">&#34;bcaba&#34;</span> <span style="color:#e6db74">&#34;bcabc&#34;</span> <span style="color:#e6db74">&#34;bcacb&#34;</span> <span style="color:#e6db74">&#34;bcbab&#34;</span> <span style="color:#e6db74">&#34;bcbac&#34;</span>
   <span style="color:#e6db74">&#34;cabac&#34;</span> <span style="color:#e6db74">&#34;cabca&#34;</span> <span style="color:#e6db74">&#34;cabcb&#34;</span> <span style="color:#e6db74">&#34;cacba&#34;</span> <span style="color:#e6db74">&#34;cacbc&#34;</span>
-  <span style="color:#e6db74">&#34;cbabc&#34;</span> <span style="color:#e6db74">&#34;cbaca&#34;</span> <span style="color:#e6db74">&#34;cbacb&#34;</span> <span style="color:#e6db74">&#34;cbcab&#34;</span> <span style="color:#e6db74">&#34;cbcac&#34;</span>))</code></pre></div>
-<p>Looks good so far.</p>
-
+  <span style="color:#e6db74">&#34;cbabc&#34;</span> <span style="color:#e6db74">&#34;cbaca&#34;</span> <span style="color:#e6db74">&#34;cbacb&#34;</span> <span style="color:#e6db74">&#34;cbcab&#34;</span> <span style="color:#e6db74">&#34;cbcac&#34;</span>))
+</code></pre></div><p>Looks good so far.</p>
 <p>As an interesting aside, <a href="http://gravatar.com/benmmurphy">Ben</a> over in the Programming Praxis comments pointed out that the number of such words corresponds with the number of <a href="http://oeis.org/A006156" title="OEIS Sequence number A006156">ternary squarefree words of length n</a>:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (for/list ([n (in-range <span style="color:#ae81ff">10</span>)]) (length (non-repeating-direct n <span style="color:#e6db74">&#34;abc&#34;</span>)))
-<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">42</span> <span style="color:#ae81ff">60</span> <span style="color:#ae81ff">78</span> <span style="color:#ae81ff">108</span>)</code></pre></div>
-<p>And actually once you parse through all of the jargon, it makes perfect sense. <a href="https://en.wikipedia.org/wiki/Ternary">Ternary</a> is base three (thus the alphabet <em>A = {a, b, c}</em>), words are what we are generating of length <em>n</em>, and a <a href="https://en.wikipedia.org/wiki/squarefree%20word">squarefree word</a> is one without any adjacent subwords.</p>
-
-<p>The full source code (along with unit tests) is available here:
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/non-repeating-strings.py" title="Python non-repeating strings source on GitHub">Python source</a>
-- <a href="https://github.com/jpverkamp/small-projects/blob/master/blog/non-repeating-strings.rkt" title="Racket non-repeating strings source on GitHub">Racket source</a></p></div>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">for/list</span> ([n (<span style="color:#a6e22e">in-range</span> <span style="color:#ae81ff">10</span>)]) (length (<span style="color:#a6e22e">non-repeating-direct</span> n <span style="color:#e6db74">&#34;abc&#34;</span>)))
+<span style="color:#f92672">&#39;</span>(<span style="color:#ae81ff">1</span> <span style="color:#ae81ff">3</span> <span style="color:#ae81ff">6</span> <span style="color:#ae81ff">12</span> <span style="color:#ae81ff">18</span> <span style="color:#ae81ff">30</span> <span style="color:#ae81ff">42</span> <span style="color:#ae81ff">60</span> <span style="color:#ae81ff">78</span> <span style="color:#ae81ff">108</span>)
+</code></pre></div><p>And actually once you parse through all of the jargon, it makes perfect sense. <a href="https://en.wikipedia.org/wiki/Ternary">Ternary</a> is base three (thus the alphabet <em>A = {a, b, c}</em>), words are what we are generating of length <em>n</em>, and a <a href="https://en.wikipedia.org/wiki/squarefree%20word">squarefree word</a> is one without any adjacent subwords.</p>
+<p>The full source code (along with unit tests) is available here:</p>
+<ul>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/non-repeating-strings.py" title="Python non-repeating strings source on GitHub">Python source</a></li>
+<li><a href="https://github.com/jpverkamp/small-projects/blob/master/blog/non-repeating-strings.rkt" title="Racket non-repeating strings source on GitHub">Racket source</a></li>
+</ul></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

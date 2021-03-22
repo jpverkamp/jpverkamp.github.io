@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -76,164 +76,145 @@
 </div>
     </header>
 
-	<div class="entry-content"><p>When I was playing Racket Roguelike earlier this week<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>, I realized something: I can see everything. There are no surprises, no mystery, no <em>darkness</em></p>
-
+	<div class="entry-content"><p>When I was playing Racket Roguelike earlier this week<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup>, I realized something: I can see everything. There are no surprises, no mystery, no <em>darkness</em></p>
 <p>Let&rsquo;s fix that.</p>
-
 <p>(If you&rsquo;d like to start at the beginning, click here: <a href="https://blog.jverkamp.com/2013/04/04/racket-roguelike-1-a-gui-screens-i/o-and-you/">Racket Roguelike 1: A GUI, screens, I/O, and you!</a>)</p>
-
 <p>This week, we want to add a dynamic lighting system to the game. If we were using a pre-built framework (like Doryen&rsquo;s excellent <a href="https://blog.jverkamp.com/2013/03/28/writing-a-roguelike-in-racket-day-0/">AsciiPanel</a> some day}. But that&rsquo;s not the case. Luckily, the framework we&rsquo;ve built already makes lighting relatively easy.</p>
-
 <p>First, we need some way of representing which tiles should be lit. Technically, we could calculate this on the fly every frame. This isn&rsquo;t actually a terrible way of doing things and might just be more efficient than what we&rsquo;re doing (don&rsquo;t even bother rendering tiles you can&rsquo;t see), but since we want to have a &lsquo;fog of war&rsquo; type system&ndash;where you can see the terrain you&rsquo;ve passed, just not what&rsquo;s there&ndash;that won&rsquo;t quite work.</p>
-
 <p>Instead, let&rsquo;s add it to the <code>tile</code> definitions:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; levels.rkt</span>
 
-(define-thing tile
+(<span style="color:#a6e22e">define-thing</span> tile
   [character <span style="color:#e6db74">#\space</span>]
   [color <span style="color:#e6db74">&#34;black&#34;</span>]
   [items <span style="color:#f92672">&#39;</span>()]
   [lighting <span style="color:#e6db74">&#39;dark</span>]    <span style="color:#75715e">; Dark: Invisible; Fog: Only show tile, not NPC or item; Lit: Everything</span>
   [walkable <span style="color:#66d9ef">#f</span>]       <span style="color:#75715e">; Can the player walk on this tile?</span>
-  )</code></pre></div>
-<p>As it says in the comment, we have a <code>lighting</code> parameter with three possible states:</p>
-
+  )
+</code></pre></div><p>As it says in the comment, we have a <code>lighting</code> parameter with three possible states:</p>
 <ul>
 <li><code>dark</code> - don&rsquo;t draw the tile</li>
 <li><code>fog</code> - draw the tile, but no items or NPCs in it (used once we see a tile then leave)</li>
 <li><code>lit</code> - draw the tile, items, and NPCs (used when the player is nearby)</li>
 </ul>
-
 <p>Easy enough. But how do we actually add that to our drawing function? Head over to <em>game-screen.rkt</em>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; game-screen.rkt</span>
 
-(<span style="color:#66d9ef">define </span>gray-background (make-object color% <span style="color:#ae81ff">32</span> <span style="color:#ae81ff">32</span> <span style="color:#ae81ff">32</span>))
+(<span style="color:#66d9ef">define </span>gray-background (<span style="color:#a6e22e">make-object</span> color% <span style="color:#ae81ff">32</span> <span style="color:#ae81ff">32</span> <span style="color:#ae81ff">32</span>))
 
 <span style="color:#f92672">...</span>
 
 <span style="color:#75715e">; Draw the tiles around the player</span>
-(for* ([xi (in-range (send canvas get-width-in-characters))]
-       [yi (in-range (send canvas get-height-in-characters))])
-  (<span style="color:#66d9ef">define </span>x/y (recenter canvas (- (thing-get player <span style="color:#e6db74">&#39;location</span>) (pt xi yi))))
-  (<span style="color:#66d9ef">define </span>tile (send world tile-at (pt-x x/y) (pt-y x/y)))
-  (<span style="color:#66d9ef">define </span>lighting (thing-get tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;lit</span>))
-  (cond
+(<span style="color:#a6e22e">for*</span> ([xi (<span style="color:#a6e22e">in-range</span> (<span style="color:#a6e22e">send</span> canvas get-width-in-characters))]
+       [yi (<span style="color:#a6e22e">in-range</span> (<span style="color:#a6e22e">send</span> canvas get-height-in-characters))])
+  (<span style="color:#66d9ef">define </span>x/y (<span style="color:#a6e22e">recenter</span> canvas (- (<span style="color:#a6e22e">thing-get</span> player <span style="color:#e6db74">&#39;location</span>) (<span style="color:#a6e22e">pt</span> xi yi))))
+  (<span style="color:#66d9ef">define </span>tile (<span style="color:#a6e22e">send</span> world tile-at (<span style="color:#a6e22e">pt-x</span> x/y) (<span style="color:#a6e22e">pt-y</span> x/y)))
+  (<span style="color:#66d9ef">define </span>lighting (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;lit</span>))
+  (<span style="color:#a6e22e">cond</span>
     <span style="color:#75715e">; Draw nothing on dark tiles</span>
     [(eq? lighting <span style="color:#e6db74">&#39;dark</span>)
-     (void)]
+     (<span style="color:#a6e22e">void</span>)]
     <span style="color:#75715e">; If it&#39;s in fog, draw with a gray background</span>
     [(eq? lighting <span style="color:#e6db74">&#39;fog</span>)
-     (send canvas write
-           (thing-get tile <span style="color:#e6db74">&#39;character</span>)
+     (<span style="color:#a6e22e">send</span> canvas write
+           (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;character</span>)
            xi yi
-           (thing-get tile <span style="color:#e6db74">&#39;color</span>) gray-background)]
+           (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;color</span>) gray-background)]
     <span style="color:#75715e">; If it&#39;s lit but there are no items, draw the tile</span>
-    [(null? (thing-get tile <span style="color:#e6db74">&#39;items</span> <span style="color:#f92672">&#39;</span>()))
-     (send canvas write
-           (thing-get tile <span style="color:#e6db74">&#39;character</span>)
+    [(null? (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;items</span> <span style="color:#f92672">&#39;</span>()))
+     (<span style="color:#a6e22e">send</span> canvas write
+           (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;character</span>)
            xi yi
-           (thing-get tile <span style="color:#e6db74">&#39;color</span>))]
+           (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;color</span>))]
     <span style="color:#75715e">; If it&#39;s lit and there are items, draw the item</span>
     [else
-     (send canvas write
-           (thing-get (car (thing-get tile <span style="color:#e6db74">&#39;items</span>)) <span style="color:#e6db74">&#39;character</span>)
+     (<span style="color:#a6e22e">send</span> canvas write
+           (<span style="color:#a6e22e">thing-get</span> (car (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;items</span>)) <span style="color:#e6db74">&#39;character</span>)
            xi yi
-           (thing-get (car (thing-get tile <span style="color:#e6db74">&#39;items</span>)) <span style="color:#e6db74">&#39;color</span>))]))</code></pre></div>
-<p>Basically, we draw nothing on dark tiles. This relies on the <code>clear</code> just above this code. If it&rsquo;s foggy, we have a background, defined at the top of the file<sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>. Otherwise, we fall back on the methods that we already had.</p>
-
+           (<span style="color:#a6e22e">thing-get</span> (car (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;items</span>)) <span style="color:#e6db74">&#39;color</span>))]))
+</code></pre></div><p>Basically, we draw nothing on dark tiles. This relies on the <code>clear</code> just above this code. If it&rsquo;s foggy, we have a background, defined at the top of the file<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>. Otherwise, we fall back on the methods that we already had.</p>
 <p>Next, we need to actually calculate this lighting. Essentially, every tile starts dark. Then, if a tile is near to the player, light it up. If it&rsquo;s already lit but no longer near the tile, fade to fog. For now, we&rsquo;re just going to use a simple radius around the player (parameterized below). Here&rsquo;s the new <code>update-lighting</code> function and friends:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; entities.rkt</span>
 
 <span style="color:#75715e">; game-screen.rkt</span>
-(define-thing entity
+(<span style="color:#a6e22e">define-thing</span> entity
   <span style="color:#f92672">...</span>
   [view-range <span style="color:#ae81ff">5</span>])
 
 <span style="color:#75715e">; Draw the game itself.</span>
-(define/override (draw canvas)
-  (<span style="color:#66d9ef">define </span>player (send world get-player))
-  (send canvas clear)
+(<span style="color:#a6e22e">define/override</span> (<span style="color:#a6e22e">draw</span> canvas)
+  (<span style="color:#66d9ef">define </span>player (<span style="color:#a6e22e">send</span> world get-player))
+  (<span style="color:#a6e22e">send</span> canvas clear)
 
   <span style="color:#75715e">; Update lighting</span>
-  (send world update-lighting)
+  (<span style="color:#a6e22e">send</span> world update-lighting)
 
   <span style="color:#f92672">...</span>)
 
 <span style="color:#75715e">; world.rkt</span>
 
 <span style="color:#75715e">; Update lighting</span>
-(define/public (update-lighting)
+(<span style="color:#a6e22e">define/public</span> (<span style="color:#a6e22e">update-lighting</span>)
   <span style="color:#75715e">; Turn any lit tiles to fog</span>
   <span style="color:#75715e">; Turn any tiles within the player&#39;s view limit to lit</span>
-  (<span style="color:#66d9ef">define </span>player-location (thing-get player <span style="color:#e6db74">&#39;location</span>))
-  (<span style="color:#66d9ef">define </span>player-view (thing-get player <span style="color:#e6db74">&#39;view-range</span> <span style="color:#ae81ff">5</span>))
-  (for-tile
-   (<span style="color:#66d9ef">lambda </span>(x y tile)
-     (cond
+  (<span style="color:#66d9ef">define </span>player-location (<span style="color:#a6e22e">thing-get</span> player <span style="color:#e6db74">&#39;location</span>))
+  (<span style="color:#66d9ef">define </span>player-view (<span style="color:#a6e22e">thing-get</span> player <span style="color:#e6db74">&#39;view-range</span> <span style="color:#ae81ff">5</span>))
+  (<span style="color:#a6e22e">for-tile</span>
+   (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">x</span> y tile)
+     (<span style="color:#a6e22e">cond</span>
        <span style="color:#75715e">; Light tiles near the player</span>
-       [(&lt;= (distance player-location (pt x y)) player-view)
-        (thing-set! tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;lit</span>)]
+       [(&lt;= (<span style="color:#a6e22e">distance</span> player-location (<span style="color:#a6e22e">pt</span> x y)) player-view)
+        (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;lit</span>)]
        <span style="color:#75715e">; Fog previously lit tiles</span>
-       [(eq? <span style="color:#e6db74">&#39;lit</span> (thing-get tile <span style="color:#e6db74">&#39;lighting</span>))
-        (thing-set! tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;fog</span>)]
+       [(eq? <span style="color:#e6db74">&#39;lit</span> (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;lighting</span>))
+        (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;fog</span>)]
        <span style="color:#75715e">; Otherwise do nothing</span>
-       ))))</code></pre></div>
-<p>For that, we need the <code>for-tile</code> function. You can check it out <a href="https://github.com/jpverkamp/racket-roguelike/blob/master/src/levels.rkt">on GitHub</a>, but essentially it takes a function of the form <code>(lambda (x y tile) ...)</code> and applies it to each tile on the current level. It might<sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup> get inefficient on more explored levels, but if people keep heading down, we should be good. So in this case, we&rsquo;ll just light the area around the player. How does that look?</p>
-
+       ))))
+</code></pre></div><p>For that, we need the <code>for-tile</code> function. You can check it out <a href="https://github.com/jpverkamp/racket-roguelike/blob/master/src/levels.rkt">on GitHub</a>, but essentially it takes a function of the form <code>(lambda (x y tile) ...)</code> and applies it to each tile on the current level. It might<sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup> get inefficient on more explored levels, but if people keep heading down, we should be good. So in this case, we&rsquo;ll just light the area around the player. How does that look?</p>
 <figure>
     <img src="/embeds/2013/simple-lighting.png"/> 
 </figure>
 
-
 <p>Starting out, not too bad. We&rsquo;re out in the middle of a nice grass field like always. Just this time, we can&rsquo;t see much of it. Perhaps it&rsquo;s night time?</p>
-
 <figure>
     <img src="/embeds/2013/simple-fog.png"/> 
 </figure>
 
-
 <p>Wander around a bit until we find a way down. You can see the gray background of the fog. That actually looks pretty nice, particularly as you&rsquo;re moving around.</p>
-
 <figure>
     <img src="/embeds/2013/into-the-caves.png"/> 
 </figure>
 
-
 <p>Okay, now we&rsquo;re into the caves. Let&rsquo;s explore for a bit.</p>
-
 <figure>
     <img src="/embeds/2013/this-is-a-problem.png"/> 
 </figure>
 
-
 <p>Hmm. Well, this is a problem. It turns out&hellip; we can see right through walls. Perhaps we should work on that a bit.</p>
-
 <p>This is when a pre-built framework would <em>really</em> come in handy. But the algorithm isn&rsquo;t too bad. Essentially, we want <a href="https://en.wikipedia.org/wiki/raycasting">raycasting</a>. We&rsquo;ll start with a series of lines out from the player and light tiles as we go. If we hit something that can&rsquo;t be lit up, stop. Sounds like a nicely recursive function to me!</p>
-
 <p>Before that, let&rsquo;s modify the tile definitions again. We&rsquo;ll add the <code>solid</code> property. If a tile is <code>solid</code> (like a wall or a tree), you can&rsquo;t see through it. Otherwise (like empty space or over water), you can.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; levels.rkt</span>
 
-(define-thing tile
+(<span style="color:#a6e22e">define-thing</span> tile
   [character <span style="color:#e6db74">#\space</span>]
   [color <span style="color:#e6db74">&#34;black&#34;</span>]
   [items <span style="color:#f92672">&#39;</span>()]
   [lighting <span style="color:#e6db74">&#39;dark</span>]    <span style="color:#75715e">; Dark: Invisible; Fog: Only show tile, not NPC or item; Lit: Everything</span>
   [walkable <span style="color:#66d9ef">#f</span>]       <span style="color:#75715e">; Can the player walk on this tile?</span>
   [solid <span style="color:#66d9ef">#f</span>]          <span style="color:#75715e">; Does this tile block light?</span>
-  )</code></pre></div>
-<p>So how do we write a raycasting function?</p>
-
-<p>The basic idea<sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup> is to start with four rays, one in each of the cardinal directions. Give each ray its own direction. Then as we pass each tile, branch out in each direction for a total of three branches per iteration. It&rsquo;s certainly not optimal (we&rsquo;ll light some tiles more than once), but it does look nice.</p>
+  )
+</code></pre></div><p>So how do we write a raycasting function?</p>
+<p>The basic idea<sup id="fnref:4"><a href="#fn:4" class="footnote-ref" role="doc-noteref">4</a></sup> is to start with four rays, one in each of the cardinal directions. Give each ray its own direction. Then as we pass each tile, branch out in each direction for a total of three branches per iteration. It&rsquo;s certainly not optimal (we&rsquo;ll light some tiles more than once), but it does look nice.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; world.rkt</span>
 
 <span style="color:#75715e">; Update lighting</span>
-(define/public (update-lighting)
+(<span style="color:#a6e22e">define/public</span> (<span style="color:#a6e22e">update-lighting</span>)
   <span style="color:#75715e">; Turn any lit tiles to fog</span>
-  (for-tile
-   (<span style="color:#66d9ef">lambda </span>(x y tile)
-     (cond
-       [(eq? <span style="color:#e6db74">&#39;lit</span> (thing-get tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;dark</span>))
-        (thing-set! tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;fog</span>)])))
+  (<span style="color:#a6e22e">for-tile</span>
+   (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">x</span> y tile)
+     (<span style="color:#a6e22e">cond</span>
+       [(eq? <span style="color:#e6db74">&#39;lit</span> (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;dark</span>))
+        (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;fog</span>)])))
 
   <span style="color:#75715e">; Spread lighting from the player</span>
   <span style="color:#75715e">; x/y current tile to light</span>
@@ -241,105 +222,88 @@
   <span style="color:#75715e">;  if xd != 0, spread to (x+xd y-1) (x+xd y) (x+xd y+1)</span>
   <span style="color:#75715e">;  if yd != 0, spread to (x-1 y+yd) (x y+yd) (x-1 y+yd)</span>
   <span style="color:#75715e">; spread is initially set to player&#39;s light radius</span>
-  (<span style="color:#66d9ef">define </span>(spread-light x y xd yd spread)
+  (<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">spread-light</span> x y xd yd spread)
     <span style="color:#75715e">; Light the current tile</span>
-    (<span style="color:#66d9ef">define </span>tile (get-tile x y))
-    (thing-set! tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;lit</span>)
+    (<span style="color:#66d9ef">define </span>tile (<span style="color:#a6e22e">get-tile</span> x y))
+    (<span style="color:#a6e22e">thing-set!</span> tile <span style="color:#e6db74">&#39;lighting</span> <span style="color:#e6db74">&#39;lit</span>)
 
     <span style="color:#75715e">; Recur</span>
-    (cond
+    (<span style="color:#a6e22e">cond</span>
       <span style="color:#75715e">; Don&#39;t spread pass solid tiles (spread to them though)</span>
       <span style="color:#75715e">; Don&#39;t recur past the spread (vision range) value</span>
-      [(<span style="color:#66d9ef">or </span>(&lt;= spread <span style="color:#ae81ff">0</span>) (thing-get tile <span style="color:#e6db74">&#39;solid</span> <span style="color:#66d9ef">#f</span>))
-       (void)]
+      [(<span style="color:#66d9ef">or </span>(&lt;= spread <span style="color:#ae81ff">0</span>) (<span style="color:#a6e22e">thing-get</span> tile <span style="color:#e6db74">&#39;solid</span> <span style="color:#66d9ef">#f</span>))
+       (<span style="color:#a6e22e">void</span>)]
       <span style="color:#75715e">; Spread in the x direction</span>
       [(not (= xd <span style="color:#ae81ff">0</span>))
-       (spread-light (+ x xd) (- y <span style="color:#ae81ff">1</span>) xd yd (- spread <span style="color:#ae81ff">1.41</span>))
-       (spread-light (+ x xd) y       xd yd (- spread <span style="color:#ae81ff">1.00</span>))
-       (spread-light (+ x xd) (+ y <span style="color:#ae81ff">1</span>) xd yd (- spread <span style="color:#ae81ff">1.41</span>))]
+       (<span style="color:#a6e22e">spread-light</span> (+ x xd) (- y <span style="color:#ae81ff">1</span>) xd yd (- spread <span style="color:#ae81ff">1.41</span>))
+       (<span style="color:#a6e22e">spread-light</span> (+ x xd) y       xd yd (- spread <span style="color:#ae81ff">1.00</span>))
+       (<span style="color:#a6e22e">spread-light</span> (+ x xd) (+ y <span style="color:#ae81ff">1</span>) xd yd (- spread <span style="color:#ae81ff">1.41</span>))]
       <span style="color:#75715e">; Spread in the y direction</span>
       [else
-       (spread-light (- x <span style="color:#ae81ff">1</span>) (+ y yd) xd yd (- spread <span style="color:#ae81ff">1.41</span>))
-       (spread-light x       (+ y yd) xd yd (- spread <span style="color:#ae81ff">1.00</span>))
-       (spread-light (+ x <span style="color:#ae81ff">1</span>) (+ y yd) xd yd (- spread <span style="color:#ae81ff">1.41</span>))]))
+       (<span style="color:#a6e22e">spread-light</span> (- x <span style="color:#ae81ff">1</span>) (+ y yd) xd yd (- spread <span style="color:#ae81ff">1.41</span>))
+       (<span style="color:#a6e22e">spread-light</span> x       (+ y yd) xd yd (- spread <span style="color:#ae81ff">1.00</span>))
+       (<span style="color:#a6e22e">spread-light</span> (+ x <span style="color:#ae81ff">1</span>) (+ y yd) xd yd (- spread <span style="color:#ae81ff">1.41</span>))]))
 
   <span style="color:#75715e">; Spread in the four directions</span>
-  (<span style="color:#66d9ef">let </span>([player-x (pt-x (thing-get player <span style="color:#e6db74">&#39;location</span>))]
-        [player-y (pt-y (thing-get player <span style="color:#e6db74">&#39;location</span>))]
-        [player-v (thing-get player <span style="color:#e6db74">&#39;view-range</span> <span style="color:#ae81ff">5</span>)])
-    (spread-light player-x player-y <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">0</span> player-v)
-    (spread-light player-x player-y  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">0</span> player-v)
-    (spread-light player-x player-y  <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-1</span> player-v)
-    (spread-light player-x player-y  <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">1</span> player-v)))</code></pre></div>
-<p>Hopefully that all makes sense. One sneaky trick is reducing the <code>spread</code> by 1 on the orthogonal moves and 1.41 (roughly <span class="latex-inline">sqrt(2)</span>
+  (<span style="color:#66d9ef">let </span>([player-x (<span style="color:#a6e22e">pt-x</span> (<span style="color:#a6e22e">thing-get</span> player <span style="color:#e6db74">&#39;location</span>))]
+        [player-y (<span style="color:#a6e22e">pt-y</span> (<span style="color:#a6e22e">thing-get</span> player <span style="color:#e6db74">&#39;location</span>))]
+        [player-v (<span style="color:#a6e22e">thing-get</span> player <span style="color:#e6db74">&#39;view-range</span> <span style="color:#ae81ff">5</span>)])
+    (<span style="color:#a6e22e">spread-light</span> player-x player-y <span style="color:#ae81ff">-1</span>  <span style="color:#ae81ff">0</span> player-v)
+    (<span style="color:#a6e22e">spread-light</span> player-x player-y  <span style="color:#ae81ff">1</span>  <span style="color:#ae81ff">0</span> player-v)
+    (<span style="color:#a6e22e">spread-light</span> player-x player-y  <span style="color:#ae81ff">0</span> <span style="color:#ae81ff">-1</span> player-v)
+    (<span style="color:#a6e22e">spread-light</span> player-x player-y  <span style="color:#ae81ff">0</span>  <span style="color:#ae81ff">1</span> player-v)))
+</code></pre></div><p>Hopefully that all makes sense. One sneaky trick is reducing the <code>spread</code> by 1 on the orthogonal moves and 1.41 (roughly <span class="latex-inline">sqrt(2)</span>
 ) on the diagonals. This will give us a nice circle.</p>
-
 <p>Let&rsquo;s see what an effect that has on the game:</p>
-
 <figure>
     <img src="/embeds/2013/nice-circle.png"/> 
 </figure>
 
-
 <p>Starting out, we have a nice circle. So far, it looks pretty much the same as it did last time.</p>
-
 <figure>
     <img src="/embeds/2013/trees-cast-shadows.png"/> 
 </figure>
 
-
 <p>Shadows! I can&rsquo;t tell you how excited this makes me. 😄</p>
-
 <figure>
     <img src="/embeds/2013/over-troubled-waters.png"/> 
 </figure>
 
-
 <p>And it works perfectly with water as well. We can see over the water, but we can&rsquo;t walk through it.</p>
-
 <figure>
     <img src="/embeds/2013/missing-something.png"/> 
 </figure>
 
-
 <p>Unfortunately though, I haven&rsquo;t had any luck yet finding a staircase&hellip;</p>
-
 <figure>
     <img src="/embeds/2013/no-more-xray-vision.png"/> 
 </figure>
 
-
-<p>Finally, we&rsquo;re down a level. It&rsquo;s nice to see<sup class="footnote-ref" id="fnref:5"><a href="#fn:5">5</a></sup>: no more x-ray vision! It does look a bit weird to have all the nice thin walls around, but it looks a lot better once you get used to it.</p>
-
+<p>Finally, we&rsquo;re down a level. It&rsquo;s nice to see<sup id="fnref:5"><a href="#fn:5" class="footnote-ref" role="doc-noteref">5</a></sup>: no more x-ray vision! It does look a bit weird to have all the nice thin walls around, but it looks a lot better once you get used to it.</p>
 <figure>
     <img src="/embeds/2013/there-are-rats.png"/> 
 </figure>
 
-
 <p>Theoretically, the player shouldn&rsquo;t be able to hear updates from entities that aren&rsquo;t visible. That would actually be pretty easy to implement (just check for the lighting in the logging function), but for the moment, I like the atmosphere it gives.</p>
-
 <figure>
     <img src="/embeds/2013/still-no-rats.png"/> 
 </figure>
 
-
 <p>All that time wandering about and I still haven&rsquo;t actually found any of those rats to fight. I wanted to show that it won&rsquo;t draw them unless they&rsquo;re in a lit area. Sigh. So it goes.</p>
-
-<p>Well, that&rsquo;s all we have for today. It&rsquo;s kind of amazing how much difference so few lines can make<sup class="footnote-ref" id="fnref:6"><a href="#fn:6">6</a></sup>.</p>
-
-<p>As always, if you&rsquo;d like to see all of the code for this project, you can do so on GitHub:
-- <a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike/tree/day-7">Racket Roguelike - Day 7</a>
-- <a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike">Racket Roguelike - Up to date</a></p>
-
+<p>Well, that&rsquo;s all we have for today. It&rsquo;s kind of amazing how much difference so few lines can make<sup id="fnref:6"><a href="#fn:6" class="footnote-ref" role="doc-noteref">6</a></sup>.</p>
+<p>As always, if you&rsquo;d like to see all of the code for this project, you can do so on GitHub:</p>
+<ul>
+<li><a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike/tree/day-7">Racket Roguelike - Day 7</a></li>
+<li><a title="Racket Roguelike on GitHub" href="https://github.com/jpverkamp/racket-roguelike">Racket Roguelike - Up to date</a></li>
+</ul>
 <p>If you&rsquo;d like to try it yourself, you&rsquo;ll need to have both <a href="http://git-scm.com/">Git</a> and <a href="http://racket-lang.org/">Racket</a> and run the following series of commands:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">git clone git://github.com/jpverkamp/racket-roguelike.git
 cd racket-roguelike
 git checkout day-7
 git submodule init
 git submodule update
-racket main.rkt</code></pre></div>
-<p><strong>Edit:</strong></p>
-
+racket main.rkt
+</code></pre></div><p><strong>Edit:</strong></p>
 <p>It seems that the submodules wondered off at some point. Instead, you can install the three libraries this uses directly using <code><a href="http://docs.racket-lang.org/search/index.html?q=pkg">pkg</a></code>
 , and then run the code:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">raco pkg install github://github.com:jpverkamp/ascii-canvas/master
@@ -348,27 +312,31 @@ raco pkg install github://github.com:jpverkamp/thing/master
 git clone git://github.com/jpverkamp/racket-roguelike.git
 cd racket-roguelike
 git checkout day-7
-racket main.rkt</code></pre></div>
-<p>For part 8, click here: <a href="https://blog.jverkamp.com/2013/06/21/racket-roguelike-8-a-million-words/">Racket Roguelike 8: A million words!</a></p>
-<div class="footnotes">
-
-<hr />
-
+racket main.rkt
+</code></pre></div><p>For part 8, click here: <a href="https://blog.jverkamp.com/2013/06/21/racket-roguelike-8-a-million-words/">Racket Roguelike 8: A million words!</a></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">Always a good sign when you find yourself actually playing your own game&hellip;
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">And defined only once to save just a bit on performance; we&rsquo;re going to have to look at that soon&hellip;
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
-<li id="fn:3">Read: will
- <a class="footnote-return" href="#fnref:3"><sup>[return]</sup></a></li>
-<li id="fn:4">Which may or may not be the standard way of doing it
- <a class="footnote-return" href="#fnref:4"><sup>[return]</sup></a></li>
-<li id="fn:5">Believe it or not, pun not intended
- <a class="footnote-return" href="#fnref:5"><sup>[return]</sup></a></li>
-<li id="fn:6">According to the git diff, 26 lines removed and 111 added
- <a class="footnote-return" href="#fnref:6"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>Always a good sign when you find yourself actually playing your own game&hellip; <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>And defined only once to save just a bit on performance; we&rsquo;re going to have to look at that soon&hellip; <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3" role="doc-endnote">
+<p>Read: will <a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:4" role="doc-endnote">
+<p>Which may or may not be the standard way of doing it <a href="#fnref:4" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:5" role="doc-endnote">
+<p>Believe it or not, pun not intended <a href="#fnref:5" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:6" role="doc-endnote">
+<p>According to the git diff, 26 lines removed and 111 added <a href="#fnref:6" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

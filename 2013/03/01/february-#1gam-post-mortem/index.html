@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,37 +71,26 @@
     </header>
 
 	<div class="entry-content"><p>Is it possible to write a post-mortem if you really only got about four hours into a game?</p>
-
 <p>Well, let&rsquo;s hope so. That&rsquo;s all the further I&rsquo;ve made it with this month&rsquo;s <a title="One Game A Month" href="http://onegameamonth.com/">#1GAM</a> a month&ndash;and it&rsquo;s pretty much entirely my fault. The whole idea was to start earlier in the month and spread out the work out a bit&hellip; That didn&rsquo;t happen.</p>
-
 <p>So how far did I get? Well, take a look.</p>
-
 <figure>
     <img src="/embeds/2013/brong-lots-of-balls.png"/> 
 </figure>
 
-
 <p>My goal for this month was to right a smashup of <a href="https://en.wikipedia.org/wiki/Breakout%20%28video%20game%29">Breakout</a> and <a href="https://en.wikipedia.org/wiki/Pong">Pong</a>. I don&rsquo;t know if I&rsquo;ve ever actually written a version of either, so it seemed like a thing to do.</p>
-
 <p>The basic gameplay would have started with a ball on each paddle with a solid wall of Breakout bricks between the two. To actually start scoring, you&rsquo;d have to break through the wall. In addition, there was going to be the whole gamut of Breakout powerups: sticky paddles, speed changing balls, meteors, splitters, you name it. The power ups were going to (theoretically) play a large part in actually beating your opponent.</p>
-
-<p>What I got isn&rsquo;t too bad. In about 4 hours, I managed to write code for balls and paddles using custom drawing and collision detection code. That was about when I realized that I *really* didn&rsquo;t want to write custom collision detection code again&hellip; So I went off in search of a physics library.</p>
-
+<p>What I got isn&rsquo;t too bad. In about 4 hours, I managed to write code for balls and paddles using custom drawing and collision detection code. That was about when I realized that I <em>really</em> didn&rsquo;t want to write custom collision detection code again&hellip; So I went off in search of a physics library.</p>
 <figure>
     <img src="/embeds/2013/brong.png"/> 
 </figure>
 
-
 <p>What I came down to was <a title="Box2D" href="http://box2d.org/">Box2D</a>. It&rsquo;s the physics engine behind such hits as <a title="Angry Birds" href="http://www.angrybirds.com/">Angry Birds</a>, so I figured it should be pretty solid. It took perhaps ten minutes to get everything installed (Box2D requires <a title="slf4j" href="http://www.slf4j.org/">slf4j logging library</a> which took a few minutes to figure out) and about half an hour after that until I had the balls bouncing around as happy as you please. That was nice.</p>
-
 <p>The paddles took a bit longer. It took a bit to get them moving because I didn&rsquo;t want to thread the KeyEvents through everything. Instead, I ended up binding to the <code>KeyboardFocusManager</code> which got be raw <code>KeyEvent</code>s (and all three kinds in one listener as well!).</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">KeyboardFocusManager manager <span style="color:#f92672">=</span> 
     KeyboardFocusManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getCurrentKeyboardFocusManager</span><span style="color:#f92672">();</span>
-manager<span style="color:#f92672">.</span><span style="color:#a6e22e">addKeyEventDispatcher</span><span style="color:#f92672">(</span><span style="color:#66d9ef">this</span><span style="color:#f92672">);</span></code></pre></div>
-<p>It seems to work well enough. Just remember to return <code>false</code> if you want to use more than one of these at the same time.</p>
-
+manager<span style="color:#f92672">.</span><span style="color:#a6e22e">addKeyEventDispatcher</span><span style="color:#f92672">(</span><span style="color:#66d9ef">this</span><span style="color:#f92672">);</span>
+</code></pre></div><p>It seems to work well enough. Just remember to return <code>false</code> if you want to use more than one of these at the same time.</p>
 <p>After that though, I had to figure out how to make the paddles stay at the same height. As it was, they kept getting a bit of vertical movement when the balls hit them. At first, I just gave them a crazy high density. That worked for a bit, but I was still getting some drift. Eventually though, I stumbled onto <a title="Box2D manual" href="http://www.box2d.org/manual.html">Prismatic Joints</a>. Basically, they do exactly what I want: limit movement to one axis. It took a bit to figure out exactly <em>how</em> to hook them up though.</p>
-
 <p>All together, I&rsquo;m actually pretty happy with how far I made it, given the extremely limited amount of time I put into it. I could claim that I&rsquo;m going to do better this month (and I really hope that I do), but only time well tell for certain. The decision I have now is whether to continue work on Brong or to move on to something else. I&rsquo;m leaning towards the latter (not actually a fan of this sort of game), but I still do want to have written Pong/Breakout at some point. It&rsquo;s just something that you do. We&rsquo;ll see.</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">

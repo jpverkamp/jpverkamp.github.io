@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,186 +71,175 @@
     </header>
 
 	<div class="entry-content"><p>As I seem to be <a href="https://blog.jverkamp.com/2013/04/11/perlin-and-simplex-noise-in-racket/">wont to do</a>, I needed something to work on my <a href="https://blog.jverkamp.com/2013/04/04/racket-roguelike-1-a-gui-screens-i/o-and-you/">Roguelike in Racket</a> tutorial series&ndash;so I wrote it! This time, we&rsquo;re looking to add a <a href="https://en.wikipedia.org/wiki/Prototype-based%20programming">prototyped-based object system</a> to Racket. I&rsquo;m sure that someone has rigged up something similar before, but it&rsquo;s often more interesting to work things like this out for oneself.</p>
-
 <p>First, as a short aside, exactly what is a prototype-based object system? Well, Wikipedia says it clearly enough:</p>
-
 <blockquote>
 <p><strong>Prototype-based programming</strong> is a style of <a href="https://en.wikipedia.org/wiki/object-oriented%20programming">object-oriented programming</a> in which <a href="https://en.wikipedia.org/wiki/Class%20%28programming%29">classes</a> are not present, and behavior reuse (known as <a href="https://en.wikipedia.org/wiki/Inheritance%20%28programming%29">inheritance</a> in class-based languages) is performed via a process of <a href="https://en.wikipedia.org/wiki/Cloning%20%28programming%29">cloning</a>existing <a href="https://en.wikipedia.org/wiki/Object%20%28programming%29">objects</a> that serve as <a href="https://en.wikipedia.org/wiki/Prototype">prototypes</a>. This model can also be known as <strong>classless</strong>, <strong>prototype-oriented</strong> or<strong>instance-based</strong> programming. <a href="https://en.wikipedia.org/wiki/Delegation%20%28programming%29">Delegation</a> is the language feature that supports prototype-based programming.</p>
 </blockquote>
-
 <p>Essentially, rather than a dichotomy between classes and objects, everything is the same. If you want to instantiate a class, you clone it. If you want to extend a class, you clone it and add/override previous fields. So you should be able to do something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Create a basic thing</span>
-(define-thing color [red <span style="color:#ae81ff">0</span>] [green <span style="color:#ae81ff">0</span>] [blue <span style="color:#ae81ff">0</span>])
+(<span style="color:#a6e22e">define-thing</span> color [red <span style="color:#ae81ff">0</span>] [green <span style="color:#ae81ff">0</span>] [blue <span style="color:#ae81ff">0</span>])
 
 <span style="color:#75715e">; Extend things</span>
-(define-thing red color [red <span style="color:#ae81ff">255</span>])
+(<span style="color:#a6e22e">define-thing</span> red color [red <span style="color:#ae81ff">255</span>])
 
 <span style="color:#75715e">; Get values, with optional default</span>
-(thing-get color <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">0</span>
-(thing-get red <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">255</span></code></pre></div>
-<p>Also, we want to be able to set values without altering the parent object:</p>
+(<span style="color:#a6e22e">thing-get</span> color <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">0</span>
+(<span style="color:#a6e22e">thing-get</span> red <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">255</span>
+</code></pre></div><p>Also, we want to be able to set values without altering the parent object:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Set value, existing or not</span>
-(thing-set! red <span style="color:#e6db74">&#39;red</span> <span style="color:#ae81ff">1.0</span>)
-(thing-get red <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">1.0</span>
-(thing-get color <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">0</span></code></pre></div>
-<p>So how do we do this?</p>
-
+(<span style="color:#a6e22e">thing-set!</span> red <span style="color:#e6db74">&#39;red</span> <span style="color:#ae81ff">1.0</span>)
+(<span style="color:#a6e22e">thing-get</span> red <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">1.0</span>
+(<span style="color:#a6e22e">thing-get</span> color <span style="color:#e6db74">&#39;red</span>) <span style="color:#66d9ef">=&gt; </span><span style="color:#ae81ff">0</span>
+</code></pre></div><p>So how do we do this?</p>
 <p>Well, to start with, we need something to store key/value pairs. It seems like <code><a href="http://docs.racket-lang.org/search/index.html?q=Hash%20Tables">Hash Tables</a></code>
  will be the perfect option. So let&rsquo;s create a <code>thing</code> structure (it&rsquo;s not a perfect name, but I&rsquo;ve seen worse).</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; A simple wrapper for things</span>
-(define-struct thing (data)
-  <span style="color:#f92672">#</span>:constructor-name new-thing)</code></pre></div>
-<p><code>#:constructor-name</code> is necessary since I want to define my own <code>make-thing</code>. Basically, we could directly return/use a <code>hasheq</code>. But this way, we get things like the <code>thing?</code> predicate and nice (if not particularly helpful) pretty printing:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (define-thing color [red <span style="color:#ae81ff">0</span>] [green <span style="color:#ae81ff">0</span>] [blue <span style="color:#ae81ff">0</span>])
+(<span style="color:#a6e22e">define-struct</span> thing (<span style="color:#a6e22e">data</span>)
+  <span style="color:#f92672">#</span>:constructor-name new-thing)
+</code></pre></div><p><code>#:constructor-name</code> is necessary since I want to define my own <code>make-thing</code>. Basically, we could directly return/use a <code>hasheq</code>. But this way, we get things like the <code>thing?</code> predicate and nice (if not particularly helpful) pretty printing:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#a6e22e">define-thing</span> color [red <span style="color:#ae81ff">0</span>] [green <span style="color:#ae81ff">0</span>] [blue <span style="color:#ae81ff">0</span>])
 &gt; color
-<span style="color:#f92672">#</span></code></pre></div>
-<p>So let&rsquo;s get down to it. What do we need to make a thing? Well, I want it to be semi-fancy (as you may have noticed already), so we&rsquo;re going to need to write a <code><a href="http://docs.racket-lang.org/search/index.html?q=macro">macro</a></code>
+<span style="color:#f92672">#</span>
+</code></pre></div><p>So let&rsquo;s get down to it. What do we need to make a thing? Well, I want it to be semi-fancy (as you may have noticed already), so we&rsquo;re going to need to write a <code><a href="http://docs.racket-lang.org/search/index.html?q=macro">macro</a></code>
 . Without it, we wouldn&rsquo;t be able to use values like <code>red</code>/<code>green</code>/<code>blue</code> without quoting them.</p>
-
 <p>So here&rsquo;s a basic first version:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; A very simple prototype based object system</span>
 (<span style="color:#66d9ef">define-syntax </span>make-thing
   (<span style="color:#66d9ef">syntax-rules </span>()
     <span style="color:#75715e">; Add a key/value pair to a thing</span>
-    [(_ [k v] rest <span style="color:#f92672">...</span>)
-     (<span style="color:#66d9ef">let </span>([thing (make-thing rest <span style="color:#f92672">...</span>)])
-       (hash-set! (thing-data thing) <span style="color:#e6db74">&#39;k</span> v)
+    [(<span style="color:#a6e22e">_</span> [k v] rest <span style="color:#f92672">...</span>)
+     (<span style="color:#66d9ef">let </span>([thing (<span style="color:#a6e22e">make-thing</span> rest <span style="color:#f92672">...</span>)])
+       (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) <span style="color:#e6db74">&#39;k</span> v)
        thing)]
     <span style="color:#75715e">; Create an empty thing</span>
-    [(_)
-     (new-thing (make-hasheq))]))</code></pre></div>
-<p>Basically, this will set up a chain of setting <code>key</code>/<code>value</code> pairs down until the base case which creates the hash itself. We could also create the objects directly in one line with something like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(define-syntax-rule (make-thing [k* v*] <span style="color:#f92672">...</span>)
-  (new-thing
-   (for/hash ([k (in-list <span style="color:#f92672">&#39;</span>(k* <span style="color:#f92672">...</span>))]
-              [v (in-list (list v* <span style="color:#f92672">...</span>))])
-     (values k v))))</code></pre></div>
-<p>On the upside, that&rsquo;s much clearner, but on the downside it won&rsquo;t have the extra behavior that I&rsquo;m going to add in just a moment (extending objects and inline procedure declarations).</p>
-
+    [(<span style="color:#a6e22e">_</span>)
+     (<span style="color:#a6e22e">new-thing</span> (<span style="color:#a6e22e">make-hasheq</span>))]))
+</code></pre></div><p>Basically, this will set up a chain of setting <code>key</code>/<code>value</code> pairs down until the base case which creates the hash itself. We could also create the objects directly in one line with something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">(<span style="color:#a6e22e">define-syntax-rule</span> (<span style="color:#a6e22e">make-thing</span> [k* v*] <span style="color:#f92672">...</span>)
+  (<span style="color:#a6e22e">new-thing</span>
+   (<span style="color:#a6e22e">for/hash</span> ([k (<span style="color:#a6e22e">in-list</span> <span style="color:#f92672">&#39;</span>(k* <span style="color:#f92672">...</span>))]
+              [v (<span style="color:#a6e22e">in-list</span> (list v* <span style="color:#f92672">...</span>))])
+     (values k v))))
+</code></pre></div><p>On the upside, that&rsquo;s much clearner, but on the downside it won&rsquo;t have the extra behavior that I&rsquo;m going to add in just a moment (extending objects and inline procedure declarations).</p>
 <p>So we have a basic system in place. Let&rsquo;s go ahead and write some quick setters/getters. These are actually really straight forward. At first, I wanted to have something where we could use un-quoted keys (which would require another macro), but that wouldn&rsquo;t allow us to pass variable values. So they&rsquo;re just functions. <code>thing-get</code> does allow for default values though, which should be helpful:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Access a value from a thing</span>
-(<span style="color:#66d9ef">define </span>(thing-get thing key [default (void)])
-  (cond
-    [(not (thing? thing))
-     (error <span style="color:#e6db74">&#39;thing-get</span> <span style="color:#e6db74">&#34;~a is not a thing&#34;</span> thing)]
-    [(<span style="color:#66d9ef">or </span>(not (void? default))
-         (hash-has-key? (thing-data thing) key))
-     (hash-ref (thing-data thing) key default)]
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">thing-get</span> thing key [default (<span style="color:#a6e22e">void</span>)])
+  (<span style="color:#a6e22e">cond</span>
+    [(not (<span style="color:#a6e22e">thing?</span> thing))
+     (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;thing-get</span> <span style="color:#e6db74">&#34;~a is not a thing&#34;</span> thing)]
+    [(<span style="color:#66d9ef">or </span>(not (<span style="color:#a6e22e">void?</span> default))
+         (<span style="color:#a6e22e">hash-has-key?</span> (<span style="color:#a6e22e">thing-data</span> thing) key))
+     (<span style="color:#a6e22e">hash-ref</span> (<span style="color:#a6e22e">thing-data</span> thing) key default)]
     [else
-     (error <span style="color:#e6db74">&#39;thing-get</span> <span style="color:#e6db74">&#34;~a does not contain a value for ~a&#34;</span> thing <span style="color:#e6db74">&#39;key</span>)]))
+     (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;thing-get</span> <span style="color:#e6db74">&#34;~a does not contain a value for ~a&#34;</span> thing <span style="color:#e6db74">&#39;key</span>)]))
 
 <span style="color:#75715e">; Set a value in a thing</span>
-(<span style="color:#66d9ef">define </span>(thing-set! thing key val)
-  (cond
-    [(not (thing? thing))
-     (error <span style="color:#e6db74">&#39;thing-set!</span> <span style="color:#e6db74">&#34;~a is not a thing&#34;</span> thing)]
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">thing-set!</span> thing key val)
+  (<span style="color:#a6e22e">cond</span>
+    [(not (<span style="color:#a6e22e">thing?</span> thing))
+     (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;thing-set!</span> <span style="color:#e6db74">&#34;~a is not a thing&#34;</span> thing)]
     [else
-     (hash-set! (thing-data thing) key val)]))</code></pre></div>
-<p>Nothing much to see here, it all works just like those tests that I defined above.</p>
-
+     (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) key val)]))
+</code></pre></div><p>Nothing much to see here, it all works just like those tests that I defined above.</p>
 <p>The next feature I wanted to add was object extension. This is particularly important for a prototype-based system, so we wanted to get it right. Essentially, you can pass an thing as the first argument to <code>make-thing</code> which will copy the values from that thing to the new one before assign key/value pairs. This also lets us override values in a clean manner:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; A very simple prototype based object system</span>
 (<span style="color:#66d9ef">define-syntax </span>make-thing
   (<span style="color:#66d9ef">syntax-rules </span>()
     <span style="color:#75715e">; Add a key/value pair to a thing</span>
-    [(_ [k v] rest <span style="color:#f92672">...</span>)
-     (<span style="color:#66d9ef">let </span>([thing (make-thing rest <span style="color:#f92672">...</span>)])
-       (hash-set! (thing-data thing) <span style="color:#e6db74">&#39;k</span> v)
+    [(<span style="color:#a6e22e">_</span> [k v] rest <span style="color:#f92672">...</span>)
+     (<span style="color:#66d9ef">let </span>([thing (<span style="color:#a6e22e">make-thing</span> rest <span style="color:#f92672">...</span>)])
+       (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) <span style="color:#e6db74">&#39;k</span> v)
        thing)]
-    [(_ base [k v] rest <span style="color:#f92672">...</span>)
-     (<span style="color:#66d9ef">let </span>([thing (make-thing base rest <span style="color:#f92672">...</span>)])
-       (hash-set! (thing-data thing) <span style="color:#e6db74">&#39;k</span> v)
+    [(<span style="color:#a6e22e">_</span> base [k v] rest <span style="color:#f92672">...</span>)
+     (<span style="color:#66d9ef">let </span>([thing (<span style="color:#a6e22e">make-thing</span> base rest <span style="color:#f92672">...</span>)])
+       (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) <span style="color:#e6db74">&#39;k</span> v)
        thing)]
     <span style="color:#75715e">; Create an empty thing</span>
-    [(_)
-     (new-thing (make-hasheq))]
+    [(<span style="color:#a6e22e">_</span>)
+     (<span style="color:#a6e22e">new-thing</span> (<span style="color:#a6e22e">make-hasheq</span>))]
     <span style="color:#75715e">; Copy an existing thing</span>
-    [(_ base)
-     (<span style="color:#66d9ef">if </span>(thing? base)
-         (new-thing (hash-copy (thing-data base)))
-         (error <span style="color:#e6db74">&#39;make-thing</span> <span style="color:#e6db74">&#34;~a is not a thing to extend&#34;</span> base))]))</code></pre></div>
-<p>Having to duplicate the code between the first two cases is suboptimal, but I&rsquo;m not sure how to fix it. Because matching will assign the first pair to <code>base</code> if it can, I kept getting infinite loops when I tried to combine the methods.</p>
-
+    [(<span style="color:#a6e22e">_</span> base)
+     (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">thing?</span> base)
+         (<span style="color:#a6e22e">new-thing</span> (<span style="color:#a6e22e">hash-copy</span> (<span style="color:#a6e22e">thing-data</span> base)))
+         (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;make-thing</span> <span style="color:#e6db74">&#34;~a is not a thing to extend&#34;</span> base))]))
+</code></pre></div><p>Having to duplicate the code between the first two cases is suboptimal, but I&rsquo;m not sure how to fix it. Because matching will assign the first pair to <code>base</code> if it can, I kept getting infinite loops when I tried to combine the methods.</p>
 <p>Now we can do things like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>color (make-thing [red <span style="color:#ae81ff">0</span>] [green <span style="color:#ae81ff">0</span>] [blue <span style="color:#ae81ff">0</span>]))
-&gt; (<span style="color:#66d9ef">define </span>red (make-thing color [red <span style="color:#ae81ff">255</span>]))
-&gt; (thing-get red <span style="color:#e6db74">&#39;red</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>color (<span style="color:#a6e22e">make-thing</span> [red <span style="color:#ae81ff">0</span>] [green <span style="color:#ae81ff">0</span>] [blue <span style="color:#ae81ff">0</span>]))
+&gt; (<span style="color:#66d9ef">define </span>red (<span style="color:#a6e22e">make-thing</span> color [red <span style="color:#ae81ff">255</span>]))
+&gt; (<span style="color:#a6e22e">thing-get</span> red <span style="color:#e6db74">&#39;red</span>)
 <span style="color:#ae81ff">255</span>
-&gt; (thing-get color <span style="color:#e6db74">&#39;red</span>)
-<span style="color:#ae81ff">0</span></code></pre></div>
-<p>That right there would be enough for what I have in mind. We have a full prototype-based system and methods to make getting/setting data easier. But there&rsquo;s one more trick I have up my sleeve. Like Racket&rsquo;s <code><a href="http://docs.racket-lang.org/search/index.html?q=classes">classes</a></code>
+&gt; (<span style="color:#a6e22e">thing-get</span> color <span style="color:#e6db74">&#39;red</span>)
+<span style="color:#ae81ff">0</span>
+</code></pre></div><p>That right there would be enough for what I have in mind. We have a full prototype-based system and methods to make getting/setting data easier. But there&rsquo;s one more trick I have up my sleeve. Like Racket&rsquo;s <code><a href="http://docs.racket-lang.org/search/index.html?q=classes">classes</a></code>
 , I want to have a special syntax for calling methods. I want to be able to do this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>chatterbox (make-thing [(talk name) (format <span style="color:#e6db74">&#34;~a says hello world!&#34;</span> name)]))
-&gt; (thing-call chatterbox <span style="color:#e6db74">&#39;talk</span> <span style="color:#e6db74">&#34;steve&#34;</span>)
-<span style="color:#e6db74">&#34;steve says hello world!&#34;</span></code></pre></div>
-<p>Instead of things like this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>chatterbox (make-thing [talk (<span style="color:#66d9ef">lambda </span>(name) (format <span style="color:#e6db74">&#34;~a says hello world!&#34;</span> name))]))
-&gt; ((thing-get chatterbox <span style="color:#e6db74">&#39;talk</span>) <span style="color:#e6db74">&#34;steve&#34;</span>)
-<span style="color:#e6db74">&#34;steve says hello world!&#34;</span></code></pre></div>
-<p>Although optimally, the two methods can be used interchangeably, internally the former syntax should be converted into the latter. How do we do it? Well, add more to <code>make-thing</code>!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>chatterbox (<span style="color:#a6e22e">make-thing</span> [(<span style="color:#a6e22e">talk</span> name) (<span style="color:#a6e22e">format</span> <span style="color:#e6db74">&#34;~a says hello world!&#34;</span> name)]))
+&gt; (<span style="color:#a6e22e">thing-call</span> chatterbox <span style="color:#e6db74">&#39;talk</span> <span style="color:#e6db74">&#34;steve&#34;</span>)
+<span style="color:#e6db74">&#34;steve says hello world!&#34;</span>
+</code></pre></div><p>Instead of things like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme">&gt; (<span style="color:#66d9ef">define </span>chatterbox (<span style="color:#a6e22e">make-thing</span> [talk (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">name</span>) (<span style="color:#a6e22e">format</span> <span style="color:#e6db74">&#34;~a says hello world!&#34;</span> name))]))
+&gt; ((<span style="color:#a6e22e">thing-get</span> chatterbox <span style="color:#e6db74">&#39;talk</span>) <span style="color:#e6db74">&#34;steve&#34;</span>)
+<span style="color:#e6db74">&#34;steve says hello world!&#34;</span>
+</code></pre></div><p>Although optimally, the two methods can be used interchangeably, internally the former syntax should be converted into the latter. How do we do it? Well, add more to <code>make-thing</code>!</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; A very simple prototype based object system</span>
 (<span style="color:#66d9ef">define-syntax </span>make-thing
   (<span style="color:#66d9ef">syntax-rules </span>()
     <span style="color:#75715e">; Create an empty thing, bind a function</span>
-    [(_ [(k arg* <span style="color:#f92672">...</span>) body* <span style="color:#f92672">...</span>] rest <span style="color:#f92672">...</span>)
-     (<span style="color:#66d9ef">let </span>([thing (make-thing rest <span style="color:#f92672">...</span>)])
-       (hash-set! (thing-data thing) <span style="color:#e6db74">&#39;k</span>
-                  (<span style="color:#66d9ef">lambda </span>(arg* <span style="color:#f92672">...</span>)
+    [(<span style="color:#a6e22e">_</span> [(<span style="color:#a6e22e">k</span> arg* <span style="color:#f92672">...</span>) body* <span style="color:#f92672">...</span>] rest <span style="color:#f92672">...</span>)
+     (<span style="color:#66d9ef">let </span>([thing (<span style="color:#a6e22e">make-thing</span> rest <span style="color:#f92672">...</span>)])
+       (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) <span style="color:#e6db74">&#39;k</span>
+                  (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">arg*</span> <span style="color:#f92672">...</span>)
                     body* <span style="color:#f92672">...</span>))
        thing)]
-    [(_ base [(k arg* <span style="color:#f92672">...</span>) body* <span style="color:#f92672">...</span>] rest <span style="color:#f92672">...</span>)
-     (<span style="color:#66d9ef">let </span>([thing (make-thing base rest <span style="color:#f92672">...</span>)])
-       (hash-set! (thing-data thing) <span style="color:#e6db74">&#39;k</span>
-                  (<span style="color:#66d9ef">lambda </span>(arg* <span style="color:#f92672">...</span>)
+    [(<span style="color:#a6e22e">_</span> base [(<span style="color:#a6e22e">k</span> arg* <span style="color:#f92672">...</span>) body* <span style="color:#f92672">...</span>] rest <span style="color:#f92672">...</span>)
+     (<span style="color:#66d9ef">let </span>([thing (<span style="color:#a6e22e">make-thing</span> base rest <span style="color:#f92672">...</span>)])
+       (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) <span style="color:#e6db74">&#39;k</span>
+                  (<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">arg*</span> <span style="color:#f92672">...</span>)
                     body* <span style="color:#f92672">...</span>))
        thing)]
     <span style="color:#75715e">; Add a key/value pair to a thing</span>
-    [(_ [k v] rest <span style="color:#f92672">...</span>)
-     (<span style="color:#66d9ef">let </span>([thing (make-thing rest <span style="color:#f92672">...</span>)])
-       (hash-set! (thing-data thing) <span style="color:#e6db74">&#39;k</span> v)
+    [(<span style="color:#a6e22e">_</span> [k v] rest <span style="color:#f92672">...</span>)
+     (<span style="color:#66d9ef">let </span>([thing (<span style="color:#a6e22e">make-thing</span> rest <span style="color:#f92672">...</span>)])
+       (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) <span style="color:#e6db74">&#39;k</span> v)
        thing)]
-    [(_ base [k v] rest <span style="color:#f92672">...</span>)
-     (<span style="color:#66d9ef">let </span>([thing (make-thing base rest <span style="color:#f92672">...</span>)])
-       (hash-set! (thing-data thing) <span style="color:#e6db74">&#39;k</span> v)
+    [(<span style="color:#a6e22e">_</span> base [k v] rest <span style="color:#f92672">...</span>)
+     (<span style="color:#66d9ef">let </span>([thing (<span style="color:#a6e22e">make-thing</span> base rest <span style="color:#f92672">...</span>)])
+       (<span style="color:#a6e22e">hash-set!</span> (<span style="color:#a6e22e">thing-data</span> thing) <span style="color:#e6db74">&#39;k</span> v)
        thing)]
     <span style="color:#75715e">; Create an empty thing</span>
-    [(_)
-     (new-thing (make-hasheq))]
+    [(<span style="color:#a6e22e">_</span>)
+     (<span style="color:#a6e22e">new-thing</span> (<span style="color:#a6e22e">make-hasheq</span>))]
     <span style="color:#75715e">; Copy an existing thing</span>
-    [(_ base)
-     (<span style="color:#66d9ef">if </span>(thing? base)
-         (new-thing (hash-copy (thing-data base)))
-         (error <span style="color:#e6db74">&#39;make-thing</span> <span style="color:#e6db74">&#34;~a is not a thing to extend&#34;</span> base))]))</code></pre></div>
-<p>Finally, we have everything we want. Now we have a short form for procedures in things as an analogue to the short form of <code><a href="http://docs.racket-lang.org/search/index.html?q=define">define</a></code>
+    [(<span style="color:#a6e22e">_</span> base)
+     (<span style="color:#66d9ef">if </span>(<span style="color:#a6e22e">thing?</span> base)
+         (<span style="color:#a6e22e">new-thing</span> (<span style="color:#a6e22e">hash-copy</span> (<span style="color:#a6e22e">thing-data</span> base)))
+         (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;make-thing</span> <span style="color:#e6db74">&#34;~a is not a thing to extend&#34;</span> base))]))
+</code></pre></div><p>Finally, we have everything we want. Now we have a short form for procedures in things as an analogue to the short form of <code><a href="http://docs.racket-lang.org/search/index.html?q=define">define</a></code>
 .</p>
-
 <p>And <code>thing-call</code> is straightforward enough:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Call a function stored in a thing</span>
-(<span style="color:#66d9ef">define </span>(thing-call thing key <span style="color:#f92672">.</span> args)
-  (cond
-    [(not (thing? thing))
-     (error <span style="color:#e6db74">&#39;thing-call</span> <span style="color:#e6db74">&#34;~a is not a thing&#34;</span> thing)]
-    [(thing-get thing key <span style="color:#66d9ef">#f</span>)
-     <span style="color:#66d9ef">=&gt; </span>(<span style="color:#66d9ef">lambda </span>(f)
+(<span style="color:#66d9ef">define </span>(<span style="color:#a6e22e">thing-call</span> thing key <span style="color:#f92672">.</span> args)
+  (<span style="color:#a6e22e">cond</span>
+    [(not (<span style="color:#a6e22e">thing?</span> thing))
+     (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;thing-call</span> <span style="color:#e6db74">&#34;~a is not a thing&#34;</span> thing)]
+    [(<span style="color:#a6e22e">thing-get</span> thing key <span style="color:#66d9ef">#f</span>)
+     <span style="color:#66d9ef">=&gt; </span>(<span style="color:#66d9ef">lambda </span>(<span style="color:#a6e22e">f</span>)
           (<span style="color:#66d9ef">if </span>(procedure? f)
               (apply f args)
-              (error <span style="color:#e6db74">&#39;thing-call</span> <span style="color:#e6db74">&#34;~a is not a procedure in ~a, it is ~a&#34;</span>
+              (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;thing-call</span> <span style="color:#e6db74">&#34;~a is not a procedure in ~a, it is ~a&#34;</span>
                      key thing f)))]
     [else
-     (error <span style="color:#e6db74">&#39;thing-get</span> <span style="color:#e6db74">&#34;~a does not contain a value for ~a&#34;</span> thing <span style="color:#e6db74">&#39;key</span>)]))</code></pre></div>
-<p>Have I mentioned before how much I like the <code>=&gt;</code> form of <code>cond</code>?</p>
-
+     (<span style="color:#a6e22e">error</span> <span style="color:#e6db74">&#39;thing-get</span> <span style="color:#e6db74">&#34;~a does not contain a value for ~a&#34;</span> thing <span style="color:#e6db74">&#39;key</span>)]))
+</code></pre></div><p>Have I mentioned before how much I like the <code>=&gt;</code> form of <code>cond</code>?</p>
 <p>One last note, what about <code>define-thing</code>? It&rsquo;s a direct merge of <code>define</code> and <code>make-thing</code>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-scheme" data-lang="scheme"><span style="color:#75715e">; Combine define and make-thing</span>
-(define-syntax-rule (define-thing name arg* <span style="color:#f92672">...</span>)
-  (<span style="color:#66d9ef">define </span>name (make-thing arg* <span style="color:#f92672">...</span>)))</code></pre></div>
-<p>Scheme macros are particularly pleasant.</p>
-
+(<span style="color:#a6e22e">define-syntax-rule</span> (<span style="color:#a6e22e">define-thing</span> name arg* <span style="color:#f92672">...</span>)
+  (<span style="color:#66d9ef">define </span>name (<span style="color:#a6e22e">make-thing</span> arg* <span style="color:#f92672">...</span>)))
+</code></pre></div><p>Scheme macros are particularly pleasant.</p>
 <p>That&rsquo;s it. Now we have a fairly stable prototype system. Since it&rsquo;s backed by a <code>hasheq</code>, it should be relatively quick as well.</p>
-
-<p>If you&rsquo;d like to download/use the code, you can do so here:
-- <a href="https://github.com/jpverkamp/thing" title="thing on GitHub">thing source on GitHub</a></p>
-
+<p>If you&rsquo;d like to download/use the code, you can do so here:</p>
+<ul>
+<li><a href="https://github.com/jpverkamp/thing" title="thing on GitHub">thing source on GitHub</a></li>
+</ul>
 <p>It also makes use of the recently discovered (to me) <code>(module test+ ...)</code> behind the scenes. It lets you write testing cases that won&rsquo;t even be compiled unless you specifically need them. Read more about it here: <code><a href="http://docs.racket-lang.org/search/index.html?q=Main%20and%20Test%20Submodules">Main and Test Submodules</a></code>
 </p></div>
 </article></div>

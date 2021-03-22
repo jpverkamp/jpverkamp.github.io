@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -74,42 +74,35 @@
     </header>
 
 	<div class="entry-content"><p>Based on a <a href="">/r/dailyprogrammer</a> puzzle: <a href="https://www.reddit.com/r/dailyprogrammer/comments/3pwf17/20151023_challenge_237_hard_takuzu_solver/">Takuzu solver</a>.</p>
-
 <p>Basically, Takuzu is a logic puzzle similar to Sudoku. You are given a grid partially filled with 0s and 1s. You have to fill in the rest of the grid according to three simple rules:</p>
-
 <ul>
 <li>You cannot have more than three of the same number in a line</li>
-<li>Each column must have an equal number of 0s and 1s<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup></li>
+<li>Each column must have an equal number of 0s and 1s<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></li>
 <li>No two rows or no two columns can be identical</li>
 </ul>
-
 <p>Thus, if you have a puzzle like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">0.01.1
 0....1
 ..00..
 ..00..
 1....0
-10.0.0</code></pre></div>
-<p>One valid solution (most puzzles should have only a single valid answer, but that doesn&rsquo;t always seem to be the case):</p>
+10.0.0
+</code></pre></div><p>One valid solution (most puzzles should have only a single valid answer, but that doesn&rsquo;t always seem to be the case):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">010101
 001101
 110010
 010011
 101100
-101010</code></pre></div>
-<p>Let&rsquo;s do it!</p>
-
+101010
+</code></pre></div><p>Let&rsquo;s do it!</p>
 <p>First, we need some sort of structure to represent and read in a Takuzu board. I think I&rsquo;m going to over-engineer a little bit here, since I think it will be helpful in the long run.</p>
-
 <p>My basic idea is to represent it in a way without mutation, that is to say once I&rsquo;ve created a board, that board will never change. That will make it easier to write a backtracking solution, since when we need to back up to a previous state, we just throw away any of the derivative boards.</p>
-
 <p>Taking that a level further, let&rsquo;s represent the Takuzu board as a base board with an essentially a &lsquo;changelog&rsquo; on top of it, storing any differences from the boards &lsquo;under&rsquo; it. Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-text" data-lang="text">....    ..1.    ....    ..1.
 0.0. {- .... {- .... == 0.0.
 ..0.    ....    ....    ..0.
-...1    ..1.    .0..    .011</code></pre></div>
-<p>In that diagram, the board on the far left is the first layer, then the second is the next layer up, and the third is the final layer. The fourth image is the virtual board that any user of the program would actually see.</p>
-
+...1    ..1.    .0..    .011
+</code></pre></div><p>In that diagram, the board on the far left is the first layer, then the second is the next layer up, and the third is the final layer. The fourth image is the virtual board that any user of the program would actually see.</p>
 <p>So how do we turn that into code?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Takuzu</span>(object):
 
@@ -190,13 +183,10 @@
         <span style="color:#66d9ef">else</span>:
             <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">Exception</span>(<span style="color:#e6db74">&#39;Must set at least one of row and column&#39;</span>)
 
-        <span style="color:#66d9ef">return</span> child</code></pre></div>
-<p>The interesting bits here are the <code>get</code> and <code>set</code> methods. <code>get</code>, as mentioned, assumes the layered structure above. It will start on the topmost layer (the actual object the program has a reference to) and try to look up the given point. If that fails (we&rsquo;re using a <code>collections.defaultdict</code>, so every reference will either by <code>'0'</code>, <code>'1'</code>, or <code>False</code>), fall back to the next layer up (the <code>parent</code>) until we either find one or run out of <code>parent</code> nodes.</p>
-
+        <span style="color:#66d9ef">return</span> child
+</code></pre></div><p>The interesting bits here are the <code>get</code> and <code>set</code> methods. <code>get</code>, as mentioned, assumes the layered structure above. It will start on the topmost layer (the actual object the program has a reference to) and try to look up the given point. If that fails (we&rsquo;re using a <code>collections.defaultdict</code>, so every reference will either by <code>'0'</code>, <code>'1'</code>, or <code>False</code>), fall back to the next layer up (the <code>parent</code>) until we either find one or run out of <code>parent</code> nodes.</p>
 <p>Similarly, <code>set</code> doesn&rsquo;t actually change the current Takuzu object. Instead, it creates a new object with the current one as its parent, setting the new value in the child. This means that any values that were previously set are transparently available in the child, but we can at any point backtrack so long as we keep a reference to the now parent object around.</p>
-
 <p>In addition, I&rsquo;ve gone ahead and built in a bit of functionality that I know we&rsquo;re going to need into <code>get</code> and <code>set</code>. In either case, if you only specify either the <code>row</code> or <code>col</code> and leave the other empty (<code>None</code>), then we will return that entire row or column (or <code>set</code> any empty values). That&rsquo;s easy enough to code and it has the advantage of making it easy to compare rows to one another (for the third requirement above).</p>
-
 <p>Okay, up next, we&rsquo;ll probably want a few more helper functions in this class in order to actually tell when we&rsquo;ve solved one of these puzzles so the algorithms we eventually write can actually terminate:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Takuzu</span>(object):
     <span style="color:#f92672">...</span>
@@ -280,15 +270,11 @@
     <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_solved</span>(self):
         <span style="color:#e6db74">&#39;&#39;&#39;Return True iff this puzzle is solved.&#39;&#39;&#39;</span>
 
-        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>is_full() <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>is_valid()</code></pre></div>
-<p><code>__eq__</code> and <code>__str__</code> are &lsquo;magic&rsquo; methods in Python that will define equality and converting this object to a string respectively. This will be nice to make sure we don&rsquo;t investigate the same board more than once later.</p>
-
-<p>After that, we have <code>is_full</code>, <code>is_valid</code>, and <code>is_solved</code><sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>. In the first case, we&rsquo;re checking if a puzzle has everything filled in. That way we know if we can stop recurring one way or the other.</p>
-
+        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>is_full() <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>is_valid()
+</code></pre></div><p><code>__eq__</code> and <code>__str__</code> are &lsquo;magic&rsquo; methods in Python that will define equality and converting this object to a string respectively. This will be nice to make sure we don&rsquo;t investigate the same board more than once later.</p>
+<p>After that, we have <code>is_full</code>, <code>is_valid</code>, and <code>is_solved</code><sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>. In the first case, we&rsquo;re checking if a puzzle has everything filled in. That way we know if we can stop recurring one way or the other.</p>
 <p><code>is_valid</code> is actually a relatively new method. Before that, I could only check if a puzzle <code>is_solved</code>, but this way we can eliminate entire branches of the search space much earlier. For example, as soon as a backtracking solution places the third <code>0</code> in a row, it can stop looking down that path since <code>is_valid</code> will return <code>False</code>. Finally, <code>is_solved</code>. It used to have most of the <code>is_valid</code> code, but once that method existed, a puzzle <code>is_solved</code> simply if both it <code>is_full</code> and it <code>is_valid</code>. Easy enough.</p>
-
 <p>So how do we actually solve a puzzle with this?</p>
-
 <p>Let&rsquo;s start with the simple (relatively speaking, since we&rsquo;ve done it before) backtracking solution. Given everything that we have in the Takuzu class, the actual solver is actually really simple:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">solve</span>(takuzu):
     <span style="color:#e6db74">&#39;&#39;&#39;Solve a puzzle using backtracking (also a fall back for the human solver).&#39;&#39;&#39;</span>
@@ -316,19 +302,17 @@
                         <span style="color:#66d9ef">return</span>
         enqueue()
 
-    <span style="color:#66d9ef">return</span> False</code></pre></div>
-<p>Basically, we keep a stack of solutions, which will allow us to perform a <a href="https://en.wikipedia.org/wiki/depth-first%20search">depth-first search</a><sup class="footnote-ref" id="fnref:3"><a href="#fn:3">3</a></sup>.</p>
-
+    <span style="color:#66d9ef">return</span> False
+</code></pre></div><p>Basically, we keep a stack of solutions, which will allow us to perform a <a href="https://en.wikipedia.org/wiki/depth-first%20search">depth-first search</a><sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup>.</p>
 <p>Basically, create a branch, trying first a <code>0</code> in the first empty spot. Looking down that path, if we find a solution, we&rsquo;re done. If we don&rsquo;t try a <code>1</code> instead. That&rsquo;s really it. And it&rsquo;s actually relatively fast.</p>
-
 <p>Given the input:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-test" data-lang="test">0..1.0
+<pre><code class="language-test" data-lang="test">0..1.0
 0.11..
 ......
 ......
 1..1..
-.....0</code></pre></div>
-<p>We can solve it easily enough:</p>
+.....0
+</code></pre><p>We can solve it easily enough:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 takuzu.py --method backtracker sample_6x6.takuzu
 
 <span style="color:#ae81ff">010110</span>
@@ -338,9 +322,8 @@
 <span style="color:#ae81ff">100101</span>
 <span style="color:#ae81ff">101010</span>
 
-Solved in <span style="color:#ae81ff">0</span>.15 seconds</code></pre></div>
-<p>Nice. (You can check out the <a href="https://github.com/jpverkamp/takuzu">full source</a> if you&rsquo;d like to see how I&rsquo;m handling the command line parameters along with a few other goodies.<sup class="footnote-ref" id="fnref:4"><a href="#fn:4">4</a></sup>)</p>
-
+Solved in 0.15 seconds
+</code></pre></div><p>Nice. (You can check out the <a href="https://github.com/jpverkamp/takuzu">full source</a> if you&rsquo;d like to see how I&rsquo;m handling the command line parameters along with a few other goodies.<sup id="fnref:4"><a href="#fn:4" class="footnote-ref" role="doc-noteref">4</a></sup>)</p>
 <p>Unfortunately, as puzzles get a bit larger, that runtime isn&rsquo;t so great:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 takuzu.py --method backtracker sample_8x8.takuzu
 
@@ -353,11 +336,9 @@ Solved in <span style="color:#ae81ff">0</span>.15 seconds</code></pre></div>
 <span style="color:#ae81ff">10100110</span>
 <span style="color:#ae81ff">00110011</span>
 
-Solved in <span style="color:#ae81ff">47</span>.03 seconds</code></pre></div>
-<p>Yeah&hellip;</p>
-
+Solved in 47.03 seconds
+</code></pre></div><p>Yeah&hellip;</p>
 <p>We can do better.</p>
-
 <p>How about instead of trying to solve the puzzle like a computer (brute forcing it), let&rsquo;s apply some heuristics more like a human would solve the puzzle. For example, if we see a pair of 0s next to each other, we know the tile on either side of it is a 1 (likewise for a pair of 0s separated by a single space and said space):</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__third_of_a_kind__</span>(takuzu):
     <span style="color:#e6db74">&#39;&#39;&#39;If adding a value would make three in a row, add the other.&#39;&#39;&#39;</span>
@@ -384,9 +365,8 @@ Solved in <span style="color:#ae81ff">47</span>.03 seconds</code></pre></div>
                 <span style="color:#66d9ef">if</span> val1 <span style="color:#f92672">and</span> val2 <span style="color:#f92672">and</span> val1 <span style="color:#f92672">==</span> val2:
                     <span style="color:#66d9ef">return</span> takuzu<span style="color:#f92672">.</span>set(row, col, invert(val1))
 
-    <span style="color:#66d9ef">return</span> False</code></pre></div>
-<p>Basically, for each empty tile in the current puzzle, compare each of six pairs. Either those in the four cardinal directions or the pair on either side horizontally or vertically.</p>
-
+    <span style="color:#66d9ef">return</span> False
+</code></pre></div><p>Basically, for each empty tile in the current puzzle, compare each of six pairs. Either those in the four cardinal directions or the pair on either side horizontally or vertically.</p>
 <p>Next rule, let&rsquo;s look for rows where we already have the necessary number of 0s and only need 1s. We can just fill those out:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__fill_rows__</span>(takuzu):
     <span style="color:#e6db74">&#39;&#39;&#39;If we can figure out how many 0s and 1s we need for each and any row/col needs
@@ -402,9 +382,8 @@ Solved in <span style="color:#ae81ff">47</span>.03 seconds</code></pre></div>
                     <span style="color:#66d9ef">if</span> takuzu<span style="color:#f92672">.</span>get(row, col)<span style="color:#f92672">.</span>count(invert(value)) <span style="color:#f92672">&lt;</span> takuzu<span style="color:#f92672">.</span>size <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>:
                         <span style="color:#66d9ef">return</span> takuzu<span style="color:#f92672">.</span>set(row, col, invert(value))
 
-    <span style="color:#66d9ef">return</span> False</code></pre></div>
-<p>It&rsquo;s neat how short that code is.</p>
-
+    <span style="color:#66d9ef">return</span> False
+</code></pre></div><p>It&rsquo;s neat how short that code is.</p>
 <p>Finally (for the moment at least), let&rsquo;s write a slightly more complicated method. This time, let&rsquo;s take a single row or column and generate all the possible ways we can fill it out. Then remove those that would either lead to a duplicate or three in a row. If we have only exactly one row left, then we&rsquo;re golden. That&rsquo;s our row:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__fill_by_duplicates__</span>(takuzu):
     <span style="color:#e6db74">&#39;&#39;&#39;Fill a puzzle by checking if any rows/cols are near enough to done that only one
@@ -454,8 +433,8 @@ Solved in <span style="color:#ae81ff">47</span>.03 seconds</code></pre></div>
                 <span style="color:#66d9ef">return</span> takuzu
 
     <span style="color:#75715e"># Never found one</span>
-    <span style="color:#66d9ef">return</span> False</code></pre></div>
-<p>I&rsquo;m not nearly as happy with this rule as I am with the other two. Mostly because of the difference between rows and columns, the code is a little strange. The core of it is the <code>permute_nones</code> helper, which will take a list containing some number of <code>None</code> entries and fill them each with either a <code>0</code> or <code>1</code>, generating all possibilities:</p>
+    <span style="color:#66d9ef">return</span> False
+</code></pre></div><p>I&rsquo;m not nearly as happy with this rule as I am with the other two. Mostly because of the difference between rows and columns, the code is a little strange. The core of it is the <code>permute_nones</code> helper, which will take a list containing some number of <code>None</code> entries and fill them each with either a <code>0</code> or <code>1</code>, generating all possibilities:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">permute_nones</span>(ls):
     <span style="color:#e6db74">&#39;&#39;&#39;Helper function to generate all permutations from filling in 0s and 1s into a list&#39;&#39;&#39;</span>
 
@@ -467,8 +446,8 @@ Solved in <span style="color:#ae81ff">47</span>.03 seconds</code></pre></div>
     <span style="color:#66d9ef">else</span>:
         <span style="color:#66d9ef">for</span> value <span style="color:#f92672">in</span> <span style="color:#e6db74">&#39;01&#39;</span>:
             <span style="color:#66d9ef">for</span> recur <span style="color:#f92672">in</span> permute_nones(ls[<span style="color:#ae81ff">1</span>:]):
-                <span style="color:#66d9ef">yield</span> [value] <span style="color:#f92672">+</span> recur</code></pre></div>
-<p>And that&rsquo;s all of my rules from now. The basic algorithm will be to apply each of those three rules in turn (since even after one has stopped working, another may &lsquo;unblock it&rsquo;). If we get to the point where none of those three rules work, fall back to the backtracker we discussed above:</p>
+                <span style="color:#66d9ef">yield</span> [value] <span style="color:#f92672">+</span> recur
+</code></pre></div><p>And that&rsquo;s all of my rules from now. The basic algorithm will be to apply each of those three rules in turn (since even after one has stopped working, another may &lsquo;unblock it&rsquo;). If we get to the point where none of those three rules work, fall back to the backtracker we discussed above:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">RULES <span style="color:#f92672">=</span> [
     __third_of_a_kind__,
     __fill_rows__,
@@ -499,8 +478,8 @@ Solved in <span style="color:#ae81ff">47</span>.03 seconds</code></pre></div>
         <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> updated:
             <span style="color:#66d9ef">break</span>
 
-    <span style="color:#66d9ef">return</span> takuzu</code></pre></div>
-<p>Since we don&rsquo;t have to use the much slower (runtime <span class="latex-inline">O(2^n)</span>
+    <span style="color:#66d9ef">return</span> takuzu
+</code></pre></div><p>Since we don&rsquo;t have to use the much slower (runtime <span class="latex-inline">O(2^n)</span>
 ) backtracking solution for the entire puzzle, this should run significantly faster:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#960050;background-color:#1e0010">$</span> python3 takuzu<span style="color:#f92672">.</span>py <span style="color:#f92672">--</span>method human sample_6x6<span style="color:#f92672">.</span>takuzu
 
@@ -524,13 +503,10 @@ Solved <span style="color:#f92672">in</span> <span style="color:#ae81ff">0.13</s
 <span style="color:#ae81ff">10100110</span>
 <span style="color:#ae81ff">00110011</span>
 
-Solved <span style="color:#f92672">in</span> <span style="color:#ae81ff">37.23</span> seconds</code></pre></div>
-<p>Okay. So 0.13 seconds isn&rsquo;t <em>that</em> much faster than 0.15 seconds, and 37.23 seconds is only a bit faster than 47.03 seconds. For easier puzzles (those where a human wouldn&rsquo;t have to guess), you&rsquo;ll get a better improvement. These were considered &lsquo;hard&rsquo;.</p>
-
+Solved <span style="color:#f92672">in</span> <span style="color:#ae81ff">37.23</span> seconds
+</code></pre></div><p>Okay. So 0.13 seconds isn&rsquo;t <em>that</em> much faster than 0.15 seconds, and 37.23 seconds is only a bit faster than 47.03 seconds. For easier puzzles (those where a human wouldn&rsquo;t have to guess), you&rsquo;ll get a better improvement. These were considered &lsquo;hard&rsquo;.</p>
 <p>We can do better though.</p>
-
 <p>Right now, we fall back to a pure backtracking solution rather than the faster human rules if we ever fail to advance. What if we combined the two models? Use the human solution until you get stuck; then advance exactly one step with the backtracking model; then switch back to the human model. If that branch fails, you reset back to the backtracking step, the human steps can be skipped for this.</p>
-
 <p>Let&rsquo;s try it:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">RULES <span style="color:#f92672">=</span> copy<span style="color:#f92672">.</span>copy(solvers<span style="color:#f92672">.</span>human<span style="color:#f92672">.</span>RULES)
 RULES<span style="color:#f92672">.</span>remove(solvers<span style="color:#f92672">.</span>backtracker<span style="color:#f92672">.</span>solve)
@@ -585,8 +561,8 @@ RULES<span style="color:#f92672">.</span>remove(solvers<span style="color:#f9267
                         <span style="color:#66d9ef">return</span>
         enqueue()
 
-    <span style="color:#66d9ef">return</span> False</code></pre></div>
-<p>So how much does that buy us?</p>
+    <span style="color:#66d9ef">return</span> False
+</code></pre></div><p>So how much does that buy us?</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#960050;background-color:#1e0010">$</span> python3 takuzu<span style="color:#f92672">.</span>py <span style="color:#f92672">--</span>method hybrid sample_6x6<span style="color:#f92672">.</span>takuzu
 
 <span style="color:#ae81ff">010110</span>
@@ -609,33 +585,36 @@ Solved <span style="color:#f92672">in</span> <span style="color:#ae81ff">0.05</s
 <span style="color:#ae81ff">10100110</span>
 <span style="color:#ae81ff">00110011</span>
 
-Solved <span style="color:#f92672">in</span> <span style="color:#ae81ff">0.67</span> seconds</code></pre></div>
-<p>Hah! That&rsquo;s more like it!</p>
-
-<p>For now, that&rsquo;s it<sup class="footnote-ref" id="fnref:5"><a href="#fn:5">5</a></sup>. If you&rsquo;d like to see how I structured the code (it&rsquo;s big enough to spread into multiple files), how I parsed command line parameters, or how I dynamically load the various solvers, you can see the entire code on GitHub: <a href="https://github.com/jpverkamp/takuzu">jpverkamp/takuzu</a>.</p>
-
-<p>I like puzzles. Perhaps I&rsquo;ll try <a href="https://en.wikipedia.org/wiki/Suduko">Suduko</a> next. Or maybe <a href="https://en.wikipedia.org/wiki/Hashi%20puzzles">Hashiwokakero</a><sup class="footnote-ref" id="fnref:6"><a href="#fn:6">6</a></sup>. Onwards!<sup class="footnote-ref" id="fnref:7"><a href="#fn:7">7</a></sup></p>
-<div class="footnotes">
-
-<hr />
-
+Solved <span style="color:#f92672">in</span> <span style="color:#ae81ff">0.67</span> seconds
+</code></pre></div><p>Hah! That&rsquo;s more like it!</p>
+<p>For now, that&rsquo;s it<sup id="fnref:5"><a href="#fn:5" class="footnote-ref" role="doc-noteref">5</a></sup>. If you&rsquo;d like to see how I structured the code (it&rsquo;s big enough to spread into multiple files), how I parsed command line parameters, or how I dynamically load the various solvers, you can see the entire code on GitHub: <a href="https://github.com/jpverkamp/takuzu">jpverkamp/takuzu</a>.</p>
+<p>I like puzzles. Perhaps I&rsquo;ll try <a href="https://en.wikipedia.org/wiki/Suduko">Suduko</a> next. Or maybe <a href="https://en.wikipedia.org/wiki/Hashi%20puzzles">Hashiwokakero</a><sup id="fnref:6"><a href="#fn:6" class="footnote-ref" role="doc-noteref">6</a></sup>. Onwards!<sup id="fnref:7"><a href="#fn:7" class="footnote-ref" role="doc-noteref">7</a></sup></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">For the longest time, I thought this meant you could have something like four 0s and two 1s, so long as you had that in every row and column; turns out that&rsquo;s not the case and a 6x6 will always have exactly three each of 0s and 1s
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">I miss being able to use mostly arbitrary characters in function names
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
-<li id="fn:3">If we wanted a <a href="https://en.wikipedia.org/wiki/breadth-first%20search">breadth-first search</a>, we would use a queue instead. Although in practice it doesn&rsquo;t seem to actually matter much.
- <a class="footnote-return" href="#fnref:3"><sup>[return]</sup></a></li>
-<li id="fn:4">Animation!
- <a class="footnote-return" href="#fnref:4"><sup>[return]</sup></a></li>
-<li id="fn:5">It turns out there are some large collections of puzzles online. One such site is <a href="http://www.binarypuzzle.com/puzzles.php">binarypuzzle.com</a>. They have puzzles ranging in size from 6x6 up to 14x14 in 4 difficulty levels, 100 of each. That&rsquo;s a total of 2000 puzzles. I have a script to solve all of them with each solver, but it&rsquo;s still running. Another day.
- <a class="footnote-return" href="#fnref:5"><sup>[return]</sup></a></li>
-<li id="fn:6">I actually started on a solver for Hashi puzzles first, but my intial model didn&rsquo;t work out nearly as cleanly
- <a class="footnote-return" href="#fnref:6"><sup>[return]</sup></a></li>
-<li id="fn:7">Alteratively, perhaps I&rsquo;ll try generating Takuzu puzzles instead. With a fast enough humanish solver, that should be relatively easy to do.
- <a class="footnote-return" href="#fnref:7"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>For the longest time, I thought this meant you could have something like four 0s and two 1s, so long as you had that in every row and column; turns out that&rsquo;s not the case and a 6x6 will always have exactly three each of 0s and 1s <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>I miss being able to use mostly arbitrary characters in function names <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3" role="doc-endnote">
+<p>If we wanted a <a href="https://en.wikipedia.org/wiki/breadth-first%20search">breadth-first search</a>, we would use a queue instead. Although in practice it doesn&rsquo;t seem to actually matter much. <a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:4" role="doc-endnote">
+<p>Animation! <a href="#fnref:4" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:5" role="doc-endnote">
+<p>It turns out there are some large collections of puzzles online. One such site is <a href="http://www.binarypuzzle.com/puzzles.php">binarypuzzle.com</a>. They have puzzles ranging in size from 6x6 up to 14x14 in 4 difficulty levels, 100 of each. That&rsquo;s a total of 2000 puzzles. I have a script to solve all of them with each solver, but it&rsquo;s still running. Another day. <a href="#fnref:5" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:6" role="doc-endnote">
+<p>I actually started on a solver for Hashi puzzles first, but my intial model didn&rsquo;t work out nearly as cleanly <a href="#fnref:6" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:7" role="doc-endnote">
+<p>Alteratively, perhaps I&rsquo;ll try generating Takuzu puzzles instead. With a fast enough humanish solver, that should be relatively easy to do. <a href="#fnref:7" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">

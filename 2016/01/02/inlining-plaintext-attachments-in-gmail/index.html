@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -71,25 +71,18 @@
     </header>
 
 	<div class="entry-content"><p>When you send a text message to a Gmail email address (at least from an iPhone using AT&amp;T), you get something like this:</p>
-
 <figure>
     <img src="/embeds/2016/gpti-before.png"/> 
 </figure>
 
-
 <p>It&rsquo;s vaguely annoying to have to click through every single time just to see what the message is, especially when various extensions (such as <a href="https://github.com/gorhill/uMatrix">uMatrix</a>) break overlay rendering or when you have multiple attachments.</p>
-
 <p>Much better would be to just display the plaintext attachments inline:</p>
-
 <figure>
     <img src="/embeds/2016/gpti-after.png"/> 
 </figure>
 
-
 <p>Let&rsquo;s do it!</p>
-
 <p>Essentially, I&rsquo;m going to write a Javascript userscript, compatible with <a href="https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/">Greasemonkey</a> or <a href="https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo?hl=en">Tampermonkey</a> for Chrome. Either allows you to insert small bits of Javascript into web pages to modify their behavior.</p>
-
 <p>After digging around a bit in the structure of Gmail&rsquo;s message pages, here&rsquo;s roughly what I ended up with:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">checkForPlaintexts</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">function</span>(<span style="color:#a6e22e">evt</span>) {
     <span style="color:#a6e22e">jQuery</span>(<span style="color:#e6db74">&#39;span[download_url]&#39;</span>).<span style="color:#a6e22e">each</span>(<span style="color:#66d9ef">function</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">el</span>) {
@@ -109,25 +102,16 @@
         });
     });
 };
-</code></pre></div>
-<p>Basically, we&rsquo;re going to look for a <code>span</code> containing a <code>download_url</code> attribute. For the moment at least, that&rsquo;s always present with attachments and not otherwise. If you take that <code>download_url</code> element, you get something like this:</p>
-
-<p><code>text/plain:text_0.txt:https://mail.google.com/mail/u/0/?ui=...</code>`</p>
-
+</code></pre></div><p>Basically, we&rsquo;re going to look for a <code>span</code> containing a <code>download_url</code> attribute. For the moment at least, that&rsquo;s always present with attachments and not otherwise. If you take that <code>download_url</code> element, you get something like this:</p>
+<p>`text/plain:text_0.txt:https://mail.google.com/mail/u/0/?ui=&hellip;``</p>
 <p>The first part is a <a href="https://en.wikipedia.org/wiki/MIME%20type">MIME type</a>&ndash;of which, we&rsquo;re only interested in plaintext. The last section is a URL under gmail which, when visited, contains the contents of the attachment.</p>
-
-<p>Now that I have that (via jQuery<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup><sup class="footnote-ref" id="fnref:2"><a href="#fn:2">2</a></sup>), I build a new <code>pre</code> element with the text content and shove it in place.</p>
-
+<p>Now that I have that (via jQuery<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup><sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>), I build a new <code>pre</code> element with the text content and shove it in place.</p>
 <p>Voila.</p>
-
 <p>All I have to do next is make sure that it&rsquo;s called when I either load the page or when I navigate from the Inbox (et al) to a message:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#a6e22e">jQuery</span>(window).<span style="color:#a6e22e">bind</span>(<span style="color:#e6db74">&#39;hashchange&#39;</span>, <span style="color:#a6e22e">checkForPlaintexts</span>);
 <span style="color:#a6e22e">jQuery</span>(<span style="color:#a6e22e">checkForPlaintexts</span>);
-</code></pre></div>
-<p>Unfortunately, this has some issues as well. It works if the message has already been viewed once, but not on the first load. Basically, I&rsquo;m running into timing issues.</p>
-
+</code></pre></div><p>Unfortunately, this has some issues as well. It works if the message has already been viewed once, but not on the first load. Basically, I&rsquo;m running into timing issues.</p>
 <p>My original solution to this was to put in a quick delay and call it a day. Unfortunately, when using satellite internet&hellip; even that didn&rsquo;t work. So instead, I built a system that will delay the initial call and then&ndash;if it fails&ndash;try a few more times with increasing timeouts between then.</p>
-
 <p>Something like this:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-javascript" data-lang="javascript"><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">delayedEvent</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">function</span>(<span style="color:#a6e22e">f</span>, <span style="color:#a6e22e">timeout</span>, <span style="color:#a6e22e">retries</span>) {
     <span style="color:#a6e22e">timeout</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">timeout</span> <span style="color:#f92672">||</span> <span style="color:#ae81ff">0</span>;
@@ -156,27 +140,22 @@
 
 <span style="color:#a6e22e">jQuery</span>(window).<span style="color:#a6e22e">bind</span>(<span style="color:#e6db74">&#39;hashchange&#39;</span>, <span style="color:#a6e22e">delayedEvent</span>(<span style="color:#a6e22e">checkForPlaintexts</span>, <span style="color:#ae81ff">125</span>, <span style="color:#ae81ff">3</span>));
 <span style="color:#a6e22e">jQuery</span>(<span style="color:#a6e22e">delayedEvent</span>(<span style="color:#a6e22e">checkForPlaintexts</span>, <span style="color:#ae81ff">125</span>, <span style="color:#ae81ff">3</span>));
-</code></pre></div>
-<p>So far, this has worked perfectly. Sometimes it takes a bit to fetch the ajax call in the background. That&rsquo;s why I put in the <code>Loading...</code> notification to tell the user it was working.</p>
-
+</code></pre></div><p>So far, this has worked perfectly. Sometimes it takes a bit to fetch the ajax call in the background. That&rsquo;s why I put in the <code>Loading...</code> notification to tell the user it was working.</p>
 <p>It&rsquo;s been a little while since I last wrote a userscript (pre-Chrome, to give you an idea). I forgot how much fun it can be to mess with websites a bit like that. I may write up a few more.</p>
-
 <p>If you&rsquo;d like to see the entire source (includes some debug messaging and the userscript header comments), you can do so on GitHub: <a href="https://github.com/jpverkamp/userscripts/blob/master/gmail-plaintext-inline.user.js">gmail-plaintext-inline.user.js</a></p>
-
 <p>If you want to install it directly (and have Greasemonkey/Tampermonkey installed), you can directly from GitHub as well: <a href="https://github.com/jpverkamp/userscripts/raw/master/gmail-plaintext-inline.user.js">install gmail-plaintext-inline.user.js</a>.</p>
-
 <p>As a side note, &lsquo;optional&rsquo; parameters in Javascript are weird&hellip;</p>
-<div class="footnotes">
-
-<hr />
-
+<section class="footnotes" role="doc-endnotes">
+<hr>
 <ol>
-<li id="fn:1">I know that including jQuery for just this is overkill when you can do both element selection and ajax calls without it, but hey. It works.
- <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
-<li id="fn:2">If something is stupid but works, it&rsquo;s not stupid.
- <a class="footnote-return" href="#fnref:2"><sup>[return]</sup></a></li>
+<li id="fn:1" role="doc-endnote">
+<p>I know that including jQuery for just this is overkill when you can do both element selection and ajax calls without it, but hey. It works. <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>If something is stupid but works, it&rsquo;s not stupid. <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
 </ol>
-</div></div>
+</section></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">
