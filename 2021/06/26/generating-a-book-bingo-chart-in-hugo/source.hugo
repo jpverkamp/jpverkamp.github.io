@@ -1,0 +1,36 @@
+{{- $title := .Get 0 -}}
+{{- $slug := $title | urlize }}
+{{- $data := index $.Site.Data.bingo $title -}}
+
+<h1>{{ $title }}</h1>
+
+<table class="bingo">
+    {{- range $row := seq 0 4 -}}
+    <tr>
+        {{- range $col := seq 0 4 -}}
+        <td>
+            {{- $index := (printf "%dx%d" (add 1 $row) (add 1 $col) )}}
+            {{- $indexHard := (printf "%dx%d+" (add 1 $row) (add 1 $col) )}}
+            {{- $title := index $data $row $col }}
+
+            <p>{{ $title | markdownify }}</p>
+            
+            {{- range $page := index $.Site.Taxonomies "bingo" $slug -}}
+                {{- $squares := index $page.Params "bingo-data" (replace $slug "-" " ") -}}
+                {{- if (or (in $squares $index) (in $squares $indexHard)) -}}
+                    <a href="{{ $page.Permalink }}">
+                        <figure>
+                            {{ safeHTML (index (findRE "(?m:<img.*?>)" .Content 1) 0) }}
+                            <figcaption>{{ .Title }}</figcaption>
+                        </figure> 
+                    </a>
+                    {{- if in $squares $indexHard -}}
+                    <p>(Hard Mode)</p>
+                    {{- end -}}
+                {{- end -}}
+            {{- end -}}
+        </td>
+        {{- end -}}
+    </tr>
+    {{- end -}}
+</table>
