@@ -7,6 +7,80 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/sources/advent-of-code/atom.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>AoC 2021 Day 5: Linear Avoidinator</title>
+      <link>https://blog.jverkamp.com/2021/12/05/aoc-2021-day-5-linear-avoidinator/</link>
+      <pubDate>Sun, 05 Dec 2021 00:00:10 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/05/aoc-2021-day-5-linear-avoidinator/</guid>
+      <description>&lt;h3 id=&#34;source-hydrothermal-venturehttpsadventofcodecom2021day5&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/5&#34;&gt;Hydrothermal Venture&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-list-of-lines-find-the-number-of-integer-points-which-are-covered-by-more-than-one-line-ignore-non-vertical-and-non-horizontal-lines&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a list of lines, find the number of integer points which are covered by more than one line (ignore non-vertical and non-horizontal lines).&lt;/h4&gt;
+&lt;p&gt;Okay. Start with the data structures:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Point&lt;/span&gt;:
+    x: int
+    y: int
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Line&lt;/span&gt;:
+    p1: Point
+    p2: Point
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;is_vertical&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p1&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;is_horizontal&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p1&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;is_orthagonal&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;is_vertical() &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;is_horizontal()
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;points&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#75715e&#34;&gt;# TODO: handle lines that aren&amp;#39;t vertical, horizontal, or diagonal&lt;/span&gt;
+
+        xd &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p1&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p1&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+        yd &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p1&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p1&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+
+        p &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p1
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;!=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;p2:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; p
+            p &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Point(p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; p
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Dataclasses are great. They give you constructors and a bunch of other things for free. On top of that, if you specify &lt;code&gt;frozen=True&lt;/code&gt;, making them immutable, you also get &lt;code&gt;hashable&lt;/code&gt; types for free (which I&amp;rsquo;ll use in the problem).&lt;/p&gt;
+&lt;p&gt;Perhaps the most interesting bit here is the function that will iterate through the &lt;code&gt;points&lt;/code&gt; in a &lt;code&gt;List&lt;/code&gt;. Specifically, it will figure out the x and y delta (&lt;code&gt;xd&lt;/code&gt; and &lt;code&gt;yd&lt;/code&gt;) and repeatedly add that until you hit the end point.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Note:&lt;/strong&gt; this only works for lines that are vertical, horizontal, or diagonal (at 45 degrees). Anything else needs a better &lt;a href=&#34;https://en.wikipedia.org/wiki/line%20drawing%20algorithm&#34;&gt;line drawing algorithm&lt;/a&gt; (of which there are a few). If we need it, I&amp;rsquo;ll implement it.&lt;/p&gt;
+&lt;p&gt;Next, use that to parse:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;parse&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[Line]:
+    result &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file:
+        x1, y1, x2, y2 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [int(v) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; v &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;replace(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39; -&amp;gt; &amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;)&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;)]
+        result&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(Line(Point(x1, y1), Point(x2, y2)))
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; result
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;The input format is &lt;code&gt;x1,y1 -&amp;gt; x2,y2&lt;/code&gt;, but it&amp;rsquo;s easier to split and convert if we do it all directly. There are a few other ways we could have done this: splitting on anything non-numeric or using a regular expression / something else for parsing directly. But I think this is clear enough.&lt;/p&gt;
+&lt;p&gt;And with all that, the problem is actually pretty short:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    lines &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; parse(file)
+    counter: MutableMapping[Point, int] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; collections&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Counter()
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; lines:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;is_orthagonal():
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; point &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points():
+            counter[point] &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(sum(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; count &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; point, count &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; counter&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items()))
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;We&amp;rsquo;ll use the built in &lt;code&gt;collections.Counter&lt;/code&gt; datatype, since that&amp;rsquo;s exactly what we&amp;rsquo;re doing: counting things. Then just iterate over every line, skip the non-orthagonal ones, iterate over every point, and count them up. At the end, print the number that we saw more than once. Et voila.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 linear-avoidinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;5632&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
+    <item>
       <title>AoC 2021 Day 4: His Name Oh</title>
       <link>https://blog.jverkamp.com/2021/12/04/aoc-2021-day-4-his-name-oh/</link>
       <pubDate>Sat, 04 Dec 2021 00:00:10 +0000</pubDate>
@@ -843,25 +917,6 @@ sw +&amp;ndash;+ se
 &lt;blockquote&gt;
 &lt;p&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Take the &lt;a href=&#34;https://blog.jverkamp.com/2016/12/12/aoc-2016-day-12-assembunny/&#34;&gt;assembunny interpreter from day 12&lt;/a&gt; and add one new instruction (out &lt;code&gt;x&lt;/code&gt;) which transmits the value &lt;code&gt;x&lt;/code&gt; (either an integer or register). Find the lowest value we can initialize &lt;code&gt;a&lt;/code&gt; to so that the &lt;code&gt;out&lt;/code&gt;put signals form an infinite repeating pattern of &lt;code&gt;0&lt;/code&gt;, &lt;code&gt;1&lt;/code&gt;, &lt;code&gt;0&lt;/code&gt;, &lt;code&gt;1&lt;/code&gt;, &amp;hellip;&lt;/p&gt;
 &lt;/blockquote&gt;</description>
-    </item>
-    
-    <item>
-      <title>AoC 2016 Day 24: Venti</title>
-      <link>https://blog.jverkamp.com/2016/12/24/aoc-2016-day-24-venti/</link>
-      <pubDate>Sat, 24 Dec 2016 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2016/12/24/aoc-2016-day-24-venti/</guid>
-      <description>&lt;h3 id=&#34;source-air-duct-spelunkinghttpadventofcodecom2016day24&#34;&gt;Source: &lt;a href=&#34;http://adventofcode.com/2016/day/24&#34;&gt;Air Duct Spelunking&lt;/a&gt;&lt;/h3&gt;
-&lt;blockquote&gt;
-&lt;p&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a map of the form:&lt;/p&gt;
-&lt;/blockquote&gt;
-&lt;blockquote&gt;
-&lt;pre&gt;&lt;code&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/blockquote&gt;
-&lt;p&gt;###########
-#0.1&amp;hellip;..2#
-#.#######.#
-#4&amp;hellip;&amp;hellip;.3#
-###########&lt;/p&gt;</description>
     </item>
     
   </channel>
