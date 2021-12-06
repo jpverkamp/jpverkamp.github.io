@@ -7,6 +7,96 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/languages/python/atom.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>AoC 2021 Day 6: We All Glow Down Here</title>
+      <link>https://blog.jverkamp.com/2021/12/06/aoc-2021-day-6-we-all-glow-down-here/</link>
+      <pubDate>Mon, 06 Dec 2021 00:00:10 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/06/aoc-2021-day-6-we-all-glow-down-here/</guid>
+      <description>&lt;h3 id=&#34;source-latternfishhttpsadventofcodecom2021day6&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/6&#34;&gt;Latternfish&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-simulate-a-population-of-lanternfish-each-fish-is-immortal-starts-having-children-after-9-days-and-has-another-child-after-7-more-days-calculate-the-number-of-fish-after-80-days&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Simulate a population of lanternfish. Each fish is immortal, starts having children after 9 days, and has another child after 7 more days. Calculate the number of fish after 80 days.&lt;/h4&gt;
+&lt;p&gt;I can almost guarantee that part 2 will be scaling up significantly, so the obvious answer of keeping a list of ages and simulating each will&amp;hellip; probably get very slow. Instead, we don&amp;rsquo;t care at all about individual fish, let&amp;rsquo;s just keep their ages:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;School&lt;/span&gt;:
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Represents a school of fish.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __init__(self, fish):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Loads the given list of fish into a map of ages.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+            age: &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; age &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(&lt;span style=&#34;color:#ae81ff&#34;&gt;9&lt;/span&gt;)
+        }
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; each &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; fish:
+            self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[each] &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;from_file&lt;/span&gt;(file: TextIO):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Load a school from a file-like object&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        fish &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+            int(age)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; age &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;)
+        ]
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; School(fish)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;step&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Advance this school 1 day.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        All fish increase in age by 1 tick
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Fish that are of a spawning age reset to 7 days to spawn and create a new 9 day to spawn fish. 
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Remember 0 based indexing.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Remember how many fish are going to spawn&lt;/span&gt;
+        breeding &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Increase age of each fish by 1&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; age &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;9&lt;/span&gt;):
+            self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[age &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[age]
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Each fish that spawns moves to age 6 (don&amp;#39;t overwrite previously age 7) and spawns a new one of age 8&lt;/span&gt;
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[&lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; breeding
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[&lt;span style=&#34;color:#ae81ff&#34;&gt;8&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; breeding
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __str__(self):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return a comma-delimited list of fish ages.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(
+            str(age)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; age, qty &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items()
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; _ &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(qty)
+        )
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;size&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return the number of fish in the school.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; sum(qty &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; age, qty &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items())
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;That really handles it. Most of it is bookkeeping: loading in the fish from a file, printing them nicely, and counting the &lt;code&gt;len&lt;/code&gt; / number of fish. The interesting bit is &lt;code&gt;step&lt;/code&gt;, where we have to be a little careful with ages:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;All fish age 1-8 increase in age 1 step (which means they are one step closer to breeding age)&lt;/li&gt;
+&lt;li&gt;All fish age 0 revert to age 6 (which means 6 steps to breeding age) plus spawn a new one&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;If we count up, that means each number overwrites the one we&amp;rsquo;ve already done, which is fine.&lt;/p&gt;
+&lt;p&gt;And&amp;hellip; that&amp;rsquo;s all we really need:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@app.command&lt;/span&gt;()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;(ticks: int, file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+    school &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; School&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_file(file)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(ticks):
+        school&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;step()
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(school&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;size())
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Run it for 80:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 we-all-glow-down-here.py &lt;span style=&#34;color:#ae81ff&#34;&gt;80&lt;/span&gt; input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;395627&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Fin.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
       <title>AoC 2021 Day 5: Linear Avoidinator</title>
       <link>https://blog.jverkamp.com/2021/12/05/aoc-2021-day-5-linear-avoidinator/</link>
       <pubDate>Sun, 05 Dec 2021 00:00:10 +0000</pubDate>
@@ -998,15 +1088,6 @@ sw +&amp;ndash;+ se
 &lt;blockquote&gt;
 &lt;p&gt;After applying the above algorithm, what is the product of the first two elements in the list (from the original first position, not the &lt;code&gt;current_position&lt;/code&gt;)?&lt;/p&gt;
 &lt;/blockquote&gt;</description>
-    </item>
-    
-    <item>
-      <title>Migrating to Hugo</title>
-      <link>https://blog.jverkamp.com/2017/12/10/migrating-to-hugo/</link>
-      <pubDate>Sun, 10 Dec 2017 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2017/12/10/migrating-to-hugo/</guid>
-      <description>&lt;p&gt;A long time ago&lt;sup id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;1&lt;/a&gt;&lt;/sup&gt;, in a galaxy far, far away&lt;sup id=&#34;fnref:2&#34;&gt;&lt;a href=&#34;#fn:2&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;2&lt;/a&gt;&lt;/sup&gt;, I &lt;a href=&#34;https://blog.jverkamp.com/2014/08/08/onwards-and-upwards/&#34;&gt;moved my blog&lt;/a&gt; from WordPress to a custom written static blog generator in Racket. And for a while, all was well.&lt;/p&gt;</description>
     </item>
     
   </channel>
