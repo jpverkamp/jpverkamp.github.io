@@ -7,6 +7,99 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/sources/advent-of-code/atom.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>AoC 2021 Day 8: Seven Segment Demystifier</title>
+      <link>https://blog.jverkamp.com/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/</link>
+      <pubDate>Wed, 08 Dec 2021 00:00:10 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/</guid>
+      <description>&lt;h3 id=&#34;source-seven-segment-searchhttpsadventofcodecom2021day8&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/8&#34;&gt;Seven Segment Search&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-simulate-a-hahahugoshortcode-s0-hbhb-where-you-do-not-know-which-input-wire-controls-which-segment-given-the-wires-used-in-all-ten-digits-and-four-output-digits-count-how-many-times-1-4-7-and-8-are-outputted&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Simulate a &lt;a href=&#34;https://en.wikipedia.org/wiki/seven%20segment%20displey&#34;&gt;seven segment displey&lt;/a&gt; where you do not know which input wire controls which segment. Given the wires used in all ten digits and four output digits, count how many times 1, 4, 7, and 8 are outputted.&lt;/h4&gt;
+&lt;p&gt;This one took me &lt;em&gt;far&lt;/em&gt; longer to work out than I&amp;rsquo;d care to admit. And it wasn&amp;rsquo;t at all because I had the wrong approach (I went for brute force again), but rather because I had &lt;em&gt;mistyped one character&lt;/em&gt; in my input. Bah humbug. That&amp;rsquo;s why you write tests&amp;hellip; Oy.&lt;/p&gt;
+&lt;p&gt;Like I mentioned, I&amp;rsquo;m just going to try to brute force this problem. It will be slower than using their advice (the advice being that there is always 1 input with two segments (one) and 1 with 3 (seven). Instead, brute forcing all ten digits makes for much cleaner code. First, let&amp;rsquo;s set up some constants:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Seven segment display&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#   0:      1:      2:      3:      4:&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#  aaaa    ....    aaaa    aaaa    ....&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# b    c  .    c  .    c  .    c  b    c&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# b    c  .    c  .    c  .    c  b    c&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#  ....    ....    dddd    dddd    dddd&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# e    f  .    f  e    .  .    f  .    f&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# e    f  .    f  e    .  .    f  .    f&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#  gggg    ....    gggg    gggg    ....&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#   5:      6:      7:      8:      9:&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#  aaaa    aaaa    aaaa    aaaa    aaaa&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# b    .  b    .  .    c  b    c  b    c&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# b    .  b    .  .    c  b    c  b    c&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#  dddd    dddd    ....    dddd    dddd&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# .    f  e    f  .    f  e    f  .    f&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# .    f  e    f  .    f  e    f  .    f&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;#  gggg    gggg    ....    gggg    gggg&lt;/span&gt;
+
+SEGMENTS &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;e&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;e&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;e&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;e&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;},
+    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;},
+]
+
+ALPHABET &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;abcdefg&amp;#39;&lt;/span&gt;
+MAPPINGS &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+    dict(zip(ALPHABET, ordering))
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; ordering &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; itertools&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;permutations(ALPHABET)
+]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;The &lt;code&gt;SEGMENTS&lt;/code&gt; define a set of correctly labeled wires goes to each segment (in order). So &lt;code&gt;0&lt;/code&gt; uses all of them but &lt;code&gt;d&lt;/code&gt;, &lt;code&gt;1&lt;/code&gt; uses only &lt;code&gt;c&lt;/code&gt; and &lt;code&gt;f&lt;/code&gt;, etc.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;MAPPINGS&lt;/code&gt; is a neat trick. Using &lt;code&gt;&lt;a href=&#34;https://docs.python.org/3/search.html?q=itertools.permutations&#34;&gt;itertools.permutations&lt;/a&gt;&lt;/code&gt;
+, we can generate all possible arrangements of the 7 letters in &lt;code&gt;ALPHABET&lt;/code&gt;. We then zip each &lt;code&gt;ordering&lt;/code&gt; up with &lt;code&gt;ALPHABET&lt;/code&gt;, convert to a &lt;code&gt;dict&lt;/code&gt; and we have a conversion. For example:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; MAPPINGS[&lt;span style=&#34;color:#ae81ff&#34;&gt;286&lt;/span&gt;]
+{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;c&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;d&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;e&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;f&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;b&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;e&amp;#39;&lt;/span&gt;}
+&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; MAPPINGS[&lt;span style=&#34;color:#ae81ff&#34;&gt;286&lt;/span&gt;][&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;]
+&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;a&amp;#39;&lt;/span&gt;
+&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; MAPPINGS[&lt;span style=&#34;color:#ae81ff&#34;&gt;286&lt;/span&gt;][&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;g&amp;#39;&lt;/span&gt;]
+&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;e&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;In this case, input wire &lt;code&gt;a&lt;/code&gt; maps to output &lt;code&gt;a&lt;/code&gt;, but &lt;code&gt;g&lt;/code&gt; maps to &lt;code&gt;e&lt;/code&gt;, etc.&lt;/p&gt;
+&lt;p&gt;Okay. Fun part. For each input, we have all ten digits, with the input wires that makes those up, but we don&amp;rsquo;t know which mapping matches. But we do know if a &lt;code&gt;mapping&lt;/code&gt; is valid, it will have to turn each of those ten inputs into one of the possible &lt;code&gt;SEGMENTS&lt;/code&gt;. So we can do this:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;load&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Generator[List[int], None, None]:
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Load an input file with a scrambled set of 7 segment displays than 4 output digits.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file:
+        raw_inputs, raw_outputs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39; | &amp;#39;&lt;/span&gt;)
+        inputs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [set(input) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; input &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; raw_inputs&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split()]
+        outputs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [set(output) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; output &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; raw_outputs&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split()]
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; mapping &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; MAPPINGS:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; any(
+                {mapping[v] &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; v &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; input} &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; SEGMENTS
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; input &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; inputs
+            ):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; [
+                SEGMENTS&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;index({mapping[v] &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; v &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; output})
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; output &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; outputs
+            ]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;We&amp;rsquo;ll take the input (which looks like &lt;code&gt;acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf&lt;/code&gt;), split the input and output, and then go through each &lt;code&gt;mapping&lt;/code&gt;. The line &lt;code&gt;{mapping[v] for v in input}&lt;/code&gt; creates the output given the mapping, so we apply that to every &lt;code&gt;input&lt;/code&gt; in &lt;code&gt;inputs&lt;/code&gt; and check for any &lt;em&gt;not&lt;/em&gt; in &lt;code&gt;SEGMENTS&lt;/code&gt;. If that&amp;rsquo;s the case, the mapping isn&amp;rsquo;t valid, so skip it. We should have exactly 1 mapping that&amp;rsquo;s valid, so decode the outputs (using that same mapping) and &lt;code&gt;yield&lt;/code&gt; the resulting digits.&lt;/p&gt;
+&lt;p&gt;I expect that&amp;rsquo;s overkill / already implementing part 2&amp;hellip; but that&amp;rsquo;s okay!&lt;/p&gt;
+&lt;p&gt;Since we have the digits, count up the 1, 4, 7, and 8 (they&amp;rsquo;re the easiest to determine).&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(sum(
+        &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; digit &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;8&lt;/span&gt;) &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; digits &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; load(file)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; digit &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; digits
+    ))
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Yeah&amp;hellip; that&amp;rsquo;s it!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 seven-segment-demystifier.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;349&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
+    <item>
       <title>AoC 2021 Day 7: Brachyura Aligner</title>
       <link>https://blog.jverkamp.com/2021/12/07/aoc-2021-day-7-brachyura-aligner/</link>
       <pubDate>Tue, 07 Dec 2021 00:00:10 +0000</pubDate>
@@ -1005,18 +1098,6 @@ sw +&amp;ndash;+ se
       <description>&lt;h3 id=&#34;source-corruption-checksumhttpadventofcodecom2017day2&#34;&gt;Source: &lt;a href=&#34;http://adventofcode.com/2017/day/2&#34;&gt;Corruption Checksum&lt;/a&gt;&lt;/h3&gt;
 &lt;blockquote&gt;
 &lt;p&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; The checksum of a list of numbers is the difference between the largest and smallest number in the row. What is the sum of checksums of a file containing many such lists?&lt;/p&gt;
-&lt;/blockquote&gt;</description>
-    </item>
-    
-    <item>
-      <title>AoC 2017 Day 1: Ahctpat</title>
-      <link>https://blog.jverkamp.com/2017/12/01/aoc-2017-day-1-ahctpat/</link>
-      <pubDate>Fri, 01 Dec 2017 00:00:03 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2017/12/01/aoc-2017-day-1-ahctpat/</guid>
-      <description>&lt;h3 id=&#34;source-inverse-captchahttpadventofcodecom2017day1&#34;&gt;Source: &lt;a href=&#34;http://adventofcode.com/2017/day/1&#34;&gt;Inverse Captcha&lt;/a&gt;&lt;/h3&gt;
-&lt;blockquote&gt;
-&lt;p&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a number, what is the sum of pairs of digits that match (wrapping the last digit around to the first)?&lt;/p&gt;
 &lt;/blockquote&gt;</description>
     </item>
     

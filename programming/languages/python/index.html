@@ -50,6 +50,100 @@
     <article class="li">
     	<header>
     		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/" class="clearfix">AoC 2021 Day 8: Seven Segment Demystifier</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-08</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-seven-segment-searchhttpsadventofcodecom2021day8">Source: <a href="https://adventofcode.com/2021/day/8">Seven Segment Search</a></h3>
+<h4 id="part-1-simulate-a-hahahugoshortcode-s0-hbhb-where-you-do-not-know-which-input-wire-controls-which-segment-given-the-wires-used-in-all-ten-digits-and-four-output-digits-count-how-many-times-1-4-7-and-8-are-outputted"><strong>Part 1:</strong> Simulate a <a href="https://en.wikipedia.org/wiki/seven%20segment%20displey">seven segment displey</a> where you do not know which input wire controls which segment. Given the wires used in all ten digits and four output digits, count how many times 1, 4, 7, and 8 are outputted.</h4>
+<p>This one took me <em>far</em> longer to work out than I&rsquo;d care to admit. And it wasn&rsquo;t at all because I had the wrong approach (I went for brute force again), but rather because I had <em>mistyped one character</em> in my input. Bah humbug. That&rsquo;s why you write tests&hellip; Oy.</p>
+<p>Like I mentioned, I&rsquo;m just going to try to brute force this problem. It will be slower than using their advice (the advice being that there is always 1 input with two segments (one) and 1 with 3 (seven). Instead, brute forcing all ten digits makes for much cleaner code. First, let&rsquo;s set up some constants:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Seven segment display</span>
+<span style="color:#75715e">#   0:      1:      2:      3:      4:</span>
+<span style="color:#75715e">#  aaaa    ....    aaaa    aaaa    ....</span>
+<span style="color:#75715e"># b    c  .    c  .    c  .    c  b    c</span>
+<span style="color:#75715e"># b    c  .    c  .    c  .    c  b    c</span>
+<span style="color:#75715e">#  ....    ....    dddd    dddd    dddd</span>
+<span style="color:#75715e"># e    f  .    f  e    .  .    f  .    f</span>
+<span style="color:#75715e"># e    f  .    f  e    .  .    f  .    f</span>
+<span style="color:#75715e">#  gggg    ....    gggg    gggg    ....</span>
+<span style="color:#75715e">#</span>
+<span style="color:#75715e">#   5:      6:      7:      8:      9:</span>
+<span style="color:#75715e">#  aaaa    aaaa    aaaa    aaaa    aaaa</span>
+<span style="color:#75715e"># b    .  b    .  .    c  b    c  b    c</span>
+<span style="color:#75715e"># b    .  b    .  .    c  b    c  b    c</span>
+<span style="color:#75715e">#  dddd    dddd    ....    dddd    dddd</span>
+<span style="color:#75715e"># .    f  e    f  .    f  e    f  .    f</span>
+<span style="color:#75715e"># .    f  e    f  .    f  e    f  .    f</span>
+<span style="color:#75715e">#  gggg    gggg    ....    gggg    gggg</span>
+
+SEGMENTS <span style="color:#f92672">=</span> [
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
+    {<span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>},
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
+    {<span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>},
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>},
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
+    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
+]
+
+ALPHABET <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;abcdefg&#39;</span>
+MAPPINGS <span style="color:#f92672">=</span> [
+    dict(zip(ALPHABET, ordering))
+    <span style="color:#66d9ef">for</span> ordering <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>permutations(ALPHABET)
+]
+</code></pre></div><p>The <code>SEGMENTS</code> define a set of correctly labeled wires goes to each segment (in order). So <code>0</code> uses all of them but <code>d</code>, <code>1</code> uses only <code>c</code> and <code>f</code>, etc.</p>
+<p><code>MAPPINGS</code> is a neat trick. Using <code><a href="https://docs.python.org/3/search.html?q=itertools.permutations">itertools.permutations</a></code>
+, we can generate all possible arrangements of the 7 letters in <code>ALPHABET</code>. We then zip each <code>ordering</code> up with <code>ALPHABET</code>, convert to a <code>dict</code> and we have a conversion. For example:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> MAPPINGS[<span style="color:#ae81ff">286</span>]
+{<span style="color:#e6db74">&#39;a&#39;</span>: <span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>: <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>: <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>: <span style="color:#e6db74">&#39;g&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>: <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>: <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>: <span style="color:#e6db74">&#39;e&#39;</span>}
+<span style="color:#f92672">&gt;&gt;&gt;</span> MAPPINGS[<span style="color:#ae81ff">286</span>][<span style="color:#e6db74">&#39;a&#39;</span>]
+<span style="color:#e6db74">&#39;a&#39;</span>
+<span style="color:#f92672">&gt;&gt;&gt;</span> MAPPINGS[<span style="color:#ae81ff">286</span>][<span style="color:#e6db74">&#39;g&#39;</span>]
+<span style="color:#e6db74">&#39;e&#39;</span>
+</code></pre></div><p>In this case, input wire <code>a</code> maps to output <code>a</code>, but <code>g</code> maps to <code>e</code>, etc.</p>
+<p>Okay. Fun part. For each input, we have all ten digits, with the input wires that makes those up, but we don&rsquo;t know which mapping matches. But we do know if a <code>mapping</code> is valid, it will have to turn each of those ten inputs into one of the possible <code>SEGMENTS</code>. So we can do this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">load</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> Generator[List[int], None, None]:
+    <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">    Load an input file with a scrambled set of 7 segment displays than 4 output digits.&#39;&#39;&#39;</span>
+
+    <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
+        raw_inputs, raw_outputs <span style="color:#f92672">=</span> line<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; | &#39;</span>)
+        inputs <span style="color:#f92672">=</span> [set(input) <span style="color:#66d9ef">for</span> input <span style="color:#f92672">in</span> raw_inputs<span style="color:#f92672">.</span>split()]
+        outputs <span style="color:#f92672">=</span> [set(output) <span style="color:#66d9ef">for</span> output <span style="color:#f92672">in</span> raw_outputs<span style="color:#f92672">.</span>split()]
+
+        <span style="color:#66d9ef">for</span> mapping <span style="color:#f92672">in</span> MAPPINGS:
+            <span style="color:#66d9ef">if</span> any(
+                {mapping[v] <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> input} <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> SEGMENTS
+                <span style="color:#66d9ef">for</span> input <span style="color:#f92672">in</span> inputs
+            ):
+                <span style="color:#66d9ef">continue</span>
+
+            <span style="color:#66d9ef">yield</span> [
+                SEGMENTS<span style="color:#f92672">.</span>index({mapping[v] <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> output})
+                <span style="color:#66d9ef">for</span> output <span style="color:#f92672">in</span> outputs
+            ]
+</code></pre></div><p>We&rsquo;ll take the input (which looks like <code>acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf</code>), split the input and output, and then go through each <code>mapping</code>. The line <code>{mapping[v] for v in input}</code> creates the output given the mapping, so we apply that to every <code>input</code> in <code>inputs</code> and check for any <em>not</em> in <code>SEGMENTS</code>. If that&rsquo;s the case, the mapping isn&rsquo;t valid, so skip it. We should have exactly 1 mapping that&rsquo;s valid, so decode the outputs (using that same mapping) and <code>yield</code> the resulting digits.</p>
+<p>I expect that&rsquo;s overkill / already implementing part 2&hellip; but that&rsquo;s okay!</p>
+<p>Since we have the digits, count up the 1, 4, 7, and 8 (they&rsquo;re the easiest to determine).</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+    <span style="color:#66d9ef">print</span>(sum(
+        <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> digit <span style="color:#f92672">in</span> (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">4</span>, <span style="color:#ae81ff">7</span>, <span style="color:#ae81ff">8</span>) <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0</span>
+        <span style="color:#66d9ef">for</span> digits <span style="color:#f92672">in</span> load(file)
+        <span style="color:#66d9ef">for</span> digit <span style="color:#f92672">in</span> digits
+    ))
+</code></pre></div><p>Yeah&hellip; that&rsquo;s it!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 seven-segment-demystifier.py part1 input.txt
+<span style="color:#ae81ff">349</span>
+</code></pre></div><p><a href="/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
                 <a href="https://blog.jverkamp.com/2021/12/07/aoc-2021-day-7-brachyura-aligner/" class="clearfix">AoC 2021 Day 7: Brachyura Aligner</a></h1>
 
     		<div class="entry-meta"><span class="entry-date">2021-12-07</span>
@@ -336,18 +430,6 @@ target<span style="color:#f92672">=</span>323, fuel<span style="color:#f92672">=
     <img src="/embeds/2021/hi_5.png"/> 
 </figure>
 </p><p><a href="/2021/08/10/splitting-images/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/06/28/ordering-board-game-geek-geeklists-by-rank/" class="clearfix">Ordering Board Game Geek GeekLists by Rank</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-06-28</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><p>A quick script.</p>
-<p>I play a lot of board games. With the whole COVID-19 mess, I&rsquo;ve been playing a lot on <a href="https://boardgamearena.com/">Board Game Arena</a>, which is a wonderful site. But one thing that&rsquo;s a bit lacking is having ratings / metadata about games to great games I&rsquo;ve just not heard about before. Where can you get lots of that data? <a href="https://boardgamegeek.com/">Board Game Geek</a>!</p>
-<p>The problem though, is merging the two. So, how do we do it? Well, this time around, I&rsquo;m going to start with <a href="https://boardgamegeek.com/geeklist/252354/list-games-board-game-arena">this GeekList</a> that someone else maintains of BGA games on BGG. Which has the games, but no ranks. And apparently there are no ways to rank those by BGG (for some reason). But that&rsquo;s easy when you know a bit of scripting!</p><p><a href="/2021/06/28/ordering-board-game-geek-geeklists-by-rank/">read more...</a></p></div>
 
         <hr /></article><nav id="pagination-navigation" role="navigation">
 <ul class="pagination">
