@@ -6,7 +6,64 @@
     <description>Recent content on jverkamp.com</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 08 Dec 2021 00:00:10 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 09 Dec 2021 00:00:15 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AoC 2021 Day 9: Local Minimum Deminifier</title>
+      <link>https://blog.jverkamp.com/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/</link>
+      <pubDate>Thu, 09 Dec 2021 00:00:15 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/</guid>
+      <description>&lt;h3 id=&#34;source-smoke-basinhttpsadventofcodecom2021day9&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/9&#34;&gt;Smoke Basin&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-heightmap-find-all-local-minimums-return-the-sum-of-minimum-height--1-for-each-local-minimum&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a heightmap, find all local minimums. Return the sum of (minimum height + 1) for each local minimum.&lt;/h4&gt;
+&lt;p&gt;First, as is often the case, let&amp;rsquo;s load the data:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;load&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; MutableMapping[Tuple[int, int], int]:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; {
+        (x, y): int(height)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y, line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(file)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, height &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip())
+    }
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This could more efficiently have been stored in a 2D array, but I really like dicts of &lt;code&gt;point -&amp;gt; value&lt;/code&gt; for this sort of thing. Especially because in Python you don&amp;rsquo;t actually need the &lt;code&gt;()&lt;/code&gt; for tuples in most cases, just the comma. So &lt;code&gt;heightmap[x,y]&lt;/code&gt; works great.&lt;/p&gt;
+&lt;p&gt;After we have that data, it&amp;rsquo;s just a matter of checking each point to see if all 2/3/4 neighbors are larger than a specific point, while at the same time making sure that we don&amp;rsquo;t run off the edge of the map.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@app.command&lt;/span&gt;()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    heightmap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; load(file)
+    total_risk &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y), height &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; heightmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items():
+        neighbor_heights &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+            heightmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;get((x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd), &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; xd, yd &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; ORTHAGONAL_NEIGHBORS
+        ]
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; min(neighbor_heights) &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; height:
+            total_risk &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; height &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{total_risk=}&amp;#39;&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;code&gt;ORTHAGONAL_NEIGHBORS = [(-1, 0), (1, 0), (0, -1), (0, 1)]&lt;/code&gt;. And that&amp;rsquo;s all we need:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 local-minimum-deminifier.py part1 input.txt
+total_risk&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;491&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
+    <item>
+      <title>Hellblazer, Vol. 8: Rake at the Gates of Hell</title>
+      <link>https://blog.jverkamp.com/2021/12/09/hellblazer-vol.-8-rake-at-the-gates-of-hell/</link>
+      <pubDate>Thu, 09 Dec 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/09/hellblazer-vol.-8-rake-at-the-gates-of-hell/</guid>
+      <description>There was a lot of potential in this episode, with two longer storylines&amp;ndash;one the continuation of the angels/devil storyline we&amp;rsquo;ve been dealing with for a while. But unfortunately, outside of a few very cool/trippy visuals it was a surprisingly quiet volume. A lot of human trouble, not enough supernatural craziness. Less moping at least, but without a real transition (at least in my opinion). Not terrible, but certainly one of the weaker entries in the series.</description>
+    </item>
+    
+    <item>
+      <title>An Alchemy of Masques and Mirrors</title>
+      <link>https://blog.jverkamp.com/2021/12/08/an-alchemy-of-masques-and-mirrors/</link>
+      <pubDate>Wed, 08 Dec 2021 00:00:10 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/08/an-alchemy-of-masques-and-mirrors/</guid>
+      <description>Well that was delightful. One of the reasons I&amp;rsquo;m really glad for the 2021 Book Bingo. I don&amp;rsquo;t know when/if I would have found this book, if not for that, and I really quite enjoyed it. It&amp;rsquo;s got great steampunky worldbuilding (with some hints of body horror I honestly feel steampunk should probably have more of), royal/courtly intrigue, wonderful characters, and some delightful writing (with a French twist to the word choices that I don&amp;rsquo;t see much of).</description>
+    </item>
+    
     <item>
       <title>AoC 2021 Day 8: Seven Segment Demystifier</title>
       <link>https://blog.jverkamp.com/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/</link>
@@ -809,42 +866,6 @@ Let&amp;rsquo;s say&amp;hellip; that&amp;rsquo;s at once exactly what I expected
       <guid>https://blog.jverkamp.com/2021/10/17/the-rescuers-down-under/</guid>
       <description>Well that&amp;rsquo;s an absolute blast of childhood nostalgia. We had this movie on VHS when I was little and I remember watching the heck out of it, although I haven&amp;rsquo;t otherwise seen it in decades now. Truth be told, it wasn&amp;rsquo;t until recently that I realized it was even a sequel&amp;hellip;
 In any case. The Rescuers (Down Under) is the story of a worldwide society of mice that take it upon themselves to rescue human children in need of help.</description>
-    </item>
-    
-    <item>
-      <title>Mr. Popper&#39;s Penguins</title>
-      <link>https://blog.jverkamp.com/2021/10/15/mr.-poppers-penguins/</link>
-      <pubDate>Fri, 15 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/15/mr.-poppers-penguins/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-                &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;61549&#34; href=&#34;https://www.goodreads.com/book/show/61549.mr-poppers-penguins&#34;&gt;&lt;img src=&#34;https://blog.jverkamp.com/embeds/books/mr-poppers-penguins.jpg&#34;&gt;&lt;/a&gt;
-            &lt;/figure&gt;
-&lt;p&gt;Well that&amp;rsquo;s a delightful if a bit bizarre little book.&lt;/p&gt;
-&lt;p&gt;In a nutshell, Mr. Popper is an orderinary enough man who happens to absolutely love stories about Arctic/Antarctic expeditions. He writes a letter to Admiral Drake and&amp;hellip; gets a penguin shipped to him. One thing leads to another, he gets another penguin, they have an unusually large pile of chicks, and they go on the road.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Hellblazer, Vol. 1: Original Sins</title>
-      <link>https://blog.jverkamp.com/2021/10/14/hellblazer-vol.-1-original-sins/</link>
-      <pubDate>Thu, 14 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/14/hellblazer-vol.-1-original-sins/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-                &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;18902412&#34; href=&#34;https://www.goodreads.com/book/show/18902412.hellblazer-vol-1-original-sins&#34;&gt;&lt;img src=&#34;https://blog.jverkamp.com/embeds/books/hellblazer-vol-1-original-sins.jpg&#34;&gt;&lt;/a&gt;
-            &lt;/figure&gt;
-&lt;p&gt;I really do have a thing for urban fantasy specifically dealing with demons and angels, good and evil, especially if it twists it all around. Constantine does that in spades.&lt;/p&gt;
-&lt;p&gt;I watched the 2005 film well before I knew it was based on a comic (so sue me), so Keanu Reeves is forever going to be stuck in my head as the true Constantine, but I&amp;rsquo;ve also watched just about all of the new wave of DC shows, including the 2014 version of Constantine plus his appearances on Legends of Tomorrow. Not quite the same, but I still loved the character.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>New Baby Shirts!</title>
-      <link>https://blog.jverkamp.com/maker/3d-printing/2021-10-10-new-baby-shirts/</link>
-      <pubDate>Sun, 10 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/maker/3d-printing/2021-10-10-new-baby-shirts/</guid>
-      <description>&lt;p&gt;We&amp;rsquo;re going to be parents (again)!&lt;/p&gt;
-&lt;p&gt;Last time around, we made adorable big brother/big sister/little sister shirts with dinosaurs, this time we wanted to go with FLOWERS! It&amp;rsquo;ll be wonderful.&lt;/p&gt;</description>
     </item>
     
   </channel>

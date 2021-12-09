@@ -6,7 +6,46 @@
     <description>Recent content in Advent of Code 2021 on jverkamp.com</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 08 Dec 2021 00:00:10 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/series/advent-of-code-2021/atom.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 09 Dec 2021 00:00:15 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/series/advent-of-code-2021/atom.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AoC 2021 Day 9: Local Minimum Deminifier</title>
+      <link>https://blog.jverkamp.com/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/</link>
+      <pubDate>Thu, 09 Dec 2021 00:00:15 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/</guid>
+      <description>&lt;h3 id=&#34;source-smoke-basinhttpsadventofcodecom2021day9&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/9&#34;&gt;Smoke Basin&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-heightmap-find-all-local-minimums-return-the-sum-of-minimum-height--1-for-each-local-minimum&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a heightmap, find all local minimums. Return the sum of (minimum height + 1) for each local minimum.&lt;/h4&gt;
+&lt;p&gt;First, as is often the case, let&amp;rsquo;s load the data:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;load&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; MutableMapping[Tuple[int, int], int]:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; {
+        (x, y): int(height)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y, line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(file)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, height &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip())
+    }
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;This could more efficiently have been stored in a 2D array, but I really like dicts of &lt;code&gt;point -&amp;gt; value&lt;/code&gt; for this sort of thing. Especially because in Python you don&amp;rsquo;t actually need the &lt;code&gt;()&lt;/code&gt; for tuples in most cases, just the comma. So &lt;code&gt;heightmap[x,y]&lt;/code&gt; works great.&lt;/p&gt;
+&lt;p&gt;After we have that data, it&amp;rsquo;s just a matter of checking each point to see if all 2/3/4 neighbors are larger than a specific point, while at the same time making sure that we don&amp;rsquo;t run off the edge of the map.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@app.command&lt;/span&gt;()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    heightmap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; load(file)
+    total_risk &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y), height &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; heightmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items():
+        neighbor_heights &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+            heightmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;get((x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd), &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; xd, yd &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; ORTHAGONAL_NEIGHBORS
+        ]
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; min(neighbor_heights) &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; height:
+            total_risk &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; height &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{total_risk=}&amp;#39;&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;code&gt;ORTHAGONAL_NEIGHBORS = [(-1, 0), (1, 0), (0, -1), (0, 1)]&lt;/code&gt;. And that&amp;rsquo;s all we need:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 local-minimum-deminifier.py part1 input.txt
+total_risk&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;491&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
     <item>
       <title>AoC 2021 Day 8: Seven Segment Demystifier</title>
       <link>https://blog.jverkamp.com/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/</link>
