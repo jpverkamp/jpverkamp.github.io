@@ -6,7 +6,281 @@
     <description>Recent content on jverkamp.com</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 09 Dec 2021 00:00:15 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 12 Dec 2021 00:00:15 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AoC 2021 Day 12: Submarine Spider</title>
+      <link>https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/</link>
+      <pubDate>Sun, 12 Dec 2021 00:00:15 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/</guid>
+      <description>&lt;h3 id=&#34;source-passage-pathinghttpsadventofcodecom2021day12&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/12&#34;&gt;Passage Pathing&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-list-of-edges-in-a-bi-directional-graph-count-the-number-of-paths-from-start-to-end-such-that-nodes-named-with-lowercase-letters-are-visited-once-and-nodes-with-uppercase-letters-can-be-visited-any-number-of-times&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a list of edges in a bi-directional graph, count the number of paths from &lt;code&gt;start&lt;/code&gt; to &lt;code&gt;end&lt;/code&gt; such that nodes named with lowercase letters are visited once, and nodes with uppercase letters can be visited any number of times.&lt;/h4&gt;
+&lt;p&gt;Interesting. First, let&amp;rsquo;s define a graph structure:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Node&lt;/span&gt;:
+    label: str
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;is_big&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;label&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;isupper()
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;lt;{self.label}&amp;gt;&amp;#39;&lt;/span&gt;
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cave&lt;/span&gt;:
+    edges: Mapping[Node, Set[Node]]
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;from_file&lt;/span&gt;(file: TextIO):
+
+        edges: Dict[Node, Set[Node]] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {}
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file:
+            nodes &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [Node(v) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; v &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;-&amp;#39;&lt;/span&gt;)]
+
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; node &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; nodes:
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; node &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; edges:
+                    edges[node] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; set()
+
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; node_a &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; nodes:
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; node_b &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; nodes:
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; node_a &lt;span style=&#34;color:#f92672&#34;&gt;!=&lt;/span&gt; node_b:
+                        edges[node_a]&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add(node_b)
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Convert to a dict&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Cave(edges)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Originally, I had the pathing function in this class directly, but because it changes for part 2, I extracted it into the part 1 function:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+    cave &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Cave&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_file(file)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;paths&lt;/span&gt;(node: Node, visited: Set[Node]) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Generator[List[Node], None, None]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Yield all possible paths from the given node to &amp;lt;end&amp;gt;.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; node &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; END:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; [END]
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; node&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;is_small() &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; node &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; visited:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; next &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; cave&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;edges[node]:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; path &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; paths(next, visited &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; {node}):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; [node] &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; path
+
+    count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; _ &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; paths(START, set()):
+        count &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(count)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Because the paths are short enough, we can get away with a simple recursive function. In this case, &lt;code&gt;paths&lt;/code&gt; will take the current point in the graph and a list of nodes visited already (so that we can avoid lowercase nodes that we&amp;rsquo;ve already visited) and generate all paths from that point. It does so by recursion: each step is moving to a neighboring node in the graph, we&amp;rsquo;re assuming the recursive call will generate some number of paths (might be 0), and the base case is the &lt;code&gt;end&lt;/code&gt; node.&lt;/p&gt;
+&lt;p&gt;Note: If there are ever two or more &amp;lsquo;big&amp;rsquo; nodes adjacent to each other, this will totally blow up, since you can infinitely loop between the two. Good thing that doesn&amp;rsquo;t come up in our input. :D This could be fixed with &lt;a href=&#34;https://en.wikipedia.org/wiki/cycle%20detection&#34;&gt;cycle detection&lt;/a&gt;, but that would make teh algorithm somewhat slower&amp;hellip;&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 submarine-spider.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;4749&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
+    <item>
+      <title>AoC 2021 Day 11: Octopus Flashinator</title>
+      <link>https://blog.jverkamp.com/2021/12/11/aoc-2021-day-11-octopus-flashinator/</link>
+      <pubDate>Sat, 11 Dec 2021 00:00:15 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/11/aoc-2021-day-11-octopus-flashinator/</guid>
+      <description>&lt;h3 id=&#34;source-dumbo-octopushttpsadventofcodecom2021day11&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/11&#34;&gt;Dumbo Octopus&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-simulate-a-grid-of-numbers-such-that-on-each-tick-advance-all-numbers-by-1-any-number-that-increases-over-9-will-flash-and-add-1-to-all-neighbors-recursively-but-each-cell-can-only-flash-once-and-then-reset-to-0-count-the-number-of-flashes-in-the-first-100-ticks&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Simulate a grid of numbers such that on each tick: advance all numbers by 1, any number that increases over 9 will &amp;lsquo;flash&amp;rsquo; and add 1 to all neighbors (recursively, but each cell can only flash once) and then reset to 0. Count the number of flashes in the first 100 ticks.&lt;/h4&gt;
+&lt;p&gt;DIRECT SIMULATION.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;
+NEIGHBORS &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+    (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;), (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;), (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+    (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+    (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+]
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cavern&lt;/span&gt;:
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Simulation for https://adventofcode.com/2021/day/11.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    width: int
+    height: int
+    data: MutableMapping[Tuple[int, int], int]
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;from_file&lt;/span&gt;(file: TextIO):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Load a simulation from a file-like object.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        data &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+            (x, y): int(value)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(file)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y, value &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip())
+        }
+        width &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, _) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; data)
+        height &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (_, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; data)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Cavern(width, height, data)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;step&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Advance the simulation 1 step, return the number of flashes.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        flashpoint &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# First advance everyone 1&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data:
+            self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[x, y] &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Repeatedly find any 9s, but only trigger each one once (advanced)&lt;/span&gt;
+        advanced &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; set()
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; True:
+
+            &lt;span style=&#34;color:#75715e&#34;&gt;# Find the set of points that haven&amp;#39;t been advanced and should&lt;/span&gt;
+            to_advance &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+                (x, y)
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (x, y) &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; advanced &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[x, y] &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;9&lt;/span&gt;
+            }
+
+            &lt;span style=&#34;color:#75715e&#34;&gt;# If we didn&amp;#39;t, we&amp;#39;re done&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; to_advance:
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;break&lt;/span&gt;
+
+            &lt;span style=&#34;color:#75715e&#34;&gt;# If we did, increment each neighbor&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; to_advance:
+                flashpoint &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (xd, yd) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; NEIGHBORS:
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd) &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data:
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+                    self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd] &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+                advanced&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add((x, y))
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Once we&amp;#39;re out of the loop, set all points that actually advanced (hit 9) to 0&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; advanced:
+            self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[x, y] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; flashpoint
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __str__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\n&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(
+            &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(str(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[x, y]) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;height))
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;width)
+        ) &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\n&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I particularly enjoy that &lt;code&gt;step&lt;/code&gt; function. It seems pretty clean to me, using one &lt;code&gt;set&lt;/code&gt; of values we&amp;rsquo;ve already &lt;code&gt;advanced&lt;/code&gt; and calculating a new &lt;code&gt;set&lt;/code&gt; of values &lt;code&gt;to_advance&lt;/code&gt; so that we don&amp;rsquo;t duplicate.&lt;/p&gt;
+&lt;p&gt;And it makes for pretty clean code!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    cavern &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Cavern&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_file(file)
+    flashpoint &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(&lt;span style=&#34;color:#ae81ff&#34;&gt;100&lt;/span&gt;):
+        flashpoint &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; cavern&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;step()
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(flashpoint)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;How many flashes?&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 octopus-flashinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;1679&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
+    <item>
+      <title>Star Wars: Episode V - The Empire Strikes Back</title>
+      <link>https://blog.jverkamp.com/2021/12/11/star-wars-episode-v-the-empire-strikes-back/</link>
+      <pubDate>Sat, 11 Dec 2021 00:00:05 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/11/star-wars-episode-v-the-empire-strikes-back/</guid>
+      <description>&lt;figure class=&#34;cover-image&#34;&gt;
+    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/star-wars-episode-v---the-empire-strikes-back.jpg&#34;/&gt; 
+&lt;/figure&gt;
+
+&lt;p&gt;Woo! Big icy battles on land in and the sky/space around Hoth, training with a real (short) Jedi Master (and they&amp;rsquo;re all supposed to be dead), meetings between old friends&amp;ndash;who may not be too thrilled about losing in cards all those years ago&amp;ndash;another confrontation between Luke and Vadar, and the big bad reveal. Which&amp;hellip; seriously. His name is literally &lt;span class=&#34;spoiler&#34;&gt;Dark Father&lt;/span&gt;
+.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>Nutcracker</title>
+      <link>https://blog.jverkamp.com/2021/12/11/nutcracker/</link>
+      <pubDate>Sat, 11 Dec 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/11/nutcracker/</guid>
+      <description>&lt;figure class=&#34;cover-image&#34;&gt;
+    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/nutcracker.jpg&#34;/&gt; 
+&lt;/figure&gt;
+
+&lt;p&gt;Well that&amp;rsquo;s a truly bizarre adaptation of the Nutcracker. Or I suppose all of the other versions are bizarre, given that this is supposed to be as &amp;lsquo;close as possible&amp;rsquo; to the original Maurice Sendak version.&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>AoC 2021 Day 10: Chunkinator</title>
+      <link>https://blog.jverkamp.com/2021/12/10/aoc-2021-day-10-chunkinator/</link>
+      <pubDate>Fri, 10 Dec 2021 00:00:15 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/10/aoc-2021-day-10-chunkinator/</guid>
+      <description>&lt;h3 id=&#34;source-syntax-scoringhttpsadventofcodecom2021day10&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/10&#34;&gt;Syntax Scoring&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-sequence-of----and--with-nesting-allowed-find-the-first-syntax-error-where-the-wrong-closing-symbol-is-used-scoring-3-57-1197-and-25137-respectively-for-each-error-calculate-the-total-error-score&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a sequence of () [] {}, and &amp;lt;&amp;gt; with nesting allowed. Find the first syntax error (where the wrong closing symbol is used). Scoring 3, 57, 1197, and 25137 respectively for each error, calculate the total error score.&lt;/h4&gt;
+&lt;p&gt;Interesting. Let&amp;rsquo;s use Python exceptions!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Using the strings directly is fine for python, but not mypy&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# chunkinator.py:38: error: Unpacking a string is disallowed&lt;/span&gt;
+pairs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [tuple(pair) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; pair &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; [&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;()&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;[]&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{}&amp;#39;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;lt;&amp;gt;&amp;#39;&lt;/span&gt;]]
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;ParseMismatchException&lt;/span&gt;(&lt;span style=&#34;color:#a6e22e&#34;&gt;Exception&lt;/span&gt;):
+    expected: str
+    actual: str
+
+
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;parse&lt;/span&gt;(line: str):
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Parse a line of matching pairs. For every left, you must match the corresponding right (respecting nesting).
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    If a mismatch is detected, raise a ParseMismatchException containing the expected/actual character.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Otherwise, return True
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    stack &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; c &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line:
+        matched &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; False
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Start a new matching pair&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; left, right &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; pairs:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; c &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; left:
+                stack&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(right)
+                matched &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; matched:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Otherwise, we have a closing character, check the stack&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; c &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; (top :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; stack&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;pop()):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Otherwise, we have a failed match&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;raise&lt;/span&gt; ParseMismatchException(expected&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;top, actual&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;c)
+    &lt;span style=&#34;color:#75715e&#34;&gt;# Otherwise, yay!&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; True
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I expect that we&amp;rsquo;ll want to do something with &amp;lsquo;incomplete&amp;rsquo; matches in Part 2, but we haven&amp;rsquo;t had to do that yet. So let&amp;rsquo;s use this to solve the problem!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    scores &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;)&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;]&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;57&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;}&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1197&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;gt;&amp;#39;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;25137&lt;/span&gt;}
+    total_score &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file:
+        line &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip()
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;try&lt;/span&gt;:
+            parse(line)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;except&lt;/span&gt; ParseMismatchException &lt;span style=&#34;color:#66d9ef&#34;&gt;as&lt;/span&gt; ex:
+            total_score &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; scores[ex&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;actual]
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(total_score)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I like it when the parsing function does most of the work!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 chunkinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;167379&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
     <item>
       <title>AoC 2021 Day 9: Local Minimum Deminifier</title>
       <link>https://blog.jverkamp.com/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/</link>
@@ -815,57 +1089,6 @@ a red flame seems to burn. “I am my own cage.” She lifts her sword. “And I
 have opened the door.”&lt;/p&gt;
 &lt;/blockquote&gt;
 &lt;p&gt;&lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;35530652&#34; href=&#34;https://www.goodreads.com/book/show/35530652.grey-sister&#34;&gt;Grey Sister&lt;/a&gt; takes the fantasy world&lt;sup id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;1&lt;/a&gt;&lt;/sup&gt; with a magical school full of battle nuns that we started with in &lt;a data-goodreads-type=&#34;book&#34; data-goodreads-id=&#34;25895524&#34; href=&#34;https://www.goodreads.com/book/show/25895524.red-sister&#34;&gt;Red Sister&lt;/a&gt; and turns things up a notch. Nona isn&amp;rsquo;t hiding any more just how much she can do, which is causing just about as many problems as it solves. And halfway through the books, things really escalate once again, with politics and problems outside of the convent itself coming to bear.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Shazam!</title>
-      <link>https://blog.jverkamp.com/2021/10/21/shazam/</link>
-      <pubDate>Thu, 21 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/21/shazam/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/shazam.jpg&#34;/&gt; 
-&lt;/figure&gt;
-
-&lt;p&gt;That was not really what I expected. On one hand, it&amp;rsquo;s got the heart of a super hero origin story, with Billy Batson gaining powers, learning to use them (and not lose himself or his friends/family while doing so), and fighting the big bad.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Squid Game</title>
-      <link>https://blog.jverkamp.com/2021/10/21/squid-game/</link>
-      <pubDate>Thu, 21 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/21/squid-game/</guid>
-      <description>I don&amp;rsquo;t actually do much social media (other than a relatively limited set of subreddits), so I didn&amp;rsquo;t actually notice what was apparently a fairly large storm of people watching Squid Game, but when it came up on Honest Trailers it seemed pretty interesting. 9 episodes and I just finished Stargate Universe, so I figured, let&amp;rsquo;s give it a spin!
-Let&amp;rsquo;s say&amp;hellip; that&amp;rsquo;s at once exactly what I expected, but even then had a few interesting twists and turns.</description>
-    </item>
-    
-    <item>
-      <title>The Sopranos: Season 6</title>
-      <link>https://blog.jverkamp.com/2021/10/19/the-sopranos-season-6/</link>
-      <pubDate>Tue, 19 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/19/the-sopranos-season-6/</guid>
-      <description>Well that&amp;rsquo;s a lot. In order to finish all of the stories they wanted to tell&amp;ndash;but also not to have to negotiate another season&amp;rsquo;s worth of contracts with the actors, season 6 is really two seasons in one. The first is slightly shorter than the other seasons at 12 (instead of 13), while the second half is only 9. So one big season? Two small? Doesn&amp;rsquo;t matter that much when you&amp;rsquo;re streaming them back to back.</description>
-    </item>
-    
-    <item>
-      <title>Stargate Universe: Season 2</title>
-      <link>https://blog.jverkamp.com/2021/10/17/stargate-universe-season-2/</link>
-      <pubDate>Sun, 17 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/17/stargate-universe-season-2/</guid>
-      <description>Each time I rewatch Stargate (and with 17 seasons and a handful of movies, that&amp;rsquo;s something of a time commitment), I forgot just how much better Stargate Universe season 2 is than season 1. And I already liked Season 1. But 2 is where things really get on their own. The crew trapped on Destiny is really learning how to use the ship and making it their own, finding new (huge) mysteries, and actually getting a few big bads on a scale with the Goa&amp;rsquo;uld/Ori/Wraith.</description>
-    </item>
-    
-    <item>
-      <title>The Rescuers Down Under</title>
-      <link>https://blog.jverkamp.com/2021/10/17/the-rescuers-down-under/</link>
-      <pubDate>Sun, 17 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/17/the-rescuers-down-under/</guid>
-      <description>Well that&amp;rsquo;s an absolute blast of childhood nostalgia. We had this movie on VHS when I was little and I remember watching the heck out of it, although I haven&amp;rsquo;t otherwise seen it in decades now. Truth be told, it wasn&amp;rsquo;t until recently that I realized it was even a sequel&amp;hellip;
-In any case. The Rescuers (Down Under) is the story of a worldwide society of mice that take it upon themselves to rescue human children in need of help.</description>
     </item>
     
   </channel>
