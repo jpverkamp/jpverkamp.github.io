@@ -6,7 +6,85 @@
     <description>Recent content in Programming on jverkamp.com</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 12 Dec 2021 00:00:15 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/programming/atom.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 13 Dec 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/programming/atom.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AoC 2021 Day 13: Foldinator</title>
+      <link>https://blog.jverkamp.com/2021/12/13/aoc-2021-day-13-foldinator/</link>
+      <pubDate>Mon, 13 Dec 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/13/aoc-2021-day-13-foldinator/</guid>
+      <description>&lt;h3 id=&#34;source-transparent-origamihttpsadventofcodecom2021day13&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/13&#34;&gt;Transparent Origami&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-set-of-points-and-a-sequence-of-fold-lines-where-you-either-fold-the-bottom-over-the-top-or-right-over-left-determine-how-many-points-exist-after-the-first-fold&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a set of points and a sequence of &amp;lsquo;fold&amp;rsquo; lines (where you either fold the bottom over the top or right over left), determine how many points exist after the first fold.&lt;/h4&gt;
+&lt;p&gt;First, data structures:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Point&lt;/span&gt;:
+    x: int
+    y: int
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;lt;{self.x}, {self.y}&amp;gt;&amp;#39;&lt;/span&gt;
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Fold&lt;/span&gt;:
+    horizontal: bool
+    line: int
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;apply_to&lt;/span&gt;(self, points: Set[Point]) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Set[Point]:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; {
+            Point(
+                p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;horizontal &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;line) &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;line &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x,
+                p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;horizontal &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;line) &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;line &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y
+            )
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; points
+        }
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;fold@{&amp;#34;x&amp;#34; if self.horizontal else &amp;#34;y&amp;#34;}={self.line}&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Yes. Those could (mostly) be tuples. But I happen to like putting them in their own classes. The &lt;code&gt;apply_to&lt;/code&gt; method is actually the bulk of the functionality here.&lt;/p&gt;
+&lt;p&gt;What you need to consider is when the &lt;code&gt;x&lt;/code&gt;/&lt;code&gt;y&lt;/code&gt; of a point &lt;em&gt;do not&lt;/em&gt; change. If you&amp;rsquo;re folding a horizontal line, the &lt;code&gt;x&lt;/code&gt; will &lt;em&gt;never&lt;/em&gt; change (likewise for vertical and &lt;code&gt;y&lt;/code&gt;). Also, if you&amp;rsquo;re in the top or left half, you&amp;rsquo;ll not change.&lt;/p&gt;
+&lt;p&gt;There&amp;rsquo;s only 1 in 4 cases that change: if you&amp;rsquo;re below/right of the fold that&amp;rsquo;s changing.&lt;/p&gt;
+&lt;p&gt;In that case, you are going to reflect it. In this case, if you&amp;rsquo;re folding a point with &lt;code&gt;y=14&lt;/code&gt; over the line &lt;code&gt;y=7&lt;/code&gt;, then you should end up with &lt;code&gt;1&lt;/code&gt;. Thus &lt;code&gt;line*2-y&lt;/code&gt;.&lt;/p&gt;
+&lt;p&gt;Next, two helper functions in order to load/print the current points:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;load&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Tuple[Set[Point], List[Fold]]:
+    points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; set()
+    folds &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line:
+            xs, ys &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;)
+            points&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add(Point(x&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;int(xs), y&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;int(ys)))
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line:
+            left, vs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=&amp;#39;&lt;/span&gt;)
+            folds&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(Fold(horizontal&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;left&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;endswith(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;y&amp;#39;&lt;/span&gt;), line&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;int(vs)))
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; points, folds
+
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;render&lt;/span&gt;(points: Set[Point]):
+    width &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; points)
+    height &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; points)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\n&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(
+            &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;*&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; Point(x, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; points &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39; &amp;#39;&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(width)
+        )
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(height)
+    ))
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;()
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Straight forward enough. Technically, this is a more flexible format than given (you can mix points and folds in any order), but that&amp;rsquo;s a superset of what we&amp;rsquo;re actually interested in, so good enough.&lt;/p&gt;
+&lt;p&gt;Now that we have all of that, we can actually do all of the folds&amp;hellip; but we only need the first:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+    points, folds &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; load(file)
+    points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; folds[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;apply_to(points)
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(len(points))
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;So short. 😄&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 foldinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;706&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Heh.&lt;/p&gt;</description>
+    </item>
+    
     <item>
       <title>AoC 2021 Day 12: Submarine Spider</title>
       <link>https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/</link>
@@ -3132,17 +3210,6 @@ from english_words import english_words_set def letterCombinations(self, digits:
       <description>&lt;p&gt;One of the more subtle bugs that a lot of companies miss is Server Side Request Forgery (SSRF). Like it&amp;rsquo;s cousin CSRF (cross-site request forgery), SSRF involves carefully crafting a request that runs in a way that the original developers didn&amp;rsquo;t expect to do things that shouldn&amp;rsquo;t be done. In the case of CSRF, one site is making a request on behalf of another in a user&amp;rsquo;s browser (cross-site), but in SSRF, a request is being made by a server on behalf of a client, but you can trick it into making a request that wasn&amp;rsquo;t intended.&lt;/p&gt;
 &lt;p&gt;For a perhaps more obvious example, consider a website with a service that will render webpages as preview images&amp;ndash;consider sharing links on a social network. A user makes a request such as &lt;code&gt;/render?url=https://www.google.com&lt;/code&gt;. This goes to the server, which will then fetch &lt;a href=&#34;https://www.google.com&#34;&gt;https://www.google.com&lt;/a&gt;, render the page to a screenshot, and then return that as a thumbnail.&lt;/p&gt;
 &lt;p&gt;This seems like rather useful functionality, but what if instead, the user gives the url: &lt;code&gt;/render?url=https://secret-internal-site.company.com&lt;/code&gt;. Normally, &lt;code&gt;company.com&lt;/code&gt; would be an internal only domain that cannot be viewed by users, but in this case&amp;ndash;the server is within the corporate network. Off the server goes, helpfully taking and returning a screenshot. Another option&amp;ndash;if you&amp;rsquo;re hosted on AWS&amp;ndash;is the AWS &lt;a href=&#34;https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html&#34;&gt;metadata endpoint&lt;/a&gt;: &lt;code&gt;http://169.254.169.254/latest/meta-data/&lt;/code&gt;. All sorts of interesting private things there. Or even more insidious, &lt;code&gt;/render?url=file:///etc/password&lt;/code&gt;. That shouldn&amp;rsquo;t work in most cases, since most libraries know better than to rener &lt;code&gt;file://&lt;/code&gt; protocol URLs, but&amp;hellip; not always!&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Observation Server</title>
-      <link>https://blog.jverkamp.com/2020/06/10/observation-server/</link>
-      <pubDate>Wed, 10 Jun 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2020/06/10/observation-server/</guid>
-      <description>&lt;p&gt;For a number of years now, I&amp;rsquo;ve been writing down my &amp;lsquo;observations&amp;rsquo;. Essentially, it&amp;rsquo;s a semi-structured set of text files that I keep in Dropbox. One for each day, in a folder by month. I record interesting people I see, things I did worth doing, and things my children did which were adorable.&lt;/p&gt;
-&lt;p&gt;After a while, I started wanting to look back, so first, I wrote a relatively simple script that would go back through my archives and send me everything I did 1/2/3/4/etc years ago. That worked well enough, but it ended up generating a lot of emails to go through some days. So the second generation is a server that can format those pages and display them as a nice webpage.&lt;/p&gt;
-&lt;p&gt;The most interesting part perhaps was dealing with the tarballs that I keep the archives in (they&amp;rsquo;re plain text, so they compress very well). I wanted to keep them compressed, so I had to decompress them in memory on the fly.&lt;/p&gt;</description>
     </item>
     
   </channel>
