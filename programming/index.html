@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -66,6 +66,123 @@
 
             <h1>Posts</h1>
     <div class="post-list"><article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2021/12/14/aoc-2021-day-14-polymerizationinator/" class="clearfix">AoC 2021 Day 14: Polymerizationinator</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2021-12-14</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><h3 id="source-extended-polymerizationhttpsadventofcodecom2021day14">Source: <a href="https://adventofcode.com/2021/day/14">Extended Polymerization</a></h3>
+<h4 id="part-1-given-a-complete-function-fa-b---c-where-any-string-ab-becomes-acb-and-an-input-string-apply-the-function-at-the-same-time-to-every-overlapping-pair-of-letters-repeat-this-time-times-report-the-difference-in-counts-between-the-most-and-least-common-letters-in-the-final-situation"><strong>Part 1:</strong> Given a complete function <code>f(a, b) -&gt; c</code> where any string <code>ab</code> becomes <code>acb</code> and an input string, apply the function at the same time to every (overlapping) pair of letters. Repeat this time times. Report the difference in counts between the most and least common letters in the final situation.</h4>
+<p>Okay. First try, let&rsquo;s just solve this directly. Although, since we know that we&rsquo;re going to be inserting into the middle of the list constantly, we can be slightly more efficient by using a <a href="https://en.wikipedia.org/wiki/linked%20list">linked list</a>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">
+PolyMap <span style="color:#f92672">=</span> Mapping[Tuple[str, str], str]
+
+
+<span style="color:#a6e22e">@dataclass</span>
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Node</span>(Iterable):
+    value: str
+    next: Optional[<span style="color:#e6db74">&#39;Node&#39;</span>]
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">expand_via</span>(self, map: PolyMap) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Node&#39;</span>:
+        <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>next <span style="color:#f92672">is</span> None:
+            <span style="color:#66d9ef">return</span> self
+
+        <span style="color:#66d9ef">for</span> a, b <span style="color:#f92672">in</span> zip(self, self<span style="color:#f92672">.</span>next):
+            <span style="color:#66d9ef">if</span> (a<span style="color:#f92672">.</span>value, b<span style="color:#f92672">.</span>value) <span style="color:#f92672">in</span> map:
+                a<span style="color:#f92672">.</span>next <span style="color:#f92672">=</span> Node(map[a<span style="color:#f92672">.</span>value, b<span style="color:#f92672">.</span>value], b)
+
+        <span style="color:#66d9ef">return</span> self
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">from_iter</span>(iter: Iterable) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Node&#39;</span>:
+        head <span style="color:#f92672">=</span> None
+        previous <span style="color:#f92672">=</span> None
+
+        <span style="color:#66d9ef">for</span> el <span style="color:#f92672">in</span> iter:
+            n <span style="color:#f92672">=</span> Node(el, None)
+
+            <span style="color:#66d9ef">if</span> previous:
+                previous<span style="color:#f92672">.</span>next <span style="color:#f92672">=</span> n
+            <span style="color:#66d9ef">else</span>:
+                head <span style="color:#f92672">=</span> n
+
+            previous <span style="color:#f92672">=</span> n
+
+        <span style="color:#66d9ef">return</span> head
+
+    <span style="color:#66d9ef">def</span> __iter__(self):
+        self<span style="color:#f92672">.</span>iter_node <span style="color:#f92672">=</span> self
+        <span style="color:#66d9ef">return</span> self
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__next__</span>(self):
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> self<span style="color:#f92672">.</span>iter_node:
+            <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">StopIteration</span>
+
+        result <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>iter_node
+        self<span style="color:#f92672">.</span>iter_node <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>iter_node<span style="color:#f92672">.</span>next
+        <span style="color:#66d9ef">return</span> result
+
+    <span style="color:#66d9ef">def</span> __str__(self):
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;&#39;</span><span style="color:#f92672">.</span>join(self)
+
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">load</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> Tuple[Node, PolyMap]:
+
+    ls <span style="color:#f92672">=</span> Node<span style="color:#f92672">.</span>from_iter(file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip())
+    file<span style="color:#f92672">.</span>readline()
+
+    map <span style="color:#f92672">=</span> {
+        (line[<span style="color:#ae81ff">0</span>], line[<span style="color:#ae81ff">1</span>]): line[<span style="color:#ae81ff">6</span>]
+        <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file
+    }
+
+    <span style="color:#66d9ef">return</span> ls, map
+
+</code></pre></div><p>Okay, there are basically three interesting parts here.</p>
+<ul>
+<li>
+<p>First, the <code>from_iter</code> function. That will take any <code>iterable</code> and make a linked list out of it, returning the head of that list. It does this by creating each Node in turn and attaching it to the previously created node.</p>
+</li>
+<li>
+<p>Next, the <code>__iter__</code> and <code>__next__</code> functions. Together, these make <code>Node</code> iterable, so that we can do things like <code>for n in ls: ...</code> where <code>ls</code> is the head of a linked list.</p>
+</li>
+<li>
+<p>Finally, <code>expand_via</code>. That will take in a mapping of pairs to a single character and expand the current linked list with it. Specifically, for any characters <code>a</code> and <code>b</code> in the linked list, insert a new node between them with value <code>map[a, b]</code>. Pretty cool right?</p>
+</li>
+<li>
+<p>While we&rsquo;re at it, add a function to <code>load</code> the puzzle definitions from a file: the initial linked list (a string is iterable) and the series of mappings. They&rsquo;re always single characters in a set format, so we can hardcode where they are in the string. Perfect? No. Workable for now, sure.</p>
+</li>
+</ul>
+<p>With all that, we can write a direct solution to the puzzle:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">
+<span style="color:#a6e22e">@app.command</span>()
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">direct</span>(file: typer<span style="color:#f92672">.</span>FileText, steps: int):
+    ls, map <span style="color:#f92672">=</span> load(file)
+
+    <span style="color:#f92672">import</span> time
+    start <span style="color:#f92672">=</span> time<span style="color:#f92672">.</span>time()
+
+    <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(steps):
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Generation {i} calculate after {time.time() - start:02f} sec, has {len(list(ls))} elements&#39;</span>)
+        ls<span style="color:#f92672">.</span>expand_via(map)
+
+    counts <span style="color:#f92672">=</span> Counter(n<span style="color:#f92672">.</span>value <span style="color:#66d9ef">for</span> n <span style="color:#f92672">in</span> ls)
+    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;{counts=}&#39;</span>)
+
+    most, _ <span style="color:#f92672">=</span> max((qty, c) <span style="color:#66d9ef">for</span> (c, qty) <span style="color:#f92672">in</span> counts<span style="color:#f92672">.</span>items())
+    least, _ <span style="color:#f92672">=</span> min((qty, c) <span style="color:#66d9ef">for</span> (c, qty) <span style="color:#f92672">in</span> counts<span style="color:#f92672">.</span>items())
+
+    <span style="color:#66d9ef">print</span>(most <span style="color:#f92672">-</span> least)
+</code></pre></div><p>(There&rsquo;s a reason I named this <code>direct</code> rather than <code>part1</code>)</p>
+<p>It actually works great:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 polymerizationinator.py direct input.txt <span style="color:#ae81ff">10</span>
+<span style="color:#ae81ff">2797</span>
+</code></pre></div><p>So that&rsquo;s all she wrote, right?</p>
+<p>Well&hellip;</p><p><a href="/2021/12/14/aoc-2021-day-14-polymerizationinator/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
         	<header>
         		<h1 class="entry-title">
                     <a href="https://blog.jverkamp.com/2021/12/13/aoc-2021-day-13-foldinator/" class="clearfix">AoC 2021 Day 13: Foldinator</a>
@@ -735,18 +852,6 @@ target<span style="color:#f92672">=</span>323, fuel<span style="color:#f92672">=
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 linear-avoidinator.py part1 input.txt
 <span style="color:#ae81ff">5632</span>
 </code></pre></div><p><a href="/2021/12/05/aoc-2021-day-5-linear-avoidinator/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2021/12/04/aoc-2021-day-4-his-name-oh/" class="clearfix">AoC 2021 Day 4: His Name Oh</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2021-12-04</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><h3 id="source-giant-squidhttpsadventofcodecom2021day4">Source: <a href="https://adventofcode.com/2021/day/4">Giant Squid</a></h3>
-<h4 id="part-1-given-a-set-of-bingo-boards-and-a-list-of-numbers-find-the-first-board-to-win-multiply-the-sum-of-the-un-called-numbers-on-that-board-times-the-last-number-called"><strong>Part 1:</strong> Given a set of bingo boards and a list of numbers, find the first board to win. Multiply the sum of the un-called numbers on that board times the last number called.</h4><p><a href="/2021/12/04/aoc-2021-day-4-his-name-oh/">read more...</a></p></div>
 
             <hr /></article></div>
 

@@ -6,7 +6,132 @@
     <description>Recent content on jverkamp.com</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Mon, 13 Dec 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 14 Dec 2021 15:24:53 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Eiteljorg Etc</title>
+      <link>https://blog.jverkamp.com/2021/12/14/eiteljorg-etc/</link>
+      <pubDate>Tue, 14 Dec 2021 15:24:53 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/14/eiteljorg-etc/</guid>
+      <description>Went to Jingle Rails at Eiteljorg and to the canal. A good day.
+                  View on Flickr  </description>
+    </item>
+    
+    <item>
+      <title>AoC 2021 Day 14: Polymerizationinator</title>
+      <link>https://blog.jverkamp.com/2021/12/14/aoc-2021-day-14-polymerizationinator/</link>
+      <pubDate>Tue, 14 Dec 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/14/aoc-2021-day-14-polymerizationinator/</guid>
+      <description>&lt;h3 id=&#34;source-extended-polymerizationhttpsadventofcodecom2021day14&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/14&#34;&gt;Extended Polymerization&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-complete-function-fa-b---c-where-any-string-ab-becomes-acb-and-an-input-string-apply-the-function-at-the-same-time-to-every-overlapping-pair-of-letters-repeat-this-time-times-report-the-difference-in-counts-between-the-most-and-least-common-letters-in-the-final-situation&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a complete function &lt;code&gt;f(a, b) -&amp;gt; c&lt;/code&gt; where any string &lt;code&gt;ab&lt;/code&gt; becomes &lt;code&gt;acb&lt;/code&gt; and an input string, apply the function at the same time to every (overlapping) pair of letters. Repeat this time times. Report the difference in counts between the most and least common letters in the final situation.&lt;/h4&gt;
+&lt;p&gt;Okay. First try, let&amp;rsquo;s just solve this directly. Although, since we know that we&amp;rsquo;re going to be inserting into the middle of the list constantly, we can be slightly more efficient by using a &lt;a href=&#34;https://en.wikipedia.org/wiki/linked%20list&#34;&gt;linked list&lt;/a&gt;:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;
+PolyMap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Mapping[Tuple[str, str], str]
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Node&lt;/span&gt;(Iterable):
+    value: str
+    next: Optional[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Node&amp;#39;&lt;/span&gt;]
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;expand_via&lt;/span&gt;(self, map: PolyMap) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Node&amp;#39;&lt;/span&gt;:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;next &lt;span style=&#34;color:#f92672&#34;&gt;is&lt;/span&gt; None:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; a, b &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; zip(self, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;next):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (a&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;value, b&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;value) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; map:
+                a&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;next &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Node(map[a&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;value, b&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;value], b)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;from_iter&lt;/span&gt;(iter: Iterable) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Node&amp;#39;&lt;/span&gt;:
+        head &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; None
+        previous &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; None
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; el &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; iter:
+            n &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Node(el, None)
+
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; previous:
+                previous&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;next &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; n
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+                head &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; n
+
+            previous &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; n
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; head
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __iter__(self):
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;iter_node &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;__next__&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;iter_node:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;raise&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;StopIteration&lt;/span&gt;
+
+        result &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;iter_node
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;iter_node &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;iter_node&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;next
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; result
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __str__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(self)
+
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;load&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Tuple[Node, PolyMap]:
+
+    ls &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Node&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_iter(file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip())
+    file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()
+
+    map &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+        (line[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;], line[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;]): line[&lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;]
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file
+    }
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; ls, map
+
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Okay, there are basically three interesting parts here.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;First, the &lt;code&gt;from_iter&lt;/code&gt; function. That will take any &lt;code&gt;iterable&lt;/code&gt; and make a linked list out of it, returning the head of that list. It does this by creating each Node in turn and attaching it to the previously created node.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Next, the &lt;code&gt;__iter__&lt;/code&gt; and &lt;code&gt;__next__&lt;/code&gt; functions. Together, these make &lt;code&gt;Node&lt;/code&gt; iterable, so that we can do things like &lt;code&gt;for n in ls: ...&lt;/code&gt; where &lt;code&gt;ls&lt;/code&gt; is the head of a linked list.&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Finally, &lt;code&gt;expand_via&lt;/code&gt;. That will take in a mapping of pairs to a single character and expand the current linked list with it. Specifically, for any characters &lt;code&gt;a&lt;/code&gt; and &lt;code&gt;b&lt;/code&gt; in the linked list, insert a new node between them with value &lt;code&gt;map[a, b]&lt;/code&gt;. Pretty cool right?&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;While we&amp;rsquo;re at it, add a function to &lt;code&gt;load&lt;/code&gt; the puzzle definitions from a file: the initial linked list (a string is iterable) and the series of mappings. They&amp;rsquo;re always single characters in a set format, so we can hardcode where they are in the string. Perfect? No. Workable for now, sure.&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;With all that, we can write a direct solution to the puzzle:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@app.command&lt;/span&gt;()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;direct&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText, steps: int):
+    ls, map &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; load(file)
+
+    &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; time
+    start &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; time&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;time()
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(steps):
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Generation {i} calculate after {time.time() - start:02f} sec, has {len(list(ls))} elements&amp;#39;&lt;/span&gt;)
+        ls&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;expand_via(map)
+
+    counts &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Counter(n&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;value &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; n &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; ls)
+    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{counts=}&amp;#39;&lt;/span&gt;)
+
+    most, _ &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max((qty, c) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (c, qty) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; counts&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items())
+    least, _ &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; min((qty, c) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (c, qty) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; counts&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items())
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(most &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; least)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;(There&amp;rsquo;s a reason I named this &lt;code&gt;direct&lt;/code&gt; rather than &lt;code&gt;part1&lt;/code&gt;)&lt;/p&gt;
+&lt;p&gt;It actually works great:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 polymerizationinator.py direct input.txt &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;
+&lt;span style=&#34;color:#ae81ff&#34;&gt;2797&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;So that&amp;rsquo;s all she wrote, right?&lt;/p&gt;
+&lt;p&gt;Well&amp;hellip;&lt;/p&gt;</description>
+    </item>
+    
     <item>
       <title>AoC 2021 Day 13: Foldinator</title>
       <link>https://blog.jverkamp.com/2021/12/13/aoc-2021-day-13-foldinator/</link>
@@ -1124,29 +1249,6 @@ Shepherd’s Warning Well, it’s more of the same story, but there’s potentia
 &lt;p&gt;Lieutenant Elliott: Yes, I mean, that&amp;rsquo;s dramatic, but look around. I mean, the guy practical lives in a Clue board.&lt;/p&gt;
 &lt;/blockquote&gt;
 &lt;p&gt;Well that was a surprising yet great fun movie. In a nutshell, it&amp;rsquo;s a murder mystery. Heir of the family is found dead&amp;ndash;apparent suicide. But things quickly become more complicated, with a detective (Daniel Craig as Benoit Blanc with a hilarious southern drawl that still somehow works&amp;hellip;) anonymously hired to &amp;lsquo;get to the truth&amp;rsquo;. The family is a nightmare, everyone has a reason to have offed the old man&amp;hellip;&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Adventures with Children</title>
-      <link>https://blog.jverkamp.com/2021/10/23/adventures-with-children/</link>
-      <pubDate>Sat, 23 Oct 2021 20:39:42 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/23/adventures-with-children/</guid>
-      <description>On leave with the newest addition, so I&amp;rsquo;m taking the older ones out and about to let mum and baby bond. Great times. Interesting pictures.
-                       View on Flickr  </description>
-    </item>
-    
-    <item>
-      <title>Finding Nemo</title>
-      <link>https://blog.jverkamp.com/2021/10/23/finding-nemo/</link>
-      <pubDate>Sat, 23 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/23/finding-nemo/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/finding-nemo.jpg&#34;/&gt; 
-&lt;/figure&gt;
-
-&lt;p&gt;Finding Nemo is a delightful children&amp;rsquo;s movie. It&amp;rsquo;s the story of a worrying dad (Marlin), a son (Nemo) trying to grow into his own self, the trouble that causes, and the lengths family can go through for one another.&lt;/p&gt;</description>
     </item>
     
   </channel>
