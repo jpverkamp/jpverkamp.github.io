@@ -7,6 +7,100 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/sources/advent-of-code/atom.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>AoC 2021 Day 15: Low Ceiling Simulator</title>
+      <link>https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/</link>
+      <pubDate>Wed, 15 Dec 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/</guid>
+      <description>&lt;h3 id=&#34;source-chitonhttpsadventofcodecom2021day15&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/15&#34;&gt;Chiton&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-grid-of-weights-find-the-minimum-path-from-top-left-to-top-right-return-the-total-weight-along-that-path&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a grid of weights, find the minimum path from top left to top right. Return the total weight along that path.&lt;/h4&gt;
+&lt;p&gt;A fairly standard thing to have to do, ripe for the &lt;a href=&#34;https://en.wikipedia.org/wiki/A*%20search%20algorithm&#34;&gt;A* search algorithm&lt;/a&gt;. Which eventually I&amp;rsquo;ll get to, but I&amp;rsquo;ll admit, it wasn&amp;rsquo;t the first algorithm I tried. 😄&lt;/p&gt;
+&lt;p&gt;Let&amp;rsquo;s do this. First, let&amp;rsquo;s assume that we already have a &lt;code&gt;load&lt;/code&gt; function that returns a map of &lt;code&gt;(x, y) -&amp;gt; cost&lt;/code&gt; as we&amp;rsquo;ve done a number of times before. No matter what algorithm we use, the wrapping code is going to be the same:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    map &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; load(file)
+    best_path &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; explore(map)
+    best_score &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; sum(map[x, y] &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; best_path[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:])
+
+    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{best_path=}&amp;#39;&lt;/span&gt;)
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{best_score=}&amp;#39;&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Now, all we have to do is write an explore function. The first algorithm I tried was to write a cached recursive function (like last time). Essentially:&lt;/p&gt;
+&lt;div class=&#34;latex-block&#34;&gt;
+bestPath(x, y) = cost(x,y) + minimum \left\{\begin{matrix}
+bestPath(x+1, y) \\ 
+bestPath(x-1, y) \\ 
+bestPath(x, y+1) \\ 
+bestPath(x, y-1)
+\end{matrix}\right.
+&lt;/div&gt;
+
+&lt;p&gt;You have to make sure that you don&amp;rsquo;t recur infinitely (so you have to pass around the points you&amp;rsquo;ve visited so you don&amp;rsquo;t form loops), but other than that, it should work&amp;hellip; Except Python isn&amp;rsquo;t really designed for that. Oh the number of &amp;lsquo;maximum recursion depth reached&amp;rsquo; errors I got. Anyways.&lt;/p&gt;
+&lt;p&gt;Next solution:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Start with a map of &amp;lsquo;best known paths&amp;rsquo; from each point to the goal (store the path + the cost)&lt;/li&gt;
+&lt;li&gt;Until the map has stabilized (doesn&amp;rsquo;t change for an entire loop), loop across every point (x, y)
+&lt;ul&gt;
+&lt;li&gt;For each point, check each four neighbors for their minimum (path, cost)&lt;/li&gt;
+&lt;li&gt;If their (path, cost) + your cost is less than your current cost (or yours hasn&amp;rsquo;t been set), store it&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;That means that you&amp;rsquo;ll eventually fill in the entire graph. It&amp;rsquo;s not super efficient, since you&amp;rsquo;re going to be running it from top left to bottom right, where the grid fills from bottom right to top left&amp;hellip; but it does work.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 low-ceiling-simulator.py part1 input.txt
+best_score&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;687&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# time 2041809750ns / 2.04s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;That&amp;rsquo;s&amp;hellip; fairly slow already for such a small graph&amp;hellip; but it works for part one. How does the code work?&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;explore&lt;/span&gt;(map: Mapping[Point, int]) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[Point]:
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Version 1: Brute force, update all paths and iterate until stable. 
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    width &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, _) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; map)
+    height &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (_, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; map)
+
+    bottom_right &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (width &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, height &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+
+    best_paths &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+        bottom_right: (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, [bottom_right])
+    }
+
+    &lt;span style=&#34;color:#75715e&#34;&gt;# Pass until the best path map stops changing&lt;/span&gt;
+    best_paths_changed &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
+    generation &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; best_paths_changed:
+        best_paths_changed &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; False
+        generation &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{generation=}, {len(best_paths)}/{len(map)} paths populated&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(width):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(height):
+                neighbor_scores &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+                    best_paths[x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd]
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; xd, yd &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; ORTHAGONAL
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; best_paths
+                ]
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; neighbor_scores:
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+                &lt;span style=&#34;color:#75715e&#34;&gt;# Find the best neighbor&lt;/span&gt;
+                best_score, best_path &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; min(neighbor_scores)
+
+                new_score &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; map[x, y] &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; best_score
+                new_path &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [(x, y)] &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; best_path
+
+                &lt;span style=&#34;color:#75715e&#34;&gt;# If we haven&amp;#39;t found a path for this point or we found a better one, update&lt;/span&gt;
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; (x, y) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; best_paths &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; new_score &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; best_paths[x, y][&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]:
+                    best_paths_changed &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
+                    best_paths[x, y] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (new_score, new_path)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; best_paths[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;][&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;More or less exactly what I described in the psuedo-code, just much longer.&lt;/p&gt;
+&lt;p&gt;Okay, let&amp;rsquo;s see what part 2 has in store for us!&lt;/p&gt;</description>
+    </item>
+    
+    <item>
       <title>AoC 2021 Day 14: Polymerizationinator</title>
       <link>https://blog.jverkamp.com/2021/12/14/aoc-2021-day-14-polymerizationinator/</link>
       <pubDate>Tue, 14 Dec 2021 00:00:00 +0000</pubDate>
@@ -1466,26 +1560,6 @@ sw +&amp;ndash;+ se
 &lt;/blockquote&gt;
 &lt;blockquote&gt;
 &lt;p&gt;What is the total score of your input?&lt;/p&gt;
-&lt;/blockquote&gt;</description>
-    </item>
-    
-    <item>
-      <title>AoC 2017 Day 8: Conditiputer</title>
-      <link>https://blog.jverkamp.com/2017/12/08/aoc-2017-day-8-conditiputer/</link>
-      <pubDate>Fri, 08 Dec 2017 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2017/12/08/aoc-2017-day-8-conditiputer/</guid>
-      <description>&lt;h3 id=&#34;source-i-heard-you-like-registershttpadventofcodecom2017day8yo&#34;&gt;Source: &lt;a href=&#34;http://adventofcode.com/2017/day/8&#34;&gt;I Heard You Like Registers&lt;/a&gt;&lt;sup id=&#34;fnref:1&#34;&gt;&lt;a href=&#34;#fn:1&#34; class=&#34;footnote-ref&#34; role=&#34;doc-noteref&#34;&gt;1&lt;/a&gt;&lt;/sup&gt;&lt;/h3&gt;
-&lt;blockquote&gt;
-&lt;p&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a set of registers initialized to 0, interpret a series of instruction of the form:&lt;/p&gt;
-&lt;/blockquote&gt;
-&lt;blockquote&gt;
-&lt;ul&gt;
-&lt;li&gt;&lt;code&gt;{register} (inc|dec) {number|register} if {number|register} (&amp;lt;|&amp;lt;=|=|!=|=&amp;gt;|&amp;gt;) {number|register}&lt;/code&gt;&lt;/li&gt;
-&lt;/ul&gt;
-&lt;/blockquote&gt;
-&lt;blockquote&gt;
-&lt;p&gt;What is the largest value in any register?&lt;/p&gt;
 &lt;/blockquote&gt;</description>
     </item>
     

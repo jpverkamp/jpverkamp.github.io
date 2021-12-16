@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -66,6 +66,102 @@
 
             <h1>Posts</h1>
     <div class="post-list"><article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/" class="clearfix">AoC 2021 Day 15: Low Ceiling Simulator</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2021-12-15</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><h3 id="source-chitonhttpsadventofcodecom2021day15">Source: <a href="https://adventofcode.com/2021/day/15">Chiton</a></h3>
+<h4 id="part-1-given-a-grid-of-weights-find-the-minimum-path-from-top-left-to-top-right-return-the-total-weight-along-that-path"><strong>Part 1:</strong> Given a grid of weights, find the minimum path from top left to top right. Return the total weight along that path.</h4>
+<p>A fairly standard thing to have to do, ripe for the <a href="https://en.wikipedia.org/wiki/A*%20search%20algorithm">A* search algorithm</a>. Which eventually I&rsquo;ll get to, but I&rsquo;ll admit, it wasn&rsquo;t the first algorithm I tried. 😄</p>
+<p>Let&rsquo;s do this. First, let&rsquo;s assume that we already have a <code>load</code> function that returns a map of <code>(x, y) -&gt; cost</code> as we&rsquo;ve done a number of times before. No matter what algorithm we use, the wrapping code is going to be the same:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    map <span style="color:#f92672">=</span> load(file)
+    best_path <span style="color:#f92672">=</span> explore(map)
+    best_score <span style="color:#f92672">=</span> sum(map[x, y] <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> best_path[<span style="color:#ae81ff">1</span>:])
+
+    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;{best_path=}&#39;</span>)
+    <span style="color:#66d9ef">print</span>(f<span style="color:#e6db74">&#39;{best_score=}&#39;</span>)
+</code></pre></div><p>Now, all we have to do is write an explore function. The first algorithm I tried was to write a cached recursive function (like last time). Essentially:</p>
+<div class="latex-block">
+bestPath(x, y) = cost(x,y) + minimum \left\{\begin{matrix}
+bestPath(x+1, y) \\ 
+bestPath(x-1, y) \\ 
+bestPath(x, y+1) \\ 
+bestPath(x, y-1)
+\end{matrix}\right.
+</div>
+
+<p>You have to make sure that you don&rsquo;t recur infinitely (so you have to pass around the points you&rsquo;ve visited so you don&rsquo;t form loops), but other than that, it should work&hellip; Except Python isn&rsquo;t really designed for that. Oh the number of &lsquo;maximum recursion depth reached&rsquo; errors I got. Anyways.</p>
+<p>Next solution:</p>
+<ul>
+<li>Start with a map of &lsquo;best known paths&rsquo; from each point to the goal (store the path + the cost)</li>
+<li>Until the map has stabilized (doesn&rsquo;t change for an entire loop), loop across every point (x, y)
+<ul>
+<li>For each point, check each four neighbors for their minimum (path, cost)</li>
+<li>If their (path, cost) + your cost is less than your current cost (or yours hasn&rsquo;t been set), store it</li>
+</ul>
+</li>
+</ul>
+<p>That means that you&rsquo;ll eventually fill in the entire graph. It&rsquo;s not super efficient, since you&rsquo;re going to be running it from top left to bottom right, where the grid fills from bottom right to top left&hellip; but it does work.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 low-ceiling-simulator.py part1 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">687</span>
+<span style="color:#75715e"># time 2041809750ns / 2.04s</span>
+</code></pre></div><p>That&rsquo;s&hellip; fairly slow already for such a small graph&hellip; but it works for part one. How does the code work?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">explore</span>(map: Mapping[Point, int]) <span style="color:#f92672">-&gt;</span> List[Point]:
+    <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">    Version 1: Brute force, update all paths and iterate until stable. 
+</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
+
+    width <span style="color:#f92672">=</span> max(x <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (x, _) <span style="color:#f92672">in</span> map)
+    height <span style="color:#f92672">=</span> max(y <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (_, y) <span style="color:#f92672">in</span> map)
+
+    bottom_right <span style="color:#f92672">=</span> (width <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, height <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)
+
+    best_paths <span style="color:#f92672">=</span> {
+        bottom_right: (<span style="color:#ae81ff">1</span>, [bottom_right])
+    }
+
+    <span style="color:#75715e"># Pass until the best path map stops changing</span>
+    best_paths_changed <span style="color:#f92672">=</span> True
+    generation <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+
+    <span style="color:#66d9ef">while</span> best_paths_changed:
+        best_paths_changed <span style="color:#f92672">=</span> False
+        generation <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;{generation=}, {len(best_paths)}/{len(map)} paths populated&#39;</span>)
+
+        <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(width):
+            <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(height):
+                neighbor_scores <span style="color:#f92672">=</span> [
+                    best_paths[x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd]
+                    <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> ORTHAGONAL
+                    <span style="color:#66d9ef">if</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd) <span style="color:#f92672">in</span> best_paths
+                ]
+
+                <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> neighbor_scores:
+                    <span style="color:#66d9ef">continue</span>
+
+                <span style="color:#75715e"># Find the best neighbor</span>
+                best_score, best_path <span style="color:#f92672">=</span> min(neighbor_scores)
+
+                new_score <span style="color:#f92672">=</span> map[x, y] <span style="color:#f92672">+</span> best_score
+                new_path <span style="color:#f92672">=</span> [(x, y)] <span style="color:#f92672">+</span> best_path
+
+                <span style="color:#75715e"># If we haven&#39;t found a path for this point or we found a better one, update</span>
+                <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> (x, y) <span style="color:#f92672">in</span> best_paths <span style="color:#f92672">or</span> new_score <span style="color:#f92672">&lt;</span> best_paths[x, y][<span style="color:#ae81ff">0</span>]:
+                    best_paths_changed <span style="color:#f92672">=</span> True
+                    best_paths[x, y] <span style="color:#f92672">=</span> (new_score, new_path)
+
+    <span style="color:#66d9ef">return</span> best_paths[<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">1</span>]
+</code></pre></div><p>More or less exactly what I described in the psuedo-code, just much longer.</p>
+<p>Okay, let&rsquo;s see what part 2 has in store for us!</p><p><a href="/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
         	<header>
         		<h1 class="entry-title">
                     <a href="https://blog.jverkamp.com/2021/12/14/aoc-2021-day-14-polymerizationinator/" class="clearfix">AoC 2021 Day 14: Polymerizationinator</a>
@@ -776,82 +872,6 @@ target<span style="color:#f92672">=</span>323, fuel<span style="color:#f92672">=
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 we-all-glow-down-here.py <span style="color:#ae81ff">80</span> input.txt
 <span style="color:#ae81ff">395627</span>
 </code></pre></div><p>Fin.</p><p><a href="/2021/12/06/aoc-2021-day-6-we-all-glow-down-here/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2021/12/05/aoc-2021-day-5-linear-avoidinator/" class="clearfix">AoC 2021 Day 5: Linear Avoidinator</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2021-12-05</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><h3 id="source-hydrothermal-venturehttpsadventofcodecom2021day5">Source: <a href="https://adventofcode.com/2021/day/5">Hydrothermal Venture</a></h3>
-<h4 id="part-1-given-a-list-of-lines-find-the-number-of-integer-points-which-are-covered-by-more-than-one-line-ignore-non-vertical-and-non-horizontal-lines"><strong>Part 1:</strong> Given a list of lines, find the number of integer points which are covered by more than one line (ignore non-vertical and non-horizontal lines).</h4>
-<p>Okay. Start with the data structures:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Point</span>:
-    x: int
-    y: int
-
-
-<span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Line</span>:
-    p1: Point
-    p2: Point
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_vertical</span>(self):
-        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>p1<span style="color:#f92672">.</span>x <span style="color:#f92672">==</span> self<span style="color:#f92672">.</span>p2<span style="color:#f92672">.</span>x
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_horizontal</span>(self):
-        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>p1<span style="color:#f92672">.</span>y <span style="color:#f92672">==</span> self<span style="color:#f92672">.</span>p2<span style="color:#f92672">.</span>y
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_orthagonal</span>(self):
-        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>is_vertical() <span style="color:#f92672">or</span> self<span style="color:#f92672">.</span>is_horizontal()
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">points</span>(self):
-        <span style="color:#75715e"># TODO: handle lines that aren&#39;t vertical, horizontal, or diagonal</span>
-
-        xd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>p1<span style="color:#f92672">.</span>x <span style="color:#f92672">==</span> self<span style="color:#f92672">.</span>p2<span style="color:#f92672">.</span>x <span style="color:#66d9ef">else</span> (<span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>p1<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;</span> self<span style="color:#f92672">.</span>p2<span style="color:#f92672">.</span>x <span style="color:#66d9ef">else</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-        yd <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>p1<span style="color:#f92672">.</span>y <span style="color:#f92672">==</span> self<span style="color:#f92672">.</span>p2<span style="color:#f92672">.</span>y <span style="color:#66d9ef">else</span> (<span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>p1<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;</span> self<span style="color:#f92672">.</span>p2<span style="color:#f92672">.</span>y <span style="color:#66d9ef">else</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)
-
-        p <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>p1
-        <span style="color:#66d9ef">while</span> p <span style="color:#f92672">!=</span> self<span style="color:#f92672">.</span>p2:
-            <span style="color:#66d9ef">yield</span> p
-            p <span style="color:#f92672">=</span> Point(p<span style="color:#f92672">.</span>x <span style="color:#f92672">+</span> xd, p<span style="color:#f92672">.</span>y <span style="color:#f92672">+</span> yd)
-
-        <span style="color:#66d9ef">yield</span> p
-</code></pre></div><p>Dataclasses are great. They give you constructors and a bunch of other things for free. On top of that, if you specify <code>frozen=True</code>, making them immutable, you also get <code>hashable</code> types for free (which I&rsquo;ll use in the problem).</p>
-<p>Perhaps the most interesting bit here is the function that will iterate through the <code>points</code> in a <code>List</code>. Specifically, it will figure out the x and y delta (<code>xd</code> and <code>yd</code>) and repeatedly add that until you hit the end point.</p>
-<p><strong>Note:</strong> this only works for lines that are vertical, horizontal, or diagonal (at 45 degrees). Anything else needs a better <a href="https://en.wikipedia.org/wiki/line%20drawing%20algorithm">line drawing algorithm</a> (of which there are a few). If we need it, I&rsquo;ll implement it.</p>
-<p>Next, use that to parse:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">parse</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> List[Line]:
-    result <span style="color:#f92672">=</span> []
-
-    <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
-        x1, y1, x2, y2 <span style="color:#f92672">=</span> [int(v) <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>replace(<span style="color:#e6db74">&#39; -&gt; &#39;</span>, <span style="color:#e6db74">&#39;,&#39;</span>)<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;,&#39;</span>)]
-        result<span style="color:#f92672">.</span>append(Line(Point(x1, y1), Point(x2, y2)))
-
-    <span style="color:#66d9ef">return</span> result
-</code></pre></div><p>The input format is <code>x1,y1 -&gt; x2,y2</code>, but it&rsquo;s easier to split and convert if we do it all directly. There are a few other ways we could have done this: splitting on anything non-numeric or using a regular expression / something else for parsing directly. But I think this is clear enough.</p>
-<p>And with all that, the problem is actually pretty short:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-
-    lines <span style="color:#f92672">=</span> parse(file)
-    counter: MutableMapping[Point, int] <span style="color:#f92672">=</span> collections<span style="color:#f92672">.</span>Counter()
-
-    <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> lines:
-        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> line<span style="color:#f92672">.</span>is_orthagonal():
-            <span style="color:#66d9ef">continue</span>
-
-        <span style="color:#66d9ef">for</span> point <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>points():
-            counter[point] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-
-    <span style="color:#66d9ef">print</span>(sum(<span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> count <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">for</span> point, count <span style="color:#f92672">in</span> counter<span style="color:#f92672">.</span>items()))
-</code></pre></div><p>We&rsquo;ll use the built in <code>collections.Counter</code> datatype, since that&rsquo;s exactly what we&rsquo;re doing: counting things. Then just iterate over every line, skip the non-orthagonal ones, iterate over every point, and count them up. At the end, print the number that we saw more than once. Et voila.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 linear-avoidinator.py part1 input.txt
-<span style="color:#ae81ff">5632</span>
-</code></pre></div><p><a href="/2021/12/05/aoc-2021-day-5-linear-avoidinator/">read more...</a></p></div>
 
             <hr /></article></div>
 
