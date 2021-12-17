@@ -6,7 +6,271 @@
     <description>Recent content on jverkamp.com</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 15 Dec 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 16 Dec 2021 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AoC 2021 Day 16: Depacketinator</title>
+      <link>https://blog.jverkamp.com/2021/12/16/aoc-2021-day-16-depacketinator/</link>
+      <pubDate>Thu, 16 Dec 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/16/aoc-2021-day-16-depacketinator/</guid>
+      <description>&lt;h3 id=&#34;source-packet-decoderhttpsadventofcodecom2021day16&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/16&#34;&gt;Packet Decoder&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-recursive-binary-packet-definition-see-below-parse-the-given-packet-return-the-sum-of-each-packets-version&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a recursive binary packet definition (see below), parse the given packet. Return the sum of each packet&amp;rsquo;s &lt;code&gt;version&lt;/code&gt;.&lt;/h4&gt;
+&lt;p&gt;All packet fields are in bits. Possible packet formats:&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Name&lt;/th&gt;
+&lt;th&gt;Structure&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;Literal Value&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;AAA 010 [1CCCC]* [1CCCC]&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Type 0 Operator&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;AAA BBB 0 DDDDDDDDDDDDDDD (children)&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;Type 1 Operator&lt;/td&gt;
+&lt;td&gt;&lt;code&gt;AAA BBB 1 EEEEEEEEEEE (children)&lt;/code&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;In all packets:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;AAA&lt;/code&gt; - 3 bits representing the &lt;code&gt;version&lt;/code&gt; of the packet&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;BBB&lt;/code&gt; - 3 bits representing the &lt;code&gt;type_id&lt;/code&gt; of the packet&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In literal packets&amp;ndash;where &lt;code&gt;type_id&lt;/code&gt; = 4 (&lt;code&gt;010&lt;/code&gt;)&amp;ndash;the value is an integer encoded in a value similar to &lt;a href=&#34;https://en.wikipedia.org/wiki/UTF-8%20encoding&#34;&gt;UTF-8 encoding&lt;/a&gt;. There will be a sequence of 0 or more 5 bit values &lt;code&gt;1CCCC&lt;/code&gt; (with the &lt;code&gt;1&lt;/code&gt; indicating the number continues, followed by a single &lt;code&gt;0CCCC&lt;/code&gt; segment, ending the value. These &lt;code&gt;C*&lt;/code&gt;s will be concatenated and treated as a single unsigned binary value and converted to an integer.&lt;/p&gt;
+&lt;p&gt;In Type 0 Operator packets, the next 15 bits (&lt;code&gt;D{15}&lt;/code&gt;) should be interpreted as an unsigned integer containing the number of following bits that encode &amp;lsquo;child&amp;rsquo; packets. Parse the following &lt;code&gt;D&lt;/code&gt; bits as child packets (perhaps recursively) and attach those to the Type 0 Operator as children.&lt;/p&gt;
+&lt;p&gt;In Type 1 Operator packets, the next 11 bits (&lt;code&gt;E{11}&lt;/code&gt;) should be interpreted as an unsigned integer containing the number of child packets (instead of their length). Parse that many child packets (perhaps recursively, only top level children count towards this number &lt;code&gt;E&lt;/code&gt;) and attach those to the Type 1 Operator as children.&lt;/p&gt;
+&lt;p&gt;Yeah, that&amp;rsquo;s a mouthful. But it&amp;rsquo;s a pretty awesome excuse to use a few techniques that are common in parsing binary encodings, such as network packets.&lt;/p&gt;
+&lt;p&gt;First things first, I want to make a &lt;code&gt;BitStream&lt;/code&gt; class that can take in the data that&amp;rsquo;s going to make up our packets and keep track of where we are. That way, we can read out an arbitrary number of bits (3, 1, 4, 15, and 11 bits in this case, depending on the structure) as whatever types we need:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;BitStream&lt;/span&gt;:
+    index: int
+    data: str
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;from_hex&lt;/span&gt;(hex_data: str) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;BitStream&amp;#39;&lt;/span&gt;:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; BitStream(&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(
+            &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{:04b}&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;format(int(c, &lt;span style=&#34;color:#ae81ff&#34;&gt;16&lt;/span&gt;)) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; c &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; hex_data
+        ))
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read_bits&lt;/span&gt;(self, n: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; str:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Read n bits from the current position in the bitsting as a string of 0/1&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data[self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;index:self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;index&lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt;n]
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;index &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; n
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;index &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; len(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;raise&lt;/span&gt; BitStreamException(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Attempted to read past the end of bitstream&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; value
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read_int&lt;/span&gt;(self, n: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Read n bits from the current position and convert to an integer&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; int(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_bits(n), &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read_bool&lt;/span&gt;(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; bool:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Read the next bit from the current position as True/False&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_bits(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;1&amp;#39;&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __str__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;index &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;8&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; len(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;lt;{self.index}/{len(self.data)}, {self.data[self.index:self.index+8]}...&amp;gt;&amp;#39;&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;lt;{self.index}/{len(self.data)}, {self.data[self.index:]}&amp;gt;&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;That&amp;rsquo;s actually not that bad, I don&amp;rsquo;t think. It&amp;rsquo;s a bit interesting that we&amp;rsquo;re mostly reading in &lt;code&gt;from_hex&lt;/code&gt;, but that just means take each single hex character, turn it into an integer with &lt;code&gt;int(c, 16)&lt;/code&gt; and then print that as a fixed four bits with &lt;code&gt;{:04b}.format(...)&lt;/code&gt;. Other than that, &lt;code&gt;read_bits&lt;/code&gt; will read n bits and advance the current pointer into the stream, and &lt;code&gt;read_int&lt;/code&gt; / &lt;code&gt;read_bool&lt;/code&gt; will wrap that to read a specific kind of value.&lt;/p&gt;
+&lt;p&gt;With all that, we should be ready to parse the packets:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Packet&lt;/span&gt;:
+    version: int
+    type_id: int
+
+    value: int
+    children: List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Packet&amp;#39;&lt;/span&gt;]
+
+    length: int
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;from_hex&lt;/span&gt;(hex: str) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Packet&amp;#39;&lt;/span&gt;:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_bitstream(BitStream&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_hex(hex))
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;from_bitstream&lt;/span&gt;(bits: BitStream, _depth: int &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Packet&amp;#39;&lt;/span&gt;:
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth}Parsing new packet at {bits}&amp;#39;&lt;/span&gt;)
+
+        version &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_int(&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;)
+        type_id &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_int(&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;)
+        length &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;
+
+        value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+        children &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - {version=}, {type_id=}&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Literal values&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; type_id &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;:
+            logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - Mode=literal&amp;#39;&lt;/span&gt;)
+
+            keep_reading &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; keep_reading:
+                keep_reading &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_bool()
+                byte &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_int(&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;)
+                logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - Read byte {byte}, will continue: {keep_reading}&amp;#39;&lt;/span&gt;)
+
+                value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; value &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;16&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; byte
+                length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Any other operator value&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            &lt;span style=&#34;color:#75715e&#34;&gt;# The next bit is the length_type_id&lt;/span&gt;
+            &lt;span style=&#34;color:#75715e&#34;&gt;# If it&amp;#39;s set, read the number of bits in subpackets&lt;/span&gt;
+            length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_bool():
+                length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;
+                number_of_children &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_int(&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)
+                logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - Mode=operator, length_type=1 ({number_of_children} children)&amp;#39;&lt;/span&gt;)
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; _ &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(number_of_children):
+                    child &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_bitstream(bits, _depth &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+                    children&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(child)
+
+                    length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; child&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;length
+
+            &lt;span style=&#34;color:#75715e&#34;&gt;# If it&amp;#39;s not, read the number of subpackets&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+                length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;15&lt;/span&gt;
+                body_length &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_int(&lt;span style=&#34;color:#ae81ff&#34;&gt;15&lt;/span&gt;)
+                logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - Mode=operator, length_type=0 ({body_length} bits)&amp;#39;&lt;/span&gt;)
+                logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - {len(bits.data)-bits.index} of {len(bits.data)} remaining&amp;#39;&lt;/span&gt;)
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; body_length:
+                    child &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_bitstream(bits, _depth &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+                    children&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(child)
+
+                    body_length &lt;span style=&#34;color:#f92672&#34;&gt;-=&lt;/span&gt; child&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;length
+                    length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; child&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;length
+
+                    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - New child used {child.length} bits, {body_length} remaining&amp;#39;&lt;/span&gt;)
+
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; body_length &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;:
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;raise&lt;/span&gt; PacketParseException(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Could not parse packet, too many bits used by children&amp;#39;&lt;/span&gt;)
+
+        p &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Packet(version, type_id, value, children, length)
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} \ Packet parsed: {p}&amp;#39;&lt;/span&gt;)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; p
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;There&amp;rsquo;s a fair amount of debugging code in there&amp;hellip; because this took a bit to get right. And all for a relatively simple mistake. Essentially, we start by taking the bit stream and reading the &lt;code&gt;value&lt;/code&gt; and &lt;code&gt;type_id&lt;/code&gt;. That is always 6 bits. After that, there&amp;rsquo;s a special case for &lt;code&gt;type_id = 4&lt;/code&gt;: literals. That&amp;rsquo;s the first half of the &lt;code&gt;if&lt;/code&gt;. In there, we&amp;rsquo;re going to read 1 + 4 bits at a time until the first bit is 0, adding the other 4 bits as an ever growing base 16 literal. Pretty cool!&lt;/p&gt;
+&lt;p&gt;The other two cases depend on the next bit read with &lt;code&gt;bits.read_bool()&lt;/code&gt;. If it&amp;rsquo;s 0, we&amp;rsquo;re parsing a specific number of children. That one&amp;rsquo;s not so bad, because we can just read off &lt;code&gt;Packet.from_bitstream&lt;/code&gt; at the current point for that many children. But we absolutely have to update the length because of the next case:&lt;/p&gt;
+&lt;p&gt;If the &lt;code&gt;bits.read_bool()&lt;/code&gt; was 1. In this case, we only know how many bits the child packets are made of. This is actually the more common method in network and other binary formats I&amp;rsquo;ve found, because it lets you skip parsing if you don&amp;rsquo;t actually care about the children. You can just jump ahead that many bits. In the above case with a number of children, you have no idea how large those children actually are, so you have to parse them.&lt;/p&gt;
+&lt;p&gt;In any case, we now have perfectly functional parsing of packets. It&amp;rsquo;s pretty cool to see it work too:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_hex(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;D2FE28&amp;#39;&lt;/span&gt;)
+Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2021&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;21&lt;/span&gt;)
+
+&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_hex(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;38006F45291200&amp;#39;&lt;/span&gt;)
+Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;),
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;20&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;16&lt;/span&gt;)
+], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;49&lt;/span&gt;)
+
+&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_hex(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;EE00D40C823060&amp;#39;&lt;/span&gt;)
+Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;), 
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;), 
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)
+], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;51&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I like reading the debug view as well (which is good, since I spent a while staring at it&amp;hellip;)&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_hex(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;EE00D40C823060&amp;#39;&lt;/span&gt;)
+INFO Parsing new packet at &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;56&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;11101110.&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;..&amp;gt;&lt;/span&gt;
+INFO  &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;
+INFO  &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; Mode&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;operator, length_type&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt; children)
+INFO  Parsing new packet at &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;18&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;56&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;01010000.&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;..&amp;gt;&lt;/span&gt;
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; Mode&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;literal
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; Read byte &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, will &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;: False
+INFO   \ Packet parsed: Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)
+INFO  Parsing new packet at &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;29&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;56&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;10010000.&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;..&amp;gt;&lt;/span&gt;
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; Mode&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;literal
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; Read byte &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, will &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;: False
+INFO   \ Packet parsed: Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)
+INFO  Parsing new packet at &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;40&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;56&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;00110000.&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;..&amp;gt;&lt;/span&gt;
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; Mode&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;literal
+INFO   &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; Read byte &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, will &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;: False
+INFO   \ Packet parsed: Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)
+INFO  \ Packet parsed: Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;), Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;), Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;51&lt;/span&gt;)
+
+Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;), 
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;), 
+    Packet(version&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, type_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;4&lt;/span&gt;, value&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;, children&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)
+], length&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;51&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Neat!&lt;/p&gt;
+&lt;p&gt;Wrap it to actually satisfy the actual prompt (sum all &lt;code&gt;versions&lt;/code&gt;):&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;sum_versions&lt;/span&gt;(p: Packet) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;version &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; sum(sum_versions(child) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; child &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;children)
+
+    p &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_hex(file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip())
+    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(p)
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{sum_versions(p):-16} {line}&amp;#39;&lt;/span&gt;)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;And that&amp;rsquo;s it. A nice recursive &lt;code&gt;sum_versions&lt;/code&gt; that looks into &lt;code&gt;children&lt;/code&gt; if there are any, summing as it goes. Nice. So&amp;hellip; how does it work on the given input?&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#960050;background-color:#1e0010&#34;&gt;$&lt;/span&gt; python3 depacketinator&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;py part1 input&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;txt
+             &lt;span style=&#34;color:#ae81ff&#34;&gt;981&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0055.&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;C000
+&lt;span style=&#34;color:#75715e&#34;&gt;# time 63753417ns / 0.06s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Nice. Quick too.&lt;/p&gt;
+&lt;p&gt;So&amp;hellip; while we&amp;rsquo;re here, what was the error that took me forever to figure out? Originally, my &lt;code&gt;else&lt;/code&gt; block (the type 0/1 operators) looked like this:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;        &lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Any other operator value&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            &lt;span style=&#34;color:#75715e&#34;&gt;# The next bit is the length_type_id&lt;/span&gt;
+            &lt;span style=&#34;color:#75715e&#34;&gt;# If it&amp;#39;s set, read the number of bits in subpackets&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_bool():
+                number_of_children &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_int(&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;)
+                logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - Mode=operator, length_type=1 ({number_of_children} children)&amp;#39;&lt;/span&gt;)
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; _ &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(number_of_children):
+                    child &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_bitstream(bits, _depth &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+                    children&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(child)
+
+                    length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; child&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;length
+
+            &lt;span style=&#34;color:#75715e&#34;&gt;# If it&amp;#39;s not, read the number of subpackets&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+                body_length &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bits&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read_int(&lt;span style=&#34;color:#ae81ff&#34;&gt;15&lt;/span&gt;)
+                logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - Mode=operator, length_type=0 ({body_length} bits)&amp;#39;&lt;/span&gt;)
+                logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - {len(bits.data)-bits.index} of {len(bits.data)} remaining&amp;#39;&lt;/span&gt;)
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; body_length:
+                    child &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Packet&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_bitstream(bits, _depth &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+                    children&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(child)
+
+                    body_length &lt;span style=&#34;color:#f92672&#34;&gt;-=&lt;/span&gt; child&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;length
+                    length &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; child&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;length
+
+                    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} - New child used {child.length} bits, {body_length} remaining&amp;#39;&lt;/span&gt;)
+
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; body_length &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;:
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;raise&lt;/span&gt; PacketParseException(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Could not parse packet, too many bits used by children&amp;#39;&lt;/span&gt;)
+
+        p &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Packet(version, type_id, value, children, length)
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{&amp;#34; &amp;#34; * _depth} \ Packet parsed: {p}&amp;#39;&lt;/span&gt;)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; p
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Pretty much the same, no?&lt;/p&gt;
+&lt;p&gt;Well, actually there are three very important lines missing. Three lines that, because of how the test packet lengths worked out, led to a number of hard to debug errors, but only in &lt;em&gt;some&lt;/em&gt; of the test cases.&lt;/p&gt;
+&lt;p&gt;Any guesses? Look back and compare?&lt;/p&gt;
+&lt;p&gt;Turns out, you absolutely need to have the correct lengths for nested operator packets. So 1 bit for the type and either 15 or 11 for the count. It only matters if you have a Type 1 packet with non-literals inside of it (so at least two levels of nesting), otherwise the lengths work well enough, but in that case, it certainly got tricky. It kept looking for more information when there just weren&amp;rsquo;t any more bits to be had.&lt;/p&gt;
+&lt;p&gt;Oh, debuggging.&lt;/p&gt;
+&lt;p&gt;I really should be writing better test cases, but in this case, that wouldn&amp;rsquo;t have necessarily helped. I &lt;em&gt;knew&lt;/em&gt; which test was failing, I just didn&amp;rsquo;t know (at first) &lt;em&gt;why&lt;/em&gt;. Live and learn.&lt;/p&gt;</description>
+    </item>
+    
     <item>
       <title>AoC 2021 Day 15: Low Ceiling Simulator</title>
       <link>https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/</link>
@@ -1303,19 +1567,6 @@ Shepherd’s Warning Well, it’s more of the same story, but there’s potentia
 &lt;p&gt;This, our town of Halloween&lt;/p&gt;
 &lt;/blockquote&gt;
 &lt;p&gt;Man I love this movie.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>One Hundred and One Dalmatians</title>
-      <link>https://blog.jverkamp.com/2021/10/30/one-hundred-and-one-dalmatians/</link>
-      <pubDate>Sat, 30 Oct 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/10/30/one-hundred-and-one-dalmatians/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/one-hundred-and-one-dalmatians.jpg&#34;/&gt; 
-&lt;/figure&gt;
-
-&lt;p&gt;60 years ago. Dang. And you know? It holds up. The action is solid and story aren&amp;rsquo;t overly complicated but enjoyable, the animation really works (despite/because of the limitations of the time), and the villains are unambiguous and scary but not overly so. Perhaps best of all, it&amp;rsquo;s the story of an absolute pile of talking dogs. What&amp;rsquo;s not to love?&lt;/p&gt;</description>
     </item>
     
   </channel>
