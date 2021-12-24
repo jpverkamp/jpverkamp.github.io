@@ -39,7 +39,7 @@
     </ul>
 
     <nav id="header-navigation" role="navigation" class="ribbon">
-        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+        <ul class="main-navigation"><li><a href="https://blog.jverkamp.com/reviews/">Reviews</a></li><li><a href="https://blog.jverkamp.com/programming/">Programming</a></li><li><a href="https://blog.jverkamp.com/photography/">Photography</a></li><li><a href="https://blog.jverkamp.com/maker/">Maker</a></li><li><a href="https://blog.jverkamp.com/writing/">Writing</a></li><li><a href="https://blog.jverkamp.com/research/">Research</a></li><li class="subscription" data-subscription="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
         </ul>
     </nav>
 </header>
@@ -48,6 +48,597 @@
     <div class="entry-content"></div>
 
     <article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/18/aoc-2021-day-18-pairs-of-pairs/" class="clearfix">AoC 2021 Day 18: Pairs of Pairs</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-18</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-snailfishhttpsadventofcodecom2021day18">Source: <a href="https://adventofcode.com/2021/day/18">Snailfish</a></h3>
+<h4 id="part-1-given-the-following-definition-of-snailfish-numbers-add-a-series-of-snailfish-numbers-and-return-the-magnitude-of-the-result"><strong>Part 1:</strong> Given the following definition of Snailfish numbers, add a series of Snailfish numbers and return the magnitude of the result.</h4>
+<ul>
+<li>A <code>Snailfish</code> number is defined as a pair <span class="latex-inline">\langle a, b \rangle</span>
+ where <code>a</code> and <code>b</code> can either by integers or nested <code>Snailfish</code> number</li>
+<li>To add two <code>Snailfish</code> numbers, <span class="latex-inline">c &#43; d = \langle c, d \rangle</span>
+</li>
+<li>To reduce a <code>Snailfish</code> number to simplest form:
+<ul>
+<li>If there are any pairs (of integers <span class="latex-inline">\langle e, f \rangle</span>
+) nested 5+ levels deep, <code>explode</code> the leftmost one
+<ul>
+<li><code>e</code> is added to the <em>rightmost</em> node <em>left</em> of the exploded pair (if possible)</li>
+<li><code>f</code> is added to the <em>leftmost</em> node <em>right</em> of the exploded pair (if possible)</li>
+<li>Replace the original pair with a <code>0</code> (I missed this for a while&hellip;)</li>
+</ul>
+</li>
+<li>If there are no such pairs and there is at least one integer <code>g</code> greater than or equal to 10, <code>split</code> it into a pair <span class="latex-inline">\langle h, i \rangle</span>
+ such that <span class="latex-inline">h = \left \lfloor \frac{g}{2} \right \rfloor, i = \left \lceil \frac{g}{2} \right \rceil</span>
+.</li>
+</ul>
+</li>
+<li>The magnitude of <span class="latex-inline">|\langle j, k \rangle| = 3|j|&#43;2|k|</span>
+</li>
+</ul>
+<p>Yeah&hellip; that took a bit to figure out.</p>
+<p>To just parse the numbers, do addition, and do <code>split</code>, the most natural data structure is going to be a tree:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Snailfish</span>():
+    left: Union[int, <span style="color:#e6db74">&#39;Snailfish&#39;</span>]
+    right: Union[int, <span style="color:#e6db74">&#39;Snailfish&#39;</span>]
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">read</span>(text: TextIO) <span style="color:#f92672">-&gt;</span> Optional[Union[int, <span style="color:#e6db74">&#39;Snailfish&#39;</span>]]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Read a snailfish from the given filelike object&#39;&#39;&#39;</span>
+
+        c <span style="color:#f92672">=</span> text<span style="color:#f92672">.</span>read(<span style="color:#ae81ff">1</span>)
+        <span style="color:#66d9ef">while</span> <span style="color:#f92672">not</span> c<span style="color:#f92672">.</span>isdigit() <span style="color:#f92672">and</span> <span style="color:#f92672">not</span> c <span style="color:#f92672">in</span> <span style="color:#e6db74">&#39;[&#39;</span>:
+            c <span style="color:#f92672">=</span> text<span style="color:#f92672">.</span>read(<span style="color:#ae81ff">1</span>)
+
+        <span style="color:#66d9ef">if</span> c <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;[&#39;</span>:
+            left <span style="color:#f92672">=</span> Snailfish<span style="color:#f92672">.</span>read(text)
+            right <span style="color:#f92672">=</span> Snailfish<span style="color:#f92672">.</span>read(text)
+
+            <span style="color:#66d9ef">assert</span> left <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> None
+            <span style="color:#66d9ef">assert</span> right <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> None
+
+            <span style="color:#66d9ef">return</span> Snailfish(left, right)
+
+        <span style="color:#66d9ef">elif</span> c<span style="color:#f92672">.</span>isdigit():
+            the_once_and_future_number <span style="color:#f92672">=</span> []
+
+            <span style="color:#66d9ef">while</span> c<span style="color:#f92672">.</span>isdigit():
+                the_once_and_future_number<span style="color:#f92672">.</span>append(c)
+                c <span style="color:#f92672">=</span> text<span style="color:#f92672">.</span>read(<span style="color:#ae81ff">1</span>)
+
+            <span style="color:#66d9ef">assert</span>(c <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;,&#39;</span> <span style="color:#f92672">or</span> c <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;]&#39;</span>)
+
+            <span style="color:#66d9ef">return</span> int(<span style="color:#e6db74">&#39;&#39;</span><span style="color:#f92672">.</span>join(the_once_and_future_number))
+
+        <span style="color:#66d9ef">return</span> None
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">reduce</span>(self) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Snailfish&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Convert this snailfish to minimum form using the result for explosing and splitting.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># TODO</span>
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">magnitude</span>(self) <span style="color:#f92672">-&gt;</span> int:
+        <span style="color:#e6db74">&#39;&#39;&#39;Calculate the magnitude of a snailfish number.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">f</span>(sf: Union[int, <span style="color:#e6db74">&#39;Snailfish&#39;</span>]) <span style="color:#f92672">-&gt;</span> int:
+            <span style="color:#66d9ef">if</span> isinstance(sf, int):
+                <span style="color:#66d9ef">return</span> sf
+            <span style="color:#66d9ef">else</span>:
+                <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">3</span> <span style="color:#f92672">*</span> f(sf<span style="color:#f92672">.</span>left) <span style="color:#f92672">+</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> f(sf<span style="color:#f92672">.</span>right)
+
+        <span style="color:#66d9ef">return</span> f(self)
+
+    <span style="color:#66d9ef">def</span> __add__(self, other):
+        <span style="color:#e6db74">&#39;&#39;&#39;Add two Snailfish by making a larger pair and then reducing it.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> Snailfish(self, other)<span style="color:#f92672">.</span>reduce()
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;{{{self.left}, {self.right}}}&#39;</span>
+</code></pre></div><p>But&hellip; it&rsquo;s really quite tricky to use a tree and deal with exploding. You can probably recur up the tree and back down to find the <em>rightmost left node</em>&hellip; but why? Instead, we&rsquo;re going to swap back and forth to another similar data structure: a depthlist (is there another name for this?). For each leaf node / integer value in the <code>Snailfish</code> tree, represent that number as a pair <code>(value, depth)</code>. So</p>
+<p><span class="latex-inline">\langle \langle 1, \langle 2, \langle 3, 4 \rangle \rangle \rangle, 5 \rangle</span>
+ would be <code>[(1, 2), (2, 3), (3, 4), (4, 4), (5, 1)]</code>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Snailfish</span>():
+    <span style="color:#f92672">...</span>
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">to_depthlist</span>(self) <span style="color:#f92672">-&gt;</span> List[Tuple[int, int]]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Convert to list of (value, depth).&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">g</span>(sf: Union[int, <span style="color:#e6db74">&#39;Snailfish&#39;</span>], depth: int) <span style="color:#f92672">-&gt;</span> Generator[Tuple[int, int], None, None]:
+            <span style="color:#66d9ef">if</span> isinstance(sf, int):
+                <span style="color:#66d9ef">yield</span> (sf, depth)
+            <span style="color:#66d9ef">else</span>:
+                <span style="color:#66d9ef">yield</span> <span style="color:#f92672">from</span> g(sf<span style="color:#f92672">.</span>left, depth <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>)
+                <span style="color:#66d9ef">yield</span> <span style="color:#f92672">from</span> g(sf<span style="color:#f92672">.</span>right, depth <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>)
+
+        <span style="color:#66d9ef">return</span> list(g(self, <span style="color:#ae81ff">0</span>))
+</code></pre></div><p>Converting back is a bit trickier, but actually similar to parsing (repeatedly combine pairs at the same depth until everything is combined):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Snailfish</span>():
+    <span style="color:#f92672">...</span>
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">from_depthlist</span>(dls: List[Tuple[int, int]]) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Snailfish&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Convert from a list of (value, depth).&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># To make typing happy, copy to a list that can have either</span>
+        mixedls: List[Tuple[Union[int, <span style="color:#e6db74">&#39;Snailfish&#39;</span>], int]] <span style="color:#f92672">=</span> [
+            (value, depth)
+            <span style="color:#66d9ef">for</span> (value, depth)
+            <span style="color:#f92672">in</span> dls
+        ]
+
+        <span style="color:#66d9ef">while</span> len(mixedls) <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>:
+            <span style="color:#66d9ef">for</span> index, ((left, left_depth), (right, right_depth)) <span style="color:#f92672">in</span> enumerate(zip(mixedls, mixedls[<span style="color:#ae81ff">1</span>:])):
+                <span style="color:#66d9ef">if</span> left_depth <span style="color:#f92672">==</span> right_depth:
+                    mixedls[index] <span style="color:#f92672">=</span> (Snailfish(left, right), left_depth <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)
+                    <span style="color:#66d9ef">del</span> mixedls[index<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>]
+
+                    <span style="color:#66d9ef">break</span>
+
+        <span style="color:#66d9ef">assert</span> isinstance(mixedls[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">0</span>], Snailfish)
+        <span style="color:#66d9ef">return</span> mixedls[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">0</span>]
+</code></pre></div><p>Using this data structure, it&rsquo;s much easier to deal with <code>explode</code>:</p>
+<ul>
+<li>Find the first pair of numbers with the same depth (<code>4</code> in this case) that are deep enough</li>
+<li>Move the two values over one each</li>
+<li>Add a <code>0</code> at <code>depth-1</code></li>
+</ul>
+<p>And splitting is just as easy:</p>
+<ul>
+<li>Find the value to split, replace it with two nodes (ceiling and floor of division by 2)</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Snailfish</span>():
+    <span style="color:#f92672">...</span>
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">reduce</span>(self) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Snailfish&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Convert this snailfish to minimum form using the result for explosing and splitting.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># Much easier to work with mutable depthlists...</span>
+        dls <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>to_depthlist()
+
+        reducing <span style="color:#f92672">=</span> True
+        <span style="color:#66d9ef">while</span> reducing:
+            reducing <span style="color:#f92672">=</span> False
+            logging<span style="color:#f92672">.</span>debug(f<span style="color:#e6db74">&#39;Reducing: dls={dls}, sf={Snailfish.from_depthlist(dls)}&#39;</span>)
+
+            <span style="color:#75715e"># Check for any pairs that needs exploding</span>
+            <span style="color:#66d9ef">for</span> index, (value, depth) <span style="color:#f92672">in</span> enumerate(dls):
+                <span style="color:#66d9ef">if</span> depth <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">4</span> <span style="color:#f92672">and</span> index <span style="color:#f92672">&lt;</span> len(dls) <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">and</span> depth <span style="color:#f92672">==</span> dls[index <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>][<span style="color:#ae81ff">1</span>]:
+                    logging<span style="color:#f92672">.</span>debug(f<span style="color:#e6db74">&#39; - Exploding at {index=} with {value=} and {depth=}&#39;</span>)
+
+                    prefix <span style="color:#f92672">=</span> dls[:index]
+                    infix <span style="color:#f92672">=</span> [(<span style="color:#ae81ff">0</span>, depth<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)]
+                    suffix <span style="color:#f92672">=</span> dls[index<span style="color:#f92672">+</span><span style="color:#ae81ff">2</span>:]
+
+                    <span style="color:#75715e"># Increase the previous value by one (if it exists)</span>
+                    <span style="color:#66d9ef">if</span> prefix:
+                        prefix[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>] <span style="color:#f92672">=</span> (prefix[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>][<span style="color:#ae81ff">0</span>] <span style="color:#f92672">+</span> value, prefix[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>][<span style="color:#ae81ff">1</span>])
+
+                    <span style="color:#75715e"># Increase the next value by one (if it exists)</span>
+                    <span style="color:#66d9ef">if</span> suffix:
+                        suffix[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">=</span> (suffix[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">0</span>] <span style="color:#f92672">+</span> dls[index<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>][<span style="color:#ae81ff">0</span>], suffix[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">1</span>])
+
+                    dls <span style="color:#f92672">=</span> prefix <span style="color:#f92672">+</span> infix <span style="color:#f92672">+</span> suffix
+
+                    reducing <span style="color:#f92672">=</span> True
+                    <span style="color:#66d9ef">break</span>
+
+            <span style="color:#66d9ef">if</span> reducing:
+                <span style="color:#66d9ef">continue</span>
+
+            <span style="color:#75715e"># If not exploding, check for any value that needs splitting</span>
+            <span style="color:#66d9ef">for</span> index, (value, depth) <span style="color:#f92672">in</span> enumerate(dls):
+                <span style="color:#66d9ef">if</span> value <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">10</span>:
+                    logging<span style="color:#f92672">.</span>debug(f<span style="color:#e6db74">&#39; - Splitting at {index=} with {value=}&#39;</span>)
+
+                    dls <span style="color:#f92672">=</span> (
+                        dls[:index]
+                        <span style="color:#f92672">+</span> [
+                            (math<span style="color:#f92672">.</span>floor(value <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>), depth <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>),
+                            (math<span style="color:#f92672">.</span>ceil(value <span style="color:#f92672">/</span> <span style="color:#ae81ff">2</span>), depth <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>),
+                        ]
+                        <span style="color:#f92672">+</span> dls[index<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>:]
+                    )
+
+                    reducing <span style="color:#f92672">=</span> True
+                    <span style="color:#66d9ef">break</span>
+
+        <span style="color:#66d9ef">return</span> Snailfish<span style="color:#f92672">.</span>from_depthlist(dls)
+</code></pre></div><p>It&rsquo;s a bit messy, but it works great.</p>
+<p>And now that we have all that&hellip; we can actually do the problem.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    sum: Optional[Snailfish] <span style="color:#f92672">=</span> None
+
+    <span style="color:#66d9ef">while</span> sf :<span style="color:#f92672">=</span> Snailfish<span style="color:#f92672">.</span>read(file):
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Adding: {sf} to {sum}&#39;</span>)
+        <span style="color:#66d9ef">assert</span> isinstance(sf, Snailfish)
+
+        <span style="color:#66d9ef">if</span> sum <span style="color:#f92672">is</span> None:
+            sum <span style="color:#f92672">=</span> sf
+        <span style="color:#66d9ef">else</span>:
+            sum <span style="color:#f92672">+=</span> sf
+
+    <span style="color:#66d9ef">assert</span> sum <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> None
+
+    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Final result: {sum}&#39;</span>)
+    <span style="color:#66d9ef">print</span>(sum<span style="color:#f92672">.</span>magnitude())
+</code></pre></div><p>Neat:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 pairs-of-pairs.py part1 input.txt
+<span style="color:#ae81ff">4433</span>
+<span style="color:#75715e"># time 443584917ns / 0.44s</span>
+</code></pre></div><p>That was a &hellip; very strange/convoluted problem, but it was an interesting example of why data structures (and being able to convert between one another) is worthwhile.</p><p><a href="/2021/12/18/aoc-2021-day-18-pairs-of-pairs/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/18/aoc-2021-day-19-point-matchinator/" class="clearfix">AoC 2021 Day 19: Point Matchinator</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-18</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-snailfishhttpsadventofcodecom2021day19">Source: <a href="https://adventofcode.com/2021/day/19">Snailfish</a></h3>
+<h4 id="part-1-you-will-be-given-a-series-of-scanners-each-of-which-will-tell-you-the-location-from-their-point-of-view-of-a-series-of-beacons-each-scanner-may-be-flipped-or-rotated-in-increments-of-90-degrees-in-any-direction-determine-where-each-scanner-and-beacon-is-by-overlaying-the-maps-with-at-least-pairwise-12-matches"><strong>Part 1:</strong> You will be given a series of Scanners, each of which will tell you the location (from their point of view) of a series of Beacons. Each Scanner may be flipped or rotated in increments of 90 degrees in any direction. Determine where each Scanner and Beacon is by overlaying the maps (with at least pairwise 12 matches).</h4>
+<p>That&hellip; was quite a problem to get right. It&rsquo;s a lot of match to make sure that the various coordinate systems can be converted between one another and computationally expensive to brute force. I haven&rsquo;t gotten this one much below 10 minutes&hellip; but at this point, I&rsquo;m just going to have to call it. It&rsquo;s a crazy problem.</p>
+<p>Okay. Let&rsquo;s start with a 3-dimensional point:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Point</span>:
+    x: int
+    y: int
+    z: int
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;{{{self.x}, {self.y}, {self.z}}}&#39;</span>
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">all_waggles</span>() <span style="color:#f92672">-&gt;</span> Generator[<span style="color:#e6db74">&#39;Point&#39;</span>, None, None]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Generate all waggle parameters (see Point.waggle)&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">for</span> i, j, k <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>permutations((<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">3</span>)):
+            <span style="color:#66d9ef">for</span> ix <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>i, i):
+                <span style="color:#66d9ef">for</span> jx <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>j, j):
+                    <span style="color:#66d9ef">for</span> kx <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>k, k):
+                        <span style="color:#66d9ef">yield</span> Point(ix, jx, kx)
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">waggle</span>(self, w: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">        Return a new point reflected/reordered by the given coordinates.
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">        Each of w&#39;s x,y,z should be +- 1,2,3 and each of 1,2,3 should be used exactly once.
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">        reflect(3, 2, -1) should return Point(z, y, -x) for example.
+</span><span style="color:#e6db74">        &#39;&#39;&#39;</span>
+
+        d <span style="color:#f92672">=</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, self<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z)
+
+        <span style="color:#66d9ef">return</span> Point(
+            d[abs(w<span style="color:#f92672">.</span>x)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
+            d[abs(w<span style="color:#f92672">.</span>y)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
+            d[abs(w<span style="color:#f92672">.</span>z)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
+        )
+
+    <span style="color:#66d9ef">def</span> __add__(self, other: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Return the sum of two points.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> Point(self<span style="color:#f92672">.</span>x <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>z)
+
+    <span style="color:#66d9ef">def</span> __sub__(self, other: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Return the difference of two points, obv.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> Point(self<span style="color:#f92672">.</span>x <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>z)
+</code></pre></div><p>Waggle? Waggle. Basically, that&rsquo;s the name I&rsquo;m using for flipping and mirroring about any of x/y/z. Specifically, any ordering of <code>(1, 2, 3)</code> (each can be positive or negative) to re-order the coordinates and possibly flip them around. That ends up with the 24 possible orientations (<code>all_waggles</code>).</p>
+<p>Next, Scanners:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Scanner</span>:
+    name: str
+    points: FrozenSet[Point]
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">read</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> Optional[<span style="color:#e6db74">&#39;Scanner&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Read a Scanner from a filelike object&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> (name :<span style="color:#f92672">=</span> file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip(<span style="color:#e6db74">&#39;- </span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)):
+            <span style="color:#66d9ef">return</span> None
+
+        points <span style="color:#f92672">=</span> set()
+        <span style="color:#66d9ef">while</span> line :<span style="color:#f92672">=</span> file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip():
+            points<span style="color:#f92672">.</span>add(Point(<span style="color:#f92672">*</span>[int(v) <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;,&#39;</span>)]))
+
+        <span style="color:#66d9ef">return</span> Scanner(name, frozenset(points))
+
+    <span style="color:#66d9ef">def</span> __or__(self, other: <span style="color:#e6db74">&#39;Scanner&#39;</span>) <span style="color:#f92672">-&gt;</span> Optional[Tuple[Point, Point, Set[Point]]]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Given another scanner, try to find the overlapping points.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># Try every waggle of their scanners, assume I&#39;m always right</span>
+        <span style="color:#66d9ef">for</span> their_waggle <span style="color:#f92672">in</span> Point<span style="color:#f92672">.</span>all_waggles():
+            their_waggled_points <span style="color:#f92672">=</span> {
+                p<span style="color:#f92672">.</span>waggle(their_waggle)
+                <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> other<span style="color:#f92672">.</span>points
+            }
+
+            logging<span style="color:#f92672">.</span>debug(f<span style="color:#e6db74">&#39;Comparing {self.points=} and {their_waggled_points=}&#39;</span>)
+
+            <span style="color:#75715e"># Choose where we think the &#39;other&#39; scanner is from our perspective</span>
+            <span style="color:#66d9ef">for</span> my_zero <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>points:
+                my_zeroed_points <span style="color:#f92672">=</span> {p <span style="color:#f92672">-</span> my_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>points}
+
+                <span style="color:#66d9ef">for</span> their_waggled_zero <span style="color:#f92672">in</span> their_waggled_points:
+                    their_zeroed_points <span style="color:#f92672">=</span> {p <span style="color:#f92672">-</span> their_waggled_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> their_waggled_points}
+
+                    <span style="color:#75715e"># Try to subtract that from all of our points</span>
+                    <span style="color:#75715e"># If we have enough matches, that means we know their scanner from our point of view</span>
+                    matches <span style="color:#f92672">=</span> my_zeroed_points <span style="color:#f92672">&amp;</span> their_zeroed_points
+
+                    <span style="color:#66d9ef">if</span> len(matches) <span style="color:#f92672">&gt;=</span> BEACON_OVERLAPPINGNESS:
+                        <span style="color:#66d9ef">return</span> (their_waggle, my_zero <span style="color:#f92672">-</span> their_waggled_zero, {p <span style="color:#f92672">+</span> my_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> matches})
+
+        <span style="color:#66d9ef">return</span> None
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;@{{{self.name}}}&#39;</span>
+</code></pre></div><p>I don&rsquo;t know why I used <code>s0 | s1</code> as the operator for overlapping two scanners&hellip; but I did. Yay dunder methods?</p>
+<p>The method here is actually pretty neat. Essentially, the matching algorithm is:</p>
+<ul>
+<li>Try every possible <code>waggle</code> (orientation that the other Scanner could be at)</li>
+<li>Try every possible point from each scanner as the &lsquo;<code>zero</code>&rsquo; (the point at which we&rsquo;ve overlapping), <code>other</code> has to have their <code>zero</code> waggled</li>
+<li>Calculate the offsets from the zero for each</li>
+<li>If the <code>waggle</code> is correct (so that both Scanners are now facing the same way) and the <code>zeros</code> actually match&hellip; we&rsquo;re golden. We&rsquo;ll have at least 12 matches and can return</li>
+<li>Calculate the points that overlapped along with the <code>waggle</code> necessary to convert between the zones</li>
+</ul>
+<p>That last step took&hellip; rather a while to get right. And all because of a much lower level bug up in the <code>their_waggled_points</code> part. Man it&rsquo;s hard to debug bad data. Garbage in, garbage out. That&rsquo;s still a neat algorithm though.</p>
+<p>Next&hellip; let&rsquo;s combine these and try to figure out how to actually calculate all of the Beacons.</p>
+<p>First, load the input and find initial mappings between every pair of Scanners. This is&hellip; horribly inefficient. I did at least make sure that if I do <code>[s0, s1]</code>, then I don&rsquo;t have to do <code>[s1, s0]</code> (they&rsquo;re the same). But otherwise, I really am going through all of them.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">scanners <span style="color:#f92672">=</span> []
+<span style="color:#66d9ef">while</span> s :<span style="color:#f92672">=</span> Scanner<span style="color:#f92672">.</span>read(file):
+    scanners<span style="color:#f92672">.</span>append(s)
+s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
+
+logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== FINDING INITIAL OFFSETS ===&#39;</span>)
+offsets: MutableMapping[Tuple[Scanner, Scanner], Tuple[Point, Point, Set[Point]]] <span style="color:#f92672">=</span> {}
+
+<span style="color:#66d9ef">for</span> s0 <span style="color:#f92672">in</span> scanners:
+    <span style="color:#66d9ef">for</span> s1 <span style="color:#f92672">in</span> scanners:
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Finding the offset from {s0=} to {s1=}&#39;</span>)
+
+        <span style="color:#66d9ef">if</span> (s1, s0) <span style="color:#f92672">in</span> offsets:
+            offsets[s0, s1] <span style="color:#f92672">=</span> offsets[s1, s0]
+
+        <span style="color:#66d9ef">if</span> result :<span style="color:#f92672">=</span> (s0 <span style="color:#f92672">|</span> s1):
+            offsets[s0, s1] <span style="color:#f92672">=</span> result
+</code></pre></div><p>That will find Unfortunately, not every pair overlaps. So we can go from 0 to 1 and 1 to 4, but not directly from 0 to 4. And we want to be able to do that, to make sure we have <em>everything</em> in the same universal coordinate system. So next:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Fill in the entire chart</span>
+logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== EXPANDING CHART ===&#39;</span>)
+s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
+
+<span style="color:#75715e"># If we don&#39;t have a path from s0 to s1, try to go s0 -&gt; svia -&gt; s1</span>
+updating <span style="color:#f92672">=</span> True
+<span style="color:#66d9ef">while</span> updating:
+    logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Working on expanding iteration&#39;</span>)
+    updating <span style="color:#f92672">=</span> False
+
+    <span style="color:#66d9ef">for</span> s1 <span style="color:#f92672">in</span> scanners[<span style="color:#ae81ff">1</span>:]:
+        <span style="color:#66d9ef">if</span> (s0, s1) <span style="color:#f92672">in</span> offsets:
+            <span style="color:#66d9ef">continue</span>
+
+        <span style="color:#66d9ef">for</span> svia <span style="color:#f92672">in</span> scanners[<span style="color:#ae81ff">1</span>:]:
+            <span style="color:#66d9ef">if</span> s0 <span style="color:#f92672">==</span> svia <span style="color:#f92672">or</span> svia <span style="color:#f92672">==</span> s1:
+                <span style="color:#66d9ef">continue</span>
+
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> ((s0, svia) <span style="color:#f92672">in</span> offsets <span style="color:#f92672">and</span> (svia, s1) <span style="color:#f92672">in</span> offsets):
+                <span style="color:#66d9ef">continue</span>
+
+            logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Building a new path from {s0} via {svia} to {s1}&#39;</span>)
+
+            waggle1, offset1, _ <span style="color:#f92672">=</span> offsets[s0, svia]
+            waggle2, offset2, points2 <span style="color:#f92672">=</span> offsets[svia, s1]
+
+            new_waggle <span style="color:#f92672">=</span> waggle2<span style="color:#f92672">.</span>waggle(waggle1)
+            new_offset <span style="color:#f92672">=</span> offset1 <span style="color:#f92672">+</span> offset2<span style="color:#f92672">.</span>waggle(waggle1)
+
+            new_points <span style="color:#f92672">=</span> {
+                offset1 <span style="color:#f92672">+</span> p<span style="color:#f92672">.</span>waggle(waggle1)
+                <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> points2
+            }
+
+            offsets[s0, s1] <span style="color:#f92672">=</span> new_waggle, new_offset, new_points
+            updating <span style="color:#f92672">=</span> True
+</code></pre></div><p>Getting that <code>new_points</code> right took a bit too. And it&rsquo;s all so simple&hellip; I enjoy naming things.</p>
+<p>And that&rsquo;s mostly it. Go through now that we know the <code>offset</code> and <code>waggle</code> for every Scanner, we can actually map all of the Beacons they&rsquo;d seen into the same coordinate space and de-duplicate:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    scanners <span style="color:#f92672">=</span> []
+    <span style="color:#66d9ef">while</span> s :<span style="color:#f92672">=</span> Scanner<span style="color:#f92672">.</span>read(file):
+        scanners<span style="color:#f92672">.</span>append(s)
+    s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
+
+    offsets <span style="color:#f92672">=</span> do_the_actual_work(scanners)
+
+    <span style="color:#75715e"># Finally, calculate all of the beacon points</span>
+    logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== FINDING BEACONS ===&#39;</span>)
+
+    all_beacons <span style="color:#f92672">=</span> set()
+    <span style="color:#66d9ef">for</span> scanner <span style="color:#f92672">in</span> scanners:
+        waggle, offset, _ <span style="color:#f92672">=</span> offsets[s0, scanner]
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Adding beacons from {scanner} at {offset} (with {waggle=})&#39;</span>)
+
+        all_beacons <span style="color:#f92672">|=</span> {
+            offset <span style="color:#f92672">+</span> p<span style="color:#f92672">.</span>waggle(waggle)
+            <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> scanner<span style="color:#f92672">.</span>points
+        }
+
+    <span style="color:#66d9ef">print</span>(len(all_beacons))
+</code></pre></div><p>And that&rsquo;s it!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 point-matchinator.py part1 input.txt
+<span style="color:#ae81ff">313</span>
+<span style="color:#75715e"># time 412607815209ns / 412.61s</span>
+</code></pre></div><p>Yeah. That&rsquo;s slow. But it works and at this point, that&rsquo;s enough for me.</p><p><a href="/2021/12/18/aoc-2021-day-19-point-matchinator/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/17/aoc-2021-day-17-pew-pewinator/" class="clearfix">AoC 2021 Day 17: Pew-Pewinator</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-17</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-trick-shothttpsadventofcodecom2021day17">Source: <a href="https://adventofcode.com/2021/day/17">Trick Shot</a></h3>
+<h4 id="part-1-simulate-a-projectile-with-an-integer-initial-velocity-x-y-air-resistance-that-tries-to-reduce-x-velocity-to-0-and-gravity-that-increases-y-velocity-by-1-each-time-given-a-target-range-find-the-highest-point-reached-by-a-projectile-that-ends-a-tick-not-one-that-crosses-over-within-the-target-area"><strong>Part 1:</strong> Simulate a projectile with an integer initial velocity (x, y), air resistance that tries to reduce x-velocity to 0, and gravity that increases y-velocity by 1 each time. Given a target range, find the highest point reached by a projectile that ends a tick (not one that crosses over) within the target area.</h4>
+<p>Oh goodness, this one got weird. Let&rsquo;s start with data structures. A point:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Point</span>:
+    <span style="color:#e6db74">&#39;&#39;&#39;Represents a point in 2-space, positive y is up&#39;&#39;&#39;</span>
+
+    x: int
+    y: int
+</code></pre></div><p>A rectangular target with loading a specific format and the ability to determine if a point is in that rectangle:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Rect</span>:
+    <span style="color:#e6db74">&#39;&#39;&#39;Represents a rectangle in 2-space, positive Y is up&#39;&#39;&#39;</span>
+
+    position: Point
+    width: int
+    height: int
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">from_file</span>(file: TextIO):
+        m <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>match(
+            <span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;target area: x=(-?\d+)\.\.(-?\d+), y=(-?\d+)\.\.(-?\d+)&#39;</span>,
+            file<span style="color:#f92672">.</span>readline()
+        )
+
+        <span style="color:#66d9ef">if</span> m:
+            x1, x2, y1, y2 <span style="color:#f92672">=</span> m<span style="color:#f92672">.</span>groups()
+            <span style="color:#66d9ef">return</span> Rect(
+                Point(int(x1), int(y1)),
+                int(x2) <span style="color:#f92672">-</span> int(x1),
+                int(y2) <span style="color:#f92672">-</span> int(y1)
+            )
+
+    <span style="color:#66d9ef">def</span> __contains__(self, p: Point):
+        <span style="color:#66d9ef">return</span> (
+            self<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> p<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>x <span style="color:#f92672">+</span> self<span style="color:#f92672">.</span>width
+            <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> p<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>y <span style="color:#f92672">+</span> self<span style="color:#f92672">.</span>height
+        )
+</code></pre></div><p>This caused some issues, since an example target of <code>target area: x=20..30, y=-10..-5</code> <em>should</em> include the point <code>30, -7</code> for example. As they say, the two hardest things in computer science are caching, naming things, and off by one errors. 😄</p>
+<p>And finally, the probe itself:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Probe</span>:
+    <span style="color:#e6db74">&#39;&#39;&#39;Represents a probe with initial position and velocity.&#39;&#39;&#39;</span>
+
+    position: Point
+    velocity: Point
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">update</span>(self) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Probe&#39;</span>:
+        <span style="color:#66d9ef">return</span> Probe(
+            position<span style="color:#f92672">=</span>Point(
+                self<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>x <span style="color:#f92672">+</span> self<span style="color:#f92672">.</span>velocity<span style="color:#f92672">.</span>x,
+                self<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>y <span style="color:#f92672">+</span> self<span style="color:#f92672">.</span>velocity<span style="color:#f92672">.</span>y
+            ),
+            velocity<span style="color:#f92672">=</span>Point(
+                self<span style="color:#f92672">.</span>velocity<span style="color:#f92672">.</span>x <span style="color:#f92672">+</span> (<span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>velocity<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>velocity<span style="color:#f92672">.</span>x <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0</span>),
+                self<span style="color:#f92672">.</span>velocity<span style="color:#f92672">.</span>y <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>
+            )
+        )
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">impacts</span>(self, target: Rect) <span style="color:#f92672">-&gt;</span> Optional[int]:
+        <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">        Tests if the given probe hits the given target.
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">        If yes: return the maximum height reached (the coolness factor)
+</span><span style="color:#e6db74">        If no: return None
+</span><span style="color:#e6db74">        &#39;&#39;&#39;</span>
+
+        current <span style="color:#f92672">=</span> self
+        coolness <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>y
+
+        <span style="color:#66d9ef">while</span> current<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>y <span style="color:#f92672">&gt;=</span> target<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>y:
+            <span style="color:#66d9ef">if</span> current<span style="color:#f92672">.</span>position <span style="color:#f92672">in</span> target:
+                <span style="color:#66d9ef">return</span> coolness
+
+            current <span style="color:#f92672">=</span> current<span style="color:#f92672">.</span>update()
+            coolness <span style="color:#f92672">=</span> max(coolness, current<span style="color:#f92672">.</span>position<span style="color:#f92672">.</span>y)
+
+        <span style="color:#66d9ef">return</span> None
+</code></pre></div><p>I made the (admittedly a bit odd for Python) decision for this to be an immutable data structure. That means that <code>update</code> doesn&rsquo;t change the Probe itself, but rather returns a new updated Probe. It doesn&rsquo;t change that much, but it does change a bit.</p>
+<p>Okay, next up, we want to find all of the possible points that could impact. I expect the best way to do this would be to solve the various kinematic equations and find the single/two best answers, but where&rsquo;s the fun in that? Instead, I&rsquo;m going to try <em>every</em> possible projectile.</p>
+<p>There&rsquo;s a bit of a caveat to that though, because you don&rsquo;t want to just keep going on forever. So instead, what I did was start at an initial velocity of <code>(0, 0)</code> (just let the probe drop) and then scan &lsquo;outwards&rsquo;. So <code>(0, -1)</code>, <code>(1, 0)</code>, and <code>(0, 1)</code>. Then all 2 distance ones, etc. Eventually, we would start hitting the target&hellip; and the assumption was that once we stopped hitting it for an entire offset, we would be done.</p>
+<p>Turns out, that wasn&rsquo;t quite correct. There are actually multiple sets of answers. For example, those that lob the probe really high up (high initial velocity) and those that aim lower or even down. Once you&rsquo;ve found all the sets though, you&rsquo;re done:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">all_impacts</span>(target: Rect, phases: int <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>) <span style="color:#f92672">-&gt;</span> Generator[Tuple[Probe, int], None, None]:
+    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;all_impacts({target=}), starting&#39;</span>)
+
+    origin <span style="color:#f92672">=</span> Point(<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>)
+    phase <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+
+    <span style="color:#75715e"># Original thoughts:</span>
+
+    <span style="color:#75715e"># Even phases mean that you haven&#39;t seen an impact yet</span>
+    <span style="color:#75715e"># Odd phases mean you&#39;re currently scanning an &#39;impact zone&#39;</span>
+
+    <span style="color:#75715e"># Since there are two &#39;impact zones&#39;, you should expect to go through:</span>
+    <span style="color:#75715e"># 0: before any impacts</span>
+    <span style="color:#75715e"># 1: first impact zone</span>
+    <span style="color:#75715e"># 2: between the zones</span>
+    <span style="color:#75715e"># 3: second impact zone</span>
+    <span style="color:#75715e"># 4: done scanning</span>
+
+    <span style="color:#75715e"># Later thoughts:</span>
+    <span style="color:#75715e"># Apparently there are 6 blocks of solutions total...</span>
+
+    <span style="color:#66d9ef">for</span> offset <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>count(<span style="color:#ae81ff">1</span>):
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;all_impacts({target=}), {offset=}, {phase=}&#39;</span>)
+
+        at_least_one_impact <span style="color:#f92672">=</span> False
+
+        <span style="color:#66d9ef">for</span> xd <span style="color:#f92672">in</span> range(offset<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>):
+            <span style="color:#66d9ef">for</span> yd <span style="color:#f92672">in</span> range(<span style="color:#f92672">-</span>offset, offset<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>):
+                <span style="color:#66d9ef">if</span> abs(xd) <span style="color:#f92672">+</span> abs(yd) <span style="color:#f92672">!=</span> offset:
+                    <span style="color:#66d9ef">continue</span>
+
+                probe <span style="color:#f92672">=</span> Probe(origin, Point(xd, yd))
+                coolness <span style="color:#f92672">=</span> probe<span style="color:#f92672">.</span>impacts(target)
+
+                <span style="color:#66d9ef">if</span> coolness <span style="color:#f92672">is</span> <span style="color:#f92672">not</span> None:
+                    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;all_impacts({target=}), Hit! {xd=}, {yd=} -&gt; {coolness=}&#39;</span>)
+                    <span style="color:#66d9ef">yield</span>(probe, coolness)
+
+                    at_least_one_impact <span style="color:#f92672">=</span> True
+
+        <span style="color:#66d9ef">if</span> phase <span style="color:#f92672">%</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">and</span> at_least_one_impact:
+            phase <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+        <span style="color:#66d9ef">elif</span> phase <span style="color:#f92672">%</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">and</span> <span style="color:#f92672">not</span> at_least_one_impact:
+            phase <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+
+        <span style="color:#66d9ef">if</span> phase <span style="color:#f92672">==</span> phases <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span>:
+            <span style="color:#66d9ef">break</span>
+</code></pre></div><p>And &hellip; that seems to work well enough, so let&rsquo;s find the highest flying probe:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    target <span style="color:#f92672">=</span> Rect<span style="color:#f92672">.</span>from_file(file)
+    logging<span style="color:#f92672">.</span>info(target)
+
+    most_cool <span style="color:#f92672">=</span> None
+
+    <span style="color:#66d9ef">for</span> probe, coolness <span style="color:#f92672">in</span> all_impacts(target):
+        <span style="color:#66d9ef">if</span> most_cool <span style="color:#f92672">is</span> None <span style="color:#f92672">or</span> coolness <span style="color:#f92672">&gt;</span> most_cool:
+            logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;part1: New coolest impact! {probe=}, {coolness=}&#39;</span>)
+            most_cool <span style="color:#f92672">=</span> coolness
+
+    <span style="color:#66d9ef">print</span>(most_cool)
+</code></pre></div><p>Feel like cheating.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 pew-pewinator.py part1 input.txt
+<span style="color:#ae81ff">2850</span>
+<span style="color:#75715e"># time 729939625ns / 0.73s</span>
+</code></pre></div><p>Quick enough at least.</p><p><a href="/2021/12/17/aoc-2021-day-17-pew-pewinator/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
     	<header>
     		<h1 class="entry-title">
                 <a href="https://blog.jverkamp.com/2021/12/16/aoc-2021-day-16-depacketinator/" class="clearfix">AoC 2021 Day 16: Depacketinator</a></h1>
@@ -851,173 +1442,6 @@ pairs <span style="color:#f92672">=</span> [tuple(pair) <span style="color:#66d9
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 chunkinator.py part1 input.txt
 <span style="color:#ae81ff">167379</span>
 </code></pre></div><p><a href="/2021/12/10/aoc-2021-day-10-chunkinator/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/" class="clearfix">AoC 2021 Day 9: Local Minimum Deminifier</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-12-09</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-smoke-basinhttpsadventofcodecom2021day9">Source: <a href="https://adventofcode.com/2021/day/9">Smoke Basin</a></h3>
-<h4 id="part-1-given-a-heightmap-find-all-local-minimums-return-the-sum-of-minimum-height--1-for-each-local-minimum"><strong>Part 1:</strong> Given a heightmap, find all local minimums. Return the sum of (minimum height + 1) for each local minimum.</h4>
-<p>First, as is often the case, let&rsquo;s load the data:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">load</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> MutableMapping[Tuple[int, int], int]:
-    <span style="color:#66d9ef">return</span> {
-        (x, y): int(height)
-        <span style="color:#66d9ef">for</span> y, line <span style="color:#f92672">in</span> enumerate(file)
-        <span style="color:#66d9ef">for</span> x, height <span style="color:#f92672">in</span> enumerate(line<span style="color:#f92672">.</span>strip())
-    }
-</code></pre></div><p>This could more efficiently have been stored in a 2D array, but I really like dicts of <code>point -&gt; value</code> for this sort of thing. Especially because in Python you don&rsquo;t actually need the <code>()</code> for tuples in most cases, just the comma. So <code>heightmap[x,y]</code> works great.</p>
-<p>After we have that data, it&rsquo;s just a matter of checking each point to see if all 2/3/4 neighbors are larger than a specific point, while at the same time making sure that we don&rsquo;t run off the edge of the map.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@app.command</span>()
-<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-
-    heightmap <span style="color:#f92672">=</span> load(file)
-    total_risk <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-
-    <span style="color:#66d9ef">for</span> (x, y), height <span style="color:#f92672">in</span> heightmap<span style="color:#f92672">.</span>items():
-        neighbor_heights <span style="color:#f92672">=</span> [
-            heightmap<span style="color:#f92672">.</span>get((x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd), <span style="color:#ae81ff">10</span>)
-            <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> ORTHAGONAL_NEIGHBORS
-        ]
-
-        <span style="color:#66d9ef">if</span> min(neighbor_heights) <span style="color:#f92672">&gt;</span> height:
-            total_risk <span style="color:#f92672">+=</span> height <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>
-
-    <span style="color:#66d9ef">print</span>(f<span style="color:#e6db74">&#39;{total_risk=}&#39;</span>)
-</code></pre></div><p><code>ORTHAGONAL_NEIGHBORS = [(-1, 0), (1, 0), (0, -1), (0, 1)]</code>. And that&rsquo;s all we need:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 local-minimum-deminifier.py part1 input.txt
-total_risk<span style="color:#f92672">=</span><span style="color:#ae81ff">491</span>
-</code></pre></div><p><a href="/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/" class="clearfix">AoC 2021 Day 8: Seven Segment Demystifier</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-12-08</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-seven-segment-searchhttpsadventofcodecom2021day8">Source: <a href="https://adventofcode.com/2021/day/8">Seven Segment Search</a></h3>
-<h4 id="part-1-simulate-a-hahahugoshortcode-s0-hbhb-where-you-do-not-know-which-input-wire-controls-which-segment-given-the-wires-used-in-all-ten-digits-and-four-output-digits-count-how-many-times-1-4-7-and-8-are-outputted"><strong>Part 1:</strong> Simulate a <a href="https://en.wikipedia.org/wiki/seven%20segment%20displey">seven segment displey</a> where you do not know which input wire controls which segment. Given the wires used in all ten digits and four output digits, count how many times 1, 4, 7, and 8 are outputted.</h4>
-<p>This one took me <em>far</em> longer to work out than I&rsquo;d care to admit. And it wasn&rsquo;t at all because I had the wrong approach (I went for brute force again), but rather because I had <em>mistyped one character</em> in my input. Bah humbug. That&rsquo;s why you write tests&hellip; Oy.</p>
-<p>Like I mentioned, I&rsquo;m just going to try to brute force this problem. It will be slower than using their advice (the advice being that there is always 1 input with two segments (one) and 1 with 3 (seven). Instead, brute forcing all ten digits makes for much cleaner code. First, let&rsquo;s set up some constants:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Seven segment display</span>
-<span style="color:#75715e">#   0:      1:      2:      3:      4:</span>
-<span style="color:#75715e">#  aaaa    ....    aaaa    aaaa    ....</span>
-<span style="color:#75715e"># b    c  .    c  .    c  .    c  b    c</span>
-<span style="color:#75715e"># b    c  .    c  .    c  .    c  b    c</span>
-<span style="color:#75715e">#  ....    ....    dddd    dddd    dddd</span>
-<span style="color:#75715e"># e    f  .    f  e    .  .    f  .    f</span>
-<span style="color:#75715e"># e    f  .    f  e    .  .    f  .    f</span>
-<span style="color:#75715e">#  gggg    ....    gggg    gggg    ....</span>
-<span style="color:#75715e">#</span>
-<span style="color:#75715e">#   5:      6:      7:      8:      9:</span>
-<span style="color:#75715e">#  aaaa    aaaa    aaaa    aaaa    aaaa</span>
-<span style="color:#75715e"># b    .  b    .  .    c  b    c  b    c</span>
-<span style="color:#75715e"># b    .  b    .  .    c  b    c  b    c</span>
-<span style="color:#75715e">#  dddd    dddd    ....    dddd    dddd</span>
-<span style="color:#75715e"># .    f  e    f  .    f  e    f  .    f</span>
-<span style="color:#75715e"># .    f  e    f  .    f  e    f  .    f</span>
-<span style="color:#75715e">#  gggg    gggg    ....    gggg    gggg</span>
-
-SEGMENTS <span style="color:#f92672">=</span> [
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
-    {<span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>},
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
-    {<span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>},
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>},
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
-    {<span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>},
-]
-
-ALPHABET <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;abcdefg&#39;</span>
-MAPPINGS <span style="color:#f92672">=</span> [
-    dict(zip(ALPHABET, ordering))
-    <span style="color:#66d9ef">for</span> ordering <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>permutations(ALPHABET)
-]
-</code></pre></div><p>The <code>SEGMENTS</code> define a set of correctly labeled wires goes to each segment (in order). So <code>0</code> uses all of them but <code>d</code>, <code>1</code> uses only <code>c</code> and <code>f</code>, etc.</p>
-<p><code>MAPPINGS</code> is a neat trick. Using <code><a href="https://docs.python.org/3/search.html?q=itertools.permutations">itertools.permutations</a></code>
-, we can generate all possible arrangements of the 7 letters in <code>ALPHABET</code>. We then zip each <code>ordering</code> up with <code>ALPHABET</code>, convert to a <code>dict</code> and we have a conversion. For example:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#f92672">&gt;&gt;&gt;</span> MAPPINGS[<span style="color:#ae81ff">286</span>]
-{<span style="color:#e6db74">&#39;a&#39;</span>: <span style="color:#e6db74">&#39;a&#39;</span>, <span style="color:#e6db74">&#39;b&#39;</span>: <span style="color:#e6db74">&#39;d&#39;</span>, <span style="color:#e6db74">&#39;c&#39;</span>: <span style="color:#e6db74">&#39;c&#39;</span>, <span style="color:#e6db74">&#39;d&#39;</span>: <span style="color:#e6db74">&#39;g&#39;</span>, <span style="color:#e6db74">&#39;e&#39;</span>: <span style="color:#e6db74">&#39;f&#39;</span>, <span style="color:#e6db74">&#39;f&#39;</span>: <span style="color:#e6db74">&#39;b&#39;</span>, <span style="color:#e6db74">&#39;g&#39;</span>: <span style="color:#e6db74">&#39;e&#39;</span>}
-<span style="color:#f92672">&gt;&gt;&gt;</span> MAPPINGS[<span style="color:#ae81ff">286</span>][<span style="color:#e6db74">&#39;a&#39;</span>]
-<span style="color:#e6db74">&#39;a&#39;</span>
-<span style="color:#f92672">&gt;&gt;&gt;</span> MAPPINGS[<span style="color:#ae81ff">286</span>][<span style="color:#e6db74">&#39;g&#39;</span>]
-<span style="color:#e6db74">&#39;e&#39;</span>
-</code></pre></div><p>In this case, input wire <code>a</code> maps to output <code>a</code>, but <code>g</code> maps to <code>e</code>, etc.</p>
-<p>Okay. Fun part. For each input, we have all ten digits, with the input wires that makes those up, but we don&rsquo;t know which mapping matches. But we do know if a <code>mapping</code> is valid, it will have to turn each of those ten inputs into one of the possible <code>SEGMENTS</code>. So we can do this:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">load</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> Generator[List[int], None, None]:
-    <span style="color:#e6db74">&#39;&#39;&#39;
-</span><span style="color:#e6db74">    Load an input file with a scrambled set of 7 segment displays than 4 output digits.&#39;&#39;&#39;</span>
-
-    <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
-        raw_inputs, raw_outputs <span style="color:#f92672">=</span> line<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39; | &#39;</span>)
-        inputs <span style="color:#f92672">=</span> [set(input) <span style="color:#66d9ef">for</span> input <span style="color:#f92672">in</span> raw_inputs<span style="color:#f92672">.</span>split()]
-        outputs <span style="color:#f92672">=</span> [set(output) <span style="color:#66d9ef">for</span> output <span style="color:#f92672">in</span> raw_outputs<span style="color:#f92672">.</span>split()]
-
-        <span style="color:#66d9ef">for</span> mapping <span style="color:#f92672">in</span> MAPPINGS:
-            <span style="color:#66d9ef">if</span> any(
-                {mapping[v] <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> input} <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> SEGMENTS
-                <span style="color:#66d9ef">for</span> input <span style="color:#f92672">in</span> inputs
-            ):
-                <span style="color:#66d9ef">continue</span>
-
-            <span style="color:#66d9ef">yield</span> [
-                SEGMENTS<span style="color:#f92672">.</span>index({mapping[v] <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> output})
-                <span style="color:#66d9ef">for</span> output <span style="color:#f92672">in</span> outputs
-            ]
-</code></pre></div><p>We&rsquo;ll take the input (which looks like <code>acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf</code>), split the input and output, and then go through each <code>mapping</code>. The line <code>{mapping[v] for v in input}</code> creates the output given the mapping, so we apply that to every <code>input</code> in <code>inputs</code> and check for any <em>not</em> in <code>SEGMENTS</code>. If that&rsquo;s the case, the mapping isn&rsquo;t valid, so skip it. We should have exactly 1 mapping that&rsquo;s valid, so decode the outputs (using that same mapping) and <code>yield</code> the resulting digits.</p>
-<p>I expect that&rsquo;s overkill / already implementing part 2&hellip; but that&rsquo;s okay!</p>
-<p>Since we have the digits, count up the 1, 4, 7, and 8 (they&rsquo;re the easiest to determine).</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-    <span style="color:#66d9ef">print</span>(sum(
-        <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> digit <span style="color:#f92672">in</span> (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">4</span>, <span style="color:#ae81ff">7</span>, <span style="color:#ae81ff">8</span>) <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0</span>
-        <span style="color:#66d9ef">for</span> digits <span style="color:#f92672">in</span> load(file)
-        <span style="color:#66d9ef">for</span> digit <span style="color:#f92672">in</span> digits
-    ))
-</code></pre></div><p>Yeah&hellip; that&rsquo;s it!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 seven-segment-demystifier.py part1 input.txt
-<span style="color:#ae81ff">349</span>
-</code></pre></div><p><a href="/2021/12/08/aoc-2021-day-8-seven-segment-demystifier/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/12/07/aoc-2021-day-7-brachyura-aligner/" class="clearfix">AoC 2021 Day 7: Brachyura Aligner</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-12-07</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-the-treachery-of-whaleshttpsadventofcodecom2021day7">Source: <a href="https://adventofcode.com/2021/day/7">The Treachery of Whales</a></h3>
-<h4 id="part-1-given-a-list-of-numbers-find-the-minimum-integer-i-such-the-sum-difference-of-each-number-and-i-is-minimized"><strong>Part 1:</strong> Given a list of numbers, find the minimum integer <code>I</code> such the sum difference of each number and I is minimized.</h4>
-<p>There is probably a fancy number theory way of doing it to solve directly for <code>I</code>, but it&rsquo;s a really quick problem to brute force:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-
-    positions <span style="color:#f92672">=</span> [
-        int(value)
-        <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file
-        <span style="color:#66d9ef">for</span> value <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;,&#39;</span>)
-    ]
-
-    fuel, target <span style="color:#f92672">=</span> min(
-        (
-            sum(abs(position <span style="color:#f92672">-</span> target) <span style="color:#66d9ef">for</span> position <span style="color:#f92672">in</span> positions),
-            target
-        )
-        <span style="color:#66d9ef">for</span> target <span style="color:#f92672">in</span> range(min(positions), max(positions)<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>)
-    )
-
-    <span style="color:#66d9ef">print</span>(f<span style="color:#e6db74">&#39;{target=}, {fuel=}&#39;</span>)
-</code></pre></div><p>Load in the numbers, calculate every possible <code>target</code> from minimum to maximum and the sum distance for that value of <code>I</code>, then return just the minimum such value.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 brachyura-aligner.py part1 input.txt
-target<span style="color:#f92672">=</span>323, fuel<span style="color:#f92672">=</span><span style="color:#ae81ff">336040</span>
-</code></pre></div><p>Quick.</p><p><a href="/2021/12/07/aoc-2021-day-7-brachyura-aligner/">read more...</a></p></div>
 
         <hr /></article><nav id="pagination-navigation" role="navigation">
 <ul class="pagination">
