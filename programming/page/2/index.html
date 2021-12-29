@@ -66,6 +66,259 @@
     <div class="post-list"><article class="li">
         	<header>
         		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/" class="clearfix">AoC 2021 Day 12: Submarine Spider</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2021-12-12</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><h3 id="source-passage-pathinghttpsadventofcodecom2021day12">Source: <a href="https://adventofcode.com/2021/day/12">Passage Pathing</a></h3>
+<h4 id="part-1-given-a-list-of-edges-in-a-bi-directional-graph-count-the-number-of-paths-from-start-to-end-such-that-nodes-named-with-lowercase-letters-are-visited-once-and-nodes-with-uppercase-letters-can-be-visited-any-number-of-times"><strong>Part 1:</strong> Given a list of edges in a bi-directional graph, count the number of paths from <code>start</code> to <code>end</code> such that nodes named with lowercase letters are visited once, and nodes with uppercase letters can be visited any number of times.</h4>
+<p>Interesting. First, let&rsquo;s define a graph structure:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Node</span>:
+    label: str
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_big</span>(self):
+        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>label<span style="color:#f92672">.</span>isupper()
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;&lt;{self.label}&gt;&#39;</span>
+
+
+<span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cave</span>:
+    edges: Mapping[Node, Set[Node]]
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">from_file</span>(file: TextIO):
+
+        edges: Dict[Node, Set[Node]] <span style="color:#f92672">=</span> {}
+
+        <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
+            nodes <span style="color:#f92672">=</span> [Node(v) <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>strip()<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;-&#39;</span>)]
+
+            <span style="color:#66d9ef">for</span> node <span style="color:#f92672">in</span> nodes:
+                <span style="color:#66d9ef">if</span> node <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> edges:
+                    edges[node] <span style="color:#f92672">=</span> set()
+
+            <span style="color:#66d9ef">for</span> node_a <span style="color:#f92672">in</span> nodes:
+                <span style="color:#66d9ef">for</span> node_b <span style="color:#f92672">in</span> nodes:
+                    <span style="color:#66d9ef">if</span> node_a <span style="color:#f92672">!=</span> node_b:
+                        edges[node_a]<span style="color:#f92672">.</span>add(node_b)
+
+        <span style="color:#75715e"># Convert to a dict</span>
+        <span style="color:#66d9ef">return</span> Cave(edges)
+</code></pre></div><p>Originally, I had the pathing function in this class directly, but because it changes for part 2, I extracted it into the part 1 function:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+    cave <span style="color:#f92672">=</span> Cave<span style="color:#f92672">.</span>from_file(file)
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">paths</span>(node: Node, visited: Set[Node]) <span style="color:#f92672">-&gt;</span> Generator[List[Node], None, None]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Yield all possible paths from the given node to &lt;end&gt;.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> node <span style="color:#f92672">==</span> END:
+            <span style="color:#66d9ef">yield</span> [END]
+            <span style="color:#66d9ef">return</span>
+
+        <span style="color:#66d9ef">if</span> node<span style="color:#f92672">.</span>is_small() <span style="color:#f92672">and</span> node <span style="color:#f92672">in</span> visited:
+            <span style="color:#66d9ef">return</span>
+
+        <span style="color:#66d9ef">for</span> next <span style="color:#f92672">in</span> cave<span style="color:#f92672">.</span>edges[node]:
+            <span style="color:#66d9ef">for</span> path <span style="color:#f92672">in</span> paths(next, visited <span style="color:#f92672">|</span> {node}):
+                <span style="color:#66d9ef">yield</span> [node] <span style="color:#f92672">+</span> path
+
+    count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+    <span style="color:#66d9ef">for</span> _ <span style="color:#f92672">in</span> paths(START, set()):
+        count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+
+    <span style="color:#66d9ef">print</span>(count)
+</code></pre></div><p>Because the paths are short enough, we can get away with a simple recursive function. In this case, <code>paths</code> will take the current point in the graph and a list of nodes visited already (so that we can avoid lowercase nodes that we&rsquo;ve already visited) and generate all paths from that point. It does so by recursion: each step is moving to a neighboring node in the graph, we&rsquo;re assuming the recursive call will generate some number of paths (might be 0), and the base case is the <code>end</code> node.</p>
+<p>Note: If there are ever two or more &lsquo;big&rsquo; nodes adjacent to each other, this will totally blow up, since you can infinitely loop between the two. Good thing that doesn&rsquo;t come up in our input. :D This could be fixed with <a href="https://en.wikipedia.org/wiki/cycle%20detection">cycle detection</a>, but that would make teh algorithm somewhat slower&hellip;</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 submarine-spider.py part1 input.txt
+<span style="color:#ae81ff">4749</span>
+</code></pre></div><p><a href="/2021/12/12/aoc-2021-day-12-submarine-spider/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2021/12/11/aoc-2021-day-11-octopus-flashinator/" class="clearfix">AoC 2021 Day 11: Octopus Flashinator</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2021-12-11</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><h3 id="source-dumbo-octopushttpsadventofcodecom2021day11">Source: <a href="https://adventofcode.com/2021/day/11">Dumbo Octopus</a></h3>
+<h4 id="part-1-simulate-a-grid-of-numbers-such-that-on-each-tick-advance-all-numbers-by-1-any-number-that-increases-over-9-will-flash-and-add-1-to-all-neighbors-recursively-but-each-cell-can-only-flash-once-and-then-reset-to-0-count-the-number-of-flashes-in-the-first-100-ticks"><strong>Part 1:</strong> Simulate a grid of numbers such that on each tick: advance all numbers by 1, any number that increases over 9 will &lsquo;flash&rsquo; and add 1 to all neighbors (recursively, but each cell can only flash once) and then reset to 0. Count the number of flashes in the first 100 ticks.</h4>
+<p>DIRECT SIMULATION.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">
+NEIGHBORS <span style="color:#f92672">=</span> [
+    (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>), (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>),
+    (<span style="color:#ae81ff">0</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>), (<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>),
+    (<span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>), (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>),
+]
+
+
+<span style="color:#a6e22e">@dataclass</span>
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cavern</span>:
+    <span style="color:#e6db74">&#39;&#39;&#39;Simulation for https://adventofcode.com/2021/day/11.&#39;&#39;&#39;</span>
+
+    width: int
+    height: int
+    data: MutableMapping[Tuple[int, int], int]
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">from_file</span>(file: TextIO):
+        <span style="color:#e6db74">&#39;&#39;&#39;Load a simulation from a file-like object.&#39;&#39;&#39;</span>
+
+        data <span style="color:#f92672">=</span> {
+            (x, y): int(value)
+            <span style="color:#66d9ef">for</span> x, line <span style="color:#f92672">in</span> enumerate(file)
+            <span style="color:#66d9ef">for</span> y, value <span style="color:#f92672">in</span> enumerate(line<span style="color:#f92672">.</span>strip())
+        }
+        width <span style="color:#f92672">=</span> max(x <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (x, _) <span style="color:#f92672">in</span> data)
+        height <span style="color:#f92672">=</span> max(y <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (_, y) <span style="color:#f92672">in</span> data)
+
+        <span style="color:#66d9ef">return</span> Cavern(width, height, data)
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">step</span>(self):
+        <span style="color:#e6db74">&#39;&#39;&#39;Advance the simulation 1 step, return the number of flashes.&#39;&#39;&#39;</span>
+
+        flashpoint <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+
+        <span style="color:#75715e"># First advance everyone 1</span>
+        <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data:
+            self<span style="color:#f92672">.</span>data[x, y] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+
+        <span style="color:#75715e"># Repeatedly find any 9s, but only trigger each one once (advanced)</span>
+        advanced <span style="color:#f92672">=</span> set()
+        <span style="color:#66d9ef">while</span> True:
+
+            <span style="color:#75715e"># Find the set of points that haven&#39;t been advanced and should</span>
+            to_advance <span style="color:#f92672">=</span> {
+                (x, y)
+                <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data
+                <span style="color:#66d9ef">if</span> (x, y) <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> advanced <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>data[x, y] <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">9</span>
+            }
+
+            <span style="color:#75715e"># If we didn&#39;t, we&#39;re done</span>
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> to_advance:
+                <span style="color:#66d9ef">break</span>
+
+            <span style="color:#75715e"># If we did, increment each neighbor</span>
+            <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> to_advance:
+                flashpoint <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+
+                <span style="color:#66d9ef">for</span> (xd, yd) <span style="color:#f92672">in</span> NEIGHBORS:
+                    <span style="color:#66d9ef">if</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd) <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data:
+                        <span style="color:#66d9ef">continue</span>
+
+                    self<span style="color:#f92672">.</span>data[x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
+
+                advanced<span style="color:#f92672">.</span>add((x, y))
+
+        <span style="color:#75715e"># Once we&#39;re out of the loop, set all points that actually advanced (hit 9) to 0</span>
+        <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> advanced:
+            self<span style="color:#f92672">.</span>data[x, y] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+
+        <span style="color:#66d9ef">return</span> flashpoint
+
+    <span style="color:#66d9ef">def</span> __str__(self):
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(
+            <span style="color:#e6db74">&#39;&#39;</span><span style="color:#f92672">.</span>join(str(self<span style="color:#f92672">.</span>data[x, y]) <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(self<span style="color:#f92672">.</span>height))
+            <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(self<span style="color:#f92672">.</span>width)
+        ) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
+</code></pre></div><p>I particularly enjoy that <code>step</code> function. It seems pretty clean to me, using one <code>set</code> of values we&rsquo;ve already <code>advanced</code> and calculating a new <code>set</code> of values <code>to_advance</code> so that we don&rsquo;t duplicate.</p>
+<p>And it makes for pretty clean code!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    cavern <span style="color:#f92672">=</span> Cavern<span style="color:#f92672">.</span>from_file(file)
+    flashpoint <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+
+    <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(<span style="color:#ae81ff">100</span>):
+        flashpoint <span style="color:#f92672">+=</span> cavern<span style="color:#f92672">.</span>step()
+
+    <span style="color:#66d9ef">print</span>(flashpoint)
+</code></pre></div><p>How many flashes?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 octopus-flashinator.py part1 input.txt
+<span style="color:#ae81ff">1679</span>
+</code></pre></div><p><a href="/2021/12/11/aoc-2021-day-11-octopus-flashinator/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
+        	<header>
+        		<h1 class="entry-title">
+                    <a href="https://blog.jverkamp.com/2021/12/10/aoc-2021-day-10-chunkinator/" class="clearfix">AoC 2021 Day 10: Chunkinator</a>
+                </h1>
+
+        		<div class="entry-meta"><span class="entry-date">2021-12-10</span>
+                    </div>
+        	</header>
+            <div class="entry-content"><h3 id="source-syntax-scoringhttpsadventofcodecom2021day10">Source: <a href="https://adventofcode.com/2021/day/10">Syntax Scoring</a></h3>
+<h4 id="part-1-given-a-sequence-of----and--with-nesting-allowed-find-the-first-syntax-error-where-the-wrong-closing-symbol-is-used-scoring-3-57-1197-and-25137-respectively-for-each-error-calculate-the-total-error-score"><strong>Part 1:</strong> Given a sequence of () [] {}, and &lt;&gt; with nesting allowed. Find the first syntax error (where the wrong closing symbol is used). Scoring 3, 57, 1197, and 25137 respectively for each error, calculate the total error score.</h4>
+<p>Interesting. Let&rsquo;s use Python exceptions!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Using the strings directly is fine for python, but not mypy</span>
+<span style="color:#75715e"># chunkinator.py:38: error: Unpacking a string is disallowed</span>
+pairs <span style="color:#f92672">=</span> [tuple(pair) <span style="color:#66d9ef">for</span> pair <span style="color:#f92672">in</span> [<span style="color:#e6db74">&#39;()&#39;</span>, <span style="color:#e6db74">&#39;[]&#39;</span>, <span style="color:#e6db74">&#39;{}&#39;</span>, <span style="color:#e6db74">&#39;&lt;&gt;&#39;</span>]]
+
+<span style="color:#a6e22e">@dataclass</span>
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ParseMismatchException</span>(<span style="color:#a6e22e">Exception</span>):
+    expected: str
+    actual: str
+
+
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">parse</span>(line: str):
+    <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">    Parse a line of matching pairs. For every left, you must match the corresponding right (respecting nesting).
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">    If a mismatch is detected, raise a ParseMismatchException containing the expected/actual character.
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">    Otherwise, return True
+</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
+
+    stack <span style="color:#f92672">=</span> []
+
+    <span style="color:#66d9ef">for</span> c <span style="color:#f92672">in</span> line:
+        matched <span style="color:#f92672">=</span> False
+
+        <span style="color:#75715e"># Start a new matching pair</span>
+        <span style="color:#66d9ef">for</span> left, right <span style="color:#f92672">in</span> pairs:
+            <span style="color:#66d9ef">if</span> c <span style="color:#f92672">==</span> left:
+                stack<span style="color:#f92672">.</span>append(right)
+                matched <span style="color:#f92672">=</span> True
+        <span style="color:#66d9ef">if</span> matched:
+            <span style="color:#66d9ef">continue</span>
+
+        <span style="color:#75715e"># Otherwise, we have a closing character, check the stack</span>
+        <span style="color:#66d9ef">if</span> c <span style="color:#f92672">==</span> (top :<span style="color:#f92672">=</span> stack<span style="color:#f92672">.</span>pop()):
+            <span style="color:#66d9ef">continue</span>
+
+        <span style="color:#75715e"># Otherwise, we have a failed match</span>
+        <span style="color:#66d9ef">raise</span> ParseMismatchException(expected<span style="color:#f92672">=</span>top, actual<span style="color:#f92672">=</span>c)
+    <span style="color:#75715e"># Otherwise, yay!</span>
+    <span style="color:#66d9ef">return</span> True
+</code></pre></div><p>I expect that we&rsquo;ll want to do something with &lsquo;incomplete&rsquo; matches in Part 2, but we haven&rsquo;t had to do that yet. So let&rsquo;s use this to solve the problem!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    scores <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;)&#39;</span>: <span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#39;]&#39;</span>: <span style="color:#ae81ff">57</span>, <span style="color:#e6db74">&#39;}&#39;</span>: <span style="color:#ae81ff">1197</span>, <span style="color:#e6db74">&#39;&gt;&#39;</span>: <span style="color:#ae81ff">25137</span>}
+    total_score <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+
+    <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
+        line <span style="color:#f92672">=</span> line<span style="color:#f92672">.</span>strip()
+
+        <span style="color:#66d9ef">try</span>:
+            parse(line)
+
+        <span style="color:#66d9ef">except</span> ParseMismatchException <span style="color:#66d9ef">as</span> ex:
+            total_score <span style="color:#f92672">+=</span> scores[ex<span style="color:#f92672">.</span>actual]
+
+    <span style="color:#66d9ef">print</span>(total_score)
+</code></pre></div><p>I like it when the parsing function does most of the work!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 chunkinator.py part1 input.txt
+<span style="color:#ae81ff">167379</span>
+</code></pre></div><p><a href="/2021/12/10/aoc-2021-day-10-chunkinator/">read more...</a></p></div>
+
+            <hr /></article><article class="li">
+        	<header>
+        		<h1 class="entry-title">
                     <a href="https://blog.jverkamp.com/2021/12/09/aoc-2021-day-9-local-minimum-deminifier/" class="clearfix">AoC 2021 Day 9: Local Minimum Deminifier</a>
                 </h1>
 
@@ -425,43 +678,6 @@ target<span style="color:#f92672">=</span>323, fuel<span style="color:#f92672">=
             <div class="entry-content"><h3 id="source-binary-diagnostichttpsadventofcodecom2021day3">Source: <a href="https://adventofcode.com/2021/day/3">Binary Diagnostic</a></h3>
 <h4 id="part-1-given-a-list-of-binary-numbers-calculate-gamma-such-that-each-bit-is-the-most-common-bit-in-that-position-in-the-input-and-epsilon-which-is-the-binary-inverse-of-gamma-return-the-product"><strong>Part 1:</strong> Given a list of binary numbers, calculate gamma such that each bit is the most common bit in that position in the input and epsilon which is the binary inverse of gamma. Return the product.</h4><p><a href="/2021/12/03/aoc-2021-day-3-binary-contraption/">read more...</a></p></div>
 
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2021/12/02/aoc-2021-day-2-submarine-simulator/" class="clearfix">AoC 2021 Day 2: Submarine Simulator</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2021-12-02</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><h3 id="source-divehttpsadventofcodecom2021day2">Source: <a href="https://adventofcode.com/2021/day/2">Dive!</a></h3>
-<h4 id="part-1-simulate-a-submarine-with-3-commands-forward-n-down-n-and-up-n-that-move-forward-increase-depth-and-decrease-depth-in-that-order-calculate-the-product-of-the-final-position-and-depth"><strong>Part 1:</strong> Simulate a submarine with 3 commands: <code>forward N</code>, <code>down N</code>, and <code>up N</code> that move forward, increase depth, and decrease depth in that order. Calculate the product of the final position and depth.</h4><p><a href="/2021/12/02/aoc-2021-day-2-submarine-simulator/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2021/12/01/aoc-2021-day-1-depth-finder/" class="clearfix">AoC 2021 Day 1: Depth Finder</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2021-12-01</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><h3 id="source-depth-finderhttpsadventofcodecom2021day1">Source: <a href="https://adventofcode.com/2021/day/1">Depth Finder</a></h3>
-<h4 id="part-1-given-a-list-of-numbers-count-how-many-times-sequential-numbers-increase"><strong>Part 1:</strong> Given a list of numbers, count how many times sequential numbers increase.</h4><p><a href="/2021/12/01/aoc-2021-day-1-depth-finder/">read more...</a></p></div>
-
-            <hr /></article><article class="li">
-        	<header>
-        		<h1 class="entry-title">
-                    <a href="https://blog.jverkamp.com/2021/12/01/advent-of-code-2021/" class="clearfix">Advent of Code 2021</a>
-                </h1>
-
-        		<div class="entry-meta"><span class="entry-date">2021-12-01</span>
-                    </div>
-        	</header>
-            <div class="entry-content"><p>Been a while since I&rsquo;ve done an advent of code! I&rsquo;ll probably backfill a few years eventually, but for now, let&rsquo;s just write some code!</p>
-<p>As always, these problems are wonderful to try to solve yourself. If you agree, <em>stop reading now</em>. This post isn&rsquo;t going anywhere.</p>
-<p>If you&rsquo;d like to see the full form of any particular solution, you can do so on GitHub (including previous years and possibly some I haven&rsquo;t written up yet): <a href="https://github.com/jpverkamp/advent-of-code">jpverkamp/advent-of-code</a></p><p><a href="/2021/12/01/advent-of-code-2021/">read more...</a></p></div>
-
             <hr /></article></div>
 
     <nav id="pagination-navigation" role="navigation">
@@ -485,13 +701,13 @@ target<span style="color:#f92672">=</span>323, fuel<span style="color:#f92672">=
     <span aria-hidden="true">&nbsp;&hellip;&nbsp;</span>
   </li>
   <li class="page-item">
-    <a class="page-link" href="/programming/page/51/">51</a>
+    <a class="page-link" href="/programming/page/52/">52</a>
   </li>
   <li class="page-item">
     <a href="/programming/page/3/" class="page-link" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>
   </li>
   <li class="page-item">
-    <a href="/programming/page/51/" class="page-link" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
+    <a href="/programming/page/52/" class="page-link" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
   </li>
 </ul>
 

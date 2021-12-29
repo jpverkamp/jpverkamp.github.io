@@ -50,6 +50,860 @@
     <article class="li">
     	<header>
     		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/22/aoc-2021-day-22-cubinator/" class="clearfix">AoC 2021 Day 22: Cubinator</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-22</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-reactor-reboothttpsadventofcodecom2021day22">Source: <a href="https://adventofcode.com/2021/day/22">Reactor Reboot</a></h3>
+<h4 id="part-1-given-a-series-of-3d-cubes-that-either-turn-on-all-or-turn-off-all-points-in-their-region-calculate-how-many-points-in-the-region--5050-5050-5050-are-on-at-the-end"><strong>Part 1:</strong> Given a series of 3D cubes that either turn ON all or turn OFF all points in their region, calculate how many points in the region (-50..50,-50..50,-50..50) are ON at the end.</h4>
+<p>Wow. This one took me literal days of work to get working for some reason. I actually got to writing unit tests, which is saying something. :D And then after I had one aha moment (changing from cube to edge focussed, see later), it worked basically immediately. Oh data structure choices.</p>
+<p>The basic idea I had all along was to make a <code>Cube</code> object that would have all of the operators I need: <code>a &amp; b</code> to intersect two cubes, <code>a | b</code> (or <code>a + b</code>) to union/add them, and <code>a - b</code> to subtract one cube from another (each of which will return a list of cubes that make up the result). Then I could:</p>
+<ul>
+<li>Start with an empty list of cubes</li>
+<li>For each cube
+<ul>
+<li>If ON:
+<ul>
+<li>Create a sublist of just <code>[cube]</code></li>
+<li>For each current cube, remove it from every element in the sublist</li>
+<li>The result is just the new cubes to turn ON, add them to the main list</li>
+</ul>
+</li>
+<li>If OFF:
+<ul>
+<li>For each current cube, remove the new cube from it (generating 0, 1, or many subcubes)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>This will be the final list. Let&rsquo;s make that class!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True, order<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Point</span>:
+    x: int
+    y: int
+    z: int
+
+
+<span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cube</span>:
+    min: Point
+    max: Point
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;Cube({len(self)})@[{self.min.x}..{self.max.x}, {self.min.y}..{self.max.y}, {self.min.z}..{self.max.z}]&#39;</span>
+
+    <span style="color:#66d9ef">def</span> __len__(self) <span style="color:#f92672">-&gt;</span> int:
+        <span style="color:#66d9ef">return</span> (
+            (self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x <span style="color:#f92672">-</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x)
+            <span style="color:#f92672">*</span> (self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y <span style="color:#f92672">-</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y)
+            <span style="color:#f92672">*</span> (self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z <span style="color:#f92672">-</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z)
+        )
+</code></pre></div><p>These are just the basic methods, print them out and return the &lsquo;size&rsquo; of a cube. One major change I did (entirely too late in the process) was to change from a face-centered system, to an edge centered-system. In that, the original <code>OldCube(1)@(10..10, 10..10, 10..10)</code> would be a 1x1 cube including just the point <code>&lt;10, 10, 10&gt;</code>, but I changed that so that would be represented by <code>OldCube(1)@(10..11, 10..11, 10..11)</code>. The upper bounds are <em>not</em> inclusive. That made the math <em>loads</em> easier.</p>
+<p>Okay, let&rsquo;s work through the <code>Cube</code> methods (they&rsquo;d all be in one class):</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cube</span>:
+    <span style="color:#66d9ef">def</span> __iter__(self) <span style="color:#f92672">-&gt;</span> Generator[Point, None, None]:
+        <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x):
+            <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y):
+                <span style="color:#66d9ef">for</span> z <span style="color:#f92672">in</span> range(self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z, self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z):
+                    <span style="color:#66d9ef">yield</span> Point(x, y, z)
+</code></pre></div><p>I didn&rsquo;t actually end up using this, but it can be used to actually get all of the cubes in a point. So if you wanted to directly solve the problem, you could with this!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cube</span>
+    <span style="color:#66d9ef">def</span> __contains__(self, other: Union[Point, <span style="color:#e6db74">&#39;Cube&#39;</span>]) <span style="color:#f92672">-&gt;</span> bool:
+        <span style="color:#e6db74">&#39;&#39;&#39;Is the cube/point other entirely contained in self.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> isinstance(other, Point):
+            <span style="color:#66d9ef">return</span> (
+                self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x
+                <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y
+                <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z
+            )
+        <span style="color:#66d9ef">elif</span> isinstance(other, Cube):
+            <span style="color:#66d9ef">return</span> other<span style="color:#f92672">.</span>min <span style="color:#f92672">in</span> self <span style="color:#f92672">and</span> other<span style="color:#f92672">.</span>max <span style="color:#f92672">in</span> self
+</code></pre></div><p>Next, implement <code>p: Point in c: Cube</code> and <code>c1: Cube in c2: Cube</code>. This is used to special case many of the later methods.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cube</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">overlaps</span>(self, other: <span style="color:#e6db74">&#39;Cube&#39;</span>) <span style="color:#f92672">-&gt;</span> bool:
+        <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">        Does the cube overlap with self at all?
+</span><span style="color:#e6db74">        
+</span><span style="color:#e6db74">        Note: This includes if the cubes are just touching since edges are inclusive.
+</span><span style="color:#e6db74">        &#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> (
+            self<span style="color:#f92672">.</span>min <span style="color:#f92672">in</span> other
+            <span style="color:#f92672">or</span> self<span style="color:#f92672">.</span>max <span style="color:#f92672">in</span> other
+            <span style="color:#f92672">or</span> other<span style="color:#f92672">.</span>min <span style="color:#f92672">in</span> other
+            <span style="color:#f92672">or</span> other<span style="color:#f92672">.</span>max <span style="color:#f92672">in</span> other
+            <span style="color:#f92672">or</span> self <span style="color:#f92672">in</span> other
+            <span style="color:#f92672">or</span> other <span style="color:#f92672">in</span> self
+        )
+</code></pre></div><p>The flip side of <code>in</code>: do they overlap at all. This could be just touching, but also any number of other cases (partial overlap, to a superset of <code>in</code>).</p>
+<p>Okay, the heart of all of the next methods:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cube</span>:
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__segment</span>(self, other: <span style="color:#e6db74">&#39;Cube&#39;</span>) <span style="color:#f92672">-&gt;</span> List[<span style="color:#e6db74">&#39;Cube&#39;</span>]:
+        xs <span style="color:#f92672">=</span> list(sorted([self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x, other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x, other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x]))
+        ys <span style="color:#f92672">=</span> list(sorted([self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y, other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y, other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y]))
+        zs <span style="color:#f92672">=</span> list(sorted([self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z, self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z, other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z, other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z]))
+
+        segments <span style="color:#f92672">=</span> []
+
+        <span style="color:#66d9ef">for</span> i, (x1, x2) <span style="color:#f92672">in</span> enumerate(zip(xs, xs[<span style="color:#ae81ff">1</span>:])):
+            <span style="color:#66d9ef">for</span> j, (y1, y2) <span style="color:#f92672">in</span> enumerate(zip(ys, ys[<span style="color:#ae81ff">1</span>:])):
+                <span style="color:#66d9ef">for</span> k, (z1, z2) <span style="color:#f92672">in</span> enumerate(zip(zs, zs[<span style="color:#ae81ff">1</span>:])):
+                    new_segment <span style="color:#f92672">=</span> Cube(Point(x1, y1, z1), Point(x2, y2, z2))
+
+                    <span style="color:#66d9ef">if</span> new_segment <span style="color:#f92672">in</span> segments:
+                        <span style="color:#66d9ef">continue</span>
+
+                    segments<span style="color:#f92672">.</span>append(new_segment)
+
+        <span style="color:#66d9ef">return</span> segments
+</code></pre></div><p>The idea of this method is that any two cubes can be divided into 3x3 = 27 &lsquo;segments&rsquo;, no matter how they overlap. If they overlap on a corner, the middle of those will be the middle segment. If they only touch, then the touching line will be a zero size middle segment. If they don&rsquo;t touch at all, the middle segment will be &lsquo;between&rsquo; the cubes.</p>
+<p>This is the method that benefited the most from the rewrite to edge-focused cubes. Before that, I had to have all sorts of special cases where you didn&rsquo;t accidentally include the edge cubes twice. With the change&hellip; it&rsquo;s just this much code.</p>
+<p>Now that we have that, we can implement <code>&amp;</code>, <code>|</code>, <code>+</code>, and <code>-</code> as various combinations of <code>__segment</code> and <code>in</code>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cube</span>:
+    <span style="color:#66d9ef">def</span> __and__(self, other: <span style="color:#e6db74">&#39;Cube&#39;</span>) <span style="color:#f92672">-&gt;</span> List[<span style="color:#e6db74">&#39;Cube&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Calculate the list of cubes making up the intersection of self and other.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># One cube is entirely inside of the other</span>
+        <span style="color:#66d9ef">if</span> self <span style="color:#f92672">in</span> other:
+            <span style="color:#66d9ef">return</span> [self]
+        <span style="color:#66d9ef">elif</span> other <span style="color:#f92672">in</span> self:
+            <span style="color:#66d9ef">return</span> [other]
+
+        <span style="color:#75715e"># No overlap at all</span>
+        <span style="color:#66d9ef">elif</span> <span style="color:#f92672">not</span> self<span style="color:#f92672">.</span>overlaps(other):
+            <span style="color:#66d9ef">return</span> []
+
+        <span style="color:#75715e"># Finally, only segments that are in both</span>
+        <span style="color:#66d9ef">else</span>:
+            <span style="color:#66d9ef">return</span> Cube<span style="color:#f92672">.</span>compress([
+                segment
+                <span style="color:#66d9ef">for</span> segment <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>__segment(other)
+                <span style="color:#66d9ef">if</span> segment <span style="color:#f92672">in</span> self <span style="color:#f92672">and</span> segment <span style="color:#f92672">in</span> other
+            ])
+
+    <span style="color:#66d9ef">def</span> __or__(self, other: <span style="color:#e6db74">&#39;Cube&#39;</span>) <span style="color:#f92672">-&gt;</span> List[<span style="color:#e6db74">&#39;Cube&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Calculate the list of cubes making up the union of self and other.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># One cube is entirely inside the other</span>
+        <span style="color:#66d9ef">if</span> self <span style="color:#f92672">in</span> other:
+            <span style="color:#66d9ef">return</span> [other]
+        <span style="color:#66d9ef">elif</span> other <span style="color:#f92672">in</span> self:
+            <span style="color:#66d9ef">return</span> [self]
+
+        <span style="color:#75715e"># No overlap at all</span>
+        <span style="color:#66d9ef">elif</span> <span style="color:#f92672">not</span> self<span style="color:#f92672">.</span>overlaps(other):
+            <span style="color:#66d9ef">return</span> [self, other]
+
+        <span style="color:#75715e"># Otherwise, split into segments and return all of them</span>
+        <span style="color:#66d9ef">else</span>:
+            <span style="color:#66d9ef">return</span> Cube<span style="color:#f92672">.</span>compress([
+                segment
+                <span style="color:#66d9ef">for</span> segment <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>__segment(other)
+                <span style="color:#66d9ef">if</span> segment <span style="color:#f92672">in</span> self <span style="color:#f92672">or</span> segment <span style="color:#f92672">in</span> other
+            ])
+
+    <span style="color:#66d9ef">def</span> __add__(self, other: <span style="color:#e6db74">&#39;Cube&#39;</span>) <span style="color:#f92672">-&gt;</span> List[<span style="color:#e6db74">&#39;Cube&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Adding is the same as intersection.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> self <span style="color:#f92672">|</span> other
+
+    <span style="color:#66d9ef">def</span> __sub__(self, other: <span style="color:#e6db74">&#39;Cube&#39;</span>) <span style="color:#f92672">-&gt;</span> List[<span style="color:#e6db74">&#39;Cube&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Calculate the list of cubes resulting of removing other from self.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># Subtract the entire thing</span>
+        <span style="color:#66d9ef">if</span> self <span style="color:#f92672">in</span> other:
+            <span style="color:#66d9ef">return</span> []
+
+        <span style="color:#75715e"># No overlap at all</span>
+        <span style="color:#66d9ef">elif</span> <span style="color:#f92672">not</span> self<span style="color:#f92672">.</span>overlaps(other):
+            <span style="color:#66d9ef">return</span> [self]
+
+        <span style="color:#66d9ef">return</span> Cube<span style="color:#f92672">.</span>compress([
+            segment
+            <span style="color:#66d9ef">for</span> segment <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>__segment(other)
+            <span style="color:#66d9ef">if</span> segment <span style="color:#f92672">in</span> self <span style="color:#f92672">and</span> segment <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> other
+        ])
+</code></pre></div><p>Pretty sweet how clean that code is. But &hellip; what&rsquo;s that compress thing? It&rsquo;s not necessary to actually solve the problem, but what it does is make the number of cubes explode slightly less. Rather than up to 27 new cubes, if any of the new cubes can be combined (by glueing one face together), do it:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cube</span>:
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">join</span>(self, other: <span style="color:#e6db74">&#39;Cube&#39;</span>) <span style="color:#f92672">-&gt;</span> Optional[<span style="color:#e6db74">&#39;Cube&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;If two cubes can be perfectly joined, return that.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># One cube contains the other</span>
+        <span style="color:#66d9ef">if</span> self <span style="color:#f92672">in</span> other:
+            <span style="color:#66d9ef">return</span> other
+        <span style="color:#66d9ef">elif</span> other <span style="color:#f92672">in</span> self:
+            <span style="color:#66d9ef">return</span> self
+
+        <span style="color:#75715e"># The x/y/z edges match perfectly</span>
+        x_match <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">==</span> other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x <span style="color:#f92672">==</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x
+        y_match <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">==</span> other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y <span style="color:#f92672">==</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y
+        z_match <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">==</span> other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z <span style="color:#f92672">==</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z
+
+        <span style="color:#75715e"># The last dimension is contained within the other cube</span>
+        x_overlap <span style="color:#f92672">=</span> (
+            (other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x)
+            <span style="color:#f92672">or</span> (other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x)
+            <span style="color:#f92672">or</span> (self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x)
+            <span style="color:#f92672">or</span> (self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>x)
+        )
+
+        y_overlap <span style="color:#f92672">=</span> (
+            (other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y)
+            <span style="color:#f92672">or</span> (other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y)
+            <span style="color:#f92672">or</span> (self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y)
+            <span style="color:#f92672">or</span> (self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>y)
+        )
+
+        z_overlap <span style="color:#f92672">=</span> (
+            (other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z)
+            <span style="color:#f92672">or</span> (other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z)
+            <span style="color:#f92672">or</span> (self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z)
+            <span style="color:#f92672">or</span> (self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> other<span style="color:#f92672">.</span>max<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;=</span> self<span style="color:#f92672">.</span>min<span style="color:#f92672">.</span>z)
+        )
+
+        <span style="color:#75715e"># If we have exactly two matches and an overlap, we can combine</span>
+        <span style="color:#66d9ef">if</span> (
+            (x_overlap <span style="color:#f92672">and</span> y_match <span style="color:#f92672">and</span> z_match)
+            <span style="color:#f92672">or</span> (x_match <span style="color:#f92672">and</span> y_overlap <span style="color:#f92672">and</span> z_match)
+            <span style="color:#f92672">or</span> (x_match <span style="color:#f92672">and</span> y_match <span style="color:#f92672">and</span> z_overlap)
+        ):
+            result <span style="color:#f92672">=</span> Cube(min(self<span style="color:#f92672">.</span>min, other<span style="color:#f92672">.</span>min), max(self<span style="color:#f92672">.</span>max, other<span style="color:#f92672">.</span>max))
+            <span style="color:#66d9ef">return</span> result
+
+        <span style="color:#66d9ef">return</span> None
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">compress</span>(cubes: List[<span style="color:#e6db74">&#39;Cube&#39;</span>]) <span style="color:#f92672">-&gt;</span> List[<span style="color:#e6db74">&#39;Cube&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Take a list of cubes and join as many as we can.&#39;&#39;&#39;</span>
+
+        cubes <span style="color:#f92672">=</span> list(cubes)
+
+        <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">find_one_join</span>():
+            <span style="color:#66d9ef">for</span> i, c1 <span style="color:#f92672">in</span> enumerate(cubes):
+                <span style="color:#66d9ef">for</span> j, c2 <span style="color:#f92672">in</span> enumerate(cubes):
+                    <span style="color:#66d9ef">if</span> j <span style="color:#f92672">&lt;=</span> i:
+                        <span style="color:#66d9ef">continue</span>
+
+                    <span style="color:#66d9ef">if</span> c :<span style="color:#f92672">=</span> c1<span style="color:#f92672">.</span>join(c2):
+                        <span style="color:#66d9ef">return</span> i, j, c
+
+        <span style="color:#66d9ef">while</span> True:
+            <span style="color:#66d9ef">if</span> result :<span style="color:#f92672">=</span> find_one_join():
+                i, j, c <span style="color:#f92672">=</span> result
+
+                <span style="color:#66d9ef">del</span> cubes[j]
+                <span style="color:#66d9ef">del</span> cubes[i]
+                cubes<span style="color:#f92672">.</span>append(c)
+            <span style="color:#66d9ef">else</span>:
+                <span style="color:#66d9ef">break</span>
+
+        <span style="color:#66d9ef">return</span> cubes
+</code></pre></div><p>It&rsquo;s&hellip; something that came about when fiddling with the old cube-centered mess, but it still does help.</p>
+<p>So what&rsquo;s the final algorithm look like?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">read</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> Generator[Tuple[bool, Cube], None, None]:
+    <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
+        m <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>match(<span style="color:#e6db74">r</span><span style="color:#e6db74">&#39;(on|off) x=(-?\d+)\.\.(-?\d+),y=(-?\d+)\.\.(-?\d+),z=(-?\d+)\.\.(-?\d+)&#39;</span>, line)
+        <span style="color:#66d9ef">if</span> m:
+            mode, x1, x2, y1, y2, z1, z2 <span style="color:#f92672">=</span> m<span style="color:#f92672">.</span>groups()
+            cube <span style="color:#f92672">=</span> Cube(
+                Point(int(x1), int(y1), int(z1)),
+                Point(int(x2) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>, int(y2) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>, int(z2) <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>)
+            )
+
+            <span style="color:#66d9ef">yield</span> mode <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;on&#39;</span>, cube
+
+
+<span style="color:#a6e22e">@app.command</span>()
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">main</span>(file: typer<span style="color:#f92672">.</span>FileText, limit: bool <span style="color:#f92672">=</span> False):
+    cubes: List[Cube] <span style="color:#f92672">=</span> []
+
+    <span style="color:#66d9ef">for</span> turn_on, cube <span style="color:#f92672">in</span> read(file):
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;{turn_on=} {cube=}&#39;</span>)
+
+        <span style="color:#75715e"># Turning on cubes, don&#39;t turn on anything that is already on</span>
+        <span style="color:#66d9ef">if</span> turn_on:
+            to_turn_on <span style="color:#f92672">=</span> [cube]
+
+            <span style="color:#66d9ef">for</span> old_cube <span style="color:#f92672">in</span> cubes:
+                to_turn_on <span style="color:#f92672">=</span> [
+                    remaining_cube
+                    <span style="color:#66d9ef">for</span> to_turn_on_cube <span style="color:#f92672">in</span> to_turn_on
+                    <span style="color:#66d9ef">for</span> remaining_cube <span style="color:#f92672">in</span> to_turn_on_cube <span style="color:#f92672">-</span> old_cube
+                ]
+
+            cubes <span style="color:#f92672">+=</span> to_turn_on
+
+        <span style="color:#75715e"># Turning off cubes, turn off anything that should be off</span>
+        <span style="color:#66d9ef">else</span>:
+            cubes <span style="color:#f92672">=</span> [
+                reduced_cube
+                <span style="color:#66d9ef">for</span> current_cube <span style="color:#f92672">in</span> cubes
+                <span style="color:#66d9ef">for</span> reduced_cube <span style="color:#f92672">in</span> current_cube <span style="color:#f92672">-</span> cube
+            ]
+
+        <span style="color:#75715e"># Re-compress at the end of each cycle</span>
+        cubes <span style="color:#f92672">=</span> Cube<span style="color:#f92672">.</span>compress(cubes)
+
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span><span style="color:#e6db74">After {turn_on=} {cube=}: {len(cubes)=}, {sum(len(cube) for cube in cubes)=}
+</span><span style="color:#e6db74">&#39;&#39;&#39;</span>)
+
+        <span style="color:#75715e"># Remove all regions outside of -50..50</span>
+        <span style="color:#75715e"># This is silly, because we&#39;ll need to keep them in part 2</span>
+        <span style="color:#75715e"># But it&#39;s faster at least</span>
+        <span style="color:#66d9ef">if</span> limit:
+            cubes <span style="color:#f92672">=</span> Cube<span style="color:#f92672">.</span>compress([
+                reduced
+                <span style="color:#66d9ef">for</span> cube <span style="color:#f92672">in</span> cubes
+                <span style="color:#66d9ef">for</span> reduced <span style="color:#f92672">in</span> cube <span style="color:#f92672">&amp;</span> Cube(Point(<span style="color:#f92672">-</span><span style="color:#ae81ff">50</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">50</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">50</span>), Point(<span style="color:#ae81ff">51</span>, <span style="color:#ae81ff">51</span>, <span style="color:#ae81ff">51</span>))
+            ])
+
+    <span style="color:#66d9ef">print</span>(sum(len(cube) <span style="color:#66d9ef">for</span> cube <span style="color:#f92672">in</span> cubes))
+
+<span style="color:#a6e22e">@app.command</span>()
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+    main(file, True)
+</code></pre></div><p>Almost exactly what I described in the pseudo-code, albeit a bit longer. It&rsquo;s kind of funny, because we need to remove the -50..50 region even though we already calculated it. It does run quicker without it though:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 cubinator.py part1 input.txt
+<span style="color:#ae81ff">590467</span>
+<span style="color:#75715e"># time 33116921042ns / 33.12s</span>
+</code></pre></div><p><a href="/2021/12/22/aoc-2021-day-22-cubinator/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/21/aoc-2021-day-21-dicinator/" class="clearfix">AoC 2021 Day 21: Dicinator</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-21</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-dirac-dicehttpsadventofcodecom2021day21">Source: <a href="https://adventofcode.com/2021/day/21">Dirac Dice</a></h3>
+<h4 id="part-1-play-a-simple-game-describe-below-with-a-loaded-d100-that-always-rolls-1-2-3--99-100-1--return-the-score-of-the-losing-player-times-the-number-of-times-the-die-was-rolled"><strong>Part 1:</strong> Play a simple game (describe below) with a loaded D100 (that always rolls 1, 2, 3, &hellip; 99, 100, 1, &hellip;). Return the score of the losing player times the number of times the die was rolled.</h4>
+<ul>
+<li>The board has a circle of 10 squares, numbered 1-10</li>
+<li>The player pieces start on given squares</li>
+<li>Each turn, roll 3 dice, advance the sum of the three many spaces (wrapping around)</li>
+<li>Score points equal to the square you land on</li>
+<li>The first player to score &gt;= 1000 wins</li>
+</ul>
+<p>This is not a hard problem, so I&rsquo;m going to <em>dramatically</em> overengineer it.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">Die <span style="color:#f92672">=</span> Generator[int, None, None]
+
+<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">LoadedDie</span>(sides: int) <span style="color:#f92672">-&gt;</span> Die:
+    <span style="color:#66d9ef">while</span> True:
+        <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(sides):
+            <span style="color:#66d9ef">yield</span> i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>
+
+
+<span style="color:#a6e22e">@dataclass</span>
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Game</span>:
+    <span style="color:#e6db74">&#39;&#39;&#39;Reprents a weird/simple game.&#39;&#39;&#39;</span>
+
+    die: Die
+    size: int
+    target: int
+
+    current: int
+    players: List[int]
+    scores: List[int]
+
+    roll_count: int
+
+    <span style="color:#66d9ef">def</span> __init__(
+            self,
+            die: Die,
+            size: Optional[int] <span style="color:#f92672">=</span> <span style="color:#ae81ff">10</span>,
+            target: Optional[int] <span style="color:#f92672">=</span> <span style="color:#ae81ff">1000</span>,
+            number_of_players: Optional[int] <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>,
+            initial_spots: Optional[List[int]] <span style="color:#f92672">=</span> None,
+    ):
+        <span style="color:#e6db74">&#39;&#39;&#39;Create a game with various defaults.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> number_of_players <span style="color:#f92672">is</span> None:
+            number_of_players <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>
+
+        self<span style="color:#f92672">.</span>die <span style="color:#f92672">=</span> die
+        self<span style="color:#f92672">.</span>size <span style="color:#f92672">=</span> size <span style="color:#f92672">or</span> <span style="color:#ae81ff">10</span>
+        self<span style="color:#f92672">.</span>target <span style="color:#f92672">=</span> target <span style="color:#f92672">or</span> <span style="color:#ae81ff">1000</span>
+        self<span style="color:#f92672">.</span>current <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+        self<span style="color:#f92672">.</span>players <span style="color:#f92672">=</span> initial_spots <span style="color:#f92672">or</span> [<span style="color:#ae81ff">0</span> <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(number_of_players)]
+        self<span style="color:#f92672">.</span>scores <span style="color:#f92672">=</span> [<span style="color:#ae81ff">0</span> <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(number_of_players)]
+        self<span style="color:#f92672">.</span>roll_count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> number_of_players <span style="color:#f92672">==</span> len(self<span style="color:#f92672">.</span>players):
+            <span style="color:#66d9ef">raise</span> <span style="color:#a6e22e">Exception</span>(<span style="color:#e6db74">&#39;If both number of players and initial spots are provided, they must match&#39;</span>)
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">winner</span>(self) <span style="color:#f92672">-&gt;</span> Optional[int]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Return the current winner (or None if no winner)&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">for</span> i, score <span style="color:#f92672">in</span> enumerate(self<span style="color:#f92672">.</span>scores):
+            <span style="color:#66d9ef">if</span> score <span style="color:#f92672">&gt;=</span> self<span style="color:#f92672">.</span>target:
+                <span style="color:#66d9ef">return</span> i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>
+
+        <span style="color:#66d9ef">return</span> None
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">update</span>(self):
+        <span style="color:#e6db74">&#39;&#39;&#39;Plays one round.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>winner():
+            logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Cannot update, game is already over&#39;</span>)
+            <span style="color:#66d9ef">return</span>
+
+        self<span style="color:#f92672">.</span>roll_count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">3</span>
+        rolls <span style="color:#f92672">=</span> [next(self<span style="color:#f92672">.</span>die), next(self<span style="color:#f92672">.</span>die), next(self<span style="color:#f92672">.</span>die)]
+        new_space <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>players[self<span style="color:#f92672">.</span>current] <span style="color:#f92672">+</span> sum(rolls)
+        <span style="color:#66d9ef">while</span> new_space <span style="color:#f92672">&gt;</span> self<span style="color:#f92672">.</span>size:
+            new_space <span style="color:#f92672">-=</span> self<span style="color:#f92672">.</span>size
+
+        self<span style="color:#f92672">.</span>players[self<span style="color:#f92672">.</span>current] <span style="color:#f92672">=</span> new_space
+        self<span style="color:#f92672">.</span>scores[self<span style="color:#f92672">.</span>current] <span style="color:#f92672">+=</span> new_space
+
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;&#39;&#39;</span><span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span><span style="color:#e6db74">Player {self.current+1} rolls {rolls} </span><span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span><span style="color:#e6db74">and moves to space {self.players[self.current]} </span><span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span><span style="color:#e6db74">for a total score of {self.scores[self.current]}.</span><span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span><span style="color:#e6db74">&#39;&#39;&#39;</span>)
+
+        self<span style="color:#f92672">.</span>current <span style="color:#f92672">=</span> (self<span style="color:#f92672">.</span>current <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">%</span> len(self<span style="color:#f92672">.</span>players)
+</code></pre></div><p>Now with any user supplied die, any size board, any number of players, and any target score! I think the most interesting thing was the <code>LoadedDie</code> generator. Any generator will work though.</p>
+<p>Wrap that in the problem statement:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    p1 <span style="color:#f92672">=</span> int(file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>split()[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>])
+    p2 <span style="color:#f92672">=</span> int(file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>split()[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>])
+
+    game <span style="color:#f92672">=</span> Game(die<span style="color:#f92672">=</span>LoadedDie(<span style="color:#ae81ff">100</span>), initial_spots<span style="color:#f92672">=</span>[p1, p2])
+
+    <span style="color:#66d9ef">while</span> <span style="color:#f92672">not</span> game<span style="color:#f92672">.</span>winner():
+        game<span style="color:#f92672">.</span>update()
+
+    winning_player <span style="color:#f92672">=</span> game<span style="color:#f92672">.</span>winner()
+
+    <span style="color:#66d9ef">print</span>(
+        winning_player, <span style="color:#e6db74">&#39;wins,&#39;</span>,
+        game<span style="color:#f92672">.</span>scores[<span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> winning_player <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0</span>] <span style="color:#f92672">*</span> game<span style="color:#f92672">.</span>roll_count
+    )
+</code></pre></div><p>And we&rsquo;re golden:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 dicinator.py part1 input.txt
+<span style="color:#ae81ff">1</span> wins, <span style="color:#ae81ff">752247</span>
+<span style="color:#75715e"># time 45107958ns / 0.05s</span>
+</code></pre></div><p><a href="/2021/12/21/aoc-2021-day-21-dicinator/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/20/aoc-2021-day-20-enhancinator/" class="clearfix">AoC 2021 Day 20: Enhancinator</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-20</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-trench-maphttpsadventofcodecom2021day20">Source: <a href="https://adventofcode.com/2021/day/20">Trench Map</a></h3>
+<h4 id="part-1-given-a-9-1-hahahugoshortcode-s0-hbhb-update-function-take-the-pixel-and-8-surrounding-pixels-as-a-9-bit-index-into-the-function-and-a-binary-image-apply-the-function-twice-and-count-the-number-of-lit-pixels-assume-that-the-canvas-is-infinite"><strong>Part 1:</strong> Given a 9-&gt;1 <a href="https://en.wikipedia.org/wiki/cellular%20automota">cellular automota</a> update function (take the pixel and 8 surrounding pixels as a 9-bit index into the function) and a binary image, apply the function twice and count the number of &lsquo;lit&rsquo; pixels. Assume that the canvas is infinite.</h4>
+<p>That was fun!</p>
+<p>First, we want to represent our two data structures. First, the image itself. Because it can be infinite, we&rsquo;re going to store both pixels we know about (<code>data</code>) and a single value for <code>infinity</code>. We won&rsquo;t end up with stripes reaching out in this particular case. In most function applications, <code>infinity</code> will stay either on or off. But there is an edge case where it will oscillate. I&rsquo;ll come back to that when we get there.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">Point <span style="color:#f92672">=</span> Tuple[int, int]
+
+<span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">InfiniteBitmap</span>:
+    <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">    Store an infinitely large bitmap.
+</span><span style="color:#e6db74">    
+</span><span style="color:#e6db74">    data is &#39;known&#39; values
+</span><span style="color:#e6db74">    infinity is every other point off to infinity
+</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
+
+    data: MutableMapping[Point, bool]
+    infinity: bool
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">read</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;InfiniteBitmap&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Read an infinite bitmap from file. Assume unset bits (infinity) are False.&#39;&#39;&#39;</span>
+
+        logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Reading infinity bitmap&#39;</span>)
+
+        data <span style="color:#f92672">=</span> {
+            (x, y): c <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;#&#39;</span>
+            <span style="color:#66d9ef">for</span> y, line <span style="color:#f92672">in</span> enumerate(file)
+            <span style="color:#66d9ef">for</span> x, c <span style="color:#f92672">in</span> enumerate(line<span style="color:#f92672">.</span>strip())
+        }
+
+        mid_x <span style="color:#f92672">=</span> max(x <span style="color:#66d9ef">for</span> x, _ <span style="color:#f92672">in</span> data) <span style="color:#f92672">//</span> <span style="color:#ae81ff">2</span>
+        mid_y <span style="color:#f92672">=</span> max(y <span style="color:#66d9ef">for</span> _, y <span style="color:#f92672">in</span> data) <span style="color:#f92672">//</span> <span style="color:#ae81ff">2</span>
+
+        <span style="color:#66d9ef">return</span> InfiniteBitmap({(x <span style="color:#f92672">-</span> mid_x, y <span style="color:#f92672">-</span> mid_y): bit <span style="color:#66d9ef">for</span> (x, y), bit <span style="color:#f92672">in</span> data<span style="color:#f92672">.</span>items()}, False)
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#e6db74">&#39;&#39;&#39;Return a much smaller representation.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;InfiniteBinary&lt;{self.infinity}, {len(self)}/{len(self.data)}, {self.bounds()}&gt;&#39;</span>
+
+    <span style="color:#66d9ef">def</span> __len__(self) <span style="color:#f92672">-&gt;</span> int:
+        <span style="color:#e6db74">&#39;&#39;&#39;Return the number of lit pixels (might be effectively infinite).&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>infinity:
+            <span style="color:#66d9ef">return</span> sys<span style="color:#f92672">.</span>maxsize
+        <span style="color:#66d9ef">else</span>:
+            <span style="color:#66d9ef">return</span> sum(
+                <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> self[p] <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0</span>
+                <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data
+            )
+
+    <span style="color:#66d9ef">def</span> __getitem__(self, p: Point) <span style="color:#f92672">-&gt;</span> bool:
+        <span style="color:#e6db74">&#39;&#39;&#39;Get the value at a given point p (use infinity if the point isn&#39;t otherwise known).&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>data<span style="color:#f92672">.</span>get(p, self<span style="color:#f92672">.</span>infinity)
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">bounds</span>(self) <span style="color:#f92672">-&gt;</span> Tuple[int, int, int, int]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Return (minimum x, maximum x, minimum y, maximum y)&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> (
+            min(x <span style="color:#66d9ef">for</span> x, _ <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data) <span style="color:#f92672">-</span> <span style="color:#ae81ff">5</span>,
+            max(x <span style="color:#66d9ef">for</span> x, _ <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data) <span style="color:#f92672">+</span> <span style="color:#ae81ff">5</span>,
+            min(y <span style="color:#66d9ef">for</span> _, y <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data) <span style="color:#f92672">-</span> <span style="color:#ae81ff">5</span>,
+            max(y <span style="color:#66d9ef">for</span> _, y <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data) <span style="color:#f92672">+</span> <span style="color:#ae81ff">5</span>,
+        )
+</code></pre></div><p>Most of this is just reading the data. I did do one interesting bit in the <code>read</code> function, which was to &lsquo;recenter&rsquo; the data. After reading, the range is (0, width), but I&rsquo;d rather it be (-width/2, width/2) so that the center point is actually in the center.</p>
+<p>In addition, we went ahead and put a <code>__len__</code> function here: the number of lit pixels.</p>
+<p>Okay, next up, let&rsquo;s work on that mapping function. This is the bulk of the problem:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">BitIndex <span style="color:#f92672">=</span> List[bool]
+
+NEIGHBORHOOD <span style="color:#f92672">=</span> [
+    (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">0</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>),
+    (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>,  <span style="color:#ae81ff">0</span>), (<span style="color:#ae81ff">0</span>,  <span style="color:#ae81ff">0</span>), (<span style="color:#ae81ff">1</span>,  <span style="color:#ae81ff">0</span>),
+    (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>,  <span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">0</span>,  <span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">1</span>,  <span style="color:#ae81ff">1</span>),
+]
+
+<span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">BinaryMapping</span>:
+    <span style="color:#e6db74">&#39;&#39;&#39;Store a mapping from 9-bit values to 1-bit, loaded from a 512 character string of . (0) and # (1).&#39;&#39;&#39;</span>
+
+    map: List[bool]
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">read</span>(file: TextIO):
+        <span style="color:#e6db74">&#39;&#39;&#39;Read a BinaryMapping from an input stream.&#39;&#39;&#39;</span>
+
+        logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Reading binary mapping&#39;</span>)
+
+        <span style="color:#66d9ef">return</span> BinaryMapping([c <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;#&#39;</span> <span style="color:#66d9ef">for</span> c <span style="color:#f92672">in</span> file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip()])
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#e6db74">&#39;&#39;&#39;Return a unique representation of this map.&#39;&#39;&#39;</span>
+
+        binary <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;1&#39;</span> <span style="color:#66d9ef">if</span> bit <span style="color:#66d9ef">else</span> <span style="color:#e6db74">&#39;0&#39;</span> <span style="color:#66d9ef">for</span> bit <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>map)
+        integer <span style="color:#f92672">=</span> int(binary, <span style="color:#ae81ff">2</span>)
+        bytes <span style="color:#f92672">=</span> integer<span style="color:#f92672">.</span>to_bytes(<span style="color:#ae81ff">64</span>, <span style="color:#e6db74">&#39;big&#39;</span>)
+        b64 <span style="color:#f92672">=</span> base64<span style="color:#f92672">.</span>b64encode(bytes)<span style="color:#f92672">.</span>decode()
+
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;BinaryMapping&lt;{b64}&gt;&#39;</span>
+
+    <span style="color:#66d9ef">def</span> __getitem__(self, k: Union[int, BitIndex]) <span style="color:#f92672">-&gt;</span> bool:
+        <span style="color:#e6db74">&#39;&#39;&#39;Get the value of the BinaryMapping by either integer index of a 9-bit binary BitIndex.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> isinstance(k, int):
+            <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>map[k]
+        <span style="color:#66d9ef">else</span>:
+            <span style="color:#75715e"># TODO: Make this more efficient</span>
+            <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>map[int(<span style="color:#e6db74">&#39;&#39;</span><span style="color:#f92672">.</span>join(<span style="color:#e6db74">&#39;1&#39;</span> <span style="color:#66d9ef">if</span> bit <span style="color:#66d9ef">else</span> <span style="color:#e6db74">&#39;0&#39;</span> <span style="color:#66d9ef">for</span> bit <span style="color:#f92672">in</span> k), <span style="color:#ae81ff">2</span>)]
+
+    <span style="color:#66d9ef">def</span> __call__(self, bitmap: InfiniteBitmap) <span style="color:#f92672">-&gt;</span> InfiniteBitmap:
+        <span style="color:#e6db74">&#39;&#39;&#39;Apply this mapping to an infinite bitmap, generating a new one with this applied.&#39;&#39;&#39;</span>
+
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Calling {self} on {bitmap}&#39;</span>)
+
+        <span style="color:#75715e"># Calculate the new infinity</span>
+
+        <span style="color:#75715e"># If the lowest mapping is set, infinity goes from off to on</span>
+        <span style="color:#75715e"># Likewise on the highest mapping for infinity from on to off</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> bitmap<span style="color:#f92672">.</span>infinity <span style="color:#f92672">and</span> self[<span style="color:#ae81ff">0</span>]:
+            new_infinity <span style="color:#f92672">=</span> True
+        <span style="color:#66d9ef">elif</span> bitmap<span style="color:#f92672">.</span>infinity <span style="color:#f92672">and</span> <span style="color:#f92672">not</span> self[<span style="color:#ae81ff">511</span>]:
+            new_infinity <span style="color:#f92672">=</span> False
+        <span style="color:#66d9ef">else</span>:
+            new_infinity <span style="color:#f92672">=</span> bitmap<span style="color:#f92672">.</span>infinity
+
+        <span style="color:#75715e"># Calculate all new points</span>
+        new_data <span style="color:#f92672">=</span> {}
+
+        <span style="color:#75715e"># Have to calculate all pixels one level out as well</span>
+        <span style="color:#66d9ef">for</span> x, y <span style="color:#f92672">in</span> bitmap<span style="color:#f92672">.</span>data:
+            <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> NEIGHBORHOOD:
+                <span style="color:#75715e"># Don&#39;t calculate points more than once per update</span>
+                center <span style="color:#f92672">=</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd)
+                <span style="color:#66d9ef">if</span> center <span style="color:#f92672">in</span> new_data:
+                    <span style="color:#66d9ef">continue</span>
+
+                neighbors <span style="color:#f92672">=</span> [
+                    bitmap[x <span style="color:#f92672">+</span> xd <span style="color:#f92672">+</span> xd2, y <span style="color:#f92672">+</span> yd <span style="color:#f92672">+</span> yd2]
+                    <span style="color:#66d9ef">for</span> xd2, yd2 <span style="color:#f92672">in</span> NEIGHBORHOOD
+                ]
+
+                new_value <span style="color:#f92672">=</span> self[neighbors]
+
+                <span style="color:#75715e"># If the value wasn&#39;t in the old map and matches the new infinity</span>
+                <span style="color:#75715e"># We don&#39;t need to include it (prevent infinity expansion)</span>
+                <span style="color:#66d9ef">if</span> center <span style="color:#f92672">in</span> bitmap<span style="color:#f92672">.</span>data <span style="color:#f92672">and</span> new_value <span style="color:#f92672">==</span> new_infinity:
+                    <span style="color:#66d9ef">continue</span>
+
+                new_data[center] <span style="color:#f92672">=</span> new_value
+
+        <span style="color:#66d9ef">return</span> InfiniteBitmap(new_data, new_infinity)
+</code></pre></div><p><code>__getitem__</code> will handle infinity (so we can always read any pixel, even if it&rsquo;s not already defined in the image).</p>
+<p><code>__call__</code> is the core, it allows the function to be called on a <code>InfiniteBitmap</code> and returns the updated bitmap. Let&rsquo;s go through a few interesting points of it:</p>
+<ul>
+<li>
+<p>Updating the infinite pixels: this is the edge case I was talking about earlier. If the first value in the update function (all false) returns true, we need to change infinite to true. Likewise if the last value is false, we need to make infinite false. If both of these are the case (as they are in my input), you&rsquo;ll get a flicker (see the rendering at the end).</p>
+</li>
+<li>
+<p>Updating the majority of pixels</p>
+<ul>
+<li>We need to update all pixels in the image <em>plus</em> all pixels adjacent to them, because those might change from off to on.</li>
+<li>This would lead to infinitely growing memory&hellip; except we don&rsquo;t have to. If the new border pixel matches infinity, not setting it is fine, it will get rescanned on the edge update next time.</li>
+</ul>
+</li>
+</ul>
+<p>And that&rsquo;s, actually it!</p>
+<p>Using the rendering function (we&rsquo;ll see at the end) and the test data, we can go from this:</p>
+<figure>
+    <img src="/embeds/2021/aoc2021-20-test-0000.png"/> 
+</figure>
+
+<p>To this:</p>
+<figure>
+    <img src="/embeds/2021/aoc2021-20-test-0001.png"/> 
+</figure>
+
+<p>To this:</p>
+<figure>
+    <img src="/embeds/2021/aoc2021-20-test-0002.png"/> 
+</figure>
+
+<p>It matches what we expect! A simple wrapper:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    f <span style="color:#f92672">=</span> BinaryMapping<span style="color:#f92672">.</span>read(file)
+    file<span style="color:#f92672">.</span>readline()
+    bitmap <span style="color:#f92672">=</span> InfiniteBitmap<span style="color:#f92672">.</span>read(file)
+
+    final_bitmap <span style="color:#f92672">=</span> f(f(bitmap))
+
+    <span style="color:#66d9ef">print</span>(len(final_bitmap))
+</code></pre></div><p>And run it:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 enhancinator.py part1 input.txt
+<span style="color:#ae81ff">5057</span>
+<span style="color:#75715e"># time 290676167ns / 0.29s</span>
+</code></pre></div><p>Not bad!</p><p><a href="/2021/12/20/aoc-2021-day-20-enhancinator/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
+                <a href="https://blog.jverkamp.com/2021/12/19/aoc-2021-day-19-point-matchinator/" class="clearfix">AoC 2021 Day 19: Point Matchinator</a></h1>
+
+    		<div class="entry-meta"><span class="entry-date">2021-12-19</span>
+                </div>
+    	</header>
+    	<div class="entry-content"><h3 id="source-snailfishhttpsadventofcodecom2021day19">Source: <a href="https://adventofcode.com/2021/day/19">Snailfish</a></h3>
+<h4 id="part-1-you-will-be-given-a-series-of-scanners-each-of-which-will-tell-you-the-location-from-their-point-of-view-of-a-series-of-beacons-each-scanner-may-be-flipped-or-rotated-in-increments-of-90-degrees-in-any-direction-determine-where-each-scanner-and-beacon-is-by-overlaying-the-maps-with-at-least-pairwise-12-matches"><strong>Part 1:</strong> You will be given a series of Scanners, each of which will tell you the location (from their point of view) of a series of Beacons. Each Scanner may be flipped or rotated in increments of 90 degrees in any direction. Determine where each Scanner and Beacon is by overlaying the maps (with at least pairwise 12 matches).</h4>
+<p>That&hellip; was quite a problem to get right. It&rsquo;s a lot of match to make sure that the various coordinate systems can be converted between one another and computationally expensive to brute force. I haven&rsquo;t gotten this one much below 10 minutes&hellip; but at this point, I&rsquo;m just going to have to call it. It&rsquo;s a crazy problem.</p>
+<p>Okay. Let&rsquo;s start with a 3-dimensional point:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Point</span>:
+    x: int
+    y: int
+    z: int
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;{{{self.x}, {self.y}, {self.z}}}&#39;</span>
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">all_waggles</span>() <span style="color:#f92672">-&gt;</span> Generator[<span style="color:#e6db74">&#39;Point&#39;</span>, None, None]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Generate all waggle parameters (see Point.waggle)&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">for</span> i, j, k <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>permutations((<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">3</span>)):
+            <span style="color:#66d9ef">for</span> ix <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>i, i):
+                <span style="color:#66d9ef">for</span> jx <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>j, j):
+                    <span style="color:#66d9ef">for</span> kx <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>k, k):
+                        <span style="color:#66d9ef">yield</span> Point(ix, jx, kx)
+
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">waggle</span>(self, w: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">        Return a new point reflected/reordered by the given coordinates.
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">        Each of w&#39;s x,y,z should be +- 1,2,3 and each of 1,2,3 should be used exactly once.
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">        reflect(3, 2, -1) should return Point(z, y, -x) for example.
+</span><span style="color:#e6db74">        &#39;&#39;&#39;</span>
+
+        d <span style="color:#f92672">=</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, self<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z)
+
+        <span style="color:#66d9ef">return</span> Point(
+            d[abs(w<span style="color:#f92672">.</span>x)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
+            d[abs(w<span style="color:#f92672">.</span>y)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
+            d[abs(w<span style="color:#f92672">.</span>z)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
+        )
+
+    <span style="color:#66d9ef">def</span> __add__(self, other: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Return the sum of two points.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> Point(self<span style="color:#f92672">.</span>x <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>z)
+
+    <span style="color:#66d9ef">def</span> __sub__(self, other: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
+        <span style="color:#e6db74">&#39;&#39;&#39;Return the difference of two points, obv.&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">return</span> Point(self<span style="color:#f92672">.</span>x <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>z)
+</code></pre></div><p>Waggle? Waggle. Basically, that&rsquo;s the name I&rsquo;m using for flipping and mirroring about any of x/y/z. Specifically, any ordering of <code>(1, 2, 3)</code> (each can be positive or negative) to re-order the coordinates and possibly flip them around. That ends up with the 24 possible orientations (<code>all_waggles</code>).</p>
+<p>Next, Scanners:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
+<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Scanner</span>:
+    name: str
+    points: FrozenSet[Point]
+
+    <span style="color:#a6e22e">@staticmethod</span>
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">read</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> Optional[<span style="color:#e6db74">&#39;Scanner&#39;</span>]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Read a Scanner from a filelike object&#39;&#39;&#39;</span>
+
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> (name :<span style="color:#f92672">=</span> file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip(<span style="color:#e6db74">&#39;- </span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)):
+            <span style="color:#66d9ef">return</span> None
+
+        points <span style="color:#f92672">=</span> set()
+        <span style="color:#66d9ef">while</span> line :<span style="color:#f92672">=</span> file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip():
+            points<span style="color:#f92672">.</span>add(Point(<span style="color:#f92672">*</span>[int(v) <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;,&#39;</span>)]))
+
+        <span style="color:#66d9ef">return</span> Scanner(name, frozenset(points))
+
+    <span style="color:#66d9ef">def</span> __or__(self, other: <span style="color:#e6db74">&#39;Scanner&#39;</span>) <span style="color:#f92672">-&gt;</span> Optional[Tuple[Point, Point, Set[Point]]]:
+        <span style="color:#e6db74">&#39;&#39;&#39;Given another scanner, try to find the overlapping points.&#39;&#39;&#39;</span>
+
+        <span style="color:#75715e"># Try every waggle of their scanners, assume I&#39;m always right</span>
+        <span style="color:#66d9ef">for</span> their_waggle <span style="color:#f92672">in</span> Point<span style="color:#f92672">.</span>all_waggles():
+            their_waggled_points <span style="color:#f92672">=</span> {
+                p<span style="color:#f92672">.</span>waggle(their_waggle)
+                <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> other<span style="color:#f92672">.</span>points
+            }
+
+            logging<span style="color:#f92672">.</span>debug(f<span style="color:#e6db74">&#39;Comparing {self.points=} and {their_waggled_points=}&#39;</span>)
+
+            <span style="color:#75715e"># Choose where we think the &#39;other&#39; scanner is from our perspective</span>
+            <span style="color:#66d9ef">for</span> my_zero <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>points:
+                my_zeroed_points <span style="color:#f92672">=</span> {p <span style="color:#f92672">-</span> my_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>points}
+
+                <span style="color:#66d9ef">for</span> their_waggled_zero <span style="color:#f92672">in</span> their_waggled_points:
+                    their_zeroed_points <span style="color:#f92672">=</span> {p <span style="color:#f92672">-</span> their_waggled_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> their_waggled_points}
+
+                    <span style="color:#75715e"># Try to subtract that from all of our points</span>
+                    <span style="color:#75715e"># If we have enough matches, that means we know their scanner from our point of view</span>
+                    matches <span style="color:#f92672">=</span> my_zeroed_points <span style="color:#f92672">&amp;</span> their_zeroed_points
+
+                    <span style="color:#66d9ef">if</span> len(matches) <span style="color:#f92672">&gt;=</span> BEACON_OVERLAPPINGNESS:
+                        <span style="color:#66d9ef">return</span> (their_waggle, my_zero <span style="color:#f92672">-</span> their_waggled_zero, {p <span style="color:#f92672">+</span> my_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> matches})
+
+        <span style="color:#66d9ef">return</span> None
+
+    <span style="color:#66d9ef">def</span> __repr__(self):
+        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;@{{{self.name}}}&#39;</span>
+</code></pre></div><p>I don&rsquo;t know why I used <code>s0 | s1</code> as the operator for overlapping two scanners&hellip; but I did. Yay dunder methods?</p>
+<p>The method here is actually pretty neat. Essentially, the matching algorithm is:</p>
+<ul>
+<li>Try every possible <code>waggle</code> (orientation that the other Scanner could be at)</li>
+<li>Try every possible point from each scanner as the &lsquo;<code>zero</code>&rsquo; (the point at which we&rsquo;ve overlapping), <code>other</code> has to have their <code>zero</code> waggled</li>
+<li>Calculate the offsets from the zero for each</li>
+<li>If the <code>waggle</code> is correct (so that both Scanners are now facing the same way) and the <code>zeros</code> actually match&hellip; we&rsquo;re golden. We&rsquo;ll have at least 12 matches and can return</li>
+<li>Calculate the points that overlapped along with the <code>waggle</code> necessary to convert between the zones</li>
+</ul>
+<p>That last step took&hellip; rather a while to get right. And all because of a much lower level bug up in the <code>their_waggled_points</code> part. Man it&rsquo;s hard to debug bad data. Garbage in, garbage out. That&rsquo;s still a neat algorithm though.</p>
+<p>Next&hellip; let&rsquo;s combine these and try to figure out how to actually calculate all of the Beacons.</p>
+<p>First, load the input and find initial mappings between every pair of Scanners. This is&hellip; horribly inefficient. I did at least make sure that if I do <code>[s0, s1]</code>, then I don&rsquo;t have to do <code>[s1, s0]</code> (they&rsquo;re the same). But otherwise, I really am going through all of them.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">scanners <span style="color:#f92672">=</span> []
+<span style="color:#66d9ef">while</span> s :<span style="color:#f92672">=</span> Scanner<span style="color:#f92672">.</span>read(file):
+    scanners<span style="color:#f92672">.</span>append(s)
+s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
+
+logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== FINDING INITIAL OFFSETS ===&#39;</span>)
+offsets: MutableMapping[Tuple[Scanner, Scanner], Tuple[Point, Point, Set[Point]]] <span style="color:#f92672">=</span> {}
+
+<span style="color:#66d9ef">for</span> s0 <span style="color:#f92672">in</span> scanners:
+    <span style="color:#66d9ef">for</span> s1 <span style="color:#f92672">in</span> scanners:
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Finding the offset from {s0=} to {s1=}&#39;</span>)
+
+        <span style="color:#66d9ef">if</span> (s1, s0) <span style="color:#f92672">in</span> offsets:
+            offsets[s0, s1] <span style="color:#f92672">=</span> offsets[s1, s0]
+
+        <span style="color:#66d9ef">if</span> result :<span style="color:#f92672">=</span> (s0 <span style="color:#f92672">|</span> s1):
+            offsets[s0, s1] <span style="color:#f92672">=</span> result
+</code></pre></div><p>That will find Unfortunately, not every pair overlaps. So we can go from 0 to 1 and 1 to 4, but not directly from 0 to 4. And we want to be able to do that, to make sure we have <em>everything</em> in the same universal coordinate system. So next:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Fill in the entire chart</span>
+logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== EXPANDING CHART ===&#39;</span>)
+s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
+
+<span style="color:#75715e"># If we don&#39;t have a path from s0 to s1, try to go s0 -&gt; svia -&gt; s1</span>
+updating <span style="color:#f92672">=</span> True
+<span style="color:#66d9ef">while</span> updating:
+    logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Working on expanding iteration&#39;</span>)
+    updating <span style="color:#f92672">=</span> False
+
+    <span style="color:#66d9ef">for</span> s1 <span style="color:#f92672">in</span> scanners[<span style="color:#ae81ff">1</span>:]:
+        <span style="color:#66d9ef">if</span> (s0, s1) <span style="color:#f92672">in</span> offsets:
+            <span style="color:#66d9ef">continue</span>
+
+        <span style="color:#66d9ef">for</span> svia <span style="color:#f92672">in</span> scanners[<span style="color:#ae81ff">1</span>:]:
+            <span style="color:#66d9ef">if</span> s0 <span style="color:#f92672">==</span> svia <span style="color:#f92672">or</span> svia <span style="color:#f92672">==</span> s1:
+                <span style="color:#66d9ef">continue</span>
+
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> ((s0, svia) <span style="color:#f92672">in</span> offsets <span style="color:#f92672">and</span> (svia, s1) <span style="color:#f92672">in</span> offsets):
+                <span style="color:#66d9ef">continue</span>
+
+            logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Building a new path from {s0} via {svia} to {s1}&#39;</span>)
+
+            waggle1, offset1, _ <span style="color:#f92672">=</span> offsets[s0, svia]
+            waggle2, offset2, points2 <span style="color:#f92672">=</span> offsets[svia, s1]
+
+            new_waggle <span style="color:#f92672">=</span> waggle2<span style="color:#f92672">.</span>waggle(waggle1)
+            new_offset <span style="color:#f92672">=</span> offset1 <span style="color:#f92672">+</span> offset2<span style="color:#f92672">.</span>waggle(waggle1)
+
+            new_points <span style="color:#f92672">=</span> {
+                offset1 <span style="color:#f92672">+</span> p<span style="color:#f92672">.</span>waggle(waggle1)
+                <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> points2
+            }
+
+            offsets[s0, s1] <span style="color:#f92672">=</span> new_waggle, new_offset, new_points
+            updating <span style="color:#f92672">=</span> True
+</code></pre></div><p>Getting that <code>new_points</code> right took a bit too. And it&rsquo;s all so simple&hellip; I enjoy naming things.</p>
+<p>And that&rsquo;s mostly it. Go through now that we know the <code>offset</code> and <code>waggle</code> for every Scanner, we can actually map all of the Beacons they&rsquo;d seen into the same coordinate space and de-duplicate:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
+
+    scanners <span style="color:#f92672">=</span> []
+    <span style="color:#66d9ef">while</span> s :<span style="color:#f92672">=</span> Scanner<span style="color:#f92672">.</span>read(file):
+        scanners<span style="color:#f92672">.</span>append(s)
+    s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
+
+    offsets <span style="color:#f92672">=</span> do_the_actual_work(scanners)
+
+    <span style="color:#75715e"># Finally, calculate all of the beacon points</span>
+    logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== FINDING BEACONS ===&#39;</span>)
+
+    all_beacons <span style="color:#f92672">=</span> set()
+    <span style="color:#66d9ef">for</span> scanner <span style="color:#f92672">in</span> scanners:
+        waggle, offset, _ <span style="color:#f92672">=</span> offsets[s0, scanner]
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Adding beacons from {scanner} at {offset} (with {waggle=})&#39;</span>)
+
+        all_beacons <span style="color:#f92672">|=</span> {
+            offset <span style="color:#f92672">+</span> p<span style="color:#f92672">.</span>waggle(waggle)
+            <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> scanner<span style="color:#f92672">.</span>points
+        }
+
+    <span style="color:#66d9ef">print</span>(len(all_beacons))
+</code></pre></div><p>And that&rsquo;s it!</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 point-matchinator.py part1 input.txt
+<span style="color:#ae81ff">313</span>
+<span style="color:#75715e"># time 412607815209ns / 412.61s</span>
+</code></pre></div><p>Yeah. That&rsquo;s slow. But it works and at this point, that&rsquo;s enough for me.</p><p><a href="/2021/12/19/aoc-2021-day-19-point-matchinator/">read more...</a></p></div>
+
+        <hr /></article><article class="li">
+    	<header>
+    		<h1 class="entry-title">
                 <a href="https://blog.jverkamp.com/2021/12/18/aoc-2021-day-18-pairs-of-pairs/" class="clearfix">AoC 2021 Day 18: Pairs of Pairs</a></h1>
 
     		<div class="entry-meta"><span class="entry-date">2021-12-18</span>
@@ -276,210 +1130,6 @@
 <span style="color:#ae81ff">4433</span>
 <span style="color:#75715e"># time 443584917ns / 0.44s</span>
 </code></pre></div><p>That was a &hellip; very strange/convoluted problem, but it was an interesting example of why data structures (and being able to convert between one another) is worthwhile.</p><p><a href="/2021/12/18/aoc-2021-day-18-pairs-of-pairs/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/12/18/aoc-2021-day-19-point-matchinator/" class="clearfix">AoC 2021 Day 19: Point Matchinator</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-12-18</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-snailfishhttpsadventofcodecom2021day19">Source: <a href="https://adventofcode.com/2021/day/19">Snailfish</a></h3>
-<h4 id="part-1-you-will-be-given-a-series-of-scanners-each-of-which-will-tell-you-the-location-from-their-point-of-view-of-a-series-of-beacons-each-scanner-may-be-flipped-or-rotated-in-increments-of-90-degrees-in-any-direction-determine-where-each-scanner-and-beacon-is-by-overlaying-the-maps-with-at-least-pairwise-12-matches"><strong>Part 1:</strong> You will be given a series of Scanners, each of which will tell you the location (from their point of view) of a series of Beacons. Each Scanner may be flipped or rotated in increments of 90 degrees in any direction. Determine where each Scanner and Beacon is by overlaying the maps (with at least pairwise 12 matches).</h4>
-<p>That&hellip; was quite a problem to get right. It&rsquo;s a lot of match to make sure that the various coordinate systems can be converted between one another and computationally expensive to brute force. I haven&rsquo;t gotten this one much below 10 minutes&hellip; but at this point, I&rsquo;m just going to have to call it. It&rsquo;s a crazy problem.</p>
-<p>Okay. Let&rsquo;s start with a 3-dimensional point:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Point</span>:
-    x: int
-    y: int
-    z: int
-
-    <span style="color:#66d9ef">def</span> __repr__(self):
-        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;{{{self.x}, {self.y}, {self.z}}}&#39;</span>
-
-    <span style="color:#a6e22e">@staticmethod</span>
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">all_waggles</span>() <span style="color:#f92672">-&gt;</span> Generator[<span style="color:#e6db74">&#39;Point&#39;</span>, None, None]:
-        <span style="color:#e6db74">&#39;&#39;&#39;Generate all waggle parameters (see Point.waggle)&#39;&#39;&#39;</span>
-
-        <span style="color:#66d9ef">for</span> i, j, k <span style="color:#f92672">in</span> itertools<span style="color:#f92672">.</span>permutations((<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">3</span>)):
-            <span style="color:#66d9ef">for</span> ix <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>i, i):
-                <span style="color:#66d9ef">for</span> jx <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>j, j):
-                    <span style="color:#66d9ef">for</span> kx <span style="color:#f92672">in</span> (<span style="color:#f92672">-</span>k, k):
-                        <span style="color:#66d9ef">yield</span> Point(ix, jx, kx)
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">waggle</span>(self, w: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
-        <span style="color:#e6db74">&#39;&#39;&#39;
-</span><span style="color:#e6db74">        Return a new point reflected/reordered by the given coordinates.
-</span><span style="color:#e6db74">
-</span><span style="color:#e6db74">        Each of w&#39;s x,y,z should be +- 1,2,3 and each of 1,2,3 should be used exactly once.
-</span><span style="color:#e6db74">
-</span><span style="color:#e6db74">        reflect(3, 2, -1) should return Point(z, y, -x) for example.
-</span><span style="color:#e6db74">        &#39;&#39;&#39;</span>
-
-        d <span style="color:#f92672">=</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, self<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z)
-
-        <span style="color:#66d9ef">return</span> Point(
-            d[abs(w<span style="color:#f92672">.</span>x)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>x <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
-            d[abs(w<span style="color:#f92672">.</span>y)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>y <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
-            d[abs(w<span style="color:#f92672">.</span>z)] <span style="color:#f92672">*</span> (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> w<span style="color:#f92672">.</span>z <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">1</span>),
-        )
-
-    <span style="color:#66d9ef">def</span> __add__(self, other: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
-        <span style="color:#e6db74">&#39;&#39;&#39;Return the sum of two points.&#39;&#39;&#39;</span>
-
-        <span style="color:#66d9ef">return</span> Point(self<span style="color:#f92672">.</span>x <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z <span style="color:#f92672">+</span> other<span style="color:#f92672">.</span>z)
-
-    <span style="color:#66d9ef">def</span> __sub__(self, other: <span style="color:#e6db74">&#39;Point&#39;</span>) <span style="color:#f92672">-&gt;</span> <span style="color:#e6db74">&#39;Point&#39;</span>:
-        <span style="color:#e6db74">&#39;&#39;&#39;Return the difference of two points, obv.&#39;&#39;&#39;</span>
-
-        <span style="color:#66d9ef">return</span> Point(self<span style="color:#f92672">.</span>x <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>x, self<span style="color:#f92672">.</span>y <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>y, self<span style="color:#f92672">.</span>z <span style="color:#f92672">-</span> other<span style="color:#f92672">.</span>z)
-</code></pre></div><p>Waggle? Waggle. Basically, that&rsquo;s the name I&rsquo;m using for flipping and mirroring about any of x/y/z. Specifically, any ordering of <code>(1, 2, 3)</code> (each can be positive or negative) to re-order the coordinates and possibly flip them around. That ends up with the 24 possible orientations (<code>all_waggles</code>).</p>
-<p>Next, Scanners:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Scanner</span>:
-    name: str
-    points: FrozenSet[Point]
-
-    <span style="color:#a6e22e">@staticmethod</span>
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">read</span>(file: TextIO) <span style="color:#f92672">-&gt;</span> Optional[<span style="color:#e6db74">&#39;Scanner&#39;</span>]:
-        <span style="color:#e6db74">&#39;&#39;&#39;Read a Scanner from a filelike object&#39;&#39;&#39;</span>
-
-        <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> (name :<span style="color:#f92672">=</span> file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip(<span style="color:#e6db74">&#39;- </span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>)):
-            <span style="color:#66d9ef">return</span> None
-
-        points <span style="color:#f92672">=</span> set()
-        <span style="color:#66d9ef">while</span> line :<span style="color:#f92672">=</span> file<span style="color:#f92672">.</span>readline()<span style="color:#f92672">.</span>strip():
-            points<span style="color:#f92672">.</span>add(Point(<span style="color:#f92672">*</span>[int(v) <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;,&#39;</span>)]))
-
-        <span style="color:#66d9ef">return</span> Scanner(name, frozenset(points))
-
-    <span style="color:#66d9ef">def</span> __or__(self, other: <span style="color:#e6db74">&#39;Scanner&#39;</span>) <span style="color:#f92672">-&gt;</span> Optional[Tuple[Point, Point, Set[Point]]]:
-        <span style="color:#e6db74">&#39;&#39;&#39;Given another scanner, try to find the overlapping points.&#39;&#39;&#39;</span>
-
-        <span style="color:#75715e"># Try every waggle of their scanners, assume I&#39;m always right</span>
-        <span style="color:#66d9ef">for</span> their_waggle <span style="color:#f92672">in</span> Point<span style="color:#f92672">.</span>all_waggles():
-            their_waggled_points <span style="color:#f92672">=</span> {
-                p<span style="color:#f92672">.</span>waggle(their_waggle)
-                <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> other<span style="color:#f92672">.</span>points
-            }
-
-            logging<span style="color:#f92672">.</span>debug(f<span style="color:#e6db74">&#39;Comparing {self.points=} and {their_waggled_points=}&#39;</span>)
-
-            <span style="color:#75715e"># Choose where we think the &#39;other&#39; scanner is from our perspective</span>
-            <span style="color:#66d9ef">for</span> my_zero <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>points:
-                my_zeroed_points <span style="color:#f92672">=</span> {p <span style="color:#f92672">-</span> my_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>points}
-
-                <span style="color:#66d9ef">for</span> their_waggled_zero <span style="color:#f92672">in</span> their_waggled_points:
-                    their_zeroed_points <span style="color:#f92672">=</span> {p <span style="color:#f92672">-</span> their_waggled_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> their_waggled_points}
-
-                    <span style="color:#75715e"># Try to subtract that from all of our points</span>
-                    <span style="color:#75715e"># If we have enough matches, that means we know their scanner from our point of view</span>
-                    matches <span style="color:#f92672">=</span> my_zeroed_points <span style="color:#f92672">&amp;</span> their_zeroed_points
-
-                    <span style="color:#66d9ef">if</span> len(matches) <span style="color:#f92672">&gt;=</span> BEACON_OVERLAPPINGNESS:
-                        <span style="color:#66d9ef">return</span> (their_waggle, my_zero <span style="color:#f92672">-</span> their_waggled_zero, {p <span style="color:#f92672">+</span> my_zero <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> matches})
-
-        <span style="color:#66d9ef">return</span> None
-
-    <span style="color:#66d9ef">def</span> __repr__(self):
-        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;@{{{self.name}}}&#39;</span>
-</code></pre></div><p>I don&rsquo;t know why I used <code>s0 | s1</code> as the operator for overlapping two scanners&hellip; but I did. Yay dunder methods?</p>
-<p>The method here is actually pretty neat. Essentially, the matching algorithm is:</p>
-<ul>
-<li>Try every possible <code>waggle</code> (orientation that the other Scanner could be at)</li>
-<li>Try every possible point from each scanner as the &lsquo;<code>zero</code>&rsquo; (the point at which we&rsquo;ve overlapping), <code>other</code> has to have their <code>zero</code> waggled</li>
-<li>Calculate the offsets from the zero for each</li>
-<li>If the <code>waggle</code> is correct (so that both Scanners are now facing the same way) and the <code>zeros</code> actually match&hellip; we&rsquo;re golden. We&rsquo;ll have at least 12 matches and can return</li>
-<li>Calculate the points that overlapped along with the <code>waggle</code> necessary to convert between the zones</li>
-</ul>
-<p>That last step took&hellip; rather a while to get right. And all because of a much lower level bug up in the <code>their_waggled_points</code> part. Man it&rsquo;s hard to debug bad data. Garbage in, garbage out. That&rsquo;s still a neat algorithm though.</p>
-<p>Next&hellip; let&rsquo;s combine these and try to figure out how to actually calculate all of the Beacons.</p>
-<p>First, load the input and find initial mappings between every pair of Scanners. This is&hellip; horribly inefficient. I did at least make sure that if I do <code>[s0, s1]</code>, then I don&rsquo;t have to do <code>[s1, s0]</code> (they&rsquo;re the same). But otherwise, I really am going through all of them.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">scanners <span style="color:#f92672">=</span> []
-<span style="color:#66d9ef">while</span> s :<span style="color:#f92672">=</span> Scanner<span style="color:#f92672">.</span>read(file):
-    scanners<span style="color:#f92672">.</span>append(s)
-s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
-
-logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== FINDING INITIAL OFFSETS ===&#39;</span>)
-offsets: MutableMapping[Tuple[Scanner, Scanner], Tuple[Point, Point, Set[Point]]] <span style="color:#f92672">=</span> {}
-
-<span style="color:#66d9ef">for</span> s0 <span style="color:#f92672">in</span> scanners:
-    <span style="color:#66d9ef">for</span> s1 <span style="color:#f92672">in</span> scanners:
-        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Finding the offset from {s0=} to {s1=}&#39;</span>)
-
-        <span style="color:#66d9ef">if</span> (s1, s0) <span style="color:#f92672">in</span> offsets:
-            offsets[s0, s1] <span style="color:#f92672">=</span> offsets[s1, s0]
-
-        <span style="color:#66d9ef">if</span> result :<span style="color:#f92672">=</span> (s0 <span style="color:#f92672">|</span> s1):
-            offsets[s0, s1] <span style="color:#f92672">=</span> result
-</code></pre></div><p>That will find Unfortunately, not every pair overlaps. So we can go from 0 to 1 and 1 to 4, but not directly from 0 to 4. And we want to be able to do that, to make sure we have <em>everything</em> in the same universal coordinate system. So next:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Fill in the entire chart</span>
-logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== EXPANDING CHART ===&#39;</span>)
-s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
-
-<span style="color:#75715e"># If we don&#39;t have a path from s0 to s1, try to go s0 -&gt; svia -&gt; s1</span>
-updating <span style="color:#f92672">=</span> True
-<span style="color:#66d9ef">while</span> updating:
-    logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;Working on expanding iteration&#39;</span>)
-    updating <span style="color:#f92672">=</span> False
-
-    <span style="color:#66d9ef">for</span> s1 <span style="color:#f92672">in</span> scanners[<span style="color:#ae81ff">1</span>:]:
-        <span style="color:#66d9ef">if</span> (s0, s1) <span style="color:#f92672">in</span> offsets:
-            <span style="color:#66d9ef">continue</span>
-
-        <span style="color:#66d9ef">for</span> svia <span style="color:#f92672">in</span> scanners[<span style="color:#ae81ff">1</span>:]:
-            <span style="color:#66d9ef">if</span> s0 <span style="color:#f92672">==</span> svia <span style="color:#f92672">or</span> svia <span style="color:#f92672">==</span> s1:
-                <span style="color:#66d9ef">continue</span>
-
-            <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> ((s0, svia) <span style="color:#f92672">in</span> offsets <span style="color:#f92672">and</span> (svia, s1) <span style="color:#f92672">in</span> offsets):
-                <span style="color:#66d9ef">continue</span>
-
-            logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Building a new path from {s0} via {svia} to {s1}&#39;</span>)
-
-            waggle1, offset1, _ <span style="color:#f92672">=</span> offsets[s0, svia]
-            waggle2, offset2, points2 <span style="color:#f92672">=</span> offsets[svia, s1]
-
-            new_waggle <span style="color:#f92672">=</span> waggle2<span style="color:#f92672">.</span>waggle(waggle1)
-            new_offset <span style="color:#f92672">=</span> offset1 <span style="color:#f92672">+</span> offset2<span style="color:#f92672">.</span>waggle(waggle1)
-
-            new_points <span style="color:#f92672">=</span> {
-                offset1 <span style="color:#f92672">+</span> p<span style="color:#f92672">.</span>waggle(waggle1)
-                <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> points2
-            }
-
-            offsets[s0, s1] <span style="color:#f92672">=</span> new_waggle, new_offset, new_points
-            updating <span style="color:#f92672">=</span> True
-</code></pre></div><p>Getting that <code>new_points</code> right took a bit too. And it&rsquo;s all so simple&hellip; I enjoy naming things.</p>
-<p>And that&rsquo;s mostly it. Go through now that we know the <code>offset</code> and <code>waggle</code> for every Scanner, we can actually map all of the Beacons they&rsquo;d seen into the same coordinate space and de-duplicate:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-
-    scanners <span style="color:#f92672">=</span> []
-    <span style="color:#66d9ef">while</span> s :<span style="color:#f92672">=</span> Scanner<span style="color:#f92672">.</span>read(file):
-        scanners<span style="color:#f92672">.</span>append(s)
-    s0 <span style="color:#f92672">=</span> scanners[<span style="color:#ae81ff">0</span>]
-
-    offsets <span style="color:#f92672">=</span> do_the_actual_work(scanners)
-
-    <span style="color:#75715e"># Finally, calculate all of the beacon points</span>
-    logging<span style="color:#f92672">.</span>info(<span style="color:#e6db74">&#39;=== FINDING BEACONS ===&#39;</span>)
-
-    all_beacons <span style="color:#f92672">=</span> set()
-    <span style="color:#66d9ef">for</span> scanner <span style="color:#f92672">in</span> scanners:
-        waggle, offset, _ <span style="color:#f92672">=</span> offsets[s0, scanner]
-        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Adding beacons from {scanner} at {offset} (with {waggle=})&#39;</span>)
-
-        all_beacons <span style="color:#f92672">|=</span> {
-            offset <span style="color:#f92672">+</span> p<span style="color:#f92672">.</span>waggle(waggle)
-            <span style="color:#66d9ef">for</span> p <span style="color:#f92672">in</span> scanner<span style="color:#f92672">.</span>points
-        }
-
-    <span style="color:#66d9ef">print</span>(len(all_beacons))
-</code></pre></div><p>And that&rsquo;s it!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 point-matchinator.py part1 input.txt
-<span style="color:#ae81ff">313</span>
-<span style="color:#75715e"># time 412607815209ns / 412.61s</span>
-</code></pre></div><p>Yeah. That&rsquo;s slow. But it works and at this point, that&rsquo;s enough for me.</p><p><a href="/2021/12/18/aoc-2021-day-19-point-matchinator/">read more...</a></p></div>
 
         <hr /></article><article class="li">
     	<header>
@@ -1193,256 +1843,6 @@ PolyMap <span style="color:#f92672">=</span> Mapping[Tuple[str, str], str]
 <span style="color:#ae81ff">706</span>
 </code></pre></div><p>Heh.</p><p><a href="/2021/12/13/aoc-2021-day-13-foldinator/">read more...</a></p></div>
 
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/" class="clearfix">AoC 2021 Day 12: Submarine Spider</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-12-12</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-passage-pathinghttpsadventofcodecom2021day12">Source: <a href="https://adventofcode.com/2021/day/12">Passage Pathing</a></h3>
-<h4 id="part-1-given-a-list-of-edges-in-a-bi-directional-graph-count-the-number-of-paths-from-start-to-end-such-that-nodes-named-with-lowercase-letters-are-visited-once-and-nodes-with-uppercase-letters-can-be-visited-any-number-of-times"><strong>Part 1:</strong> Given a list of edges in a bi-directional graph, count the number of paths from <code>start</code> to <code>end</code> such that nodes named with lowercase letters are visited once, and nodes with uppercase letters can be visited any number of times.</h4>
-<p>Interesting. First, let&rsquo;s define a graph structure:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Node</span>:
-    label: str
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">is_big</span>(self):
-        <span style="color:#66d9ef">return</span> self<span style="color:#f92672">.</span>label<span style="color:#f92672">.</span>isupper()
-
-    <span style="color:#66d9ef">def</span> __repr__(self):
-        <span style="color:#66d9ef">return</span> f<span style="color:#e6db74">&#39;&lt;{self.label}&gt;&#39;</span>
-
-
-<span style="color:#a6e22e">@dataclass</span>(frozen<span style="color:#f92672">=</span>True)
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cave</span>:
-    edges: Mapping[Node, Set[Node]]
-
-    <span style="color:#a6e22e">@staticmethod</span>
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">from_file</span>(file: TextIO):
-
-        edges: Dict[Node, Set[Node]] <span style="color:#f92672">=</span> {}
-
-        <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
-            nodes <span style="color:#f92672">=</span> [Node(v) <span style="color:#66d9ef">for</span> v <span style="color:#f92672">in</span> line<span style="color:#f92672">.</span>strip()<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#39;-&#39;</span>)]
-
-            <span style="color:#66d9ef">for</span> node <span style="color:#f92672">in</span> nodes:
-                <span style="color:#66d9ef">if</span> node <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> edges:
-                    edges[node] <span style="color:#f92672">=</span> set()
-
-            <span style="color:#66d9ef">for</span> node_a <span style="color:#f92672">in</span> nodes:
-                <span style="color:#66d9ef">for</span> node_b <span style="color:#f92672">in</span> nodes:
-                    <span style="color:#66d9ef">if</span> node_a <span style="color:#f92672">!=</span> node_b:
-                        edges[node_a]<span style="color:#f92672">.</span>add(node_b)
-
-        <span style="color:#75715e"># Convert to a dict</span>
-        <span style="color:#66d9ef">return</span> Cave(edges)
-</code></pre></div><p>Originally, I had the pathing function in this class directly, but because it changes for part 2, I extracted it into the part 1 function:</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-    cave <span style="color:#f92672">=</span> Cave<span style="color:#f92672">.</span>from_file(file)
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">paths</span>(node: Node, visited: Set[Node]) <span style="color:#f92672">-&gt;</span> Generator[List[Node], None, None]:
-        <span style="color:#e6db74">&#39;&#39;&#39;Yield all possible paths from the given node to &lt;end&gt;.&#39;&#39;&#39;</span>
-
-        <span style="color:#66d9ef">if</span> node <span style="color:#f92672">==</span> END:
-            <span style="color:#66d9ef">yield</span> [END]
-            <span style="color:#66d9ef">return</span>
-
-        <span style="color:#66d9ef">if</span> node<span style="color:#f92672">.</span>is_small() <span style="color:#f92672">and</span> node <span style="color:#f92672">in</span> visited:
-            <span style="color:#66d9ef">return</span>
-
-        <span style="color:#66d9ef">for</span> next <span style="color:#f92672">in</span> cave<span style="color:#f92672">.</span>edges[node]:
-            <span style="color:#66d9ef">for</span> path <span style="color:#f92672">in</span> paths(next, visited <span style="color:#f92672">|</span> {node}):
-                <span style="color:#66d9ef">yield</span> [node] <span style="color:#f92672">+</span> path
-
-    count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-    <span style="color:#66d9ef">for</span> _ <span style="color:#f92672">in</span> paths(START, set()):
-        count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-
-    <span style="color:#66d9ef">print</span>(count)
-</code></pre></div><p>Because the paths are short enough, we can get away with a simple recursive function. In this case, <code>paths</code> will take the current point in the graph and a list of nodes visited already (so that we can avoid lowercase nodes that we&rsquo;ve already visited) and generate all paths from that point. It does so by recursion: each step is moving to a neighboring node in the graph, we&rsquo;re assuming the recursive call will generate some number of paths (might be 0), and the base case is the <code>end</code> node.</p>
-<p>Note: If there are ever two or more &lsquo;big&rsquo; nodes adjacent to each other, this will totally blow up, since you can infinitely loop between the two. Good thing that doesn&rsquo;t come up in our input. :D This could be fixed with <a href="https://en.wikipedia.org/wiki/cycle%20detection">cycle detection</a>, but that would make teh algorithm somewhat slower&hellip;</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 submarine-spider.py part1 input.txt
-<span style="color:#ae81ff">4749</span>
-</code></pre></div><p><a href="/2021/12/12/aoc-2021-day-12-submarine-spider/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/12/11/aoc-2021-day-11-octopus-flashinator/" class="clearfix">AoC 2021 Day 11: Octopus Flashinator</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-12-11</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-dumbo-octopushttpsadventofcodecom2021day11">Source: <a href="https://adventofcode.com/2021/day/11">Dumbo Octopus</a></h3>
-<h4 id="part-1-simulate-a-grid-of-numbers-such-that-on-each-tick-advance-all-numbers-by-1-any-number-that-increases-over-9-will-flash-and-add-1-to-all-neighbors-recursively-but-each-cell-can-only-flash-once-and-then-reset-to-0-count-the-number-of-flashes-in-the-first-100-ticks"><strong>Part 1:</strong> Simulate a grid of numbers such that on each tick: advance all numbers by 1, any number that increases over 9 will &lsquo;flash&rsquo; and add 1 to all neighbors (recursively, but each cell can only flash once) and then reset to 0. Count the number of flashes in the first 100 ticks.</h4>
-<p>DIRECT SIMULATION.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python">
-NEIGHBORS <span style="color:#f92672">=</span> [
-    (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>), (<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>),
-    (<span style="color:#ae81ff">0</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>), (<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">1</span>),
-    (<span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>), (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>), (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>),
-]
-
-
-<span style="color:#a6e22e">@dataclass</span>
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Cavern</span>:
-    <span style="color:#e6db74">&#39;&#39;&#39;Simulation for https://adventofcode.com/2021/day/11.&#39;&#39;&#39;</span>
-
-    width: int
-    height: int
-    data: MutableMapping[Tuple[int, int], int]
-
-    <span style="color:#a6e22e">@staticmethod</span>
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">from_file</span>(file: TextIO):
-        <span style="color:#e6db74">&#39;&#39;&#39;Load a simulation from a file-like object.&#39;&#39;&#39;</span>
-
-        data <span style="color:#f92672">=</span> {
-            (x, y): int(value)
-            <span style="color:#66d9ef">for</span> x, line <span style="color:#f92672">in</span> enumerate(file)
-            <span style="color:#66d9ef">for</span> y, value <span style="color:#f92672">in</span> enumerate(line<span style="color:#f92672">.</span>strip())
-        }
-        width <span style="color:#f92672">=</span> max(x <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (x, _) <span style="color:#f92672">in</span> data)
-        height <span style="color:#f92672">=</span> max(y <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (_, y) <span style="color:#f92672">in</span> data)
-
-        <span style="color:#66d9ef">return</span> Cavern(width, height, data)
-
-    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">step</span>(self):
-        <span style="color:#e6db74">&#39;&#39;&#39;Advance the simulation 1 step, return the number of flashes.&#39;&#39;&#39;</span>
-
-        flashpoint <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-
-        <span style="color:#75715e"># First advance everyone 1</span>
-        <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data:
-            self<span style="color:#f92672">.</span>data[x, y] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-
-        <span style="color:#75715e"># Repeatedly find any 9s, but only trigger each one once (advanced)</span>
-        advanced <span style="color:#f92672">=</span> set()
-        <span style="color:#66d9ef">while</span> True:
-
-            <span style="color:#75715e"># Find the set of points that haven&#39;t been advanced and should</span>
-            to_advance <span style="color:#f92672">=</span> {
-                (x, y)
-                <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data
-                <span style="color:#66d9ef">if</span> (x, y) <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> advanced <span style="color:#f92672">and</span> self<span style="color:#f92672">.</span>data[x, y] <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">9</span>
-            }
-
-            <span style="color:#75715e"># If we didn&#39;t, we&#39;re done</span>
-            <span style="color:#66d9ef">if</span> <span style="color:#f92672">not</span> to_advance:
-                <span style="color:#66d9ef">break</span>
-
-            <span style="color:#75715e"># If we did, increment each neighbor</span>
-            <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> to_advance:
-                flashpoint <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-
-                <span style="color:#66d9ef">for</span> (xd, yd) <span style="color:#f92672">in</span> NEIGHBORS:
-                    <span style="color:#66d9ef">if</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd) <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> self<span style="color:#f92672">.</span>data:
-                        <span style="color:#66d9ef">continue</span>
-
-                    self<span style="color:#f92672">.</span>data[x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd] <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
-
-                advanced<span style="color:#f92672">.</span>add((x, y))
-
-        <span style="color:#75715e"># Once we&#39;re out of the loop, set all points that actually advanced (hit 9) to 0</span>
-        <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> advanced:
-            self<span style="color:#f92672">.</span>data[x, y] <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-
-        <span style="color:#66d9ef">return</span> flashpoint
-
-    <span style="color:#66d9ef">def</span> __str__(self):
-        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span><span style="color:#f92672">.</span>join(
-            <span style="color:#e6db74">&#39;&#39;</span><span style="color:#f92672">.</span>join(str(self<span style="color:#f92672">.</span>data[x, y]) <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(self<span style="color:#f92672">.</span>height))
-            <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(self<span style="color:#f92672">.</span>width)
-        ) <span style="color:#f92672">+</span> <span style="color:#e6db74">&#39;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#39;</span>
-</code></pre></div><p>I particularly enjoy that <code>step</code> function. It seems pretty clean to me, using one <code>set</code> of values we&rsquo;ve already <code>advanced</code> and calculating a new <code>set</code> of values <code>to_advance</code> so that we don&rsquo;t duplicate.</p>
-<p>And it makes for pretty clean code!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-
-    cavern <span style="color:#f92672">=</span> Cavern<span style="color:#f92672">.</span>from_file(file)
-    flashpoint <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-
-    <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(<span style="color:#ae81ff">100</span>):
-        flashpoint <span style="color:#f92672">+=</span> cavern<span style="color:#f92672">.</span>step()
-
-    <span style="color:#66d9ef">print</span>(flashpoint)
-</code></pre></div><p>How many flashes?</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 octopus-flashinator.py part1 input.txt
-<span style="color:#ae81ff">1679</span>
-</code></pre></div><p><a href="/2021/12/11/aoc-2021-day-11-octopus-flashinator/">read more...</a></p></div>
-
-        <hr /></article><article class="li">
-    	<header>
-    		<h1 class="entry-title">
-                <a href="https://blog.jverkamp.com/2021/12/10/aoc-2021-day-10-chunkinator/" class="clearfix">AoC 2021 Day 10: Chunkinator</a></h1>
-
-    		<div class="entry-meta"><span class="entry-date">2021-12-10</span>
-                </div>
-    	</header>
-    	<div class="entry-content"><h3 id="source-syntax-scoringhttpsadventofcodecom2021day10">Source: <a href="https://adventofcode.com/2021/day/10">Syntax Scoring</a></h3>
-<h4 id="part-1-given-a-sequence-of----and--with-nesting-allowed-find-the-first-syntax-error-where-the-wrong-closing-symbol-is-used-scoring-3-57-1197-and-25137-respectively-for-each-error-calculate-the-total-error-score"><strong>Part 1:</strong> Given a sequence of () [] {}, and &lt;&gt; with nesting allowed. Find the first syntax error (where the wrong closing symbol is used). Scoring 3, 57, 1197, and 25137 respectively for each error, calculate the total error score.</h4>
-<p>Interesting. Let&rsquo;s use Python exceptions!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#75715e"># Using the strings directly is fine for python, but not mypy</span>
-<span style="color:#75715e"># chunkinator.py:38: error: Unpacking a string is disallowed</span>
-pairs <span style="color:#f92672">=</span> [tuple(pair) <span style="color:#66d9ef">for</span> pair <span style="color:#f92672">in</span> [<span style="color:#e6db74">&#39;()&#39;</span>, <span style="color:#e6db74">&#39;[]&#39;</span>, <span style="color:#e6db74">&#39;{}&#39;</span>, <span style="color:#e6db74">&#39;&lt;&gt;&#39;</span>]]
-
-<span style="color:#a6e22e">@dataclass</span>
-<span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ParseMismatchException</span>(<span style="color:#a6e22e">Exception</span>):
-    expected: str
-    actual: str
-
-
-<span style="color:#66d9ef">def</span> <span style="color:#a6e22e">parse</span>(line: str):
-    <span style="color:#e6db74">&#39;&#39;&#39;
-</span><span style="color:#e6db74">    Parse a line of matching pairs. For every left, you must match the corresponding right (respecting nesting).
-</span><span style="color:#e6db74">
-</span><span style="color:#e6db74">    If a mismatch is detected, raise a ParseMismatchException containing the expected/actual character.
-</span><span style="color:#e6db74">
-</span><span style="color:#e6db74">    Otherwise, return True
-</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
-
-    stack <span style="color:#f92672">=</span> []
-
-    <span style="color:#66d9ef">for</span> c <span style="color:#f92672">in</span> line:
-        matched <span style="color:#f92672">=</span> False
-
-        <span style="color:#75715e"># Start a new matching pair</span>
-        <span style="color:#66d9ef">for</span> left, right <span style="color:#f92672">in</span> pairs:
-            <span style="color:#66d9ef">if</span> c <span style="color:#f92672">==</span> left:
-                stack<span style="color:#f92672">.</span>append(right)
-                matched <span style="color:#f92672">=</span> True
-        <span style="color:#66d9ef">if</span> matched:
-            <span style="color:#66d9ef">continue</span>
-
-        <span style="color:#75715e"># Otherwise, we have a closing character, check the stack</span>
-        <span style="color:#66d9ef">if</span> c <span style="color:#f92672">==</span> (top :<span style="color:#f92672">=</span> stack<span style="color:#f92672">.</span>pop()):
-            <span style="color:#66d9ef">continue</span>
-
-        <span style="color:#75715e"># Otherwise, we have a failed match</span>
-        <span style="color:#66d9ef">raise</span> ParseMismatchException(expected<span style="color:#f92672">=</span>top, actual<span style="color:#f92672">=</span>c)
-    <span style="color:#75715e"># Otherwise, yay!</span>
-    <span style="color:#66d9ef">return</span> True
-</code></pre></div><p>I expect that we&rsquo;ll want to do something with &lsquo;incomplete&rsquo; matches in Part 2, but we haven&rsquo;t had to do that yet. So let&rsquo;s use this to solve the problem!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part1</span>(file: typer<span style="color:#f92672">.</span>FileText):
-
-    scores <span style="color:#f92672">=</span> {<span style="color:#e6db74">&#39;)&#39;</span>: <span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#39;]&#39;</span>: <span style="color:#ae81ff">57</span>, <span style="color:#e6db74">&#39;}&#39;</span>: <span style="color:#ae81ff">1197</span>, <span style="color:#e6db74">&#39;&gt;&#39;</span>: <span style="color:#ae81ff">25137</span>}
-    total_score <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
-
-    <span style="color:#66d9ef">for</span> line <span style="color:#f92672">in</span> file:
-        line <span style="color:#f92672">=</span> line<span style="color:#f92672">.</span>strip()
-
-        <span style="color:#66d9ef">try</span>:
-            parse(line)
-
-        <span style="color:#66d9ef">except</span> ParseMismatchException <span style="color:#66d9ef">as</span> ex:
-            total_score <span style="color:#f92672">+=</span> scores[ex<span style="color:#f92672">.</span>actual]
-
-    <span style="color:#66d9ef">print</span>(total_score)
-</code></pre></div><p>I like it when the parsing function does most of the work!</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 chunkinator.py part1 input.txt
-<span style="color:#ae81ff">167379</span>
-</code></pre></div><p><a href="/2021/12/10/aoc-2021-day-10-chunkinator/">read more...</a></p></div>
-
         <hr /></article><nav id="pagination-navigation" role="navigation">
 <ul class="pagination">
   <li class="page-item">
@@ -1458,10 +1858,13 @@ pairs <span style="color:#f92672">=</span> [tuple(pair) <span style="color:#66d9
     <a class="page-link" href="/series/advent-of-code-2021/page/2/">2</a>
   </li>
   <li class="page-item">
+    <a class="page-link" href="/series/advent-of-code-2021/page/3/">3</a>
+  </li>
+  <li class="page-item">
     <a href="/series/advent-of-code-2021/page/2/" class="page-link" aria-label="Next"><span aria-hidden="true">&raquo;</span></a>
   </li>
   <li class="page-item">
-    <a href="/series/advent-of-code-2021/page/2/" class="page-link" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
+    <a href="/series/advent-of-code-2021/page/3/" class="page-link" aria-label="Last"><span aria-hidden="true">&raquo;&raquo;</span></a>
   </li>
 </ul>
 

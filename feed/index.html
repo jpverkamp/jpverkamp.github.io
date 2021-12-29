@@ -17,6 +17,330 @@
     </item>
     
     <item>
+      <title>AoC 2021 Day 22: Cubinator</title>
+      <link>https://blog.jverkamp.com/2021/12/22/aoc-2021-day-22-cubinator/</link>
+      <pubDate>Wed, 22 Dec 2021 00:00:05 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/22/aoc-2021-day-22-cubinator/</guid>
+      <description>&lt;h3 id=&#34;source-reactor-reboothttpsadventofcodecom2021day22&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/22&#34;&gt;Reactor Reboot&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-series-of-3d-cubes-that-either-turn-on-all-or-turn-off-all-points-in-their-region-calculate-how-many-points-in-the-region--5050-5050-5050-are-on-at-the-end&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a series of 3D cubes that either turn ON all or turn OFF all points in their region, calculate how many points in the region (-50..50,-50..50,-50..50) are ON at the end.&lt;/h4&gt;
+&lt;p&gt;Wow. This one took me literal days of work to get working for some reason. I actually got to writing unit tests, which is saying something. :D And then after I had one aha moment (changing from cube to edge focussed, see later), it worked basically immediately. Oh data structure choices.&lt;/p&gt;
+&lt;p&gt;The basic idea I had all along was to make a &lt;code&gt;Cube&lt;/code&gt; object that would have all of the operators I need: &lt;code&gt;a &amp;amp; b&lt;/code&gt; to intersect two cubes, &lt;code&gt;a | b&lt;/code&gt; (or &lt;code&gt;a + b&lt;/code&gt;) to union/add them, and &lt;code&gt;a - b&lt;/code&gt; to subtract one cube from another (each of which will return a list of cubes that make up the result). Then I could:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Start with an empty list of cubes&lt;/li&gt;
+&lt;li&gt;For each cube
+&lt;ul&gt;
+&lt;li&gt;If ON:
+&lt;ul&gt;
+&lt;li&gt;Create a sublist of just &lt;code&gt;[cube]&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;For each current cube, remove it from every element in the sublist&lt;/li&gt;
+&lt;li&gt;The result is just the new cubes to turn ON, add them to the main list&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;If OFF:
+&lt;ul&gt;
+&lt;li&gt;For each current cube, remove the new cube from it (generating 0, 1, or many subcubes)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;This will be the final list. Let&amp;rsquo;s make that class!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True, order&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Point&lt;/span&gt;:
+    x: int
+    y: int
+    z: int
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cube&lt;/span&gt;:
+    min: Point
+    max: Point
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube({len(self)})@[{self.min.x}..{self.max.x}, {self.min.y}..{self.max.y}, {self.min.z}..{self.max.z}]&amp;#39;&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __len__(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; (
+            (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x)
+            &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y)
+            &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+        )
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;These are just the basic methods, print them out and return the &amp;lsquo;size&amp;rsquo; of a cube. One major change I did (entirely too late in the process) was to change from a face-centered system, to an edge centered-system. In that, the original &lt;code&gt;OldCube(1)@(10..10, 10..10, 10..10)&lt;/code&gt; would be a 1x1 cube including just the point &lt;code&gt;&amp;lt;10, 10, 10&amp;gt;&lt;/code&gt;, but I changed that so that would be represented by &lt;code&gt;OldCube(1)@(10..11, 10..11, 10..11)&lt;/code&gt;. The upper bounds are &lt;em&gt;not&lt;/em&gt; inclusive. That made the math &lt;em&gt;loads&lt;/em&gt; easier.&lt;/p&gt;
+&lt;p&gt;Okay, let&amp;rsquo;s work through the &lt;code&gt;Cube&lt;/code&gt; methods (they&amp;rsquo;d all be in one class):&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cube&lt;/span&gt;:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __iter__(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Generator[Point, None, None]:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; z &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z):
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; Point(x, y, z)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I didn&amp;rsquo;t actually end up using this, but it can be used to actually get all of the cubes in a point. So if you wanted to directly solve the problem, you could with this!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cube&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __contains__(self, other: Union[Point, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; bool:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Is the cube/point other entirely contained in self.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; isinstance(other, Point):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; (
+                self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x
+                &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y
+                &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z
+            )
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; isinstance(other, Cube):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Next, implement &lt;code&gt;p: Point in c: Cube&lt;/code&gt; and &lt;code&gt;c1: Cube in c2: Cube&lt;/code&gt;. This is used to special case many of the later methods.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cube&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;overlaps&lt;/span&gt;(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; bool:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Does the cube overlap with self at all?
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Note: This includes if the cubes are just touching since edges are inclusive.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; (
+            self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; other &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self
+        )
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;The flip side of &lt;code&gt;in&lt;/code&gt;: do they overlap at all. This could be just touching, but also any number of other cases (partial overlap, to a superset of &lt;code&gt;in&lt;/code&gt;).&lt;/p&gt;
+&lt;p&gt;Okay, the heart of all of the next methods:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cube&lt;/span&gt;:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;__segment&lt;/span&gt;(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]:
+        xs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; list(sorted([self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x]))
+        ys &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; list(sorted([self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y]))
+        zs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; list(sorted([self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z]))
+
+        segments &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i, (x1, x2) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(zip(xs, xs[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:])):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; j, (y1, y2) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(zip(ys, ys[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:])):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; k, (z1, z2) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(zip(zs, zs[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:])):
+                    new_segment &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Cube(Point(x1, y1, z1), Point(x2, y2, z2))
+
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; new_segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; segments:
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+                    segments&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(new_segment)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; segments
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;The idea of this method is that any two cubes can be divided into 3x3 = 27 &amp;lsquo;segments&amp;rsquo;, no matter how they overlap. If they overlap on a corner, the middle of those will be the middle segment. If they only touch, then the touching line will be a zero size middle segment. If they don&amp;rsquo;t touch at all, the middle segment will be &amp;lsquo;between&amp;rsquo; the cubes.&lt;/p&gt;
+&lt;p&gt;This is the method that benefited the most from the rewrite to edge-focused cubes. Before that, I had to have all sorts of special cases where you didn&amp;rsquo;t accidentally include the edge cubes twice. With the change&amp;hellip; it&amp;rsquo;s just this much code.&lt;/p&gt;
+&lt;p&gt;Now that we have that, we can implement &lt;code&gt;&amp;amp;&lt;/code&gt;, &lt;code&gt;|&lt;/code&gt;, &lt;code&gt;+&lt;/code&gt;, and &lt;code&gt;-&lt;/code&gt; as various combinations of &lt;code&gt;__segment&lt;/code&gt; and &lt;code&gt;in&lt;/code&gt;:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cube&lt;/span&gt;:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __and__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Calculate the list of cubes making up the intersection of self and other.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# One cube is entirely inside of the other&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; [self]
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; other &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; [other]
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# No overlap at all&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;overlaps(other):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; []
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Finally, only segments that are in both&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Cube&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;compress([
+                segment
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;__segment(other)
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+            ])
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __or__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Calculate the list of cubes making up the union of self and other.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# One cube is entirely inside the other&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; [other]
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; other &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; [self]
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# No overlap at all&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;overlaps(other):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; [self, other]
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Otherwise, split into segments and return all of them&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Cube&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;compress([
+                segment
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;__segment(other)
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+            ])
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __add__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Adding is the same as intersection.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; other
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __sub__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Calculate the list of cubes resulting of removing other from self.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Subtract the entire thing&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; []
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# No overlap at all&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;overlaps(other):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; [self]
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Cube&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;compress([
+            segment
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;__segment(other)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; segment &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other
+        ])
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Pretty sweet how clean that code is. But &amp;hellip; what&amp;rsquo;s that compress thing? It&amp;rsquo;s not necessary to actually solve the problem, but what it does is make the number of cubes explode slightly less. Rather than up to 27 new cubes, if any of the new cubes can be combined (by glueing one face together), do it:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Cube&lt;/span&gt;:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;join&lt;/span&gt;(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Optional[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;If two cubes can be perfectly joined, return that.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# One cube contains the other&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; other
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; other &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# The x/y/z edges match perfectly&lt;/span&gt;
+        x_match &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x
+        y_match &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y
+        z_match &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# The last dimension is contained within the other cube&lt;/span&gt;
+        x_overlap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (
+            (other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x)
+        )
+
+        y_overlap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (
+            (other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y)
+        )
+
+        z_overlap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (
+            (other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+        )
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# If we have exactly two matches and an overlap, we can combine&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (
+            (x_overlap &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; y_match &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; z_match)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (x_match &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; y_overlap &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; z_match)
+            &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; (x_match &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; y_match &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; z_overlap)
+        ):
+            result &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Cube(min(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;min), max(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max, other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;max))
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; result
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; None
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;compress&lt;/span&gt;(cubes: List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; List[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cube&amp;#39;&lt;/span&gt;]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Take a list of cubes and join as many as we can.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        cubes &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; list(cubes)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;find_one_join&lt;/span&gt;():
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i, c1 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(cubes):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; j, c2 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(cubes):
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; j &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;=&lt;/span&gt; i:
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; c :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; c1&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(c2):
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; i, j, c
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; True:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; result :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; find_one_join():
+                i, j, c &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; result
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;del&lt;/span&gt; cubes[j]
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;del&lt;/span&gt; cubes[i]
+                cubes&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(c)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;break&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; cubes
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;It&amp;rsquo;s&amp;hellip; something that came about when fiddling with the old cube-centered mess, but it still does help.&lt;/p&gt;
+&lt;p&gt;So what&amp;rsquo;s the final algorithm look like?&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Generator[Tuple[bool, Cube], None, None]:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file:
+        m &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; re&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;match(&lt;span style=&#34;color:#e6db74&#34;&gt;r&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;(on|off) x=(-?\d+)\.\.(-?\d+),y=(-?\d+)\.\.(-?\d+),z=(-?\d+)\.\.(-?\d+)&amp;#39;&lt;/span&gt;, line)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; m:
+            mode, x1, x2, y1, y2, z1, z2 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; m&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;groups()
+            cube &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Cube(
+                Point(int(x1), int(y1), int(z1)),
+                Point(int(x2) &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, int(y2) &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, int(z2) &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+            )
+
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; mode &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;on&amp;#39;&lt;/span&gt;, cube
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@app.command&lt;/span&gt;()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText, limit: bool &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; False):
+    cubes: List[Cube] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; turn_on, cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; read(file):
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{turn_on=} {cube=}&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Turning on cubes, don&amp;#39;t turn on anything that is already on&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; turn_on:
+            to_turn_on &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [cube]
+
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; old_cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; cubes:
+                to_turn_on &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+                    remaining_cube
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; to_turn_on_cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; to_turn_on
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; remaining_cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; to_turn_on_cube &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; old_cube
+                ]
+
+            cubes &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; to_turn_on
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Turning off cubes, turn off anything that should be off&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            cubes &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+                reduced_cube
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; current_cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; cubes
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; reduced_cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; current_cube &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; cube
+            ]
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Re-compress at the end of each cycle&lt;/span&gt;
+        cubes &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Cube&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;compress(cubes)
+
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\
+&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;After {turn_on=} {cube=}: {len(cubes)=}, {sum(len(cube) for cube in cubes)=}
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Remove all regions outside of -50..50&lt;/span&gt;
+        &lt;span style=&#34;color:#75715e&#34;&gt;# This is silly, because we&amp;#39;ll need to keep them in part 2&lt;/span&gt;
+        &lt;span style=&#34;color:#75715e&#34;&gt;# But it&amp;#39;s faster at least&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; limit:
+            cubes &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Cube&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;compress([
+                reduced
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; cubes
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; reduced &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; cube &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; Cube(Point(&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;50&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;50&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;50&lt;/span&gt;), Point(&lt;span style=&#34;color:#ae81ff&#34;&gt;51&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;51&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;51&lt;/span&gt;))
+            ])
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(sum(len(cube) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; cube &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; cubes))
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@app.command&lt;/span&gt;()
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+    main(file, True)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Almost exactly what I described in the pseudo-code, albeit a bit longer. It&amp;rsquo;s kind of funny, because we need to remove the -50..50 region even though we already calculated it. It does run quicker without it though:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 cubinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;590467&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# time 33116921042ns / 33.12s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    
+    <item>
       <title>Hawkeye</title>
       <link>https://blog.jverkamp.com/2021/12/22/hawkeye/</link>
       <pubDate>Wed, 22 Dec 2021 00:00:00 +0000</pubDate>
@@ -31,6 +355,125 @@
 &lt;p&gt;It&amp;rsquo;s nice to see them building up the new &amp;lsquo;Young Avengers&amp;rsquo; and branching out as much as they are. I think Hailee Steinfeld did a great job, especially when acting against &lt;span class=&#34;spoiler&#34;&gt;Florence Pugh&#39;s Yelena&lt;/span&gt;
 .&lt;/p&gt;
 &lt;p&gt;Onward!&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>AoC 2021 Day 21: Dicinator</title>
+      <link>https://blog.jverkamp.com/2021/12/21/aoc-2021-day-21-dicinator/</link>
+      <pubDate>Tue, 21 Dec 2021 00:00:05 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/21/aoc-2021-day-21-dicinator/</guid>
+      <description>&lt;h3 id=&#34;source-dirac-dicehttpsadventofcodecom2021day21&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/21&#34;&gt;Dirac Dice&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-play-a-simple-game-describe-below-with-a-loaded-d100-that-always-rolls-1-2-3--99-100-1--return-the-score-of-the-losing-player-times-the-number-of-times-the-die-was-rolled&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Play a simple game (describe below) with a loaded D100 (that always rolls 1, 2, 3, &amp;hellip; 99, 100, 1, &amp;hellip;). Return the score of the losing player times the number of times the die was rolled.&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;The board has a circle of 10 squares, numbered 1-10&lt;/li&gt;
+&lt;li&gt;The player pieces start on given squares&lt;/li&gt;
+&lt;li&gt;Each turn, roll 3 dice, advance the sum of the three many spaces (wrapping around)&lt;/li&gt;
+&lt;li&gt;Score points equal to the square you land on&lt;/li&gt;
+&lt;li&gt;The first player to score &amp;gt;= 1000 wins&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;This is not a hard problem, so I&amp;rsquo;m going to &lt;em&gt;dramatically&lt;/em&gt; overengineer it.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;Die &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Generator[int, None, None]
+
+&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;LoadedDie&lt;/span&gt;(sides: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Die:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; True:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(sides):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Game&lt;/span&gt;:
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Reprents a weird/simple game.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    die: Die
+    size: int
+    target: int
+
+    current: int
+    players: List[int]
+    scores: List[int]
+
+    roll_count: int
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __init__(
+            self,
+            die: Die,
+            size: Optional[int] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;,
+            target: Optional[int] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1000&lt;/span&gt;,
+            number_of_players: Optional[int] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;,
+            initial_spots: Optional[List[int]] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; None,
+    ):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Create a game with various defaults.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; number_of_players &lt;span style=&#34;color:#f92672&#34;&gt;is&lt;/span&gt; None:
+            number_of_players &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;
+
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;die &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; die
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;size &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; size &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;target &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; target &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1000&lt;/span&gt;
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;current &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;players &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; initial_spots &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; [&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(number_of_players)]
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;scores &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; range(number_of_players)]
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;roll_count &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; number_of_players &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; len(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;players):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;raise&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Exception&lt;/span&gt;(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;If both number of players and initial spots are provided, they must match&amp;#39;&lt;/span&gt;)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;winner&lt;/span&gt;(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Optional[int]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return the current winner (or None if no winner)&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i, score &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;scores):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; score &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;target:
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; i &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; None
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;update&lt;/span&gt;(self):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Plays one round.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;winner():
+            logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Cannot update, game is already over&amp;#39;&lt;/span&gt;)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt;
+
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;roll_count &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;
+        rolls &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [next(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;die), next(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;die), next(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;die)]
+        new_space &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;players[self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;current] &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; sum(rolls)
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; new_space &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;size:
+            new_space &lt;span style=&#34;color:#f92672&#34;&gt;-=&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;size
+
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;players[self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;current] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; new_space
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;scores[self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;current] &lt;span style=&#34;color:#f92672&#34;&gt;+=&lt;/span&gt; new_space
+
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\
+&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;Player {self.current+1} rolls {rolls} &lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\
+&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;and moves to space {self.players[self.current]} &lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\
+&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;for a total score of {self.scores[self.current]}.&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\
+&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;)
+
+        self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;current &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;current &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;%&lt;/span&gt; len(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;players)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Now with any user supplied die, any size board, any number of players, and any target score! I think the most interesting thing was the &lt;code&gt;LoadedDie&lt;/code&gt; generator. Any generator will work though.&lt;/p&gt;
+&lt;p&gt;Wrap that in the problem statement:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    p1 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; int(file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split()[&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;])
+    p2 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; int(file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split()[&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;])
+
+    game &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Game(die&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;LoadedDie(&lt;span style=&#34;color:#ae81ff&#34;&gt;100&lt;/span&gt;), initial_spots&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[p1, p2])
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; game&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;winner():
+        game&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;update()
+
+    winning_player &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; game&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;winner()
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(
+        winning_player, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;wins,&amp;#39;&lt;/span&gt;,
+        game&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;scores[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; winning_player &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; game&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;roll_count
+    )
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;And we&amp;rsquo;re golden:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 dicinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; wins, &lt;span style=&#34;color:#ae81ff&#34;&gt;752247&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# time 45107958ns / 0.05s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
     </item>
     
     <item>
@@ -54,6 +497,210 @@
     </item>
     
     <item>
+      <title>AoC 2021 Day 20: Enhancinator</title>
+      <link>https://blog.jverkamp.com/2021/12/20/aoc-2021-day-20-enhancinator/</link>
+      <pubDate>Mon, 20 Dec 2021 00:00:05 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/20/aoc-2021-day-20-enhancinator/</guid>
+      <description>&lt;h3 id=&#34;source-trench-maphttpsadventofcodecom2021day20&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/20&#34;&gt;Trench Map&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-given-a-9-1-hahahugoshortcode-s0-hbhb-update-function-take-the-pixel-and-8-surrounding-pixels-as-a-9-bit-index-into-the-function-and-a-binary-image-apply-the-function-twice-and-count-the-number-of-lit-pixels-assume-that-the-canvas-is-infinite&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a 9-&amp;gt;1 &lt;a href=&#34;https://en.wikipedia.org/wiki/cellular%20automota&#34;&gt;cellular automota&lt;/a&gt; update function (take the pixel and 8 surrounding pixels as a 9-bit index into the function) and a binary image, apply the function twice and count the number of &amp;lsquo;lit&amp;rsquo; pixels. Assume that the canvas is infinite.&lt;/h4&gt;
+&lt;p&gt;That was fun!&lt;/p&gt;
+&lt;p&gt;First, we want to represent our two data structures. First, the image itself. Because it can be infinite, we&amp;rsquo;re going to store both pixels we know about (&lt;code&gt;data&lt;/code&gt;) and a single value for &lt;code&gt;infinity&lt;/code&gt;. We won&amp;rsquo;t end up with stripes reaching out in this particular case. In most function applications, &lt;code&gt;infinity&lt;/code&gt; will stay either on or off. But there is an edge case where it will oscillate. I&amp;rsquo;ll come back to that when we get there.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;Point &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Tuple[int, int]
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;InfiniteBitmap&lt;/span&gt;:
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Store an infinitely large bitmap.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    data is &amp;#39;known&amp;#39; values
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    infinity is every other point off to infinity
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    data: MutableMapping[Point, bool]
+    infinity: bool
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;InfiniteBitmap&amp;#39;&lt;/span&gt;:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Read an infinite bitmap from file. Assume unset bits (infinity) are False.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Reading infinity bitmap&amp;#39;&lt;/span&gt;)
+
+        data &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+            (x, y): c &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;#&amp;#39;&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; y, line &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(file)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, c &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip())
+        }
+
+        mid_x &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(x &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, _ &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; data) &lt;span style=&#34;color:#f92672&#34;&gt;//&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;
+        mid_y &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; max(y &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; _, y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; data) &lt;span style=&#34;color:#f92672&#34;&gt;//&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; InfiniteBitmap({(x &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; mid_x, y &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; mid_y): bit &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; (x, y), bit &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; data&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;items()}, False)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return a much smaller representation.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;InfiniteBinary&amp;lt;{self.infinity}, {len(self)}/{len(self.data)}, {self.bounds()}&amp;gt;&amp;#39;&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __len__(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return the number of lit pixels (might be effectively infinite).&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;infinity:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; sys&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;maxsize
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; sum(
+                &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; self[p] &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data
+            )
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __getitem__(self, p: Point) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; bool:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Get the value at a given point p (use infinity if the point isn&amp;#39;t otherwise known).&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;get(p, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;infinity)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;bounds&lt;/span&gt;(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Tuple[int, int, int, int]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return (minimum x, maximum x, minimum y, maximum y)&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; (
+            min(x &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, _ &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data) &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;,
+            max(x &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, _ &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data) &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;,
+            min(y &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; _, y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data) &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;,
+            max(y &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; _, y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data) &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;,
+        )
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Most of this is just reading the data. I did do one interesting bit in the &lt;code&gt;read&lt;/code&gt; function, which was to &amp;lsquo;recenter&amp;rsquo; the data. After reading, the range is (0, width), but I&amp;rsquo;d rather it be (-width/2, width/2) so that the center point is actually in the center.&lt;/p&gt;
+&lt;p&gt;In addition, we went ahead and put a &lt;code&gt;__len__&lt;/code&gt; function here: the number of lit pixels.&lt;/p&gt;
+&lt;p&gt;Okay, next up, let&amp;rsquo;s work on that mapping function. This is the bulk of the problem:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;BitIndex &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; List[bool]
+
+NEIGHBORHOOD &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+    (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+    (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;,  &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;,  &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;,  &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;),
+    (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;,  &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;,  &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;), (&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;,  &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+]
+
+&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;BinaryMapping&lt;/span&gt;:
+    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Store a mapping from 9-bit values to 1-bit, loaded from a 512 character string of . (0) and # (1).&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+    map: List[bool]
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read&lt;/span&gt;(file: TextIO):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Read a BinaryMapping from an input stream.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Reading binary mapping&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; BinaryMapping([c &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;#&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; c &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip()])
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return a unique representation of this map.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        binary &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;1&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; bit &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;0&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; bit &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;map)
+        integer &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; int(binary, &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;)
+        bytes &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; integer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;to_bytes(&lt;span style=&#34;color:#ae81ff&#34;&gt;64&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;big&amp;#39;&lt;/span&gt;)
+        b64 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; base64&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;b64encode(bytes)&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;decode()
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;BinaryMapping&amp;lt;{b64}&amp;gt;&amp;#39;&lt;/span&gt;
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __getitem__(self, k: Union[int, BitIndex]) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; bool:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Get the value of the BinaryMapping by either integer index of a 9-bit binary BitIndex.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; isinstance(k, int):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;map[k]
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            &lt;span style=&#34;color:#75715e&#34;&gt;# TODO: Make this more efficient&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;map[int(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;join(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;1&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; bit &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;0&amp;#39;&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; bit &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; k), &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;)]
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __call__(self, bitmap: InfiniteBitmap) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; InfiniteBitmap:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Apply this mapping to an infinite bitmap, generating a new one with this applied.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Calling {self} on {bitmap}&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Calculate the new infinity&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# If the lowest mapping is set, infinity goes from off to on&lt;/span&gt;
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Likewise on the highest mapping for infinity from on to off&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; bitmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;infinity &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; self[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]:
+            new_infinity &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;elif&lt;/span&gt; bitmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;infinity &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; self[&lt;span style=&#34;color:#ae81ff&#34;&gt;511&lt;/span&gt;]:
+            new_infinity &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; False
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;:
+            new_infinity &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bitmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;infinity
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Calculate all new points&lt;/span&gt;
+        new_data &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {}
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Have to calculate all pixels one level out as well&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; x, y &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; bitmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; xd, yd &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; NEIGHBORHOOD:
+                &lt;span style=&#34;color:#75715e&#34;&gt;# Don&amp;#39;t calculate points more than once per update&lt;/span&gt;
+                center &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd)
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; center &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; new_data:
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+                neighbors &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+                    bitmap[x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; xd2, y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; yd2]
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; xd2, yd2 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; NEIGHBORHOOD
+                ]
+
+                new_value &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; self[neighbors]
+
+                &lt;span style=&#34;color:#75715e&#34;&gt;# If the value wasn&amp;#39;t in the old map and matches the new infinity&lt;/span&gt;
+                &lt;span style=&#34;color:#75715e&#34;&gt;# We don&amp;#39;t need to include it (prevent infinity expansion)&lt;/span&gt;
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; center &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; bitmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;data &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; new_value &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; new_infinity:
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+                new_data[center] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; new_value
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; InfiniteBitmap(new_data, new_infinity)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;code&gt;__getitem__&lt;/code&gt; will handle infinity (so we can always read any pixel, even if it&amp;rsquo;s not already defined in the image).&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;__call__&lt;/code&gt; is the core, it allows the function to be called on a &lt;code&gt;InfiniteBitmap&lt;/code&gt; and returns the updated bitmap. Let&amp;rsquo;s go through a few interesting points of it:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Updating the infinite pixels: this is the edge case I was talking about earlier. If the first value in the update function (all false) returns true, we need to change infinite to true. Likewise if the last value is false, we need to make infinite false. If both of these are the case (as they are in my input), you&amp;rsquo;ll get a flicker (see the rendering at the end).&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Updating the majority of pixels&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;We need to update all pixels in the image &lt;em&gt;plus&lt;/em&gt; all pixels adjacent to them, because those might change from off to on.&lt;/li&gt;
+&lt;li&gt;This would lead to infinitely growing memory&amp;hellip; except we don&amp;rsquo;t have to. If the new border pixel matches infinity, not setting it is fine, it will get rescanned on the edge update next time.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;And that&amp;rsquo;s, actually it!&lt;/p&gt;
+&lt;p&gt;Using the rendering function (we&amp;rsquo;ll see at the end) and the test data, we can go from this:&lt;/p&gt;
+&lt;figure&gt;
+    &lt;img src=&#34;https://blog.jverkamp.com/embeds/2021/aoc2021-20-test-0000.png&#34;/&gt; 
+&lt;/figure&gt;
+
+&lt;p&gt;To this:&lt;/p&gt;
+&lt;figure&gt;
+    &lt;img src=&#34;https://blog.jverkamp.com/embeds/2021/aoc2021-20-test-0001.png&#34;/&gt; 
+&lt;/figure&gt;
+
+&lt;p&gt;To this:&lt;/p&gt;
+&lt;figure&gt;
+    &lt;img src=&#34;https://blog.jverkamp.com/embeds/2021/aoc2021-20-test-0002.png&#34;/&gt; 
+&lt;/figure&gt;
+
+&lt;p&gt;It matches what we expect! A simple wrapper:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    f &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; BinaryMapping&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read(file)
+    file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()
+    bitmap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; InfiniteBitmap&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read(file)
+
+    final_bitmap &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; f(f(bitmap))
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(len(final_bitmap))
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;And run it:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 enhancinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;5057&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# time 290676167ns / 0.29s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Not bad!&lt;/p&gt;</description>
+    </item>
+    
+    <item>
       <title>Mr. Robot: Season 3</title>
       <link>https://blog.jverkamp.com/2021/12/20/mr.-robot-season-3/</link>
       <pubDate>Mon, 20 Dec 2021 00:00:00 +0000</pubDate>
@@ -65,6 +712,209 @@
 
 &lt;p&gt;Oh boy. This one really dug into the darker parts of character growth. Elliot finds new ways to be even crazier, Angela is&amp;hellip; off the rails entirely, Moustache Guy (Bobby Cannavale/Irvin) is awesome, and the entire plot of Darlene, Dominque, and the FBI was fascinating to watch.&lt;/p&gt;
 &lt;p&gt;I keep being pleasantly surprised with where this show keeps going. I wouldn&amp;rsquo;t have expected them to make it past the first season plotwise&amp;hellip; yet here we are. I&amp;rsquo;m looking forward to where we can go from here!&lt;/p&gt;</description>
+    </item>
+    
+    <item>
+      <title>AoC 2021 Day 19: Point Matchinator</title>
+      <link>https://blog.jverkamp.com/2021/12/19/aoc-2021-day-19-point-matchinator/</link>
+      <pubDate>Sun, 19 Dec 2021 00:00:05 +0000</pubDate>
+      
+      <guid>https://blog.jverkamp.com/2021/12/19/aoc-2021-day-19-point-matchinator/</guid>
+      <description>&lt;h3 id=&#34;source-snailfishhttpsadventofcodecom2021day19&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/19&#34;&gt;Snailfish&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id=&#34;part-1-you-will-be-given-a-series-of-scanners-each-of-which-will-tell-you-the-location-from-their-point-of-view-of-a-series-of-beacons-each-scanner-may-be-flipped-or-rotated-in-increments-of-90-degrees-in-any-direction-determine-where-each-scanner-and-beacon-is-by-overlaying-the-maps-with-at-least-pairwise-12-matches&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; You will be given a series of Scanners, each of which will tell you the location (from their point of view) of a series of Beacons. Each Scanner may be flipped or rotated in increments of 90 degrees in any direction. Determine where each Scanner and Beacon is by overlaying the maps (with at least pairwise 12 matches).&lt;/h4&gt;
+&lt;p&gt;That&amp;hellip; was quite a problem to get right. It&amp;rsquo;s a lot of match to make sure that the various coordinate systems can be converted between one another and computationally expensive to brute force. I haven&amp;rsquo;t gotten this one much below 10 minutes&amp;hellip; but at this point, I&amp;rsquo;m just going to have to call it. It&amp;rsquo;s a crazy problem.&lt;/p&gt;
+&lt;p&gt;Okay. Let&amp;rsquo;s start with a 3-dimensional point:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Point&lt;/span&gt;:
+    x: int
+    y: int
+    z: int
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{{{self.x}, {self.y}, {self.z}}}&amp;#39;&lt;/span&gt;
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;all_waggles&lt;/span&gt;() &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Generator[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;, None, None]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Generate all waggle parameters (see Point.waggle)&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i, j, k &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; itertools&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;permutations((&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;)):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; ix &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;i, i):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; jx &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;j, j):
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; kx &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;k, k):
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; Point(ix, jx, kx)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;waggle&lt;/span&gt;(self, w: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Return a new point reflected/reordered by the given coordinates.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Each of w&amp;#39;s x,y,z should be +- 1,2,3 and each of 1,2,3 should be used exactly once.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        reflect(3, 2, -1) should return Point(z, y, -x) for example.
+&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        d &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Point(
+            d[abs(w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x)] &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+            d[abs(w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y)] &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+            d[abs(w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)] &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
+        )
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __add__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return the sum of two points.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Point(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __sub__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return the difference of two points, obv.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Point(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Waggle? Waggle. Basically, that&amp;rsquo;s the name I&amp;rsquo;m using for flipping and mirroring about any of x/y/z. Specifically, any ordering of &lt;code&gt;(1, 2, 3)&lt;/code&gt; (each can be positive or negative) to re-order the coordinates and possibly flip them around. That ends up with the 24 possible orientations (&lt;code&gt;all_waggles&lt;/code&gt;).&lt;/p&gt;
+&lt;p&gt;Next, Scanners:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
+&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Scanner&lt;/span&gt;:
+    name: str
+    points: FrozenSet[Point]
+
+    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Optional[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Scanner&amp;#39;&lt;/span&gt;]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Read a Scanner from a filelike object&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; (name :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;- &lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\n&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;)):
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; None
+
+        points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; set()
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; line :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip():
+            points&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add(Point(&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;[int(v) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; v &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;)]))
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Scanner(name, frozenset(points))
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __or__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Scanner&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Optional[Tuple[Point, Point, Set[Point]]]:
+        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Given another scanner, try to find the overlapping points.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+
+        &lt;span style=&#34;color:#75715e&#34;&gt;# Try every waggle of their scanners, assume I&amp;#39;m always right&lt;/span&gt;
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; their_waggle &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; Point&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;all_waggles():
+            their_waggled_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+                p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(their_waggle)
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points
+            }
+
+            logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;debug(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Comparing {self.points=} and {their_waggled_points=}&amp;#39;&lt;/span&gt;)
+
+            &lt;span style=&#34;color:#75715e&#34;&gt;# Choose where we think the &amp;#39;other&amp;#39; scanner is from our perspective&lt;/span&gt;
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; my_zero &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points:
+                my_zeroed_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {p &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; my_zero &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points}
+
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; their_waggled_zero &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; their_waggled_points:
+                    their_zeroed_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {p &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; their_waggled_zero &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; their_waggled_points}
+
+                    &lt;span style=&#34;color:#75715e&#34;&gt;# Try to subtract that from all of our points&lt;/span&gt;
+                    &lt;span style=&#34;color:#75715e&#34;&gt;# If we have enough matches, that means we know their scanner from our point of view&lt;/span&gt;
+                    matches &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; my_zeroed_points &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; their_zeroed_points
+
+                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; len(matches) &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; BEACON_OVERLAPPINGNESS:
+                        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; (their_waggle, my_zero &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; their_waggled_zero, {p &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; my_zero &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; matches})
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; None
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;@{{{self.name}}}&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I don&amp;rsquo;t know why I used &lt;code&gt;s0 | s1&lt;/code&gt; as the operator for overlapping two scanners&amp;hellip; but I did. Yay dunder methods?&lt;/p&gt;
+&lt;p&gt;The method here is actually pretty neat. Essentially, the matching algorithm is:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Try every possible &lt;code&gt;waggle&lt;/code&gt; (orientation that the other Scanner could be at)&lt;/li&gt;
+&lt;li&gt;Try every possible point from each scanner as the &amp;lsquo;&lt;code&gt;zero&lt;/code&gt;&amp;rsquo; (the point at which we&amp;rsquo;ve overlapping), &lt;code&gt;other&lt;/code&gt; has to have their &lt;code&gt;zero&lt;/code&gt; waggled&lt;/li&gt;
+&lt;li&gt;Calculate the offsets from the zero for each&lt;/li&gt;
+&lt;li&gt;If the &lt;code&gt;waggle&lt;/code&gt; is correct (so that both Scanners are now facing the same way) and the &lt;code&gt;zeros&lt;/code&gt; actually match&amp;hellip; we&amp;rsquo;re golden. We&amp;rsquo;ll have at least 12 matches and can return&lt;/li&gt;
+&lt;li&gt;Calculate the points that overlapped along with the &lt;code&gt;waggle&lt;/code&gt; necessary to convert between the zones&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;That last step took&amp;hellip; rather a while to get right. And all because of a much lower level bug up in the &lt;code&gt;their_waggled_points&lt;/code&gt; part. Man it&amp;rsquo;s hard to debug bad data. Garbage in, garbage out. That&amp;rsquo;s still a neat algorithm though.&lt;/p&gt;
+&lt;p&gt;Next&amp;hellip; let&amp;rsquo;s combine these and try to figure out how to actually calculate all of the Beacons.&lt;/p&gt;
+&lt;p&gt;First, load the input and find initial mappings between every pair of Scanners. This is&amp;hellip; horribly inefficient. I did at least make sure that if I do &lt;code&gt;[s0, s1]&lt;/code&gt;, then I don&amp;rsquo;t have to do &lt;code&gt;[s1, s0]&lt;/code&gt; (they&amp;rsquo;re the same). But otherwise, I really am going through all of them.&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;scanners &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+&lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; s :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Scanner&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read(file):
+    scanners&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(s)
+s0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
+
+logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=== FINDING INITIAL OFFSETS ===&amp;#39;&lt;/span&gt;)
+offsets: MutableMapping[Tuple[Scanner, Scanner], Tuple[Point, Point, Set[Point]]] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {}
+
+&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; s0 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners:
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; s1 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners:
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Finding the offset from {s0=} to {s1=}&amp;#39;&lt;/span&gt;)
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (s1, s0) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets:
+            offsets[s0, s1] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[s1, s0]
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; result :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (s0 &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; s1):
+            offsets[s0, s1] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; result
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;That will find Unfortunately, not every pair overlaps. So we can go from 0 to 1 and 1 to 4, but not directly from 0 to 4. And we want to be able to do that, to make sure we have &lt;em&gt;everything&lt;/em&gt; in the same universal coordinate system. So next:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Fill in the entire chart&lt;/span&gt;
+logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=== EXPANDING CHART ===&amp;#39;&lt;/span&gt;)
+s0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
+
+&lt;span style=&#34;color:#75715e&#34;&gt;# If we don&amp;#39;t have a path from s0 to s1, try to go s0 -&amp;gt; svia -&amp;gt; s1&lt;/span&gt;
+updating &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
+&lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; updating:
+    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Working on expanding iteration&amp;#39;&lt;/span&gt;)
+    updating &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; False
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; s1 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:]:
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (s0, s1) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; svia &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:]:
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; s0 &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; svia &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; svia &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; s1:
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; ((s0, svia) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; (svia, s1) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets):
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
+
+            logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Building a new path from {s0} via {svia} to {s1}&amp;#39;&lt;/span&gt;)
+
+            waggle1, offset1, _ &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[s0, svia]
+            waggle2, offset2, points2 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[svia, s1]
+
+            new_waggle &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; waggle2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle1)
+            new_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offset1 &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; offset2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle1)
+
+            new_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+                offset1 &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle1)
+                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; points2
+            }
+
+            offsets[s0, s1] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; new_waggle, new_offset, new_points
+            updating &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Getting that &lt;code&gt;new_points&lt;/code&gt; right took a bit too. And it&amp;rsquo;s all so simple&amp;hellip; I enjoy naming things.&lt;/p&gt;
+&lt;p&gt;And that&amp;rsquo;s mostly it. Go through now that we know the &lt;code&gt;offset&lt;/code&gt; and &lt;code&gt;waggle&lt;/code&gt; for every Scanner, we can actually map all of the Beacons they&amp;rsquo;d seen into the same coordinate space and de-duplicate:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
+
+    scanners &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; s :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Scanner&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read(file):
+        scanners&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(s)
+    s0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
+
+    offsets &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; do_the_actual_work(scanners)
+
+    &lt;span style=&#34;color:#75715e&#34;&gt;# Finally, calculate all of the beacon points&lt;/span&gt;
+    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=== FINDING BEACONS ===&amp;#39;&lt;/span&gt;)
+
+    all_beacons &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; set()
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; scanner &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners:
+        waggle, offset, _ &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[s0, scanner]
+        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Adding beacons from {scanner} at {offset} (with {waggle=})&amp;#39;&lt;/span&gt;)
+
+        all_beacons &lt;span style=&#34;color:#f92672&#34;&gt;|=&lt;/span&gt; {
+            offset &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle)
+            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanner&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points
+        }
+
+    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(len(all_beacons))
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;And that&amp;rsquo;s it!&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 point-matchinator.py part1 input.txt
+&lt;span style=&#34;color:#ae81ff&#34;&gt;313&lt;/span&gt;
+&lt;span style=&#34;color:#75715e&#34;&gt;# time 412607815209ns / 412.61s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Yeah. That&amp;rsquo;s slow. But it works and at this point, that&amp;rsquo;s enough for me.&lt;/p&gt;</description>
     </item>
     
     <item>
@@ -307,209 +1157,6 @@
 &lt;span style=&#34;color:#ae81ff&#34;&gt;4433&lt;/span&gt;
 &lt;span style=&#34;color:#75715e&#34;&gt;# time 443584917ns / 0.44s&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;That was a &amp;hellip; very strange/convoluted problem, but it was an interesting example of why data structures (and being able to convert between one another) is worthwhile.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>AoC 2021 Day 19: Point Matchinator</title>
-      <link>https://blog.jverkamp.com/2021/12/18/aoc-2021-day-19-point-matchinator/</link>
-      <pubDate>Sat, 18 Dec 2021 00:00:05 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/12/18/aoc-2021-day-19-point-matchinator/</guid>
-      <description>&lt;h3 id=&#34;source-snailfishhttpsadventofcodecom2021day19&#34;&gt;Source: &lt;a href=&#34;https://adventofcode.com/2021/day/19&#34;&gt;Snailfish&lt;/a&gt;&lt;/h3&gt;
-&lt;h4 id=&#34;part-1-you-will-be-given-a-series-of-scanners-each-of-which-will-tell-you-the-location-from-their-point-of-view-of-a-series-of-beacons-each-scanner-may-be-flipped-or-rotated-in-increments-of-90-degrees-in-any-direction-determine-where-each-scanner-and-beacon-is-by-overlaying-the-maps-with-at-least-pairwise-12-matches&#34;&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; You will be given a series of Scanners, each of which will tell you the location (from their point of view) of a series of Beacons. Each Scanner may be flipped or rotated in increments of 90 degrees in any direction. Determine where each Scanner and Beacon is by overlaying the maps (with at least pairwise 12 matches).&lt;/h4&gt;
-&lt;p&gt;That&amp;hellip; was quite a problem to get right. It&amp;rsquo;s a lot of match to make sure that the various coordinate systems can be converted between one another and computationally expensive to brute force. I haven&amp;rsquo;t gotten this one much below 10 minutes&amp;hellip; but at this point, I&amp;rsquo;m just going to have to call it. It&amp;rsquo;s a crazy problem.&lt;/p&gt;
-&lt;p&gt;Okay. Let&amp;rsquo;s start with a 3-dimensional point:&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
-&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Point&lt;/span&gt;:
-    x: int
-    y: int
-    z: int
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;{{{self.x}, {self.y}, {self.z}}}&amp;#39;&lt;/span&gt;
-
-    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;all_waggles&lt;/span&gt;() &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Generator[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;, None, None]:
-        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Generate all waggle parameters (see Point.waggle)&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i, j, k &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; itertools&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;permutations((&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;)):
-            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; ix &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;i, i):
-                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; jx &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;j, j):
-                    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; kx &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;k, k):
-                        &lt;span style=&#34;color:#66d9ef&#34;&gt;yield&lt;/span&gt; Point(ix, jx, kx)
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;waggle&lt;/span&gt;(self, w: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;:
-        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
-&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Return a new point reflected/reordered by the given coordinates.
-&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
-&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        Each of w&amp;#39;s x,y,z should be +- 1,2,3 and each of 1,2,3 should be used exactly once.
-&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
-&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        reflect(3, 2, -1) should return Point(z, y, -x) for example.
-&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;        &amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
-
-        d &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Point(
-            d[abs(w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x)] &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
-            d[abs(w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y)] &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
-            d[abs(w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)] &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; (&lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;),
-        )
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __add__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;:
-        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return the sum of two points.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Point(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __sub__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Point&amp;#39;&lt;/span&gt;:
-        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Return the difference of two points, obv.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Point(self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;x, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;y, self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;z)
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Waggle? Waggle. Basically, that&amp;rsquo;s the name I&amp;rsquo;m using for flipping and mirroring about any of x/y/z. Specifically, any ordering of &lt;code&gt;(1, 2, 3)&lt;/code&gt; (each can be positive or negative) to re-order the coordinates and possibly flip them around. That ends up with the 24 possible orientations (&lt;code&gt;all_waggles&lt;/code&gt;).&lt;/p&gt;
-&lt;p&gt;Next, Scanners:&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;@dataclass&lt;/span&gt;(frozen&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True)
-&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Scanner&lt;/span&gt;:
-    name: str
-    points: FrozenSet[Point]
-
-    &lt;span style=&#34;color:#a6e22e&#34;&gt;@staticmethod&lt;/span&gt;
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;read&lt;/span&gt;(file: TextIO) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Optional[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Scanner&amp;#39;&lt;/span&gt;]:
-        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Read a Scanner from a filelike object&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; (name :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;- &lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\n&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&lt;/span&gt;)):
-            &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; None
-
-        points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; set()
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; line :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; file&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;readline()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip():
-            points&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add(Point(&lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;[int(v) &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; v &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; line&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;)]))
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; Scanner(name, frozenset(points))
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __or__(self, other: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Scanner&amp;#39;&lt;/span&gt;) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; Optional[Tuple[Point, Point, Set[Point]]]:
-        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;Given another scanner, try to find the overlapping points.&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
-
-        &lt;span style=&#34;color:#75715e&#34;&gt;# Try every waggle of their scanners, assume I&amp;#39;m always right&lt;/span&gt;
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; their_waggle &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; Point&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;all_waggles():
-            their_waggled_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
-                p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(their_waggle)
-                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; other&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points
-            }
-
-            logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;debug(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Comparing {self.points=} and {their_waggled_points=}&amp;#39;&lt;/span&gt;)
-
-            &lt;span style=&#34;color:#75715e&#34;&gt;# Choose where we think the &amp;#39;other&amp;#39; scanner is from our perspective&lt;/span&gt;
-            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; my_zero &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points:
-                my_zeroed_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {p &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; my_zero &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; self&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points}
-
-                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; their_waggled_zero &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; their_waggled_points:
-                    their_zeroed_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {p &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; their_waggled_zero &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; their_waggled_points}
-
-                    &lt;span style=&#34;color:#75715e&#34;&gt;# Try to subtract that from all of our points&lt;/span&gt;
-                    &lt;span style=&#34;color:#75715e&#34;&gt;# If we have enough matches, that means we know their scanner from our point of view&lt;/span&gt;
-                    matches &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; my_zeroed_points &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&lt;/span&gt; their_zeroed_points
-
-                    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; len(matches) &lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;=&lt;/span&gt; BEACON_OVERLAPPINGNESS:
-                        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; (their_waggle, my_zero &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; their_waggled_zero, {p &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; my_zero &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; matches})
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; None
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; __repr__(self):
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;@{{{self.name}}}&amp;#39;&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;I don&amp;rsquo;t know why I used &lt;code&gt;s0 | s1&lt;/code&gt; as the operator for overlapping two scanners&amp;hellip; but I did. Yay dunder methods?&lt;/p&gt;
-&lt;p&gt;The method here is actually pretty neat. Essentially, the matching algorithm is:&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;Try every possible &lt;code&gt;waggle&lt;/code&gt; (orientation that the other Scanner could be at)&lt;/li&gt;
-&lt;li&gt;Try every possible point from each scanner as the &amp;lsquo;&lt;code&gt;zero&lt;/code&gt;&amp;rsquo; (the point at which we&amp;rsquo;ve overlapping), &lt;code&gt;other&lt;/code&gt; has to have their &lt;code&gt;zero&lt;/code&gt; waggled&lt;/li&gt;
-&lt;li&gt;Calculate the offsets from the zero for each&lt;/li&gt;
-&lt;li&gt;If the &lt;code&gt;waggle&lt;/code&gt; is correct (so that both Scanners are now facing the same way) and the &lt;code&gt;zeros&lt;/code&gt; actually match&amp;hellip; we&amp;rsquo;re golden. We&amp;rsquo;ll have at least 12 matches and can return&lt;/li&gt;
-&lt;li&gt;Calculate the points that overlapped along with the &lt;code&gt;waggle&lt;/code&gt; necessary to convert between the zones&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;That last step took&amp;hellip; rather a while to get right. And all because of a much lower level bug up in the &lt;code&gt;their_waggled_points&lt;/code&gt; part. Man it&amp;rsquo;s hard to debug bad data. Garbage in, garbage out. That&amp;rsquo;s still a neat algorithm though.&lt;/p&gt;
-&lt;p&gt;Next&amp;hellip; let&amp;rsquo;s combine these and try to figure out how to actually calculate all of the Beacons.&lt;/p&gt;
-&lt;p&gt;First, load the input and find initial mappings between every pair of Scanners. This is&amp;hellip; horribly inefficient. I did at least make sure that if I do &lt;code&gt;[s0, s1]&lt;/code&gt;, then I don&amp;rsquo;t have to do &lt;code&gt;[s1, s0]&lt;/code&gt; (they&amp;rsquo;re the same). But otherwise, I really am going through all of them.&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;scanners &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
-&lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; s :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Scanner&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read(file):
-    scanners&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(s)
-s0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
-
-logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=== FINDING INITIAL OFFSETS ===&amp;#39;&lt;/span&gt;)
-offsets: MutableMapping[Tuple[Scanner, Scanner], Tuple[Point, Point, Set[Point]]] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {}
-
-&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; s0 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners:
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; s1 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners:
-        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Finding the offset from {s0=} to {s1=}&amp;#39;&lt;/span&gt;)
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (s1, s0) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets:
-            offsets[s0, s1] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[s1, s0]
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; result :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (s0 &lt;span style=&#34;color:#f92672&#34;&gt;|&lt;/span&gt; s1):
-            offsets[s0, s1] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; result
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;That will find Unfortunately, not every pair overlaps. So we can go from 0 to 1 and 1 to 4, but not directly from 0 to 4. And we want to be able to do that, to make sure we have &lt;em&gt;everything&lt;/em&gt; in the same universal coordinate system. So next:&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Fill in the entire chart&lt;/span&gt;
-logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=== EXPANDING CHART ===&amp;#39;&lt;/span&gt;)
-s0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
-
-&lt;span style=&#34;color:#75715e&#34;&gt;# If we don&amp;#39;t have a path from s0 to s1, try to go s0 -&amp;gt; svia -&amp;gt; s1&lt;/span&gt;
-updating &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
-&lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; updating:
-    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Working on expanding iteration&amp;#39;&lt;/span&gt;)
-    updating &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; False
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; s1 &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:]:
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; (s0, s1) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets:
-            &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
-
-        &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; svia &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;:]:
-            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; s0 &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; svia &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; svia &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; s1:
-                &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
-
-            &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; ((s0, svia) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets &lt;span style=&#34;color:#f92672&#34;&gt;and&lt;/span&gt; (svia, s1) &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; offsets):
-                &lt;span style=&#34;color:#66d9ef&#34;&gt;continue&lt;/span&gt;
-
-            logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Building a new path from {s0} via {svia} to {s1}&amp;#39;&lt;/span&gt;)
-
-            waggle1, offset1, _ &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[s0, svia]
-            waggle2, offset2, points2 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[svia, s1]
-
-            new_waggle &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; waggle2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle1)
-            new_offset &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offset1 &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; offset2&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle1)
-
-            new_points &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
-                offset1 &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle1)
-                &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; points2
-            }
-
-            offsets[s0, s1] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; new_waggle, new_offset, new_points
-            updating &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; True
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Getting that &lt;code&gt;new_points&lt;/code&gt; right took a bit too. And it&amp;rsquo;s all so simple&amp;hellip; I enjoy naming things.&lt;/p&gt;
-&lt;p&gt;And that&amp;rsquo;s mostly it. Go through now that we know the &lt;code&gt;offset&lt;/code&gt; and &lt;code&gt;waggle&lt;/code&gt; for every Scanner, we can actually map all of the Beacons they&amp;rsquo;d seen into the same coordinate space and de-duplicate:&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;part1&lt;/span&gt;(file: typer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;FileText):
-
-    scanners &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;while&lt;/span&gt; s :&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Scanner&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;read(file):
-        scanners&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(s)
-    s0 &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; scanners[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
-
-    offsets &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; do_the_actual_work(scanners)
-
-    &lt;span style=&#34;color:#75715e&#34;&gt;# Finally, calculate all of the beacon points&lt;/span&gt;
-    logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;=== FINDING BEACONS ===&amp;#39;&lt;/span&gt;)
-
-    all_beacons &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; set()
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; scanner &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanners:
-        waggle, offset, _ &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; offsets[s0, scanner]
-        logging&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;info(f&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Adding beacons from {scanner} at {offset} (with {waggle=})&amp;#39;&lt;/span&gt;)
-
-        all_beacons &lt;span style=&#34;color:#f92672&#34;&gt;|=&lt;/span&gt; {
-            offset &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; p&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;waggle(waggle)
-            &lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; p &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; scanner&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;points
-        }
-
-    &lt;span style=&#34;color:#66d9ef&#34;&gt;print&lt;/span&gt;(len(all_beacons))
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;And that&amp;rsquo;s it!&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;$ python3 point-matchinator.py part1 input.txt
-&lt;span style=&#34;color:#ae81ff&#34;&gt;313&lt;/span&gt;
-&lt;span style=&#34;color:#75715e&#34;&gt;# time 412607815209ns / 412.61s&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Yeah. That&amp;rsquo;s slow. But it works and at this point, that&amp;rsquo;s enough for me.&lt;/p&gt;</description>
     </item>
     
     <item>
@@ -2085,52 +2732,6 @@ Worth continuing on. Going to have to check out the third now.</description>
             &lt;/figure&gt;
 &lt;p&gt;Sons of the Oak is an odd one. After saving the world in Lair of Bones, Gaborn and Iome are loaded with enough metabolism to curse them to die in the next few years&amp;ndash;which ends up happening relatively early on. That of course leaves a power vacuum. There are those who would love to see the Earth King&amp;rsquo;s son take the crown&amp;ndash;and just as many who&amp;rsquo;d rather see him dead and take power of their on. On top of that, there&amp;rsquo;s a whole new level of darkness in the world. From Loci to strengi-saats, it&amp;rsquo;s an ever darkening world, with the Torch of Humanity having been passed down to the next generation.&lt;/p&gt;
 &lt;p&gt;I don&amp;rsquo;t think I&amp;rsquo;ve actually finished this book before. The time skip made it hard to read and I just moved on. But this time around, I&amp;rsquo;ve actually really enjoyed it. We&amp;rsquo;ll have to see how it continues. I think reading it as an audiobook has helped. It just keeps going unless you actually stop rather than stopping unless you push on.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Star Wars: Episode IV - A New Hope</title>
-      <link>https://blog.jverkamp.com/2021/11/17/star-wars-episode-iv-a-new-hope/</link>
-      <pubDate>Wed, 17 Nov 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/11/17/star-wars-episode-iv-a-new-hope/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/star-wars-episode-iv---a-new-hope.jpg&#34;/&gt; 
-&lt;/figure&gt;
-
-&lt;p&gt;There it is. A New Hope. The Star Wars I grew up on.&lt;/p&gt;
-
-&lt;div style=&#34;position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;&#34;&gt;
-  &lt;iframe src=&#34;https://www.youtube.com/embed/vLgsf8Pei6Q&#34; style=&#34;position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;&#34; allowfullscreen title=&#34;YouTube Video&#34;&gt;&lt;/iframe&gt;
-&lt;/div&gt;
-
-&lt;p&gt;Man that&amp;rsquo;s a great opening. The scale of the Star Destroyer, dumping us in on the &amp;lsquo;everyman&amp;rsquo; droids, and that Vadar scene. Spectacular.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Star Wars: Episode III - Revenge of the Sith</title>
-      <link>https://blog.jverkamp.com/2021/11/15/star-wars-episode-iii-revenge-of-the-sith/</link>
-      <pubDate>Mon, 15 Nov 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/11/15/star-wars-episode-iii-revenge-of-the-sith/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/star-wars-episode-iii---revenge-of-the-sith.jpg&#34;/&gt; 
-&lt;/figure&gt;
-
-&lt;p&gt;Revenge of the Sith is a somewhat fascinating story. It feels by far the darkest and most &amp;lsquo;adult&amp;rsquo; of the prequel trilogy, probably best matching the feel of A New Hope and Empire Strikes Back, but at the same time, there&amp;rsquo;s a lot more humor in the early parts at least, with some truly weird and silly moments with R2 and the Battle Droids. You know&amp;hellip; I just don&amp;rsquo;t understand the droids. I&amp;rsquo;ll get back to that in a bit.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>The Many Adventures of Winnie the Pooh</title>
-      <link>https://blog.jverkamp.com/2021/11/13/the-many-adventures-of-winnie-the-pooh/</link>
-      <pubDate>Sat, 13 Nov 2021 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2021/11/13/the-many-adventures-of-winnie-the-pooh/</guid>
-      <description>&lt;figure class=&#34;cover-image&#34;&gt;
-    &lt;img src=&#34;https://blog.jverkamp.com/embeds/movies/the-many-adventures-of-winnie-the-pooh.jpg&#34;/&gt; 
-&lt;/figure&gt;
-
-&lt;p&gt;The Many Adventures of Winnie the Pooh is just delightful&amp;ndash;and a blast of nostalgia on top of that. I didn&amp;rsquo;t manage to actually watch all of the Disney classic growing up (still haven&amp;rsquo;t), but I definiately watched this one. And now, after reading many of the stories to my children, it&amp;rsquo;s a delight to be able to share the video form with them as well!&lt;/p&gt;
-&lt;p&gt;I really like the style of these stories. It&amp;rsquo;s a mix of animated world with the real storybook characters (Pooh et al), but also obviously in a book, as they hob from page to page. It&amp;rsquo;s not the story of style you&amp;rsquo;d always expect to work, but it really works here.&lt;/p&gt;</description>
     </item>
     
   </channel>
