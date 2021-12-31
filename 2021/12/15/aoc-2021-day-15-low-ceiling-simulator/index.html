@@ -58,6 +58,9 @@
             <a class="taxonomy-key" href="/programming/sources/">Sources</a>
             <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2021/12/14/aoc-2021-day-14-polymerizationinator/" class="previous-link"></a><a class="taxonomy-value" href="/programming/sources/advent-of-code">Advent of Code</a><a href="https://blog.jverkamp.com/2021/12/16/aoc-2021-day-16-depacketinator/" class="next-link"></a></li></ul>
         </li><li>
+            <a class="taxonomy-key" href="/programming/topics/">Topics</a>
+            <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/a-star">A-Star</a><a href="https://blog.jverkamp.com/2021/12/23/aoc-2021-day-23-amphipodinator/" class="next-link"></a></li><li><a href="https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/algorithms">Algorithms</a><a href="https://blog.jverkamp.com/2021/12/21/aoc-2021-day-21-dicinator/" class="next-link"></a></li><li><a href="https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/" class="previous-link"></a><a class="taxonomy-value" href="/programming/topics/optimization">Optimization</a><a href="https://blog.jverkamp.com/2021/12/21/aoc-2021-day-21-dicinator/" class="next-link"></a></li></ul>
+        </li><li>
             <a class="taxonomy-key" href="/series/">Series</a>
             <ul class="taxonomy-values"><li><a href="https://blog.jverkamp.com/2021/12/14/aoc-2021-day-14-polymerizationinator/" class="previous-link"></a><a class="taxonomy-value" href="/series/advent-of-code-2021">Advent of Code 2021</a><a href="https://blog.jverkamp.com/2021/12/16/aoc-2021-day-16-depacketinator/" class="next-link"></a></li></ul>
         </li><li><a class="taxonomy-key" href="/programming">programming</a>
@@ -163,282 +166,236 @@ best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">687</s
 <p>Yeah. That&rsquo;s what I was worried about. It was already taking 2 seconds for a 100x100 grid and now we have to do 500x500. And that&rsquo;s not just 25 times as many paths&hellip; Even if you assume you can only go right or down (we&rsquo;ll come back to that), that&rsquo;s still a lot of paths&hellip;</p>
 <div class="latex-block">
 paths(N) = \binom{2(N-1)}{N-1}
-<div class="latex-block">
+</div>
 
-<span class="latex-inline">paths(10, 10) = 48,620</span>
-, <span class="latex-inline">paths(100, 100) = 2.27x10^58</span>
-, <span class="latex-inline">paths(500) = 6.76x10^298</span>
+<p><span class="latex-inline">paths(10, 10) = 48620</span>
+, <span class="latex-inline">paths(100, 100) = 2.27x10^{58}</span>
+, <span class="latex-inline">paths(500) = 6.76x10^{298}</span>
+</p>
+<p>Yeah. That grows fast. The algorithm that I wrote in part 1 certainly doesn&rsquo;t check all of those, but it&rsquo;s still far slower than I&rsquo;d like:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 low-ceiling-simulator.py part2 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">2957</span>
+<span style="color:#75715e"># time 425408701709ns / 425.41s</span>
+</code></pre></div><p>Okay, before we go anywhere, let&rsquo;s build that new map. Not that bad, but a bit interesting to properly handle the increasing/changing values:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">part2</span>(file: typer<span style="color:#f92672">.</span>FileText):
 
+    original_map <span style="color:#f92672">=</span> load(file)
+    map: MutableMapping[Point, int] <span style="color:#f92672">=</span> dict(original_map)
 
-Yeah. That grows fast. The algorithm that I wrote in part 1 certainly doesn't check all of those, but it's still far slower than I'd like:
+    width <span style="color:#f92672">=</span> max(x <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (x, _) <span style="color:#f92672">in</span> map)
+    height <span style="color:#f92672">=</span> max(y <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (_, y) <span style="color:#f92672">in</span> map)
 
-```bash
-$ python3 low-ceiling-simulator.py part2 input.txt
-best_score=2957
-# time 425408701709ns / 425.41s
-```
+    <span style="color:#66d9ef">for</span> bigx <span style="color:#f92672">in</span> range(<span style="color:#ae81ff">5</span>):
+        <span style="color:#66d9ef">for</span> bigy <span style="color:#f92672">in</span> range(<span style="color:#ae81ff">5</span>):
+            offset <span style="color:#f92672">=</span> bigy <span style="color:#f92672">+</span> bigy
 
-Okay, before we go anywhere, let's build that new map. Not that bad, but a bit interesting to properly handle the increasing/changing values:
+            <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(width):
+                <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(height):
+                    newx <span style="color:#f92672">=</span> x <span style="color:#f92672">+</span> bigx <span style="color:#f92672">*</span> width
+                    newy <span style="color:#f92672">=</span> y <span style="color:#f92672">+</span> bigy <span style="color:#f92672">*</span> height
 
-```python
-def part2(file: typer.FileText):
+                    map[newx, newy] <span style="color:#f92672">=</span> (map[x, y] <span style="color:#f92672">+</span> bigx <span style="color:#f92672">+</span> bigy)
+                    <span style="color:#66d9ef">if</span> map[newx, newy] <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">9</span>:
+                        map[newx, newy] <span style="color:#f92672">-=</span> <span style="color:#ae81ff">9</span>
 
-    original_map = load(file)
-    map: MutableMapping[Point, int] = dict(original_map)
+    best_path <span style="color:#f92672">=</span> explore(map)
+    best_score <span style="color:#f92672">=</span> sum(map[x, y] <span style="color:#66d9ef">for</span> (x, y) <span style="color:#f92672">in</span> best_path[<span style="color:#ae81ff">1</span>:])
 
-    width = max(x + 1 for (x, _) in map)
-    height = max(y + 1 for (_, y) in map)
+    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;{best_path=}&#39;</span>)
+    <span style="color:#66d9ef">print</span>(f<span style="color:#e6db74">&#39;{best_score=}&#39;</span>)
+</code></pre></div><p>Cool.</p>
+<p>Now let&rsquo;s explore a few more choices. First, let&rsquo;s assume that you can only go down or right. That makes the algorithm much simpler, since you can essentially start in the bottom right and fill in each square that has a value down and right of itself. Something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">explore_2</span>(map: Mapping[Point, int]) <span style="color:#f92672">-&gt;</span> List[Point]:
+    <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">    Version 2: Scan from the bottom right.
+</span><span style="color:#e6db74">
+</span><span style="color:#e6db74">    NOTE: This version cannot handle paths that move up or left.
+</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
 
-    for bigx in range(5):
-        for bigy in range(5):
-            offset = bigy + bigy
+    width <span style="color:#f92672">=</span> max(x <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (x, _) <span style="color:#f92672">in</span> map)
+    height <span style="color:#f92672">=</span> max(y <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (_, y) <span style="color:#f92672">in</span> map)
 
-            for x in range(width):
-                for y in range(height):
-                    newx = x + bigx * width
-                    newy = y + bigy * height
+    bottom_right <span style="color:#f92672">=</span> (width <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, height <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)
 
-                    map[newx, newy] = (map[x, y] + bigx + bigy)
-                    if map[newx, newy] > 9:
-                        map[newx, newy] -= 9
-
-    best_path = explore(map)
-    best_score = sum(map[x, y] for (x, y) in best_path[1:])
-
-    logging.info(f'{best_path=}')
-    print(f'{best_score=}')
-```
-
-Cool. 
-
-Now let's explore a few more choices. First, let's assume that you can only go down or right. That makes the algorithm much simpler, since you can essentially start in the bottom right and fill in each square that has a value down and right of itself. Something like this:
-
-```python
-def explore_2(map: Mapping[Point, int]) -> List[Point]:
-    '''
-    Version 2: Scan from the bottom right.
-
-    NOTE: This version cannot handle paths that move up or left.
-    '''
-
-    width = max(x + 1 for (x, _) in map)
-    height = max(y + 1 for (_, y) in map)
-
-    bottom_right = (width - 1, height - 1)
-
-    best_paths = {
-        bottom_right: (1, [bottom_right])
+    best_paths <span style="color:#f92672">=</span> {
+        bottom_right: (<span style="color:#ae81ff">1</span>, [bottom_right])
     }
 
-    # Start with the two points adjacent to bottom right
-    to_scan = [
-        (width - 2, height - 1),
-        (width - 1, height - 2),
+    <span style="color:#75715e"># Start with the two points adjacent to bottom right</span>
+    to_scan <span style="color:#f92672">=</span> [
+        (width <span style="color:#f92672">-</span> <span style="color:#ae81ff">2</span>, height <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>),
+        (width <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, height <span style="color:#f92672">-</span> <span style="color:#ae81ff">2</span>),
     ]
 
-    while to_scan:
-        (x, y) = to_scan[0]
-        to_scan = to_scan[1:]
+    <span style="color:#66d9ef">while</span> to_scan:
+        (x, y) <span style="color:#f92672">=</span> to_scan[<span style="color:#ae81ff">0</span>]
+        to_scan <span style="color:#f92672">=</span> to_scan[<span style="color:#ae81ff">1</span>:]
 
-        # If it's out of bounds, skip
-        if (x, y) not in map:
-            continue
+        <span style="color:#75715e"># If it&#39;s out of bounds, skip</span>
+        <span style="color:#66d9ef">if</span> (x, y) <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> map:
+            <span style="color:#66d9ef">continue</span>
 
-        # If it's already been scanned, skip
-        if (x, y) in best_paths:
-            continue
+        <span style="color:#75715e"># If it&#39;s already been scanned, skip</span>
+        <span style="color:#66d9ef">if</span> (x, y) <span style="color:#f92672">in</span> best_paths:
+            <span style="color:#66d9ef">continue</span>
 
-        logging.info(f'Scanning ({x}, {y}), {len(to_scan)}/{len(map)} remaining')
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Scanning ({x}, {y}), {len(to_scan)}/{len(map)} remaining&#39;</span>)
 
-        # Find the best path to get to this point
-        neighbors = [
-            best_paths[x + xd, y + yd]
-            for xd, yd in ORTHAGONAL
-            if (x + xd, y + yd) in best_paths
+        <span style="color:#75715e"># Find the best path to get to this point</span>
+        neighbors <span style="color:#f92672">=</span> [
+            best_paths[x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd]
+            <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> ORTHAGONAL
+            <span style="color:#66d9ef">if</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd) <span style="color:#f92672">in</span> best_paths
         ]
 
-        best_score, best_path = min(neighbors)
+        best_score, best_path <span style="color:#f92672">=</span> min(neighbors)
 
-        best_paths[x, y] = (
-            map[x, y] + best_score,
-            [(x, y)] + best_path
+        best_paths[x, y] <span style="color:#f92672">=</span> (
+            map[x, y] <span style="color:#f92672">+</span> best_score,
+            [(x, y)] <span style="color:#f92672">+</span> best_path
         )
 
-        # Add adjacent points to scan next
-        # We'll handle duplicates and out of bounds at the top of the loop
-        for xd, yd in ORTHAGONAL:
-            to_scan.append((x + xd, y + yd))
+        <span style="color:#75715e"># Add adjacent points to scan next</span>
+        <span style="color:#75715e"># We&#39;ll handle duplicates and out of bounds at the top of the loop</span>
+        <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> ORTHAGONAL:
+            to_scan<span style="color:#f92672">.</span>append((x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd))
 
-    return best_paths[0, 0][1]
-```
+    <span style="color:#66d9ef">return</span> best_paths[<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">1</span>]
+</code></pre></div><p>It&rsquo;s using a queue to keep track of where we&rsquo;re going, so essentially scanning in a circle from the bottom right (that makes the code a bit longer). But, it only takes one past and doesn&rsquo;t have to settle. But most importantly, is it faster? (And I guess&hellip; does it work?)</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 low-ceiling-simulator.py --version <span style="color:#ae81ff">2</span> part2 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">2962</span>
+<span style="color:#75715e"># time 6651538833ns / 6.65s</span>
+</code></pre></div><p>Yes! &hellip; and no.</p>
+<p>It does return much faster, only taking a few seconds. But it doesn&rsquo;t actually work. It seems that somewhere in my actual input data, there is a case where it&rsquo;s cheaper to go back up/left and loop a bit than to always go directly down/right. Fascinating. But it also means that, while fast, this algorithm is a no go.</p>
+<p>So let&rsquo;s go back to part 1 and mix in a bit of part 2 to try to make it a little smarter. Continue with the same &lsquo;iterate until stable&rsquo; algorithm, but instead of starting in the top left, start in the bottom right. That should mean we can fill in initial values for the entire graph in one pass, then only start cleaning up after that. It will do roughly the same amount of work, but should converge a lot faster. Something like this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">explore_3</span>(map: Mapping[Point, int]) <span style="color:#f92672">-&gt;</span> List[Point]:
+    <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">    Version 3: Iterate until stable again, but this time from the bottom right.
+</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
 
-It's using a queue to keep track of where we're going, so essentially scanning in a circle from the bottom right (that makes the code a bit longer). But, it only takes one past and doesn't have to settle. But most importantly, is it faster? (And I guess... does it work?)
+    width <span style="color:#f92672">=</span> max(x <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (x, _) <span style="color:#f92672">in</span> map)
+    height <span style="color:#f92672">=</span> max(y <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (_, y) <span style="color:#f92672">in</span> map)
 
-```bash
-$ python3 low-ceiling-simulator.py --version 2 part2 input.txt
-best_score=2962
-# time 6651538833ns / 6.65s
-```
+    bottom_right <span style="color:#f92672">=</span> (width <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, height <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)
 
-Yes! ... and no. 
-
-It does return much faster, only taking a few seconds. But it doesn't actually work. It seems that somewhere in my actual input data, there is a case where it's cheaper to go back up/left and loop a bit than to always go directly down/right. Fascinating. But it also means that, while fast, this algorithm is a no go. 
-
-So let's go back to part 1 and mix in a bit of part 2 to try to make it a little smarter. Continue with the same 'iterate until stable' algorithm, but instead of starting in the top left, start in the bottom right. That should mean we can fill in initial values for the entire graph in one pass, then only start cleaning up after that. It will do roughly the same amount of work, but should converge a lot faster. Something like this:
-
-```python
-def explore_3(map: Mapping[Point, int]) -> List[Point]:
-    '''
-    Version 3: Iterate until stable again, but this time from the bottom right.
-    '''
-
-    width = max(x + 1 for (x, _) in map)
-    height = max(y + 1 for (_, y) in map)
-
-    bottom_right = (width - 1, height - 1)
-
-    best_paths = {
-        bottom_right: (1, [bottom_right])
+    best_paths <span style="color:#f92672">=</span> {
+        bottom_right: (<span style="color:#ae81ff">1</span>, [bottom_right])
     }
 
-    changed_paths = 1
-    while changed_paths:
-        changed_paths = 0
+    changed_paths <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+    <span style="color:#66d9ef">while</span> changed_paths:
+        changed_paths <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
 
-        for x in range(width - 1, -1, -1):
-            for y in range(height - 1, -1, -1):
-                if (x, y) == bottom_right:
-                    continue
+        <span style="color:#66d9ef">for</span> x <span style="color:#f92672">in</span> range(width <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>):
+            <span style="color:#66d9ef">for</span> y <span style="color:#f92672">in</span> range(height <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>):
+                <span style="color:#66d9ef">if</span> (x, y) <span style="color:#f92672">==</span> bottom_right:
+                    <span style="color:#66d9ef">continue</span>
 
-                # Find the best path to get to this point
-                neighbors = [
-                    best_paths[x + xd, y + yd]
-                    for xd, yd in ORTHAGONAL
-                    if (x + xd, y + yd) in best_paths
+                <span style="color:#75715e"># Find the best path to get to this point</span>
+                neighbors <span style="color:#f92672">=</span> [
+                    best_paths[x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd]
+                    <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> ORTHAGONAL
+                    <span style="color:#66d9ef">if</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd) <span style="color:#f92672">in</span> best_paths
                 ]
 
-                best_score, best_path = min(neighbors)
-                new_score = map[x, y] + best_score
-                new_path = [(x, y)] + best_path
+                best_score, best_path <span style="color:#f92672">=</span> min(neighbors)
+                new_score <span style="color:#f92672">=</span> map[x, y] <span style="color:#f92672">+</span> best_score
+                new_path <span style="color:#f92672">=</span> [(x, y)] <span style="color:#f92672">+</span> best_path
 
-                if (x, y) not in best_paths or new_score < best_paths[x, y][0]:
-                    best_paths[x, y] = (new_score, new_path)
-                    changed_paths += 1
+                <span style="color:#66d9ef">if</span> (x, y) <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> best_paths <span style="color:#f92672">or</span> new_score <span style="color:#f92672">&lt;</span> best_paths[x, y][<span style="color:#ae81ff">0</span>]:
+                    best_paths[x, y] <span style="color:#f92672">=</span> (new_score, new_path)
+                    changed_paths <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>
 
-        logging.info(f'Finished iteration, {changed_paths} paths changed')
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Finished iteration, {changed_paths} paths changed&#39;</span>)
 
-    return best_paths[0, 0][1]
-```
+    <span style="color:#66d9ef">return</span> best_paths[<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">1</span>]
+</code></pre></div><p>So&hellip; did that help?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 low-ceiling-simulator.py --version <span style="color:#ae81ff">3</span> part2 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">2957</span>
+<span style="color:#75715e"># time 43515557208ns / 43.52s</span>
+</code></pre></div><p>Yes&hellip; ish? We have the right answer again and it is about an order of magnitude faster. And it does run in under a minute. So that&rsquo;s probably enough to leave it.</p>
+<p>But I know we can do better. After all, there wouldn&rsquo;t happen to be an entire field dedicated to studying exactly these sorts of algorithms, now wouldn&rsquo;t there be?</p>
+<p>😄</p>
+<p>Yeah, I know. I should have just started with A*. It&rsquo;s designed exactly for this sort of thing. Let&rsquo;s start with code this time, then explain it:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-python" data-lang="python"><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">explore_astar</span>(map: Mapping[Point, int]) <span style="color:#f92672">-&gt;</span> List[Point]:
+    <span style="color:#e6db74">&#39;&#39;&#39;
+</span><span style="color:#e6db74">    Solve the problem using the A* algorithm.
+</span><span style="color:#e6db74">    &#39;&#39;&#39;</span>
 
-So... did that help?
+    <span style="color:#f92672">from</span> queue <span style="color:#f92672">import</span> PriorityQueue
 
-```bash
-$ python3 low-ceiling-simulator.py --version 3 part2 input.txt
-best_score=2957
-# time 43515557208ns / 43.52s
-```
+    width <span style="color:#f92672">=</span> max(x <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (x, _) <span style="color:#f92672">in</span> map)
+    height <span style="color:#f92672">=</span> max(y <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">for</span> (_, y) <span style="color:#f92672">in</span> map)
 
-Yes... ish? We have the right answer again and it is about an order of magnitude faster. And it does run in under a minute. So that's probably enough to leave it.
+    start <span style="color:#f92672">=</span> (<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>)
+    goal <span style="color:#f92672">=</span> (width <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>, height <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>)
 
-But I know we can do better. After all, there wouldn't happen to be an entire field dedicated to studying exactly these sorts of algorithms, now wouldn't there be?
+    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">h</span>(p):
+        <span style="color:#66d9ef">return</span> abs(goal[<span style="color:#ae81ff">0</span>] <span style="color:#f92672">-</span> p[<span style="color:#ae81ff">0</span>]) <span style="color:#f92672">+</span> abs(goal[<span style="color:#ae81ff">1</span>] <span style="color:#f92672">-</span> p[<span style="color:#ae81ff">1</span>])
 
-😄
-
-Yeah, I know. I should have just started with A*. It's designed exactly for this sort of thing. Let's start with code this time, then explain it:
-
-```python
-def explore_astar(map: Mapping[Point, int]) -> List[Point]:
-    '''
-    Solve the problem using the A* algorithm.
-    '''
-
-    from queue import PriorityQueue
-
-    width = max(x + 1 for (x, _) in map)
-    height = max(y + 1 for (_, y) in map)
-
-    start = (0, 0)
-    goal = (width - 1, height - 1)
-
-    def h(p):
-        return abs(goal[0] - p[0]) + abs(goal[1] - p[1])
-
-    sources: MutableMapping[Point, Tuple[Optional[Point], int]] = {
-        start: (None, 0)
+    sources: MutableMapping[Point, Tuple[Optional[Point], int]] <span style="color:#f92672">=</span> {
+        start: (None, <span style="color:#ae81ff">0</span>)
     }
 
-    q: PriorityQueue = PriorityQueue()
+    q: PriorityQueue <span style="color:#f92672">=</span> PriorityQueue()
 
-    q.put((0, start))
+    q<span style="color:#f92672">.</span>put((<span style="color:#ae81ff">0</span>, start))
 
-    while q:
-        logging.info(f'Queue size: {q.qsize()}')
+    <span style="color:#66d9ef">while</span> q:
+        logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Queue size: {q.qsize()}&#39;</span>)
 
-        _, current = q.get()
-        (x, y) = current
+        _, current <span style="color:#f92672">=</span> q<span style="color:#f92672">.</span>get()
+        (x, y) <span style="color:#f92672">=</span> current
 
-        if current == goal:
-            break
+        <span style="color:#66d9ef">if</span> current <span style="color:#f92672">==</span> goal:
+            <span style="color:#66d9ef">break</span>
 
-        for xd, yd in ORTHAGONAL:
-            next = (x + xd, y + yd)
-            if next not in map:
-                continue
+        <span style="color:#66d9ef">for</span> xd, yd <span style="color:#f92672">in</span> ORTHAGONAL:
+            next <span style="color:#f92672">=</span> (x <span style="color:#f92672">+</span> xd, y <span style="color:#f92672">+</span> yd)
+            <span style="color:#66d9ef">if</span> next <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> map:
+                <span style="color:#66d9ef">continue</span>
 
-            new_cost = sources[current][1] + map[current]
+            new_cost <span style="color:#f92672">=</span> sources[current][<span style="color:#ae81ff">1</span>] <span style="color:#f92672">+</span> map[current]
 
-            if next not in sources or new_cost < sources[next][1]:
-                sources[next] = (current, new_cost)
-                q.put((new_cost + h(next), next))
+            <span style="color:#66d9ef">if</span> next <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> sources <span style="color:#f92672">or</span> new_cost <span style="color:#f92672">&lt;</span> sources[next][<span style="color:#ae81ff">1</span>]:
+                sources[next] <span style="color:#f92672">=</span> (current, new_cost)
+                q<span style="color:#f92672">.</span>put((new_cost <span style="color:#f92672">+</span> h(next), next))
 
-    logging.info(f'Found solution after evaluating {len(sources)} paths')
+    logging<span style="color:#f92672">.</span>info(f<span style="color:#e6db74">&#39;Found solution after evaluating {len(sources)} paths&#39;</span>)
 
-    best_path = []
-    current = goal
+    best_path <span style="color:#f92672">=</span> []
+    current <span style="color:#f92672">=</span> goal
 
-    while current:
-        best_path.append(current)
-        current, score = sources[current]
+    <span style="color:#66d9ef">while</span> current:
+        best_path<span style="color:#f92672">.</span>append(current)
+        current, score <span style="color:#f92672">=</span> sources[current]
 
-    best_path = list(reversed(best_path))
+    best_path <span style="color:#f92672">=</span> list(reversed(best_path))
 
-    return best_path
-```
+    <span style="color:#66d9ef">return</span> best_path
+</code></pre></div><p>Okay, so the code is longer, but I don&rsquo;t think it&rsquo;s that much more confusing to read. I think the more confusing part is the guarantee that this <em>will work</em>. And that comes down to the heuristic function <code>h</code>. So long as <code>h</code> is &lsquo;admissible&rsquo; (it will never underestimate the minimum possible cost), you are guaranteed that when you find a solution, it will be optimal.</p>
+<p>And it is <em>fast</em>:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 low-ceiling-simulator.py --version <span style="color:#ae81ff">4</span> part2 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">2957</span>
+<span style="color:#75715e"># time 1903772750ns / 1.90s</span>
+</code></pre></div><p>Yeah&hellip; I probably should have just started with that. Oh, and technically all of these algorithms work on part 1 as well:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ python3 low-ceiling-simulator.py part1 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">687</span>
+<span style="color:#75715e"># time 1759175041ns / 1.76s</span>
 
-Okay, so the code is longer, but I don't think it's that much more confusing to read. I think the more confusing part is the guarantee that this *will work*. And that comes down to the heuristic function `h`. So long as `h` is 'admissible' (it will never underestimate the minimum possible cost), you are guaranteed that when you find a solution, it will be optimal. 
+$ python3 low-ceiling-simulator.py --version <span style="color:#ae81ff">2</span> part1 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">687</span>
+<span style="color:#75715e"># time 94618792ns / 0.09s</span>
 
-And it is *fast*:
+$ python3 low-ceiling-simulator.py --version <span style="color:#ae81ff">3</span> part1 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">687</span>
+<span style="color:#75715e"># time 300569292ns / 0.30s</span>
 
-```bash
-$ python3 low-ceiling-simulator.py --version 4 part2 input.txt
-best_score=2957
-# time 1903772750ns / 1.90s
-```
-
-Yeah... I probably should have just started with that. Oh, and technically all of these algorithms work on part 1 as well:
-
-```bash
-$ python3 low-ceiling-simulator.py part1 input.txt
-best_score=687
-# time 1759175041ns / 1.76s
-
-$ python3 low-ceiling-simulator.py --version 2 part1 input.txt
-best_score=687
-# time 94618792ns / 0.09s
-
-$ python3 low-ceiling-simulator.py --version 3 part1 input.txt
-best_score=687
-# time 300569292ns / 0.30s
-
-$ python3 low-ceiling-simulator.py --version 4 part1 input.txt
-best_score=687
-# time 97045500ns / 0.10s
-```
-
-Just less necessary.
-
-Journey before destination and all that. 😄</div>
-</div></div>
+$ python3 low-ceiling-simulator.py --version <span style="color:#ae81ff">4</span> part1 input.txt
+best_score<span style="color:#f92672">=</span><span style="color:#ae81ff">687</span>
+<span style="color:#75715e"># time 97045500ns / 0.10s</span>
+</code></pre></div><p>Just less necessary.</p>
+<p>Journey before destination and all that. 😄</p></div>
 </article></div>
         </div><footer id="page-footer" role="contentinfo">
     <nav id="footer-navigation" role="navigation" class="ribbon">
