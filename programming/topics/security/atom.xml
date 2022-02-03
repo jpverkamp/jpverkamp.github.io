@@ -1,103 +1,29 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-  <channel>
-    <title>Security on jverkamp.com</title>
-    <link>https://blog.jverkamp.com/programming/topics/security/</link>
-    <description>Recent content in Security on jverkamp.com</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/topics/security/atom.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>SSRF Protection in Rails</title>
-      <link>https://blog.jverkamp.com/2020/06/30/ssrf-protection-in-rails/</link>
-      <pubDate>Tue, 30 Jun 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2020/06/30/ssrf-protection-in-rails/</guid>
-      <description>&lt;p&gt;One of the more subtle bugs that a lot of companies miss is Server Side Request Forgery (SSRF). Like it&amp;rsquo;s cousin CSRF (cross-site request forgery), SSRF involves carefully crafting a request that runs in a way that the original developers didn&amp;rsquo;t expect to do things that shouldn&amp;rsquo;t be done. In the case of CSRF, one site is making a request on behalf of another in a user&amp;rsquo;s browser (cross-site), but in SSRF, a request is being made by a server on behalf of a client, but you can trick it into making a request that wasn&amp;rsquo;t intended.&lt;/p&gt;
-&lt;p&gt;For a perhaps more obvious example, consider a website with a service that will render webpages as preview images&amp;ndash;consider sharing links on a social network. A user makes a request such as &lt;code&gt;/render?url=https://www.google.com&lt;/code&gt;. This goes to the server, which will then fetch &lt;a href=&#34;https://www.google.com&#34;&gt;https://www.google.com&lt;/a&gt;, render the page to a screenshot, and then return that as a thumbnail.&lt;/p&gt;
-&lt;p&gt;This seems like rather useful functionality, but what if instead, the user gives the url: &lt;code&gt;/render?url=https://secret-internal-site.company.com&lt;/code&gt;. Normally, &lt;code&gt;company.com&lt;/code&gt; would be an internal only domain that cannot be viewed by users, but in this case&amp;ndash;the server is within the corporate network. Off the server goes, helpfully taking and returning a screenshot. Another option&amp;ndash;if you&amp;rsquo;re hosted on AWS&amp;ndash;is the AWS &lt;a href=&#34;https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html&#34;&gt;metadata endpoint&lt;/a&gt;: &lt;code&gt;http://169.254.169.254/latest/meta-data/&lt;/code&gt;. All sorts of interesting private things there. Or even more insidious, &lt;code&gt;/render?url=file:///etc/password&lt;/code&gt;. That shouldn&amp;rsquo;t work in most cases, since most libraries know better than to rener &lt;code&gt;file://&lt;/code&gt; protocol URLs, but&amp;hellip; not always!&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Rack::Cors Configuration Tricks</title>
-      <link>https://blog.jverkamp.com/2020/01/16/rackcors-configuration-tricks/</link>
-      <pubDate>Thu, 16 Jan 2020 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2020/01/16/rackcors-configuration-tricks/</guid>
-      <description>&lt;p&gt;&lt;a href=&#34;https://github.com/cyu/rack-cors&#34;&gt;cyu&amp;rsquo;s Rack::Cors middleware&lt;/a&gt; is rather handy if want to control your &lt;a href=&#34;https://en.wikipedia.org/wiki/CORS&#34;&gt;CORS&lt;/a&gt; (Cross-Origin Resource Sharing) settings in a Ruby-on-Rails project. Previously, there was a fairly major issue where &lt;code&gt;:credentials =&amp;gt; true&lt;/code&gt; was the default (which you generally do not want), but there were also some more complicated tweaks that I wanted to make.&lt;/p&gt;
-&lt;p&gt;One problem I recently had to deal with was wanting to:&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;Allow CORS connections from arbitrary domains (this site functions as an API)&lt;/li&gt;
-&lt;li&gt;Do not allow CORS from http domains at all&lt;/li&gt;
-&lt;li&gt;Only allow cookies (&lt;code&gt;Access-Control-Allow-Credentials&lt;/code&gt;) to be sent for sibling subdomains&lt;/li&gt;
-&lt;li&gt;Prevent cookies from being sent from specific sibling subdomains (that are actually run by a third party)&lt;/li&gt;
-&lt;li&gt;On development (non-production) versions of the site, allow credentials from localhost&lt;/li&gt;
-&lt;/ul&gt;</description>
-    </item>
-    
-    <item>
-      <title>Prevent JavaScript links by parsing URLs</title>
-      <link>https://blog.jverkamp.com/2019/05/02/prevent-javascript-links-by-parsing-urls/</link>
-      <pubDate>Thu, 02 May 2019 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2019/05/02/prevent-javascript-links-by-parsing-urls/</guid>
-      <description>&lt;p&gt;If you have a website that allows users to submit URLs, one of the (many many) things people will try to do to break your site is to submit URLs that use the &lt;code&gt;javascript:&lt;/code&gt; protocol (rather than the more expected &lt;code&gt;http:&lt;/code&gt; or &lt;code&gt;https:&lt;/code&gt;). This is almost never something that you want, since it allows users to submit essentially arbitrary code that other users will run on click in the context of your domain (&lt;a href=&#34;https://en.wikipedia.org/wiki/same%20origin%20policy&#34;&gt;same origin policy&lt;/a&gt;).&lt;/p&gt;
-&lt;p&gt;So how do you fix it?&lt;/p&gt;
-&lt;p&gt;First thought would be to try to check the protocol:&lt;/p&gt;
-&lt;div class=&#34;highlight&#34;&gt;&lt;pre style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4&#34;&gt;&lt;code class=&#34;language-javascript&#34; data-lang=&#34;javascript&#34;&gt;&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;safe_url&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; (&lt;span style=&#34;color:#a6e22e&#34;&gt;url&lt;/span&gt;) =&amp;gt; &lt;span style=&#34;color:#f92672&#34;&gt;!&lt;/span&gt;&lt;span style=&#34;color:#a6e22e&#34;&gt;url&lt;/span&gt;.&lt;span style=&#34;color:#a6e22e&#34;&gt;match&lt;/span&gt;(&lt;span style=&#34;color:#e6db74&#34;&gt;/^javascript:/&lt;/span&gt;)
-[Function&lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;safe_url&lt;/span&gt;]
-
-&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;safe_url&lt;/span&gt;(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;http://www.example.com&amp;#39;&lt;/span&gt;)
-&lt;span style=&#34;color:#66d9ef&#34;&gt;true&lt;/span&gt;
-
-&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;safe_url&lt;/span&gt;(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;javascript:alert(1)&amp;#39;&lt;/span&gt;)
-&lt;span style=&#34;color:#66d9ef&#34;&gt;false&lt;/span&gt;
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
-    </item>
-    
-    <item>
-      <title>Forcing Secure Cookies Behind an ELB in Ruby/Rails</title>
-      <link>https://blog.jverkamp.com/2019/04/30/forcing-secure-cookies-behind-an-elb-in-ruby/rails/</link>
-      <pubDate>Tue, 30 Apr 2019 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2019/04/30/forcing-secure-cookies-behind-an-elb-in-ruby/rails/</guid>
-      <description>&lt;p&gt;As part of general security good practices, you should always (whenever possible):&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;use HTTPS to serve all requests&lt;/li&gt;
-&lt;li&gt;serve redirects to upgrade HTTP requests to HTTPS&lt;/li&gt;
-&lt;li&gt;set session cookies to &lt;code&gt;secure&lt;/code&gt; and &lt;code&gt;http_only&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;enable HTTP Strict Transport Security (&lt;code&gt;HSTS&lt;/code&gt;)&lt;/li&gt;
-&lt;/ul&gt;</description>
-    </item>
-    
-    <item>
-      <title>A Quick Look at RC4</title>
-      <link>https://blog.jverkamp.com/2015/04/14/a-quick-look-at-rc4/</link>
-      <pubDate>Tue, 14 Apr 2015 00:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2015/04/14/a-quick-look-at-rc4/</guid>
-      <description>&lt;p&gt;In cryptography work, &lt;a href=&#34;https://en.wikipedia.org/wiki/RC4&#34;&gt;RC4&lt;/a&gt; (Rivest Cipher 4) is well known as both one of the easiest to implement and fastest to run &lt;a href=&#34;https://en.wikipedia.org/wiki/symmetric%20encryption&#34;&gt;symmetric encryption&lt;/a&gt; algorithms. Unfortunately, over time there have been a number of attacks on RC4, both in poorly written protocols (such as in the case of &lt;a href=&#34;https://en.wikipedia.org/wiki/WEP&#34;&gt;WEP&lt;/a&gt;) or statistical attacks against the protocol itself.&lt;/p&gt;
-&lt;p&gt;Still, for how well it formed, it&amp;rsquo;s an amazingly simple algorithm, so I decided to try my hand at implementing it.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>CSRF protection injection with jQuery and Zend</title>
-      <link>https://blog.jverkamp.com/2014/01/13/csrf-protection-injection-with-jquery-and-zend/</link>
-      <pubDate>Mon, 13 Jan 2014 14:00:24 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2014/01/13/csrf-protection-injection-with-jquery-and-zend/</guid>
-      <description>&lt;p&gt;&lt;a href=&#34;https://en.wikipedia.org/wiki/Csrf&#34;&gt;Cross-site request forgery&lt;/a&gt; attacks are among the most common vulnerabilities against websites, listed as &lt;a href=&#34;https://www.owasp.org/index.php/Top_10_2013-A8-Cross-Site_Request_Forgery_(CSRF)&#34;&gt;number 8&lt;/a&gt; on &lt;a href=&#34;https://www.owasp.org/index.php/Top_10_2013-Top_10&#34;&gt;OWASP&amp;rsquo;s 2013 Top 10 list&lt;/a&gt;.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title>Scanning for DNS resolvers</title>
-      <link>https://blog.jverkamp.com/2013/01/31/scanning-for-dns-resolvers/</link>
-      <pubDate>Thu, 31 Jan 2013 14:00:00 +0000</pubDate>
-      
-      <guid>https://blog.jverkamp.com/2013/01/31/scanning-for-dns-resolvers/</guid>
-      <description>&lt;p&gt;For a research project I&amp;rsquo;m working on, it has become necessary to scan potentially large &lt;a href=&#34;https://en.wikipedia.org/wiki/Cidr&#34;&gt;IPv4 prefixes&lt;/a&gt; in order to find any &lt;a href=&#34;https://en.wikipedia.org/wiki/DNS%20resolver&#34;&gt;DNS revolvers&lt;/a&gt; that I can and classify them as either open (accepting queries from anyone) or closed.&lt;/p&gt;
-&lt;p&gt;Disclaimer: This is a form of &lt;a href=&#34;https://en.wikipedia.org/wiki/port%20scanning&#34;&gt;port scanning&lt;/a&gt; and thus has associated ethical and legal considerations. Use it at your own risk. &lt;/p&gt;
-&lt;p&gt;This project is available on GitHub: &lt;a href=&#34;https://github.com/jpverkamp/dnsscan&#34; title=&#34;GitHub: jpverkamp: dnsscan&#34;&gt;jpverkamp/dnsscan&lt;/a&gt;&lt;/p&gt;</description>
-    </item>
-    
-  </channel>
-</rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Security on jverkamp.com</title><link>https://blog.jverkamp.com/programming/topics/security/</link><description>Recent content in Security on jverkamp.com</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/topics/security/atom.xml" rel="self" type="application/rss+xml"/><item><title>SSRF Protection in Rails</title><link>https://blog.jverkamp.com/2020/06/30/ssrf-protection-in-rails/</link><pubDate>Tue, 30 Jun 2020 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2020/06/30/ssrf-protection-in-rails/</guid><description>&lt;p>One of the more subtle bugs that a lot of companies miss is Server Side Request Forgery (SSRF). Like it&amp;rsquo;s cousin CSRF (cross-site request forgery), SSRF involves carefully crafting a request that runs in a way that the original developers didn&amp;rsquo;t expect to do things that shouldn&amp;rsquo;t be done. In the case of CSRF, one site is making a request on behalf of another in a user&amp;rsquo;s browser (cross-site), but in SSRF, a request is being made by a server on behalf of a client, but you can trick it into making a request that wasn&amp;rsquo;t intended.&lt;/p>
+&lt;p>For a perhaps more obvious example, consider a website with a service that will render webpages as preview images&amp;ndash;consider sharing links on a social network. A user makes a request such as &lt;code>/render?url=https://www.google.com&lt;/code>. This goes to the server, which will then fetch &lt;a href="https://www.google.com">https://www.google.com&lt;/a>, render the page to a screenshot, and then return that as a thumbnail.&lt;/p>
+&lt;p>This seems like rather useful functionality, but what if instead, the user gives the url: &lt;code>/render?url=https://secret-internal-site.company.com&lt;/code>. Normally, &lt;code>company.com&lt;/code> would be an internal only domain that cannot be viewed by users, but in this case&amp;ndash;the server is within the corporate network. Off the server goes, helpfully taking and returning a screenshot. Another option&amp;ndash;if you&amp;rsquo;re hosted on AWS&amp;ndash;is the AWS &lt;a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html">metadata endpoint&lt;/a>: &lt;code>http://169.254.169.254/latest/meta-data/&lt;/code>. All sorts of interesting private things there. Or even more insidious, &lt;code>/render?url=file:///etc/password&lt;/code>. That shouldn&amp;rsquo;t work in most cases, since most libraries know better than to rener &lt;code>file://&lt;/code> protocol URLs, but&amp;hellip; not always!&lt;/p></description></item><item><title>Rack::Cors Configuration Tricks</title><link>https://blog.jverkamp.com/2020/01/16/rackcors-configuration-tricks/</link><pubDate>Thu, 16 Jan 2020 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2020/01/16/rackcors-configuration-tricks/</guid><description>&lt;p>&lt;a href="https://github.com/cyu/rack-cors">cyu&amp;rsquo;s Rack::Cors middleware&lt;/a> is rather handy if want to control your &lt;a href="https://en.wikipedia.org/wiki/CORS">CORS&lt;/a> (Cross-Origin Resource Sharing) settings in a Ruby-on-Rails project. Previously, there was a fairly major issue where &lt;code>:credentials =&amp;gt; true&lt;/code> was the default (which you generally do not want), but there were also some more complicated tweaks that I wanted to make.&lt;/p>
+&lt;p>One problem I recently had to deal with was wanting to:&lt;/p>
+&lt;ul>
+&lt;li>Allow CORS connections from arbitrary domains (this site functions as an API)&lt;/li>
+&lt;li>Do not allow CORS from http domains at all&lt;/li>
+&lt;li>Only allow cookies (&lt;code>Access-Control-Allow-Credentials&lt;/code>) to be sent for sibling subdomains&lt;/li>
+&lt;li>Prevent cookies from being sent from specific sibling subdomains (that are actually run by a third party)&lt;/li>
+&lt;li>On development (non-production) versions of the site, allow credentials from localhost&lt;/li>
+&lt;/ul></description></item><item><title>Prevent JavaScript links by parsing URLs</title><link>https://blog.jverkamp.com/2019/05/02/prevent-javascript-links-by-parsing-urls/</link><pubDate>Thu, 02 May 2019 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2019/05/02/prevent-javascript-links-by-parsing-urls/</guid><description>&lt;p>If you have a website that allows users to submit URLs, one of the (many many) things people will try to do to break your site is to submit URLs that use the &lt;code>javascript:&lt;/code> protocol (rather than the more expected &lt;code>http:&lt;/code> or &lt;code>https:&lt;/code>). This is almost never something that you want, since it allows users to submit essentially arbitrary code that other users will run on click in the context of your domain (&lt;a href="https://en.wikipedia.org/wiki/same%20origin%20policy">same origin policy&lt;/a>).&lt;/p>
+&lt;p>So how do you fix it?&lt;/p>
+&lt;p>First thought would be to try to check the protocol:&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-javascript" data-lang="javascript">&lt;span style="color:#f92672">&amp;gt;&lt;/span> &lt;span style="color:#a6e22e">safe_url&lt;/span> &lt;span style="color:#f92672">=&lt;/span> (&lt;span style="color:#a6e22e">url&lt;/span>) =&amp;gt; &lt;span style="color:#f92672">!&lt;/span>&lt;span style="color:#a6e22e">url&lt;/span>.&lt;span style="color:#a6e22e">match&lt;/span>(&lt;span style="color:#e6db74">/^javascript:/&lt;/span>)
+[Function&lt;span style="color:#f92672">:&lt;/span> &lt;span style="color:#a6e22e">safe_url&lt;/span>]
+&lt;span style="color:#f92672">&amp;gt;&lt;/span> &lt;span style="color:#a6e22e">safe_url&lt;/span>(&lt;span style="color:#e6db74">&amp;#39;http://www.example.com&amp;#39;&lt;/span>)
+&lt;span style="color:#66d9ef">true&lt;/span>
+&lt;span style="color:#f92672">&amp;gt;&lt;/span> &lt;span style="color:#a6e22e">safe_url&lt;/span>(&lt;span style="color:#e6db74">&amp;#39;javascript:alert(1)&amp;#39;&lt;/span>)
+&lt;span style="color:#66d9ef">false&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div></description></item><item><title>Forcing Secure Cookies Behind an ELB in Ruby/Rails</title><link>https://blog.jverkamp.com/2019/04/30/forcing-secure-cookies-behind-an-elb-in-ruby/rails/</link><pubDate>Tue, 30 Apr 2019 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2019/04/30/forcing-secure-cookies-behind-an-elb-in-ruby/rails/</guid><description>&lt;p>As part of general security good practices, you should always (whenever possible):&lt;/p>
+&lt;ul>
+&lt;li>use HTTPS to serve all requests&lt;/li>
+&lt;li>serve redirects to upgrade HTTP requests to HTTPS&lt;/li>
+&lt;li>set session cookies to &lt;code>secure&lt;/code> and &lt;code>http_only&lt;/code>&lt;/li>
+&lt;li>enable HTTP Strict Transport Security (&lt;code>HSTS&lt;/code>)&lt;/li>
+&lt;/ul></description></item><item><title>A Quick Look at RC4</title><link>https://blog.jverkamp.com/2015/04/14/a-quick-look-at-rc4/</link><pubDate>Tue, 14 Apr 2015 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2015/04/14/a-quick-look-at-rc4/</guid><description>&lt;p>In cryptography work, &lt;a href="https://en.wikipedia.org/wiki/RC4">RC4&lt;/a> (Rivest Cipher 4) is well known as both one of the easiest to implement and fastest to run &lt;a href="https://en.wikipedia.org/wiki/symmetric%20encryption">symmetric encryption&lt;/a> algorithms. Unfortunately, over time there have been a number of attacks on RC4, both in poorly written protocols (such as in the case of &lt;a href="https://en.wikipedia.org/wiki/WEP">WEP&lt;/a>) or statistical attacks against the protocol itself.&lt;/p>
+&lt;p>Still, for how well it formed, it&amp;rsquo;s an amazingly simple algorithm, so I decided to try my hand at implementing it.&lt;/p></description></item><item><title>CSRF protection injection with jQuery and Zend</title><link>https://blog.jverkamp.com/2014/01/13/csrf-protection-injection-with-jquery-and-zend/</link><pubDate>Mon, 13 Jan 2014 14:00:24 +0000</pubDate><guid>https://blog.jverkamp.com/2014/01/13/csrf-protection-injection-with-jquery-and-zend/</guid><description>&lt;p>&lt;a href="https://en.wikipedia.org/wiki/Csrf">Cross-site request forgery&lt;/a> attacks are among the most common vulnerabilities against websites, listed as &lt;a href="https://www.owasp.org/index.php/Top_10_2013-A8-Cross-Site_Request_Forgery_(CSRF)">number 8&lt;/a> on &lt;a href="https://www.owasp.org/index.php/Top_10_2013-Top_10">OWASP&amp;rsquo;s 2013 Top 10 list&lt;/a>.&lt;/p></description></item><item><title>Scanning for DNS resolvers</title><link>https://blog.jverkamp.com/2013/01/31/scanning-for-dns-resolvers/</link><pubDate>Thu, 31 Jan 2013 14:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2013/01/31/scanning-for-dns-resolvers/</guid><description>&lt;p>For a research project I&amp;rsquo;m working on, it has become necessary to scan potentially large &lt;a href="https://en.wikipedia.org/wiki/Cidr">IPv4 prefixes&lt;/a> in order to find any &lt;a href="https://en.wikipedia.org/wiki/DNS%20resolver">DNS revolvers&lt;/a> that I can and classify them as either open (accepting queries from anyone) or closed.&lt;/p>
+&lt;p>Disclaimer: This is a form of &lt;a href="https://en.wikipedia.org/wiki/port%20scanning">port scanning&lt;/a> and thus has associated ethical and legal considerations. Use it at your own risk. &lt;/p>
+&lt;p>This project is available on GitHub: &lt;a href="https://github.com/jpverkamp/dnsscan" title="GitHub: jpverkamp: dnsscan">jpverkamp/dnsscan&lt;/a>&lt;/p></description></item></channel></rss>
