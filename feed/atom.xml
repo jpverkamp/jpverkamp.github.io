@@ -1,4 +1,102 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>jverkamp.com</title><link>https://blog.jverkamp.com/</link><description>Recent content on jverkamp.com</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Sun, 20 Feb 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml"/><item><title>Schitt's Creek: Season 4</title><link>https://blog.jverkamp.com/2022/02/20/schitts-creek-season-4/</link><pubDate>Sun, 20 Feb 2022 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2022/02/20/schitts-creek-season-4/</guid><description>&lt;figure class="cover-image">&lt;img src="https://blog.jverkamp.com/embeds/tv/schitts-creek-season-4.jpg"/>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>jverkamp.com</title><link>https://blog.jverkamp.com/</link><description>Recent content on jverkamp.com</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Wed, 23 Feb 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml"/><item><title>Runelang: Language Specification</title><link>https://blog.jverkamp.com/2022/02/23/runelang-language-specification/</link><pubDate>Wed, 23 Feb 2022 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2022/02/23/runelang-language-specification/</guid><description>&lt;p>&lt;a href="https://blog.jverkamp.com/2021/01/26/a-dsl-for-rendering-magic-circles-and-runes/">Previously&lt;/a>, I wrote a post about making a DSL in Ruby that could render magic circles/runes. It worked pretty well. I could turn things like this:&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-ruby" data-lang="ruby">rune &lt;span style="color:#66d9ef">do&lt;/span>
+scale &lt;span style="color:#ae81ff">0&lt;/span>&lt;span style="color:#f92672">.&lt;/span>&lt;span style="color:#ae81ff">9&lt;/span> &lt;span style="color:#66d9ef">do&lt;/span>
+circle
+polygon &lt;span style="color:#ae81ff">7&lt;/span>
+star &lt;span style="color:#ae81ff">14&lt;/span>, &lt;span style="color:#ae81ff">3&lt;/span>
+star &lt;span style="color:#ae81ff">7&lt;/span>, &lt;span style="color:#ae81ff">2&lt;/span>
+children &lt;span style="color:#ae81ff">7&lt;/span>, &lt;span style="color:#e6db74">scale&lt;/span>: &lt;span style="color:#ae81ff">1&lt;/span>&lt;span style="color:#f92672">/&lt;/span>&lt;span style="color:#ae81ff">8&lt;/span>r, &lt;span style="color:#e6db74">offset&lt;/span>: &lt;span style="color:#ae81ff">1&lt;/span> &lt;span style="color:#66d9ef">do&lt;/span> &lt;span style="color:#f92672">|&lt;/span>i&lt;span style="color:#f92672">|&lt;/span>
+circle
+invert &lt;span style="color:#66d9ef">do&lt;/span>
+text (&lt;span style="color:#ae81ff">0x2641&lt;/span> &lt;span style="color:#f92672">+&lt;/span> i)&lt;span style="color:#f92672">.&lt;/span>chr &lt;span style="color:#66d9ef">Encoding&lt;/span>&lt;span style="color:#f92672">::&lt;/span>&lt;span style="color:#66d9ef">UTF_8&lt;/span>
+&lt;span style="color:#66d9ef">end&lt;/span>
+&lt;span style="color:#66d9ef">end&lt;/span>
+&lt;span style="color:#66d9ef">end&lt;/span>
+scale &lt;span style="color:#ae81ff">0&lt;/span>&lt;span style="color:#f92672">.&lt;/span>&lt;span style="color:#ae81ff">15&lt;/span> &lt;span style="color:#66d9ef">do&lt;/span>
+translate &lt;span style="color:#e6db74">x&lt;/span>: &lt;span style="color:#f92672">-&lt;/span>&lt;span style="color:#ae81ff">2&lt;/span> &lt;span style="color:#66d9ef">do&lt;/span> circle; moon &lt;span style="color:#ae81ff">0&lt;/span>&lt;span style="color:#f92672">.&lt;/span>&lt;span style="color:#ae81ff">45&lt;/span> &lt;span style="color:#66d9ef">end&lt;/span>
+circle
+translate &lt;span style="color:#e6db74">x&lt;/span>: &lt;span style="color:#ae81ff">2&lt;/span> &lt;span style="color:#66d9ef">do&lt;/span> circle; moon &lt;span style="color:#ae81ff">0&lt;/span>&lt;span style="color:#f92672">.&lt;/span>&lt;span style="color:#ae81ff">55&lt;/span> &lt;span style="color:#66d9ef">end&lt;/span>
+&lt;span style="color:#66d9ef">end&lt;/span>
+&lt;span style="color:#66d9ef">end&lt;/span>
+&lt;/code>&lt;/pre>&lt;/div>&lt;p>Into this:&lt;/p>
+&lt;img src="https://blog.jverkamp.com/embeds/2022/old-astrology-and-moons.svg" />
+&lt;p>But&amp;hellip; I decided to completely rewrite it. Now it&amp;rsquo;s an entirely separate language:&lt;/p>
+&lt;script defer type="module">
+import { render } from '/embeds/2022/runelang/runelang/main.js'
+import logging from '/embeds/2022/runelang/lib/logging.js'
+const log = logging.get("system")
+let elInput = document.querySelector('[data-input]')
+let elOutput = document.querySelector('[data-output]')
+let elLog = document.querySelector('[data-log]')
+elInput.value = `
+define offsetmoon(x, phase) {
+translate(x: x) {
+circle
+fill("black") moon(phase)
+}
+}
+rune {
+scale(0.9) {
+circle
+polygon(7)
+star(14, 3)
+star(7, 2)
+radial(scale: 1/8, rotate: true) [
+circle
+invert character(0x2640 + i)
+for i in 1..7
+]
+}
+scale(0.15) stroke(2) {
+circle
+offsetmoon(-2, 0.55)
+offsetmoon( 2, -0.55)
+}
+}
+`
+logging.register((msg) => {
+let node = document.createElement('li')
+node.innerText = msg
+elLog.prepend(node)
+})
+logging.setMode('ERROR')
+function doRender() {
+elLog.innerHTML = ''
+let input = elInput.value
+try {
+let svg = render(input)
+elOutput.innerHTML = svg
+log.awesome('IT WORKED!')
+} catch (exception) {
+console.log(exception)
+}
+}
+function debounce(f, timeout = 500) {
+let timer
+return (...args) => {
+clearTimeout(timer)
+timer = setTimeout(() => f.apply(this, args), timeout)
+}
+}
+document.addEventListener('keyup', debounce(doRender))
+doRender()
+&lt;/script>
+&lt;style>
+textarea[data-input],
+div[data-output] {
+width: 80%;
+height: 600px;
+padding: 1em;
+}
+td {
+width: 45%;
+vertical-align: top;
+}
+&lt;/style>
+&lt;div data-output>&lt;/div>
+&lt;textarea data-input>&lt;/textarea>
+&lt;h3>Log (most recent messages first):&lt;/h2>
+&lt;ul data-log>&lt;/ul></description></item><item><title>Schitt's Creek: Season 4</title><link>https://blog.jverkamp.com/2022/02/20/schitts-creek-season-4/</link><pubDate>Sun, 20 Feb 2022 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2022/02/20/schitts-creek-season-4/</guid><description>&lt;figure class="cover-image">&lt;img src="https://blog.jverkamp.com/embeds/tv/schitts-creek-season-4.jpg"/>
 &lt;/figure>
 &lt;p>Death pregnancy; the Rose children growing up, Johnny finally has something to do, and Moira is&amp;hellip; Moira. Oy&amp;ndash;ra.&lt;/p>
 &lt;p>I&amp;rsquo;m a bit amused that we got the pregnancy storyline &lt;span class="spoiler">without Jocelyn's actress even being pregnant IRL; I feel like that's the more common reason to work in something like this. It works though!&lt;/span>
@@ -135,5 +233,4 @@ And then you layer all the weight of the greater MCU on top of it.</description>
 &lt;h4 id="part-1-given-a-9-1-hahahugoshortcode-s0-hbhb-update-function-take-the-pixel-and-8-surrounding-pixels-as-a-9-bit-index-into-the-function-and-a-binary-image-apply-the-function-twice-and-count-the-number-of-lit-pixels-assume-that-the-canvas-is-infinite">&lt;strong>Part 1:&lt;/strong> Given a 9-&amp;gt;1 &lt;a href="https://en.wikipedia.org/wiki/cellular%20automota">cellular automota&lt;/a> update function (take the pixel and 8 surrounding pixels as a 9-bit index into the function) and a binary image, apply the function twice and count the number of &amp;lsquo;lit&amp;rsquo; pixels. Assume that the canvas is infinite.&lt;/h4></description></item><item><title>Mr. Robot: Season 3</title><link>https://blog.jverkamp.com/2021/12/20/mr.-robot-season-3/</link><pubDate>Mon, 20 Dec 2021 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/20/mr.-robot-season-3/</guid><description>&lt;figure class="cover-image">&lt;img src="https://blog.jverkamp.com/embeds/tv/mr.robot-season-3.jpg"/>
 &lt;/figure>
 &lt;p>Oh boy. This one really dug into the darker parts of character growth. Elliot finds new ways to be even crazier, Angela is&amp;hellip; off the rails entirely, Moustache Guy (Bobby Cannavale/Irvin) is awesome, and the entire plot of Darlene, Dominque, and the FBI was fascinating to watch.&lt;/p>
-&lt;p>I keep being pleasantly surprised with where this show keeps going. I wouldn&amp;rsquo;t have expected them to make it past the first season plotwise&amp;hellip; yet here we are. I&amp;rsquo;m looking forward to where we can go from here!&lt;/p></description></item><item><title>AoC 2021 Day 19: Point Matchinator</title><link>https://blog.jverkamp.com/2021/12/19/aoc-2021-day-19-point-matchinator/</link><pubDate>Sun, 19 Dec 2021 00:00:05 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/19/aoc-2021-day-19-point-matchinator/</guid><description>&lt;h3 id="source-snailfishhttpsadventofcodecom2021day19">Source: &lt;a href="https://adventofcode.com/2021/day/19">Snailfish&lt;/a>&lt;/h3>
-&lt;h4 id="part-1-you-will-be-given-a-series-of-scanners-each-of-which-will-tell-you-the-location-from-their-point-of-view-of-a-series-of-beacons-each-scanner-may-be-flipped-or-rotated-in-increments-of-90-degrees-in-any-direction-determine-where-each-scanner-and-beacon-is-by-overlaying-the-maps-with-at-least-pairwise-12-matches">&lt;strong>Part 1:&lt;/strong> You will be given a series of Scanners, each of which will tell you the location (from their point of view) of a series of Beacons. Each Scanner may be flipped or rotated in increments of 90 degrees in any direction. Determine where each Scanner and Beacon is by overlaying the maps (with at least pairwise 12 matches).&lt;/h4></description></item></channel></rss>
+&lt;p>I keep being pleasantly surprised with where this show keeps going. I wouldn&amp;rsquo;t have expected them to make it past the first season plotwise&amp;hellip; yet here we are. I&amp;rsquo;m looking forward to where we can go from here!&lt;/p></description></item></channel></rss>
