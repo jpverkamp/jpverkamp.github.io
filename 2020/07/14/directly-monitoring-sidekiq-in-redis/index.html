@@ -1,187 +1,71 @@
-<!doctype html><html>
-<head>
-<title>Directly monitoring Sidekiq in Redis – jverkamp.com</title>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous>
-<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet>
-<link rel=stylesheet href=/custom.css defer>
-<script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script>
-</head>
-<body>
-<div id=wrapper><header id=page-header role=banner>
-<h1><a href=/>JP's Blog</a></h1>
-<ul id=page-header-links>
-<li>
-<a href=https://github.com/jpverkamp>GitHub</a> *
+<!doctype html><html><head><title>Directly monitoring Sidekiq in Redis – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
 <a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
-<a href=/resume>Resume</a>
-</li>
-<li>
-<form action=//www.google.com/search method=get onsubmit="(function(a){a.q.value='site:blog.jverkamp.com '+a.qfront.value})(this)" class="navbar-form navbar-right" role=search _lpchecked=1>
-<div class=form-group>
-<input name=q type=hidden>
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
 <input name=qfront type=text class=form-control placeholder=Search>
-<button type=submit class="btn btn-default" value=Search>Search</button>
-</div>
-</form>
-</li>
-</ul>
-<nav id=header-navigation role=navigation class=ribbon>
-<ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li>
-</ul>
-</nav>
-</header>
-<div id=page-content-wrapper>
-<div id=page-content><article>
-<header>
-<h1 class=entry-title>Directly monitoring Sidekiq in Redis</h1>
-<div class=entry-meta><span class=entry-date>2020-07-14</span>
-</div>
-<div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li>
-<a class=taxonomy-key href=/programming/languages/>Languages</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2020/07/07/a-smart-mysql-wrapper/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/python>Python</a><a href=https://blog.jverkamp.com/2020/07/16/an-spf-dns-server/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2020/06/30/ssrf-protection-in-rails/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/ruby>Ruby</a><a href=https://blog.jverkamp.com/2021/01/26/a-dsl-for-rendering-magic-circles-and-runes/ class=next-link></a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/topics/>Topics</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2020/06/10/observation-server/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/flask>Flask</a><a href=https://blog.jverkamp.com/2022/02/01/a-simple-flask-logging/echo-server/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/infrastucture>Infrastucture</a></li><li><a href=https://blog.jverkamp.com/2015/07/16/automagically-storing-python-objects-in-redis/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/redis>Redis</a></li><li><a class=taxonomy-value href=/programming/topics/sidekiq>Sidekiq</a></li></ul>
-</li><li><a class=taxonomy-key href=/programming>programming</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2020/07/07/a-smart-mysql-wrapper/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2020/07/16/an-spf-dns-server/ class=next-link>Next</a></ul>
-</li><li><a class=taxonomy-key href=/>All Posts</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2020/07/14/fables-vol.-9-sons-of-empire/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2020/07/16/fullmetal-alchemist-vol.-24/ class=next-link>Next</a></ul>
-</li></ul>
-</div>
-</div>
-</header>
-<div class=entry-content><p>Another thing that came up recently: we have many (many) <a href=https://github.com/mperham/sidekiq>sidekiq</a> queues. Each has their own admin interface, but sometimes you just want all of the information in one place. Of course, you could bookmark all of the pages. Or make a single page with a lot of frames (remember <a href=https://en.wikipedia.org/wiki/HTML%20frames>HTML frames</a>?). Or use their API. But where&rsquo;s the fun in that? Instead, let&rsquo;s dig straight into the redis backend and see what we can see!</p>
-<p>First, let&rsquo;s find the queues. <a href=https://stackoverflow.com/questions/46407772/what-is-the-redis-key-for-a-queue-in-sidekiq>Google + StackOverflow to the rescue</a><sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>. The queues are (by default), stored in <code>queue:default</code>.</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ redis-cli
-
-&gt; get queue:default
-<span style=color:#f92672>(</span>nil<span style=color:#f92672>)</span>
-</code></pre></div><p>Hmm. There&rsquo;s a comment on the same post that actually answers that question. It turns out, I have <del>one</del> <del>two</del> three problems:</p>
-<ol>
-<li>If a queue is empty, the key will not currently exist</li>
-<li>If you have multiple queues/named queues, they won&rsquo;t be named <code>default</code></li>
-<li>If you used a prefix, that will be part of the queue as well</li>
-</ol>
-<p>So&mldr; let&rsquo;s look for a more general solution. It turns out there will always be a list of queues stored at <code>queues</code> or <code>{prefix}:queues</code>. So we can start with:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>&gt; keys *queues*
-1<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;myservice:queues&#34;</span>
-
-&gt; smembers myservice:queues
-1<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;high&#34;</span>
-2<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;low&#34;</span>
-3<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;critical&#34;</span>
-4<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;medium&#34;</span>
-
-&gt; llen myservice:queue:low
-<span style=color:#f92672>(</span>integer<span style=color:#f92672>)</span> <span style=color:#ae81ff>2</span>
-</code></pre></div><p>Nice!</p>
-<p>That&rsquo;s all the information I needed for now. Let&rsquo;s throw together a quick UI. Now, I really should do this in Ruby, since sidekiq is a Ruby thing, and I&rsquo;ve started exploring <a href=http://sinatrarb.com/>Sinatra</a> as a really light weight server language. But for now, let&rsquo;s go with what I do best for lightweight services: <a href=https://flask.palletsprojects.com/en/1.1.x/>Flask</a></p>
-<p>I&rsquo;m going to take what I found about the Redis/Sidekiq earlier and connect to multiple Redii<sup id=fnref:2><a href=#fn:2 class=footnote-ref role=doc-noteref>2</a></sup> and pull out all their data:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-python data-lang=python>redii <span style=color:#f92672>=</span> {
-    url: redis<span style=color:#f92672>.</span>Redis(
-        host <span style=color:#f92672>=</span> url<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;:&#39;</span>)[<span style=color:#ae81ff>0</span>],
-        port <span style=color:#f92672>=</span> url<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;:&#39;</span>)[<span style=color:#ae81ff>1</span>],
-        decode_responses<span style=color:#f92672>=</span><span style=color:#66d9ef>True</span>,
-    )
-    <span style=color:#66d9ef>for</span> url <span style=color:#f92672>in</span> config<span style=color:#f92672>.</span>get(<span style=color:#e6db74>&#39;redii&#39;</span>)
-}
-
-<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>get_counts</span>(host):
-    logging<span style=color:#f92672>.</span>info(<span style=color:#e6db74>f</span><span style=color:#e6db74>&#39;Refreshing data for </span><span style=color:#e6db74>{</span>host<span style=color:#e6db74>}</span><span style=color:#e6db74>&#39;</span>)
-
-    r <span style=color:#f92672>=</span> redii[host]
-    results <span style=color:#f92672>=</span> {<span style=color:#e6db74>&#39;host&#39;</span>: host, <span style=color:#e6db74>&#39;timestamp&#39;</span>: time<span style=color:#f92672>.</span>time()}
-
-    <span style=color:#66d9ef>try</span>:
-        total <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>
-        counts <span style=color:#f92672>=</span> {}
-
-        <span style=color:#75715e># Get queue counts</span>
-        <span style=color:#66d9ef>for</span> queue_key <span style=color:#f92672>in</span> r<span style=color:#f92672>.</span>keys(<span style=color:#e6db74>&#39;*queues&#39;</span>):
-            prefix <span style=color:#f92672>=</span> queue_key<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;:&#39;</span>)[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;:&#39;</span> <span style=color:#66d9ef>if</span> <span style=color:#e6db74>&#39;:&#39;</span> <span style=color:#f92672>in</span> queue_key <span style=color:#66d9ef>else</span> <span style=color:#e6db74>&#39;&#39;</span>
-            <span style=color:#66d9ef>for</span> priority <span style=color:#f92672>in</span> r<span style=color:#f92672>.</span>smembers(queue_key):
-                key <span style=color:#f92672>=</span> <span style=color:#e6db74>f</span><span style=color:#e6db74>&#39;</span><span style=color:#e6db74>{</span>prefix<span style=color:#e6db74>}</span><span style=color:#e6db74>queue:</span><span style=color:#e6db74>{</span>priority<span style=color:#e6db74>}</span><span style=color:#e6db74>&#39;</span>
-                count <span style=color:#f92672>=</span> r<span style=color:#f92672>.</span>llen(key)
-                <span style=color:#66d9ef>if</span> count:
-                    counts[priority] <span style=color:#f92672>=</span> count
-                    total <span style=color:#f92672>+=</span> count
-
-        results[<span style=color:#e6db74>&#39;counts&#39;</span>] <span style=color:#f92672>=</span> counts
-        results[<span style=color:#e6db74>&#39;total&#39;</span>] <span style=color:#f92672>=</span> total
-
-    <span style=color:#66d9ef>except</span> redis<span style=color:#f92672>.</span>exceptions<span style=color:#f92672>.</span>ConnectionError <span style=color:#66d9ef>as</span> ex:
-        results[<span style=color:#e6db74>&#39;error&#39;</span>] <span style=color:#f92672>=</span> str(ex)
-
-    <span style=color:#66d9ef>return</span> results
-</code></pre></div><p>Get the <code>*queues</code>, reformat that as a singular to get the keys, get the lengths, and write it all down. Then to be really fancy, let&rsquo;s make automatic tables:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-python data-lang=python><span style=color:#a6e22e>@app</span><span style=color:#f92672>.</span>route(<span style=color:#e6db74>&#39;/&#39;</span>)
-<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>index</span>():
-    <span style=color:#66d9ef>return</span> tabulate<span style=color:#f92672>.</span>tabulate(
-        get_all_counts(),
-        tablefmt<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;html&#39;</span>,
-        headers<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;keys&#39;</span>,
-    )
-</code></pre></div><p><a href=https://pypi.org/project/tabulate/>tabulate</a> is pretty cool.</p>
-<p>Now on top of that, I did a few more things, such as writing down previous values and then calculating the current delta of the system (along with estimated time to clear) and alerting using <a href=https://api.slack.com/messaging/webhooks>Slack incoming webhooks</a>. But that&rsquo;s a post for another day. For now, it&rsquo;s a quick script that probably took me an hour or two to write but can save hours of time recovering from an overloading sidekiq queue that no one noticed.</p>
-<p>Woot.</p>
-<section class=footnotes role=doc-endnotes>
-<hr>
-<ol>
-<li id=fn:1 role=doc-endnote>
-<p>I should graph how many searches I make on an average day. Most of my job isn&rsquo;t knowing the answers to everything (although it helps :D), it&rsquo;s knowing how to phrase the question and interpret previous solutions.&#160;<a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p>
-</li>
-<li id=fn:2 role=doc-endnote>
-<p>Hey, it could be right! Maybe Redipodes would be better.&#160;<a href=#fnref:2 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p>
-</li>
-</ol>
-</section></div>
-</article></div>
-</div><footer id=page-footer role=contentinfo>
-<nav id=footer-navigation role=navigation class=ribbon>
-<ul class=main-navigation>
-<li><a href=/archive-by-date/>All posts: By Date</a></li>
-<li><a href=/archive-by-tag/>All posts: By Tag</a></li>
-<li>
-<a href=/atom.xml>
-RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li><li>
-<a href=/programming/atom.xml>
-RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li></ul>
-</nav>
-<div id=page-footer-content>
-<div class=legal>
-<p>
-All posts unless otherwise mentioned are licensed under
-<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US>
-<img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png>
-</a>
-</p>
-<p>
-Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a>
-</p>
-</div>
-</div>
-</footer>
-</div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Directly monitoring Sidekiq in Redis</h1><div class=entry-meta><span class=entry-date>2020-07-14</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2020/07/07/a-smart-mysql-wrapper/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/python>Python</a><a href=https://blog.jverkamp.com/2020/07/16/an-spf-dns-server/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2020/06/30/ssrf-protection-in-rails/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/ruby>Ruby</a><a href=https://blog.jverkamp.com/2021/01/26/a-dsl-for-rendering-magic-circles-and-runes/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2020/06/10/observation-server/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/flask>Flask</a><a href=https://blog.jverkamp.com/2022/02/01/a-simple-flask-logging/echo-server/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/infrastucture>Infrastucture</a></li><li><a href=https://blog.jverkamp.com/2015/07/16/automagically-storing-python-objects-in-redis/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/redis>Redis</a></li><li><a class=taxonomy-value href=/programming/topics/sidekiq>Sidekiq</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2020/07/07/a-smart-mysql-wrapper/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2020/07/16/an-spf-dns-server/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2020/07/14/fables-vol.-9-sons-of-empire/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2020/07/16/fullmetal-alchemist-vol.-24/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p>Another thing that came up recently: we have many (many) <a href=https://github.com/mperham/sidekiq>sidekiq</a> queues. Each has their own admin interface, but sometimes you just want all of the information in one place. Of course, you could bookmark all of the pages. Or make a single page with a lot of frames (remember <a href=https://en.wikipedia.org/wiki/HTML%20frames>HTML frames</a>?). Or use their API. But where&rsquo;s the fun in that? Instead, let&rsquo;s dig straight into the redis backend and see what we can see!</p><p>First, let&rsquo;s find the queues. <a href=https://stackoverflow.com/questions/46407772/what-is-the-redis-key-for-a-queue-in-sidekiq>Google + StackOverflow to the rescue</a><sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>. The queues are (by default), stored in <code>queue:default</code>.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ redis-cli
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&gt; get queue:default
+</span></span><span style=display:flex><span><span style=color:#f92672>(</span>nil<span style=color:#f92672>)</span>
+</span></span></code></pre></div><p>Hmm. There&rsquo;s a comment on the same post that actually answers that question. It turns out, I have <del>one</del> <del>two</del> three problems:</p><ol><li>If a queue is empty, the key will not currently exist</li><li>If you have multiple queues/named queues, they won&rsquo;t be named <code>default</code></li><li>If you used a prefix, that will be part of the queue as well</li></ol><p>So&mldr; let&rsquo;s look for a more general solution. It turns out there will always be a list of queues stored at <code>queues</code> or <code>{prefix}:queues</code>. So we can start with:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>&gt; keys *queues*
+</span></span><span style=display:flex><span>1<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;myservice:queues&#34;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&gt; smembers myservice:queues
+</span></span><span style=display:flex><span>1<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;high&#34;</span>
+</span></span><span style=display:flex><span>2<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;low&#34;</span>
+</span></span><span style=display:flex><span>3<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;critical&#34;</span>
+</span></span><span style=display:flex><span>4<span style=color:#f92672>)</span> <span style=color:#e6db74>&#34;medium&#34;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&gt; llen myservice:queue:low
+</span></span><span style=display:flex><span><span style=color:#f92672>(</span>integer<span style=color:#f92672>)</span> <span style=color:#ae81ff>2</span>
+</span></span></code></pre></div><p>Nice!</p><p>That&rsquo;s all the information I needed for now. Let&rsquo;s throw together a quick UI. Now, I really should do this in Ruby, since sidekiq is a Ruby thing, and I&rsquo;ve started exploring <a href=http://sinatrarb.com/>Sinatra</a> as a really light weight server language. But for now, let&rsquo;s go with what I do best for lightweight services: <a href=https://flask.palletsprojects.com/en/1.1.x/>Flask</a></p><p>I&rsquo;m going to take what I found about the Redis/Sidekiq earlier and connect to multiple Redii<sup id=fnref:2><a href=#fn:2 class=footnote-ref role=doc-noteref>2</a></sup> and pull out all their data:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-python data-lang=python><span style=display:flex><span>redii <span style=color:#f92672>=</span> {
+</span></span><span style=display:flex><span>    url: redis<span style=color:#f92672>.</span>Redis(
+</span></span><span style=display:flex><span>        host <span style=color:#f92672>=</span> url<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;:&#39;</span>)[<span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        port <span style=color:#f92672>=</span> url<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;:&#39;</span>)[<span style=color:#ae81ff>1</span>],
+</span></span><span style=display:flex><span>        decode_responses<span style=color:#f92672>=</span><span style=color:#66d9ef>True</span>,
+</span></span><span style=display:flex><span>    )
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> url <span style=color:#f92672>in</span> config<span style=color:#f92672>.</span>get(<span style=color:#e6db74>&#39;redii&#39;</span>)
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>def</span> <span style=color:#a6e22e>get_counts</span>(host):
+</span></span><span style=display:flex><span>    logging<span style=color:#f92672>.</span>info(<span style=color:#e6db74>f</span><span style=color:#e6db74>&#39;Refreshing data for </span><span style=color:#e6db74>{</span>host<span style=color:#e6db74>}</span><span style=color:#e6db74>&#39;</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    r <span style=color:#f92672>=</span> redii[host]
+</span></span><span style=display:flex><span>    results <span style=color:#f92672>=</span> {<span style=color:#e6db74>&#39;host&#39;</span>: host, <span style=color:#e6db74>&#39;timestamp&#39;</span>: time<span style=color:#f92672>.</span>time()}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span>:
+</span></span><span style=display:flex><span>        total <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span>        counts <span style=color:#f92672>=</span> {}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e># Get queue counts</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> queue_key <span style=color:#f92672>in</span> r<span style=color:#f92672>.</span>keys(<span style=color:#e6db74>&#39;*queues&#39;</span>):
+</span></span><span style=display:flex><span>            prefix <span style=color:#f92672>=</span> queue_key<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;:&#39;</span>)[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>+</span> <span style=color:#e6db74>&#39;:&#39;</span> <span style=color:#66d9ef>if</span> <span style=color:#e6db74>&#39;:&#39;</span> <span style=color:#f92672>in</span> queue_key <span style=color:#66d9ef>else</span> <span style=color:#e6db74>&#39;&#39;</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> priority <span style=color:#f92672>in</span> r<span style=color:#f92672>.</span>smembers(queue_key):
+</span></span><span style=display:flex><span>                key <span style=color:#f92672>=</span> <span style=color:#e6db74>f</span><span style=color:#e6db74>&#39;</span><span style=color:#e6db74>{</span>prefix<span style=color:#e6db74>}</span><span style=color:#e6db74>queue:</span><span style=color:#e6db74>{</span>priority<span style=color:#e6db74>}</span><span style=color:#e6db74>&#39;</span>
+</span></span><span style=display:flex><span>                count <span style=color:#f92672>=</span> r<span style=color:#f92672>.</span>llen(key)
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> count:
+</span></span><span style=display:flex><span>                    counts[priority] <span style=color:#f92672>=</span> count
+</span></span><span style=display:flex><span>                    total <span style=color:#f92672>+=</span> count
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        results[<span style=color:#e6db74>&#39;counts&#39;</span>] <span style=color:#f92672>=</span> counts
+</span></span><span style=display:flex><span>        results[<span style=color:#e6db74>&#39;total&#39;</span>] <span style=color:#f92672>=</span> total
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>except</span> redis<span style=color:#f92672>.</span>exceptions<span style=color:#f92672>.</span>ConnectionError <span style=color:#66d9ef>as</span> ex:
+</span></span><span style=display:flex><span>        results[<span style=color:#e6db74>&#39;error&#39;</span>] <span style=color:#f92672>=</span> str(ex)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> results
+</span></span></code></pre></div><p>Get the <code>*queues</code>, reformat that as a singular to get the keys, get the lengths, and write it all down. Then to be really fancy, let&rsquo;s make automatic tables:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-python data-lang=python><span style=display:flex><span><span style=color:#a6e22e>@app</span><span style=color:#f92672>.</span>route(<span style=color:#e6db74>&#39;/&#39;</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>def</span> <span style=color:#a6e22e>index</span>():
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> tabulate<span style=color:#f92672>.</span>tabulate(
+</span></span><span style=display:flex><span>        get_all_counts(),
+</span></span><span style=display:flex><span>        tablefmt<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;html&#39;</span>,
+</span></span><span style=display:flex><span>        headers<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;keys&#39;</span>,
+</span></span><span style=display:flex><span>    )
+</span></span></code></pre></div><p><a href=https://pypi.org/project/tabulate/>tabulate</a> is pretty cool.</p><p>Now on top of that, I did a few more things, such as writing down previous values and then calculating the current delta of the system (along with estimated time to clear) and alerting using <a href=https://api.slack.com/messaging/webhooks>Slack incoming webhooks</a>. But that&rsquo;s a post for another day. For now, it&rsquo;s a quick script that probably took me an hour or two to write but can save hours of time recovering from an overloading sidekiq queue that no one noticed.</p><p>Woot.</p><section class=footnotes role=doc-endnotes><hr><ol><li id=fn:1 role=doc-endnote><p>I should graph how many searches I make on an average day. Most of my job isn&rsquo;t knowing the answers to everything (although it helps :D), it&rsquo;s knowing how to phrase the question and interpret previous solutions.&#160;<a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:2 role=doc-endnote><p>Hey, it could be right! Maybe Redipodes would be better.&#160;<a href=#fnref:2 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li></ol></section></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
 <script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
-<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:'loose'})</script>
-<script defer src=/custom.js></script>
-</body>
-</html>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>

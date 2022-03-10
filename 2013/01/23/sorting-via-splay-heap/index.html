@@ -1,246 +1,135 @@
-<!doctype html><html>
-<head>
-<title>Sorting via splay heap – jverkamp.com</title>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous>
-<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet>
-<link rel=stylesheet href=/custom.css defer>
-<script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script>
-</head>
-<body>
-<div id=wrapper><header id=page-header role=banner>
-<h1><a href=/>JP's Blog</a></h1>
-<ul id=page-header-links>
-<li>
-<a href=https://github.com/jpverkamp>GitHub</a> *
+<!doctype html><html><head><title>Sorting via splay heap – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
 <a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
-<a href=/resume>Resume</a>
-</li>
-<li>
-<form action=//www.google.com/search method=get onsubmit="(function(a){a.q.value='site:blog.jverkamp.com '+a.qfront.value})(this)" class="navbar-form navbar-right" role=search _lpchecked=1>
-<div class=form-group>
-<input name=q type=hidden>
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
 <input name=qfront type=text class=form-control placeholder=Search>
-<button type=submit class="btn btn-default" value=Search>Search</button>
-</div>
-</form>
-</li>
-</ul>
-<nav id=header-navigation role=navigation class=ribbon>
-<ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li>
-</ul>
-</nav>
-</header>
-<div id=page-content-wrapper>
-<div id=page-content><article>
-<header>
-<h1 class=entry-title>Sorting via splay heap</h1>
-<div class=entry-meta><span class=entry-date>2013-01-23</span>
-</div>
-<div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li>
-<a class=taxonomy-key href=/programming/languages/>Languages</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/racket>Racket</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/scheme>Scheme</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/sources/>Sources</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/programming-praxis>Programming Praxis</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/topics/>Topics</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/29/bitvectors-in-racket/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/data-structures>Data Structures</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/sorting>Sorting</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li></ul>
-</li><li><a class=taxonomy-key href=/programming>programming</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link>Next</a></ul>
-</li><li><a class=taxonomy-key href=/>All Posts</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2013/01/23/django-unchained/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link>Next</a></ul>
-</li></ul>
-</div>
-</div>
-</header>
-<div class=entry-content><p><a href=http://programmingpraxis.com/2013/01/22/splay-heaps/ title="Splay Heap">Yesterday&rsquo;s post</a> from Programming Praxis gives a new (or at least different) vantage point on one of the most common problems in Computer Science: sorting. Today, we&rsquo;re going to implement a data structure known as a <a href=https://en.wikipedia.org/wiki/splay%20heap>splay heap</a> and use that to perform a <a href=https://en.wikipedia.org/wiki/heapsort>heapsort</a>.</p>
-<p>This was actually pretty complicated to get working, mostly as there are so many details to get right that are a bit rough in a functional language. Generally, heaps are implemented using a mutable array, flipping values as necessary. But where&rsquo;s the fun in that?</p>
-<p>If you&rsquo;d like to follow along, you can download the full source <a href=https://github.com/jpverkamp/small-projects/blob/master/blog/splay-heap.rkt title="Splay heap source on GitHub">here</a>. Essentially, there are three functions that we want to write: <code>insert</code>, <code>first</code>, and <code>rest</code>.</p>
-<p>So how does it look?</p>
-<p>Well, first we need a few structures. We&rsquo;re going to use a <code>node</code> structure for the tree and a <code>heap</code> structure to wrap it all up, including the comparator:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; splay heap nodes</span>
-(<span style=color:#a6e22e>define-struct</span> node (<span style=color:#a6e22e>value</span> left right) <span style=color:#f92672>#</span>:transparent)
-
-(<span style=color:#66d9ef>define </span>empty-node (<span style=color:#a6e22e>node</span> (<span style=color:#a6e22e>void</span>) <span style=color:#66d9ef>#f</span> <span style=color:#66d9ef>#f</span>))
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>empty-node?</span> node) (<span style=color:#66d9ef>and </span>(<span style=color:#a6e22e>node?</span> node) (<span style=color:#a6e22e>void?</span> (<span style=color:#a6e22e>node-value</span> node))))
-
-<span style=color:#75715e>; the entire heap, store comparator</span>
-(<span style=color:#a6e22e>define-struct</span> heap (<span style=color:#a6e22e>root</span> &lt;) <span style=color:#f92672>#</span>:transparent)
-</code></pre></div><p>Good to go. There&rsquo;s one unfortunate aspect in that we want to export <code>make-hash</code>, but we only want to specify the comparator. That&rsquo;s not too bad though, we can do that with <code>provide</code> and <code>rename-out</code>.</p>
-<p>Next, we want to start with the hardest bit of code: inserting a new value into the heap.</p>
-<p>To <code>insert</code>, the basic idea is to recursively partition the tree (in a manner similar to <a href=https://en.wikipedia.org/wiki/quicksort>quicksort</a>) into a subtree with items smaller than the new value and a subtree larger. The trick though is when you go left twice (towards the smallest nodes, which we want to access quickly) you want to rotate the tree to make that lookup quicker. This will give us an <a href=https://en.wikipedia.org/wiki/Amortized%20analysis>amortized runtime</a> (the runtime over many repeated runs of the algorithm) of O(n log n), on the same order as the other best sorting algorithms (<a href=https://en.wikipedia.org/wiki/quicksort>quicksort</a> / <a href=https://en.wikipedia.org/wiki/mergesort>mergesort</a>).</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; insert a value into a splay heap</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>insert</span> heap pivot)
-  (<span style=color:#66d9ef>define </span>&lt; (<span style=color:#a6e22e>heap-&lt;</span> heap))
-
-  <span style=color:#75715e>; split a node into a tree of &lt; nodes and non &lt; nodes</span>
-  (<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>partition</span> node)
-    (<span style=color:#a6e22e>cond</span>
-      <span style=color:#75715e>; no values</span>
-      [(<span style=color:#a6e22e>empty-node?</span> node)
-       (values empty-node empty-node)]
-      <span style=color:#75715e>; new node will go left</span>
-      [(&lt; pivot (<span style=color:#a6e22e>node-value</span> node))
-       (<span style=color:#a6e22e>cond</span>
-         <span style=color:#75715e>; and there&amp;#039;s nothing the other way</span>
-         [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> node))
-          (values empty-node node)]
-         <span style=color:#75715e>; right than right</span>
-         [(&lt; pivot (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node)))
-          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
-            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node))))
-          (values left
-                  (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node))
-                             right
-                             (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
-                                        (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))
-                                        (<span style=color:#a6e22e>node-right</span> node))))]
-         <span style=color:#75715e>; right then left</span>
-         [else
-          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
-            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))))
-          (values (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node))
-                             (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node))
-                             left)
-                  (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
-                             right
-                             (<span style=color:#a6e22e>node-right</span> node)))])]
-      <span style=color:#75715e>; new node will go right</span>
-      [else
-       (<span style=color:#a6e22e>cond</span>
-         <span style=color:#75715e>; and there&amp;#039;s nothing there</span>
-         [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-right</span> node))
-          (values node empty-node)]
-         <span style=color:#75715e>; right than right</span>
-         [(&lt; pivot (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-right</span> node)))
-          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
-            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-right</span> node))))
-          (values (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
-                             (<span style=color:#a6e22e>node-left</span> node)
-                             left)
-                  (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-right</span> node))
-                             right
-                             (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-right</span> node))))]
-         <span style=color:#75715e>; right than left</span>
-         <span style=color:#75715e>; this is the rotation case</span>
-         [else
-          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
-            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-right</span> node))))
-          (values (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-right</span> node))
-                             (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
-                                        (<span style=color:#a6e22e>node-left</span> node)
-                                        (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-right</span> node)))
-                             left)
-                  right)])]))
-
-  <span style=color:#75715e>; insert the node</span>
-  (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
-    (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>heap-root</span> heap)))
-
-  (<span style=color:#a6e22e>make-heap</span> (<span style=color:#a6e22e>make-node</span> pivot left right) &lt;))
-</code></pre></div><p>That&rsquo;s a fair bit of code, but hopefully it&rsquo;s commented well enough to follow. In the inner define (that actual <code>partition</code> function), we&rsquo;re returning two <code>value</code>s: a heap of smaller values and a heap of larger values. The most interesting case of that is the left than left case where the rotation I mentioned earlier takes place.</p>
-<p>Moving on, we have the <code>first</code> and <code>rest</code> functions. We&rsquo;ll start with <code>first</code>. Since we know the heap (and each sub-heap by extension) has all smaller values down the left side, we just have to keep recurring left until we can&rsquo;t anymore. That will be the minimum value. And since we&rsquo;re not actually changing anything, the code is straight forward:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; get the smallest node from the heap</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>first</span> heap)
-  (<span style=color:#66d9ef>let </span>loop ([node (<span style=color:#a6e22e>heap-root</span> heap)])
-    (<span style=color:#a6e22e>cond</span>
-      [(<span style=color:#a6e22e>empty-node?</span> node)
-       (<span style=color:#a6e22e>error</span> <span style=color:#e6db74>&#39;first</span> <span style=color:#e6db74>&#34;empty heap&#34;</span>)]
-      [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> node))
-       (<span style=color:#a6e22e>node-value</span> node)]
-      [else
-       (<span style=color:#a6e22e>loop</span> (<span style=color:#a6e22e>node-left</span> node))])))
-</code></pre></div><p>Finally, what do we need to do to get everything but the minimum value?</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; get the heap without the smallest node</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>rest</span> heap)
-  (<span style=color:#a6e22e>make-heap</span>
-   (<span style=color:#66d9ef>let </span>loop ([node (<span style=color:#a6e22e>heap-root</span> heap)])
-     (<span style=color:#a6e22e>cond</span>
-       [(<span style=color:#a6e22e>empty-node?</span> node)
-        (<span style=color:#a6e22e>error</span> <span style=color:#e6db74>&#39;rest</span> <span style=color:#e6db74>&#34;empty heap&#34;</span>)]
-       [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> node))
-        (<span style=color:#a6e22e>node-right</span> node)]
-       [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node)))
-        (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
-                   (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))
-                   (<span style=color:#a6e22e>node-right</span> node))]
-       <span style=color:#75715e>; left than left</span>
-       <span style=color:#75715e>; this is the rotation case</span>
-       [else
-        (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node))
-                   (<span style=color:#a6e22e>loop</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node)))
-                   (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
-                              (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))
-                              (<span style=color:#a6e22e>node-right</span> node)))]))
-</code></pre></div><p>Now we need to test it to make sure everything is working. How else, but to write the actual <code>heapsort</code> code. Essentially, insert each item into a heap in turn, then pull each back out. Because of the <a href=https://en.wikipedia.org/wiki/Amortized%20analysis>amortized runtime</a>, this should be fast.</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; sort using a heap</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>heapsort</span> ls &lt;)
-  (<span style=color:#66d9ef>let </span>loop ([ls ls] [heap (<span style=color:#a6e22e>make-heap</span> empty-node &lt;)])
-    (<span style=color:#66d9ef>if </span>(null? ls)
-        (<span style=color:#66d9ef>let </span>loop ([heap heap])
-          (<span style=color:#66d9ef>if </span>(<span style=color:#a6e22e>empty?</span> heap)
-              &amp;<span style=color:#f92672>#</span><span style=color:#ae81ff>039</span><span style=color:#75715e>;()</span>
-              (cons (<span style=color:#a6e22e>first</span> heap) (<span style=color:#a6e22e>loop</span> (<span style=color:#a6e22e>rest</span> heap)))))
-        (<span style=color:#a6e22e>loop</span> (cdr ls) (<span style=color:#a6e22e>insert</span> heap (car ls))))))
-</code></pre></div><p>And testing it out:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; randomized testing</span>
-(<span style=color:#a6e22e>require</span> rackunit)
-(<span style=color:#a6e22e>for</span> ([i (<span style=color:#a6e22e>in-range</span> <span style=color:#ae81ff>100</span>)])
-  (<span style=color:#66d9ef>define </span>ls (<span style=color:#a6e22e>for/list</span> ([i <span style=color:#ae81ff>20</span>]) (<span style=color:#a6e22e>random</span> <span style=color:#ae81ff>100</span>)))
-  (<span style=color:#a6e22e>check-equal?</span> (<span style=color:#a6e22e>heapsort</span> ls &lt;) (<span style=color:#a6e22e>sort</span> ls &lt;)))
-</code></pre></div><p>Everything succeeds. You can easily test it with other comparison functions and random data sources, but there&rsquo;s no reason that it shouldn&rsquo;t work.</p>
-<p>And there you have it. Personally, I&rsquo;m not sure why you&rsquo;d actually use such a data structure, particularly since other sorting algorithms are just as fast and easier to implement in a functional environment. But perhaps there is a case I just haven&rsquo;t seen yet.</p>
-<p>If you&rsquo;d like to download today&rsquo;s source code, you can do so here:</p>
-<ul>
-<li><a href=https://github.com/jpverkamp/small-projects/blob/master/blog/splay-heap.rkt title="Splay heap source on GitHub">splay heap</a></li>
-</ul></div>
-</article></div>
-</div><footer id=page-footer role=contentinfo>
-<nav id=footer-navigation role=navigation class=ribbon>
-<ul class=main-navigation>
-<li><a href=/archive-by-date/>All posts: By Date</a></li>
-<li><a href=/archive-by-tag/>All posts: By Tag</a></li>
-<li>
-<a href=/atom.xml>
-RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li><li>
-<a href=/programming/atom.xml>
-RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li></ul>
-</nav>
-<div id=page-footer-content>
-<div class=legal>
-<p>
-All posts unless otherwise mentioned are licensed under
-<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US>
-<img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png>
-</a>
-</p>
-<p>
-Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a>
-</p>
-</div>
-</div>
-</footer>
-</div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Sorting via splay heap</h1><div class=entry-meta><span class=entry-date>2013-01-23</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/racket>Racket</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/scheme>Scheme</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/sources/>Sources</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/programming-praxis>Programming Praxis</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/29/bitvectors-in-racket/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/data-structures>Data Structures</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/sorting>Sorting</a><a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2013/01/20/triangle-trilemma/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2013/01/23/django-unchained/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2013/01/24/splay-heaps-redux-imperative-model/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p><a href=http://programmingpraxis.com/2013/01/22/splay-heaps/ title="Splay Heap">Yesterday&rsquo;s post</a> from Programming Praxis gives a new (or at least different) vantage point on one of the most common problems in Computer Science: sorting. Today, we&rsquo;re going to implement a data structure known as a <a href=https://en.wikipedia.org/wiki/splay%20heap>splay heap</a> and use that to perform a <a href=https://en.wikipedia.org/wiki/heapsort>heapsort</a>.</p><p>This was actually pretty complicated to get working, mostly as there are so many details to get right that are a bit rough in a functional language. Generally, heaps are implemented using a mutable array, flipping values as necessary. But where&rsquo;s the fun in that?</p><p>If you&rsquo;d like to follow along, you can download the full source <a href=https://github.com/jpverkamp/small-projects/blob/master/blog/splay-heap.rkt title="Splay heap source on GitHub">here</a>. Essentially, there are three functions that we want to write: <code>insert</code>, <code>first</code>, and <code>rest</code>.</p><p>So how does it look?</p><p>Well, first we need a few structures. We&rsquo;re going to use a <code>node</code> structure for the tree and a <code>heap</code> structure to wrap it all up, including the comparator:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; splay heap nodes</span>
+</span></span><span style=display:flex><span>(<span style=color:#a6e22e>define-struct</span> node (<span style=color:#a6e22e>value</span> left right) <span style=color:#f92672>#</span>:transparent)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>empty-node (<span style=color:#a6e22e>node</span> (<span style=color:#a6e22e>void</span>) <span style=color:#66d9ef>#f</span> <span style=color:#66d9ef>#f</span>))
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>empty-node?</span> node) (<span style=color:#66d9ef>and </span>(<span style=color:#a6e22e>node?</span> node) (<span style=color:#a6e22e>void?</span> (<span style=color:#a6e22e>node-value</span> node))))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; the entire heap, store comparator</span>
+</span></span><span style=display:flex><span>(<span style=color:#a6e22e>define-struct</span> heap (<span style=color:#a6e22e>root</span> &lt;) <span style=color:#f92672>#</span>:transparent)
+</span></span></code></pre></div><p>Good to go. There&rsquo;s one unfortunate aspect in that we want to export <code>make-hash</code>, but we only want to specify the comparator. That&rsquo;s not too bad though, we can do that with <code>provide</code> and <code>rename-out</code>.</p><p>Next, we want to start with the hardest bit of code: inserting a new value into the heap.</p><p>To <code>insert</code>, the basic idea is to recursively partition the tree (in a manner similar to <a href=https://en.wikipedia.org/wiki/quicksort>quicksort</a>) into a subtree with items smaller than the new value and a subtree larger. The trick though is when you go left twice (towards the smallest nodes, which we want to access quickly) you want to rotate the tree to make that lookup quicker. This will give us an <a href=https://en.wikipedia.org/wiki/Amortized%20analysis>amortized runtime</a> (the runtime over many repeated runs of the algorithm) of O(n log n), on the same order as the other best sorting algorithms (<a href=https://en.wikipedia.org/wiki/quicksort>quicksort</a> / <a href=https://en.wikipedia.org/wiki/mergesort>mergesort</a>).</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; insert a value into a splay heap</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>insert</span> heap pivot)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>&lt; (<span style=color:#a6e22e>heap-&lt;</span> heap))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; split a node into a tree of &lt; nodes and non &lt; nodes</span>
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>partition</span> node)
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>cond</span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>; no values</span>
+</span></span><span style=display:flex><span>      [(<span style=color:#a6e22e>empty-node?</span> node)
+</span></span><span style=display:flex><span>       (values empty-node empty-node)]
+</span></span><span style=display:flex><span>      <span style=color:#75715e>; new node will go left</span>
+</span></span><span style=display:flex><span>      [(&lt; pivot (<span style=color:#a6e22e>node-value</span> node))
+</span></span><span style=display:flex><span>       (<span style=color:#a6e22e>cond</span>
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; and there&amp;#039;s nothing the other way</span>
+</span></span><span style=display:flex><span>         [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>          (values empty-node node)]
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; right than right</span>
+</span></span><span style=display:flex><span>         [(&lt; pivot (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node)))
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
+</span></span><span style=display:flex><span>            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node))))
+</span></span><span style=display:flex><span>          (values left
+</span></span><span style=display:flex><span>                  (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>                             right
+</span></span><span style=display:flex><span>                             (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
+</span></span><span style=display:flex><span>                                        (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>                                        (<span style=color:#a6e22e>node-right</span> node))))]
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; right then left</span>
+</span></span><span style=display:flex><span>         [else
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
+</span></span><span style=display:flex><span>            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))))
+</span></span><span style=display:flex><span>          (values (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>                             (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>                             left)
+</span></span><span style=display:flex><span>                  (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
+</span></span><span style=display:flex><span>                             right
+</span></span><span style=display:flex><span>                             (<span style=color:#a6e22e>node-right</span> node)))])]
+</span></span><span style=display:flex><span>      <span style=color:#75715e>; new node will go right</span>
+</span></span><span style=display:flex><span>      [else
+</span></span><span style=display:flex><span>       (<span style=color:#a6e22e>cond</span>
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; and there&amp;#039;s nothing there</span>
+</span></span><span style=display:flex><span>         [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-right</span> node))
+</span></span><span style=display:flex><span>          (values node empty-node)]
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; right than right</span>
+</span></span><span style=display:flex><span>         [(&lt; pivot (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-right</span> node)))
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
+</span></span><span style=display:flex><span>            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-right</span> node))))
+</span></span><span style=display:flex><span>          (values (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
+</span></span><span style=display:flex><span>                             (<span style=color:#a6e22e>node-left</span> node)
+</span></span><span style=display:flex><span>                             left)
+</span></span><span style=display:flex><span>                  (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-right</span> node))
+</span></span><span style=display:flex><span>                             right
+</span></span><span style=display:flex><span>                             (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-right</span> node))))]
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; right than left</span>
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; this is the rotation case</span>
+</span></span><span style=display:flex><span>         [else
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
+</span></span><span style=display:flex><span>            (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-right</span> node))))
+</span></span><span style=display:flex><span>          (values (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-right</span> node))
+</span></span><span style=display:flex><span>                             (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
+</span></span><span style=display:flex><span>                                        (<span style=color:#a6e22e>node-left</span> node)
+</span></span><span style=display:flex><span>                                        (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-right</span> node)))
+</span></span><span style=display:flex><span>                             left)
+</span></span><span style=display:flex><span>                  right)])]))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; insert the node</span>
+</span></span><span style=display:flex><span>  (<span style=color:#a6e22e>define-values</span> (<span style=color:#a6e22e>left</span> right)
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>partition</span> (<span style=color:#a6e22e>heap-root</span> heap)))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  (<span style=color:#a6e22e>make-heap</span> (<span style=color:#a6e22e>make-node</span> pivot left right) &lt;))
+</span></span></code></pre></div><p>That&rsquo;s a fair bit of code, but hopefully it&rsquo;s commented well enough to follow. In the inner define (that actual <code>partition</code> function), we&rsquo;re returning two <code>value</code>s: a heap of smaller values and a heap of larger values. The most interesting case of that is the left than left case where the rotation I mentioned earlier takes place.</p><p>Moving on, we have the <code>first</code> and <code>rest</code> functions. We&rsquo;ll start with <code>first</code>. Since we know the heap (and each sub-heap by extension) has all smaller values down the left side, we just have to keep recurring left until we can&rsquo;t anymore. That will be the minimum value. And since we&rsquo;re not actually changing anything, the code is straight forward:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; get the smallest node from the heap</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>first</span> heap)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>let </span>loop ([node (<span style=color:#a6e22e>heap-root</span> heap)])
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>cond</span>
+</span></span><span style=display:flex><span>      [(<span style=color:#a6e22e>empty-node?</span> node)
+</span></span><span style=display:flex><span>       (<span style=color:#a6e22e>error</span> <span style=color:#e6db74>&#39;first</span> <span style=color:#e6db74>&#34;empty heap&#34;</span>)]
+</span></span><span style=display:flex><span>      [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>       (<span style=color:#a6e22e>node-value</span> node)]
+</span></span><span style=display:flex><span>      [else
+</span></span><span style=display:flex><span>       (<span style=color:#a6e22e>loop</span> (<span style=color:#a6e22e>node-left</span> node))])))
+</span></span></code></pre></div><p>Finally, what do we need to do to get everything but the minimum value?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; get the heap without the smallest node</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>rest</span> heap)
+</span></span><span style=display:flex><span>  (<span style=color:#a6e22e>make-heap</span>
+</span></span><span style=display:flex><span>   (<span style=color:#66d9ef>let </span>loop ([node (<span style=color:#a6e22e>heap-root</span> heap)])
+</span></span><span style=display:flex><span>     (<span style=color:#a6e22e>cond</span>
+</span></span><span style=display:flex><span>       [(<span style=color:#a6e22e>empty-node?</span> node)
+</span></span><span style=display:flex><span>        (<span style=color:#a6e22e>error</span> <span style=color:#e6db74>&#39;rest</span> <span style=color:#e6db74>&#34;empty heap&#34;</span>)]
+</span></span><span style=display:flex><span>       [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>        (<span style=color:#a6e22e>node-right</span> node)]
+</span></span><span style=display:flex><span>       [(<span style=color:#a6e22e>empty-node?</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node)))
+</span></span><span style=display:flex><span>        (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
+</span></span><span style=display:flex><span>                   (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>                   (<span style=color:#a6e22e>node-right</span> node))]
+</span></span><span style=display:flex><span>       <span style=color:#75715e>; left than left</span>
+</span></span><span style=display:flex><span>       <span style=color:#75715e>; this is the rotation case</span>
+</span></span><span style=display:flex><span>       [else
+</span></span><span style=display:flex><span>        (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>                   (<span style=color:#a6e22e>loop</span> (<span style=color:#a6e22e>node-left</span> (<span style=color:#a6e22e>node-left</span> node)))
+</span></span><span style=display:flex><span>                   (<span style=color:#a6e22e>make-node</span> (<span style=color:#a6e22e>node-value</span> node)
+</span></span><span style=display:flex><span>                              (<span style=color:#a6e22e>node-right</span> (<span style=color:#a6e22e>node-left</span> node))
+</span></span><span style=display:flex><span>                              (<span style=color:#a6e22e>node-right</span> node)))]))
+</span></span></code></pre></div><p>Now we need to test it to make sure everything is working. How else, but to write the actual <code>heapsort</code> code. Essentially, insert each item into a heap in turn, then pull each back out. Because of the <a href=https://en.wikipedia.org/wiki/Amortized%20analysis>amortized runtime</a>, this should be fast.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; sort using a heap</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>heapsort</span> ls &lt;)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>let </span>loop ([ls ls] [heap (<span style=color:#a6e22e>make-heap</span> empty-node &lt;)])
+</span></span><span style=display:flex><span>    (<span style=color:#66d9ef>if </span>(null? ls)
+</span></span><span style=display:flex><span>        (<span style=color:#66d9ef>let </span>loop ([heap heap])
+</span></span><span style=display:flex><span>          (<span style=color:#66d9ef>if </span>(<span style=color:#a6e22e>empty?</span> heap)
+</span></span><span style=display:flex><span>              &amp;<span style=color:#f92672>#</span><span style=color:#ae81ff>039</span><span style=color:#75715e>;()</span>
+</span></span><span style=display:flex><span>              (cons (<span style=color:#a6e22e>first</span> heap) (<span style=color:#a6e22e>loop</span> (<span style=color:#a6e22e>rest</span> heap)))))
+</span></span><span style=display:flex><span>        (<span style=color:#a6e22e>loop</span> (cdr ls) (<span style=color:#a6e22e>insert</span> heap (car ls))))))
+</span></span></code></pre></div><p>And testing it out:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; randomized testing</span>
+</span></span><span style=display:flex><span>(<span style=color:#a6e22e>require</span> rackunit)
+</span></span><span style=display:flex><span>(<span style=color:#a6e22e>for</span> ([i (<span style=color:#a6e22e>in-range</span> <span style=color:#ae81ff>100</span>)])
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>ls (<span style=color:#a6e22e>for/list</span> ([i <span style=color:#ae81ff>20</span>]) (<span style=color:#a6e22e>random</span> <span style=color:#ae81ff>100</span>)))
+</span></span><span style=display:flex><span>  (<span style=color:#a6e22e>check-equal?</span> (<span style=color:#a6e22e>heapsort</span> ls &lt;) (<span style=color:#a6e22e>sort</span> ls &lt;)))
+</span></span></code></pre></div><p>Everything succeeds. You can easily test it with other comparison functions and random data sources, but there&rsquo;s no reason that it shouldn&rsquo;t work.</p><p>And there you have it. Personally, I&rsquo;m not sure why you&rsquo;d actually use such a data structure, particularly since other sorting algorithms are just as fast and easier to implement in a functional environment. But perhaps there is a case I just haven&rsquo;t seen yet.</p><p>If you&rsquo;d like to download today&rsquo;s source code, you can do so here:</p><ul><li><a href=https://github.com/jpverkamp/small-projects/blob/master/blog/splay-heap.rkt title="Splay heap source on GitHub">splay heap</a></li></ul></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
 <script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
-<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:'loose'})</script>
-<script defer src=/custom.js></script>
-</body>
-</html>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>

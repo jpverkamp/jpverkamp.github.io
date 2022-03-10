@@ -1,274 +1,141 @@
-<!doctype html><html>
-<head>
-<title>Exploring parallelism in Racket with SHA-512 mining – jverkamp.com</title>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous>
-<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet>
-<link rel=stylesheet href=/custom.css defer>
-<script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script>
-</head>
-<body>
-<div id=wrapper><header id=page-header role=banner>
-<h1><a href=/>JP's Blog</a></h1>
-<ul id=page-header-links>
-<li>
-<a href=https://github.com/jpverkamp>GitHub</a> *
+<!doctype html><html><head><title>Exploring parallelism in Racket with SHA-512 mining – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
 <a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
-<a href=/resume>Resume</a>
-</li>
-<li>
-<form action=//www.google.com/search method=get onsubmit="(function(a){a.q.value='site:blog.jverkamp.com '+a.qfront.value})(this)" class="navbar-form navbar-right" role=search _lpchecked=1>
-<div class=form-group>
-<input name=q type=hidden>
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
 <input name=qfront type=text class=form-control placeholder=Search>
-<button type=submit class="btn btn-default" value=Search>Search</button>
-</div>
-</form>
-</li>
-</ul>
-<nav id=header-navigation role=navigation class=ribbon>
-<ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li>
-</ul>
-</nav>
-</header>
-<div id=page-content-wrapper>
-<div id=page-content><article>
-<header>
-<h1 class=entry-title>Exploring parallelism in Racket with SHA-512 mining</h1>
-<div class=entry-meta><span class=entry-date>2014-02-16</span>
-</div>
-<div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li>
-<a class=taxonomy-key href=/programming/languages/>Languages</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2014/01/27/factoring-factorials/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/racket>Racket</a><a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2014/01/27/factoring-factorials/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/scheme>Scheme</a><a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link></a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/topics/>Topics</a>
-<ul class=taxonomy-values><li><a class=taxonomy-value href=/programming/topics/bitcoin>Bitcoin</a></li><li><a href=https://blog.jverkamp.com/2013/04/23/user-space-continuation-based-thread-pool/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/concurrency>Concurrency</a></li><li><a href=https://blog.jverkamp.com/2013/02/06/numbers-as-words-in-arbitrary-bases/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/dictionary>Dictionary</a><a href=https://blog.jverkamp.com/2014/02/27/dis/re-emvowelification/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/hashes>Hashes</a><a href=https://blog.jverkamp.com/2016/12/05/aoc-2016-day-5-password-cracker/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2014/01/27/factoring-factorials/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/mathematics>Mathematics</a><a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/parallelism>Parallelism</a></li></ul>
-</li><li><a class=taxonomy-key href=/programming>programming</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2014/02/07/command-line-user-agent-parsing/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link>Next</a></ul>
-</li><li><a class=taxonomy-key href=/>All Posts</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2014/02/15/the-lego-movie/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link>Next</a></ul>
-</li></ul>
-</div>
-</div>
-</header>
-<div class=entry-content><p>While I&rsquo;ve been getting a fair few programming exercises from Reddit&rsquo;s <a href=http://www.reddit.com/r/dailyprogrammer>/r/dailyprogrammer</a>, more recently I&rsquo;ve started following a few other sub-Reddits, such as <a href=http://www.reddit.com/r/programming>/r/programming</a> and <a href=http://www.reddit.com/r/netsec>/r/netsec</a>. While browsing the former, I came across this intriguing gem of a problem: <a tabindex=1 href=http://www.h11e.com/>HashChallenge: can you find the lowest value SHA-512 hash?</a></p>
-<p>The basic idea is simple. Find the input string <em>s</em> such that the output SHA-512 hash is minimized. As an an example,</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ echo <span style=color:#e6db74>&#34;Hello world&#34;</span> | shasum -a <span style=color:#ae81ff>512</span>
-81381f1dacd4824a6c503fd070577630...
-
-$ echo <span style=color:#e6db74>&#34;Even better&#34;</span> | shasum -a <span style=color:#ae81ff>512</span>
-77d8af6911952994e2d9597e6962ada1...
-</code></pre></div><p>Of course, these aren&rsquo;t that great. At the very least we should be looking for hashes with a few leading zeros. Not to mention that this is something that should be downright trivial to automate. Let&rsquo;s start with a straight forward Racket script:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; Mine for the lowest SHA-512 we can find</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine</span>)
-  (<span style=color:#66d9ef>define </span>alphabet <span style=color:#e6db74>&#34;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890&#34;</span>)
-  (<span style=color:#66d9ef>define </span>hashes-tried <span style=color:#ae81ff>0</span>)
-  (<span style=color:#66d9ef>define </span>start-time (<span style=color:#a6e22e>current-inexact-milliseconds</span>))
-
-  <span style=color:#75715e>; Store best values</span>
-  (<span style=color:#66d9ef>define </span>best-str <span style=color:#66d9ef>#f</span>)
-  (<span style=color:#66d9ef>define </span>best-hash <span style=color:#66d9ef>#f</span>)
-
-  <span style=color:#75715e>; Generate random values one at a time</span>
-    (<span style=color:#66d9ef>let </span>loop ()
-      (<span style=color:#66d9ef>define </span>str   (<span style=color:#a6e22e>random-string</span> <span style=color:#ae81ff>16</span>))
-      (<span style=color:#66d9ef>define </span>bytes (<span style=color:#a6e22e>string-&gt;bytes/utf-8</span> str))
-      (<span style=color:#66d9ef>define </span>hash  (<span style=color:#a6e22e>bytes-&gt;hex-string</span> (<span style=color:#a6e22e>sha512</span> bytes)))
-
-      (<span style=color:#66d9ef>set! </span>hashes-tried (+ <span style=color:#ae81ff>1</span> hashes-tried))
-      (<span style=color:#a6e22e>when</span> (<span style=color:#66d9ef>or </span>(not best-hash) (string&lt;? hash best-hash))
-        (<span style=color:#66d9ef>set! </span>best-str str)
-        (<span style=color:#66d9ef>set! </span>best-hash hash)
-        (<span style=color:#a6e22e>print-timing</span> <span style=color:#e6db74>&#39;main</span> hashes-tried (/ (- (<span style=color:#a6e22e>current-inexact-milliseconds</span>) start-time) <span style=color:#ae81ff>1000</span>) best-str best-hash))
-
-      (<span style=color:#a6e22e>loop</span>)))
-</code></pre></div><p>There are a few helper functions there (<code>random-string</code> and <code>print-timing</code>, you can see them in the full code on GitHub: <a href=https://github.com/jpverkamp/small-projects/tree/master/blog/mine-sha512>github/jpverkamp</a>), but those should be straight forward. The hashing itself is done with Greg Hendershott&rsquo;s <a href=https://github.com/greghendershott/sha/tree/master><code>sha</code> library for Racket</a>, available via the new <a href=http://pkg.racket-lang.org/#[sha]>package manager</a>.</p>
-<p>So, how does that do?</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ racket mine-sha512.rkt
-main: 4ZRZ6R5eQO4GItzK -&gt; 50ce827050c31fd0... <span style=color:#f92672>(</span>1.0 h @ 1.0 kh/s<span style=color:#f92672>)</span>
-main: bGzP1aAnXjDEJ5tS -&gt; 2a8e1803b7ac4b57... <span style=color:#f92672>(</span>16.0 h @ 16.0 kh/s<span style=color:#f92672>)</span>
-main: 9IXIWuGDepUUSubp -&gt; 048e4b1b9ae2e893... <span style=color:#f92672>(</span>20.0 h @ 20.0 kh/s<span style=color:#f92672>)</span>
-main: nwVB9KFI0ieHm0n4 -&gt; 007704acb8e01bcf... <span style=color:#f92672>(</span>105.0 h @ 52.5 kh/s<span style=color:#f92672>)</span>
-main: WeQFXLb3UhwyaHRr -&gt; 000b17576f358405... <span style=color:#f92672>(</span>364.0 h @ 91.0 kh/s<span style=color:#f92672>)</span>
-main: D19naE3qFtrKT6Lt -&gt; 000707066075fce0... <span style=color:#f92672>(</span>6.0 kh @ 100.7 kh/s<span style=color:#f92672>)</span>
-main: 4PQKs7crKnQTBjfs -&gt; 00018fe9e134c366... <span style=color:#f92672>(</span>11.7 kh @ 113.6 kh/s<span style=color:#f92672>)</span>
-main: NZS717BXvT0ErzSR -&gt; 0000ed34ec5c0222... <span style=color:#f92672>(</span>120.5 kh @ 131.1 kh/s<span style=color:#f92672>)</span>
-main: 3QuXbtG0xlRaDKqV -&gt; 000005fb0ac4a407... <span style=color:#f92672>(</span>2.7 Mh @ 133.2 kh/s<span style=color:#f92672>)</span>
-</code></pre></div><p>Since it only prints a line when it finds a new best hash, output can be a little chaotic at best, but at the very least this gives us a pretty good baseline. We managed to find a hash with 5 leading zeros and are running at about 133.2 kh/s. Nowhere near what most ASIC bitcoin miners <a href=https://en.bitcoin.it/wiki/Mining_hardware_comparison#ASIC>claim to be able to do</a><sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>, but not terrible for a pure CPU miner.</p>
-<p>Let&rsquo;s do better.</p>
-<p>The next idea would be to use Racket&rsquo;s threads. Going in to it, I already know that this isn&rsquo;t going to buy us much<sup id=fnref:2><a href=#fn:2 class=footnote-ref role=doc-noteref>2</a></sup>, but it&rsquo;s an easy enough tweak.</p>
-<p>First, pull out the <code>hashes-tried</code>, <code>best-str</code>, and <code>best-hash</code> variables so all threads can access them. Then, create a wrapper function that will fire off the right number of threads:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; Mine with multiple threads concurrently</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine-all</span> thread-count)
-  (<span style=color:#66d9ef>define </span>threads
-    (<span style=color:#a6e22e>for/list</span> ([i (<span style=color:#a6e22e>in-range</span> thread-count)])
-      (<span style=color:#a6e22e>thread</span> (<span style=color:#a6e22e>thunk</span> (<span style=color:#a6e22e>mine</span> i)))))
-  (map thread-wait threads))
-</code></pre></div><p>This way we also get to know which thread found the new best value (although strictly speaking that&rsquo;s not necessary):</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ racket mine-sha512-threads.rkt <span style=color:#ae81ff>8</span>
-7: OsultHDT905n5mmo -&gt; c0b8ad26ae6472f8... <span style=color:#f92672>(</span>1.0 h @ 62.5 h/s<span style=color:#f92672>)</span>
-7: pEyhYUxIM74peJxi -&gt; 13c7391822e728c3... <span style=color:#f92672>(</span>3.0 h @ 187.5 h/s<span style=color:#f92672>)</span>
-7: jPMHHOwwJeGe7bqF -&gt; 0045856cdcfbe797... <span style=color:#f92672>(</span>10.0 h @ 625.0 h/s<span style=color:#f92672>)</span>
-7: TE2nEcH10rcWefsn -&gt; 003e888a92cd8809... <span style=color:#f92672>(</span>1.0 kh @ 43.7 kh/s<span style=color:#f92672>)</span>
-7: WTGTqrOpl2x1Czi1 -&gt; 0024448bf70a1247... <span style=color:#f92672>(</span>1.1 kh @ 49.5 kh/s<span style=color:#f92672>)</span>
-6: EMhqI5ngPwiQr4gK -&gt; 000ae12edd827730... <span style=color:#f92672>(</span>2.8 kh @ 78.0 kh/s<span style=color:#f92672>)</span>
-5: Gftv6FPZwVF4xTct -&gt; 000031b56d17483b... <span style=color:#f92672>(</span>3.8 kh @ 88.7 kh/s<span style=color:#f92672>)</span>
-1: gDNLGB6Dzlp9YVBj -&gt; 00002a7fd4a81c8d... <span style=color:#f92672>(</span>287.5 kh @ 143.2 kh/s<span style=color:#f92672>)</span>
-1: G0F4FLKwPNbUzQGO -&gt; 0000117e20b56196... <span style=color:#f92672>(</span>646.2 kh @ 144.6 kh/s<span style=color:#f92672>)</span>
-0: 0hmB7jnocqRMuSxu -&gt; 00000a1a4b05d9b7... <span style=color:#f92672>(</span>2.9 Mh @ 144.8 kh/s<span style=color:#f92672>)</span>
-7: PM59fjq5g2huYTEN -&gt; 000004cb6fd3fe14... <span style=color:#f92672>(</span>4.8 Mh @ 143.8 kh/s<span style=color:#f92672>)</span>
-4: 4WzSTKXi540JlyJL -&gt; 000004713d42ec3b... <span style=color:#f92672>(</span>5.1 Mh @ 143.7 kh/s<span style=color:#f92672>)</span>
-</code></pre></div><p>So we have a slight speed up. I guess that&rsquo;s something. The problem is that we&rsquo;re still actually only running in a single process on a single processor. With four cores, that&rsquo;s something of a waste. Unfortunately though, we aren&rsquo;t going to be able to do much better than that with threads. We need something a little more powerful:</p>
-<code><a href="http://docs.racket-lang.org/search/index.html?q=Places">Places</a></code>
-<p>The basic idea of places is:</p>
-<blockquote>
-<p><code><a href="http://docs.racket-lang.org/search/index.html?q=Places">Places</a></code>
-enable the development of parallel programs that take advantage of machines with multiple processors, cores, or hardware threads.</p>
-</blockquote>
-<p>Sounds like exactly what we want. Unfortunately, that extra power comes with a bit of extra cost. No longer can we share variables directly between the various threads of the program, but rather now we have to communicate explicitly, using <code><a href="http://docs.racket-lang.org/search/index.html?q=place%20channels">place channels</a></code>
-. The basic idea I have is to split the work up into <em>n</em> places. For each place, run two threads: a hashing thread and a feedback thread. The hashing thread is pretty much the mining function we&rsquo;ve seen all along.</p>
-<p>The feedback thread, on the other hand, will periodically send messages back to the main program relaying how much progress we&rsquo;ve made and any new hashes we&rsquo;ve found. Then, the main program can compare that to the other place&rsquo;s results and update with the overall best hash.</p>
-<p>Starting with the new mining function:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; Create a place that will mine for new low hashes</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine</span> id)
-  (<span style=color:#a6e22e>place</span> me
-    <span style=color:#75715e>; Local best values</span>
-    (<span style=color:#66d9ef>define </span>hashes-tried <span style=color:#ae81ff>0</span>)
-    (<span style=color:#66d9ef>define </span>best-str <span style=color:#66d9ef>#f</span>)
-    (<span style=color:#66d9ef>define </span>best-hash <span style=color:#66d9ef>#f</span>)
-
-    <span style=color:#75715e>; Thread to periodically send back new best values</span>
-    (<span style=color:#a6e22e>thread</span>
-      (<span style=color:#a6e22e>thunk</span>
-        (<span style=color:#66d9ef>let </span>loop ()
-          (<span style=color:#a6e22e>place-channel-put</span> me hashes-tried)
-          (<span style=color:#a6e22e>place-channel-put</span> me best-str)
-          (<span style=color:#a6e22e>place-channel-put</span> me best-hash)
-          (<span style=color:#a6e22e>sleep</span> (* (<span style=color:#a6e22e>random</span>) <span style=color:#ae81ff>10.0</span>))
-          (<span style=color:#a6e22e>loop</span>))))
-
-    <span style=color:#75715e>; Look for new values</span>
-    <span style=color:#f92672>...</span>))
-</code></pre></div><p>Fairly straight forward. The macro <code>place</code> at the top actually handles all of the work of creating a new place. <code>me</code> will be used to identify the automatically created channel we use a bit later to send messages on. Each time we send messages, we send three values: how many hashes this place has personally tried and the best string/hash pair. So of course, the main program will have to be listening for these three values from each place in turn:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; Run multiple mining places in parallel and sync between them</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine-all</span> thread-count)
-  <span style=color:#75715e>; Global best values</span>
-  (<span style=color:#66d9ef>define </span>start-time (<span style=color:#a6e22e>current-inexact-milliseconds</span>))
-  (<span style=color:#66d9ef>define </span>best-str <span style=color:#66d9ef>#f</span>)
-  (<span style=color:#66d9ef>define </span>best-hash <span style=color:#66d9ef>#f</span>)
-
-  <span style=color:#75715e>; Create places</span>
-  (<span style=color:#66d9ef>define </span>places
-    (<span style=color:#a6e22e>for/list</span> ([i (<span style=color:#a6e22e>in-range</span> thread-count)])
-      (<span style=color:#a6e22e>mine</span> i)))
-
-  <span style=color:#75715e>; Loop through those, getting their best values in time</span>
-  (<span style=color:#66d9ef>let </span>loop ()
-    (<span style=color:#a6e22e>for</span> ([id (<span style=color:#a6e22e>in-naturals</span>)]
-          [p (<span style=color:#a6e22e>in-list</span> places)])
-      (<span style=color:#66d9ef>define </span>hashes-tried (<span style=color:#a6e22e>place-channel-get</span> p))
-      (<span style=color:#66d9ef>define </span>str (<span style=color:#a6e22e>place-channel-get</span> p))
-      (<span style=color:#66d9ef>define </span>hash (<span style=color:#a6e22e>place-channel-get</span> p))
-
-      (<span style=color:#a6e22e>when</span> (<span style=color:#66d9ef>or </span>(not best-hash) (<span style=color:#66d9ef>and </span>hash (string&lt;? hash best-hash)))
-        (<span style=color:#66d9ef>define </span>estimated-hashes (* hashes-tried thread-count))
-        (<span style=color:#66d9ef>set! </span>best-str str)
-        (<span style=color:#66d9ef>set! </span>best-hash hash)
-        (<span style=color:#a6e22e>print-timing</span> id estimated-hashes (/ (- (<span style=color:#a6e22e>current-inexact-milliseconds</span>) start-time) <span style=color:#ae81ff>1000</span>) best-str best-hash)))
-    (<span style=color:#a6e22e>loop</span>)))
-</code></pre></div><p>There is a potential inefficiency here, in that we go round robin through the places asking each in turn for their best hash. Because they wait a random amount of time (up to 10 seconds) between reports, it could be a bit before we actually report a new lowest hash<sup id=fnref:3><a href=#fn:3 class=footnote-ref role=doc-noteref>3</a></sup>. In fact, it may even be out of date by then. Still, it&rsquo;s a reasonable enough count, especially if you&rsquo;re going to be running the program for a while.</p>
-<p>So with that being said, the first thing to try would be a single place. Theoretically, that should give us the same performance as the original program (maybe minus a bit for the channel):</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ racket mine-sha512-places.rkt <span style=color:#ae81ff>1</span>
-0: 38H0DQxOWh0swGlq -&gt; 000581b5f1373c77... <span style=color:#f92672>(</span>2.1 kh @ 5.4 kh/s<span style=color:#f92672>)</span>
-0: TZdL5yWiiMb6WFVV -&gt; 00006cc7dac2d460... <span style=color:#f92672>(</span>252.4 kh @ 116.6 kh/s<span style=color:#f92672>)</span>
-0: 0AnndUtx0XmNfX9a -&gt; 00000893ee217109... <span style=color:#f92672>(</span>1.3 Mh @ 136.5 kh/s<span style=color:#f92672>)</span>
-0: bGh0LDfnwCiSIb95 -&gt; 000001e204acff0c... <span style=color:#f92672>(</span>4.4 Mh @ 140.2 kh/s<span style=color:#f92672>)</span>
-0: JoWy6CXotik87OWh -&gt; 0000010fe4646f6f... <span style=color:#f92672>(</span>6.5 Mh @ 140.7 kh/s<span style=color:#f92672>)</span>
-0: iS6rIH4kClxc0SdF -&gt; 000000ecdcc2cc1e... <span style=color:#f92672>(</span>16.0 Mh @ 141.3 kh/s<span style=color:#f92672>)</span>
-</code></pre></div><p>Well that&rsquo;s not bad at all. If anything, it&rsquo;s a little faster<sup id=fnref:4><a href=#fn:4 class=footnote-ref role=doc-noteref>4</a></sup>.</p>
-<p>Now, let&rsquo;s really let it go. I have 4 cores, so let&rsquo;s try 4 places:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ racket mine-sha512-places.rkt <span style=color:#ae81ff>4</span>
-0: J1vkvS8s1WJJ7CUt -&gt; 003abedaf7fcdab7... <span style=color:#f92672>(</span>13.2 kh @ 27.6 kh/s<span style=color:#f92672>)</span>
-1: 383Xt0hLlAl0JZWO -&gt; 00098c00746f1807... <span style=color:#f92672>(</span>11.5 kh @ 24.0 kh/s<span style=color:#f92672>)</span>
-0: 7EmH4gk7T2aecSph -&gt; 0000060d3d0f9ddf... <span style=color:#f92672>(</span>3.7 Mh @ 505.7 kh/s<span style=color:#f92672>)</span>
-0: XxeeMSUlYWPzrUh1 -&gt; 00000494b2eccdbf... <span style=color:#f92672>(</span>5.5 Mh @ 519.9 kh/s<span style=color:#f92672>)</span>
-3: 7a5MD2k0uILVj8aB -&gt; 000002037fce01ec... <span style=color:#f92672>(</span>7.2 Mh @ 520.5 kh/s<span style=color:#f92672>)</span>
-1: A3HTACsXRI5QkwWU -&gt; 000001de799bfeaa... <span style=color:#f92672>(</span>31.9 Mh @ 529.1 kh/s<span style=color:#f92672>)</span>
-</code></pre></div><p>That&rsquo;s a lot more like it. And at a roughly 3.75x speedup over a single place, pretty much exactly what <a href=https://en.wikipedia.org/wiki/Amdal%27s%20law>Amdal's law</a> would expect we&rsquo;d be able to get in speedup. If we try it with 8, we don&rsquo;t do any better (a brief spike, but overall it&rsquo;s actually worse):</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ racket mine-sha512-places.rkt <span style=color:#ae81ff>8</span>
-0: JRxl4puWgUCIBvZ1 -&gt; 00016f513c85da0e... <span style=color:#f92672>(</span>49.6 kh @ 54.8 kh/s<span style=color:#f92672>)</span>
-4: LU5sj3zJmG30w4O3 -&gt; 000026edd66b3458... <span style=color:#f92672>(</span>13.4 kh @ 11.0 kh/s<span style=color:#f92672>)</span>
-1: AvFOADpeY1vn0q5z -&gt; 000018a5d4019643... <span style=color:#f92672>(</span>2.0 Mh @ 247.9 kh/s<span style=color:#f92672>)</span>
-2: wyIvWO5nYh7MgbTR -&gt; 00000658bae50546... <span style=color:#f92672>(</span>4.6 Mh @ 452.7 kh/s<span style=color:#f92672>)</span>
-7: ekrIcXa8CVmXKmVr -&gt; 000004e231c16d72... <span style=color:#f92672>(</span>5.1 Mh @ 168.4 kh/s<span style=color:#f92672>)</span>
-1: 1mTOnp0weetWHLbp -&gt; 00000270cab144e8... <span style=color:#f92672>(</span>24.0 Mh @ 736.0 kh/s<span style=color:#f92672>)</span>
-0: 7GG6p6sK1e4EvbzV -&gt; 0000013d126816a5... <span style=color:#f92672>(</span>34.2 Mh @ 459.2 kh/s<span style=color:#f92672>)</span>
-</code></pre></div><p>Of course that&rsquo;s still nothing on the record hashes so far. In the contest running <a href=http://www.h11e.com/>here</a>, the best as of my writing is <code>0000000003aeefb5...</code> A bit of a way to go, that.
-Still, it&rsquo;s an interesting problem&ndash;and a nice excuse to learn a little more about places and channels in Racket. I&rsquo;ve used them before, but I think they made a little more sense this time around.</p>
-<p>If you&rsquo;d like to see the entire code for today&rsquo;s post, it&rsquo;s on GitHub: <a href=https://github.com/jpverkamp/small-projects/tree/master/blog/mine-sha512>github/jpverkamp</a></p>
-<section class=footnotes role=doc-endnotes>
-<hr>
-<ol>
-<li id=fn:1 role=doc-endnote>
-<p>Those are generally measured in Mh/s&#160;<a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p>
-</li>
-<li id=fn:2 role=doc-endnote>
-<p>Threads give us <a href=https://en.wikipedia.org/wiki/Concurrency%20%28computer%20science%29>concurrency</a> in Racket, not <a href=https://en.wikipedia.org/wiki/Parallel%20computing>parallelism</a>&#160;<a href=#fnref:2 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p>
-</li>
-<li id=fn:3 role=doc-endnote>
-<p>Averaging 5 seconds times the number of places in fact&#160;<a href=#fnref:3 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p>
-</li>
-<li id=fn:4 role=doc-endnote>
-<p>Which is probably just an artifact of the timing. There&rsquo;s no particular reason this code should actually be faster.&#160;<a href=#fnref:4 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p>
-</li>
-</ol>
-</section></div>
-</article></div>
-</div><footer id=page-footer role=contentinfo>
-<nav id=footer-navigation role=navigation class=ribbon>
-<ul class=main-navigation>
-<li><a href=/archive-by-date/>All posts: By Date</a></li>
-<li><a href=/archive-by-tag/>All posts: By Tag</a></li>
-<li>
-<a href=/atom.xml>
-RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li><li>
-<a href=/programming/atom.xml>
-RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li></ul>
-</nav>
-<div id=page-footer-content>
-<div class=legal>
-<p>
-All posts unless otherwise mentioned are licensed under
-<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US>
-<img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png>
-</a>
-</p>
-<p>
-Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a>
-</p>
-</div>
-</div>
-</footer>
-</div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Exploring parallelism in Racket with SHA-512 mining</h1><div class=entry-meta><span class=entry-date>2014-02-16</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2014/01/27/factoring-factorials/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/racket>Racket</a><a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2014/01/27/factoring-factorials/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/scheme>Scheme</a><a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a class=taxonomy-value href=/programming/topics/bitcoin>Bitcoin</a></li><li><a href=https://blog.jverkamp.com/2013/04/23/user-space-continuation-based-thread-pool/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/concurrency>Concurrency</a></li><li><a href=https://blog.jverkamp.com/2013/02/06/numbers-as-words-in-arbitrary-bases/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/dictionary>Dictionary</a><a href=https://blog.jverkamp.com/2014/02/27/dis/re-emvowelification/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/hashes>Hashes</a><a href=https://blog.jverkamp.com/2016/12/05/aoc-2016-day-5-password-cracker/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2014/01/27/factoring-factorials/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/mathematics>Mathematics</a><a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link></a></li><li><a class=taxonomy-value href=/programming/topics/parallelism>Parallelism</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2014/02/07/command-line-user-agent-parsing/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2014/02/15/the-lego-movie/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2014/02/27/crossing-hands/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p>While I&rsquo;ve been getting a fair few programming exercises from Reddit&rsquo;s <a href=http://www.reddit.com/r/dailyprogrammer>/r/dailyprogrammer</a>, more recently I&rsquo;ve started following a few other sub-Reddits, such as <a href=http://www.reddit.com/r/programming>/r/programming</a> and <a href=http://www.reddit.com/r/netsec>/r/netsec</a>. While browsing the former, I came across this intriguing gem of a problem: <a tabindex=1 href=http://www.h11e.com/>HashChallenge: can you find the lowest value SHA-512 hash?</a></p><p>The basic idea is simple. Find the input string <em>s</em> such that the output SHA-512 hash is minimized. As an an example,</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ echo <span style=color:#e6db74>&#34;Hello world&#34;</span> | shasum -a <span style=color:#ae81ff>512</span>
+</span></span><span style=display:flex><span>81381f1dacd4824a6c503fd070577630...
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>$ echo <span style=color:#e6db74>&#34;Even better&#34;</span> | shasum -a <span style=color:#ae81ff>512</span>
+</span></span><span style=display:flex><span>77d8af6911952994e2d9597e6962ada1...
+</span></span></code></pre></div><p>Of course, these aren&rsquo;t that great. At the very least we should be looking for hashes with a few leading zeros. Not to mention that this is something that should be downright trivial to automate. Let&rsquo;s start with a straight forward Racket script:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; Mine for the lowest SHA-512 we can find</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine</span>)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>alphabet <span style=color:#e6db74>&#34;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890&#34;</span>)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>hashes-tried <span style=color:#ae81ff>0</span>)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>start-time (<span style=color:#a6e22e>current-inexact-milliseconds</span>))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Store best values</span>
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>best-str <span style=color:#66d9ef>#f</span>)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>best-hash <span style=color:#66d9ef>#f</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Generate random values one at a time</span>
+</span></span><span style=display:flex><span>    (<span style=color:#66d9ef>let </span>loop ()
+</span></span><span style=display:flex><span>      (<span style=color:#66d9ef>define </span>str   (<span style=color:#a6e22e>random-string</span> <span style=color:#ae81ff>16</span>))
+</span></span><span style=display:flex><span>      (<span style=color:#66d9ef>define </span>bytes (<span style=color:#a6e22e>string-&gt;bytes/utf-8</span> str))
+</span></span><span style=display:flex><span>      (<span style=color:#66d9ef>define </span>hash  (<span style=color:#a6e22e>bytes-&gt;hex-string</span> (<span style=color:#a6e22e>sha512</span> bytes)))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      (<span style=color:#66d9ef>set! </span>hashes-tried (+ <span style=color:#ae81ff>1</span> hashes-tried))
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>when</span> (<span style=color:#66d9ef>or </span>(not best-hash) (string&lt;? hash best-hash))
+</span></span><span style=display:flex><span>        (<span style=color:#66d9ef>set! </span>best-str str)
+</span></span><span style=display:flex><span>        (<span style=color:#66d9ef>set! </span>best-hash hash)
+</span></span><span style=display:flex><span>        (<span style=color:#a6e22e>print-timing</span> <span style=color:#e6db74>&#39;main</span> hashes-tried (/ (- (<span style=color:#a6e22e>current-inexact-milliseconds</span>) start-time) <span style=color:#ae81ff>1000</span>) best-str best-hash))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>loop</span>)))
+</span></span></code></pre></div><p>There are a few helper functions there (<code>random-string</code> and <code>print-timing</code>, you can see them in the full code on GitHub: <a href=https://github.com/jpverkamp/small-projects/tree/master/blog/mine-sha512>github/jpverkamp</a>), but those should be straight forward. The hashing itself is done with Greg Hendershott&rsquo;s <a href=https://github.com/greghendershott/sha/tree/master><code>sha</code> library for Racket</a>, available via the new <a href=http://pkg.racket-lang.org/#[sha]>package manager</a>.</p><p>So, how does that do?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ racket mine-sha512.rkt
+</span></span><span style=display:flex><span>main: 4ZRZ6R5eQO4GItzK -&gt; 50ce827050c31fd0... <span style=color:#f92672>(</span>1.0 h @ 1.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: bGzP1aAnXjDEJ5tS -&gt; 2a8e1803b7ac4b57... <span style=color:#f92672>(</span>16.0 h @ 16.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: 9IXIWuGDepUUSubp -&gt; 048e4b1b9ae2e893... <span style=color:#f92672>(</span>20.0 h @ 20.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: nwVB9KFI0ieHm0n4 -&gt; 007704acb8e01bcf... <span style=color:#f92672>(</span>105.0 h @ 52.5 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: WeQFXLb3UhwyaHRr -&gt; 000b17576f358405... <span style=color:#f92672>(</span>364.0 h @ 91.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: D19naE3qFtrKT6Lt -&gt; 000707066075fce0... <span style=color:#f92672>(</span>6.0 kh @ 100.7 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: 4PQKs7crKnQTBjfs -&gt; 00018fe9e134c366... <span style=color:#f92672>(</span>11.7 kh @ 113.6 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: NZS717BXvT0ErzSR -&gt; 0000ed34ec5c0222... <span style=color:#f92672>(</span>120.5 kh @ 131.1 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>main: 3QuXbtG0xlRaDKqV -&gt; 000005fb0ac4a407... <span style=color:#f92672>(</span>2.7 Mh @ 133.2 kh/s<span style=color:#f92672>)</span>
+</span></span></code></pre></div><p>Since it only prints a line when it finds a new best hash, output can be a little chaotic at best, but at the very least this gives us a pretty good baseline. We managed to find a hash with 5 leading zeros and are running at about 133.2 kh/s. Nowhere near what most ASIC bitcoin miners <a href=https://en.bitcoin.it/wiki/Mining_hardware_comparison#ASIC>claim to be able to do</a><sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>, but not terrible for a pure CPU miner.</p><p>Let&rsquo;s do better.</p><p>The next idea would be to use Racket&rsquo;s threads. Going in to it, I already know that this isn&rsquo;t going to buy us much<sup id=fnref:2><a href=#fn:2 class=footnote-ref role=doc-noteref>2</a></sup>, but it&rsquo;s an easy enough tweak.</p><p>First, pull out the <code>hashes-tried</code>, <code>best-str</code>, and <code>best-hash</code> variables so all threads can access them. Then, create a wrapper function that will fire off the right number of threads:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; Mine with multiple threads concurrently</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine-all</span> thread-count)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>threads
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>for/list</span> ([i (<span style=color:#a6e22e>in-range</span> thread-count)])
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>thread</span> (<span style=color:#a6e22e>thunk</span> (<span style=color:#a6e22e>mine</span> i)))))
+</span></span><span style=display:flex><span>  (map thread-wait threads))
+</span></span></code></pre></div><p>This way we also get to know which thread found the new best value (although strictly speaking that&rsquo;s not necessary):</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ racket mine-sha512-threads.rkt <span style=color:#ae81ff>8</span>
+</span></span><span style=display:flex><span>7: OsultHDT905n5mmo -&gt; c0b8ad26ae6472f8... <span style=color:#f92672>(</span>1.0 h @ 62.5 h/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>7: pEyhYUxIM74peJxi -&gt; 13c7391822e728c3... <span style=color:#f92672>(</span>3.0 h @ 187.5 h/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>7: jPMHHOwwJeGe7bqF -&gt; 0045856cdcfbe797... <span style=color:#f92672>(</span>10.0 h @ 625.0 h/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>7: TE2nEcH10rcWefsn -&gt; 003e888a92cd8809... <span style=color:#f92672>(</span>1.0 kh @ 43.7 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>7: WTGTqrOpl2x1Czi1 -&gt; 0024448bf70a1247... <span style=color:#f92672>(</span>1.1 kh @ 49.5 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>6: EMhqI5ngPwiQr4gK -&gt; 000ae12edd827730... <span style=color:#f92672>(</span>2.8 kh @ 78.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>5: Gftv6FPZwVF4xTct -&gt; 000031b56d17483b... <span style=color:#f92672>(</span>3.8 kh @ 88.7 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>1: gDNLGB6Dzlp9YVBj -&gt; 00002a7fd4a81c8d... <span style=color:#f92672>(</span>287.5 kh @ 143.2 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>1: G0F4FLKwPNbUzQGO -&gt; 0000117e20b56196... <span style=color:#f92672>(</span>646.2 kh @ 144.6 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: 0hmB7jnocqRMuSxu -&gt; 00000a1a4b05d9b7... <span style=color:#f92672>(</span>2.9 Mh @ 144.8 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>7: PM59fjq5g2huYTEN -&gt; 000004cb6fd3fe14... <span style=color:#f92672>(</span>4.8 Mh @ 143.8 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>4: 4WzSTKXi540JlyJL -&gt; 000004713d42ec3b... <span style=color:#f92672>(</span>5.1 Mh @ 143.7 kh/s<span style=color:#f92672>)</span>
+</span></span></code></pre></div><p>So we have a slight speed up. I guess that&rsquo;s something. The problem is that we&rsquo;re still actually only running in a single process on a single processor. With four cores, that&rsquo;s something of a waste. Unfortunately though, we aren&rsquo;t going to be able to do much better than that with threads. We need something a little more powerful:</p><code><a href="http://docs.racket-lang.org/search/index.html?q=Places">Places</a></code><p>The basic idea of places is:</p><blockquote><p><code><a href="http://docs.racket-lang.org/search/index.html?q=Places">Places</a></code>
+enable the development of parallel programs that take advantage of machines with multiple processors, cores, or hardware threads.</p></blockquote><p>Sounds like exactly what we want. Unfortunately, that extra power comes with a bit of extra cost. No longer can we share variables directly between the various threads of the program, but rather now we have to communicate explicitly, using <code><a href="http://docs.racket-lang.org/search/index.html?q=place%20channels">place channels</a></code>
+. The basic idea I have is to split the work up into <em>n</em> places. For each place, run two threads: a hashing thread and a feedback thread. The hashing thread is pretty much the mining function we&rsquo;ve seen all along.</p><p>The feedback thread, on the other hand, will periodically send messages back to the main program relaying how much progress we&rsquo;ve made and any new hashes we&rsquo;ve found. Then, the main program can compare that to the other place&rsquo;s results and update with the overall best hash.</p><p>Starting with the new mining function:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; Create a place that will mine for new low hashes</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine</span> id)
+</span></span><span style=display:flex><span>  (<span style=color:#a6e22e>place</span> me
+</span></span><span style=display:flex><span>    <span style=color:#75715e>; Local best values</span>
+</span></span><span style=display:flex><span>    (<span style=color:#66d9ef>define </span>hashes-tried <span style=color:#ae81ff>0</span>)
+</span></span><span style=display:flex><span>    (<span style=color:#66d9ef>define </span>best-str <span style=color:#66d9ef>#f</span>)
+</span></span><span style=display:flex><span>    (<span style=color:#66d9ef>define </span>best-hash <span style=color:#66d9ef>#f</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>; Thread to periodically send back new best values</span>
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>thread</span>
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>thunk</span>
+</span></span><span style=display:flex><span>        (<span style=color:#66d9ef>let </span>loop ()
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>place-channel-put</span> me hashes-tried)
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>place-channel-put</span> me best-str)
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>place-channel-put</span> me best-hash)
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>sleep</span> (* (<span style=color:#a6e22e>random</span>) <span style=color:#ae81ff>10.0</span>))
+</span></span><span style=display:flex><span>          (<span style=color:#a6e22e>loop</span>))))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>; Look for new values</span>
+</span></span><span style=display:flex><span>    <span style=color:#f92672>...</span>))
+</span></span></code></pre></div><p>Fairly straight forward. The macro <code>place</code> at the top actually handles all of the work of creating a new place. <code>me</code> will be used to identify the automatically created channel we use a bit later to send messages on. Each time we send messages, we send three values: how many hashes this place has personally tried and the best string/hash pair. So of course, the main program will have to be listening for these three values from each place in turn:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; Run multiple mining places in parallel and sync between them</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>mine-all</span> thread-count)
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Global best values</span>
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>start-time (<span style=color:#a6e22e>current-inexact-milliseconds</span>))
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>best-str <span style=color:#66d9ef>#f</span>)
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>best-hash <span style=color:#66d9ef>#f</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Create places</span>
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>define </span>places
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>for/list</span> ([i (<span style=color:#a6e22e>in-range</span> thread-count)])
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>mine</span> i)))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Loop through those, getting their best values in time</span>
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>let </span>loop ()
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>for</span> ([id (<span style=color:#a6e22e>in-naturals</span>)]
+</span></span><span style=display:flex><span>          [p (<span style=color:#a6e22e>in-list</span> places)])
+</span></span><span style=display:flex><span>      (<span style=color:#66d9ef>define </span>hashes-tried (<span style=color:#a6e22e>place-channel-get</span> p))
+</span></span><span style=display:flex><span>      (<span style=color:#66d9ef>define </span>str (<span style=color:#a6e22e>place-channel-get</span> p))
+</span></span><span style=display:flex><span>      (<span style=color:#66d9ef>define </span>hash (<span style=color:#a6e22e>place-channel-get</span> p))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>when</span> (<span style=color:#66d9ef>or </span>(not best-hash) (<span style=color:#66d9ef>and </span>hash (string&lt;? hash best-hash)))
+</span></span><span style=display:flex><span>        (<span style=color:#66d9ef>define </span>estimated-hashes (* hashes-tried thread-count))
+</span></span><span style=display:flex><span>        (<span style=color:#66d9ef>set! </span>best-str str)
+</span></span><span style=display:flex><span>        (<span style=color:#66d9ef>set! </span>best-hash hash)
+</span></span><span style=display:flex><span>        (<span style=color:#a6e22e>print-timing</span> id estimated-hashes (/ (- (<span style=color:#a6e22e>current-inexact-milliseconds</span>) start-time) <span style=color:#ae81ff>1000</span>) best-str best-hash)))
+</span></span><span style=display:flex><span>    (<span style=color:#a6e22e>loop</span>)))
+</span></span></code></pre></div><p>There is a potential inefficiency here, in that we go round robin through the places asking each in turn for their best hash. Because they wait a random amount of time (up to 10 seconds) between reports, it could be a bit before we actually report a new lowest hash<sup id=fnref:3><a href=#fn:3 class=footnote-ref role=doc-noteref>3</a></sup>. In fact, it may even be out of date by then. Still, it&rsquo;s a reasonable enough count, especially if you&rsquo;re going to be running the program for a while.</p><p>So with that being said, the first thing to try would be a single place. Theoretically, that should give us the same performance as the original program (maybe minus a bit for the channel):</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ racket mine-sha512-places.rkt <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span>0: 38H0DQxOWh0swGlq -&gt; 000581b5f1373c77... <span style=color:#f92672>(</span>2.1 kh @ 5.4 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: TZdL5yWiiMb6WFVV -&gt; 00006cc7dac2d460... <span style=color:#f92672>(</span>252.4 kh @ 116.6 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: 0AnndUtx0XmNfX9a -&gt; 00000893ee217109... <span style=color:#f92672>(</span>1.3 Mh @ 136.5 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: bGh0LDfnwCiSIb95 -&gt; 000001e204acff0c... <span style=color:#f92672>(</span>4.4 Mh @ 140.2 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: JoWy6CXotik87OWh -&gt; 0000010fe4646f6f... <span style=color:#f92672>(</span>6.5 Mh @ 140.7 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: iS6rIH4kClxc0SdF -&gt; 000000ecdcc2cc1e... <span style=color:#f92672>(</span>16.0 Mh @ 141.3 kh/s<span style=color:#f92672>)</span>
+</span></span></code></pre></div><p>Well that&rsquo;s not bad at all. If anything, it&rsquo;s a little faster<sup id=fnref:4><a href=#fn:4 class=footnote-ref role=doc-noteref>4</a></sup>.</p><p>Now, let&rsquo;s really let it go. I have 4 cores, so let&rsquo;s try 4 places:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ racket mine-sha512-places.rkt <span style=color:#ae81ff>4</span>
+</span></span><span style=display:flex><span>0: J1vkvS8s1WJJ7CUt -&gt; 003abedaf7fcdab7... <span style=color:#f92672>(</span>13.2 kh @ 27.6 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>1: 383Xt0hLlAl0JZWO -&gt; 00098c00746f1807... <span style=color:#f92672>(</span>11.5 kh @ 24.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: 7EmH4gk7T2aecSph -&gt; 0000060d3d0f9ddf... <span style=color:#f92672>(</span>3.7 Mh @ 505.7 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: XxeeMSUlYWPzrUh1 -&gt; 00000494b2eccdbf... <span style=color:#f92672>(</span>5.5 Mh @ 519.9 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>3: 7a5MD2k0uILVj8aB -&gt; 000002037fce01ec... <span style=color:#f92672>(</span>7.2 Mh @ 520.5 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>1: A3HTACsXRI5QkwWU -&gt; 000001de799bfeaa... <span style=color:#f92672>(</span>31.9 Mh @ 529.1 kh/s<span style=color:#f92672>)</span>
+</span></span></code></pre></div><p>That&rsquo;s a lot more like it. And at a roughly 3.75x speedup over a single place, pretty much exactly what <a href=https://en.wikipedia.org/wiki/Amdal%27s%20law>Amdal's law</a> would expect we&rsquo;d be able to get in speedup. If we try it with 8, we don&rsquo;t do any better (a brief spike, but overall it&rsquo;s actually worse):</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ racket mine-sha512-places.rkt <span style=color:#ae81ff>8</span>
+</span></span><span style=display:flex><span>0: JRxl4puWgUCIBvZ1 -&gt; 00016f513c85da0e... <span style=color:#f92672>(</span>49.6 kh @ 54.8 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>4: LU5sj3zJmG30w4O3 -&gt; 000026edd66b3458... <span style=color:#f92672>(</span>13.4 kh @ 11.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>1: AvFOADpeY1vn0q5z -&gt; 000018a5d4019643... <span style=color:#f92672>(</span>2.0 Mh @ 247.9 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>2: wyIvWO5nYh7MgbTR -&gt; 00000658bae50546... <span style=color:#f92672>(</span>4.6 Mh @ 452.7 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>7: ekrIcXa8CVmXKmVr -&gt; 000004e231c16d72... <span style=color:#f92672>(</span>5.1 Mh @ 168.4 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>1: 1mTOnp0weetWHLbp -&gt; 00000270cab144e8... <span style=color:#f92672>(</span>24.0 Mh @ 736.0 kh/s<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span>0: 7GG6p6sK1e4EvbzV -&gt; 0000013d126816a5... <span style=color:#f92672>(</span>34.2 Mh @ 459.2 kh/s<span style=color:#f92672>)</span>
+</span></span></code></pre></div><p>Of course that&rsquo;s still nothing on the record hashes so far. In the contest running <a href=http://www.h11e.com/>here</a>, the best as of my writing is <code>0000000003aeefb5...</code> A bit of a way to go, that.
+Still, it&rsquo;s an interesting problem&ndash;and a nice excuse to learn a little more about places and channels in Racket. I&rsquo;ve used them before, but I think they made a little more sense this time around.</p><p>If you&rsquo;d like to see the entire code for today&rsquo;s post, it&rsquo;s on GitHub: <a href=https://github.com/jpverkamp/small-projects/tree/master/blog/mine-sha512>github/jpverkamp</a></p><section class=footnotes role=doc-endnotes><hr><ol><li id=fn:1 role=doc-endnote><p>Those are generally measured in Mh/s&#160;<a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:2 role=doc-endnote><p>Threads give us <a href=https://en.wikipedia.org/wiki/Concurrency%20%28computer%20science%29>concurrency</a> in Racket, not <a href=https://en.wikipedia.org/wiki/Parallel%20computing>parallelism</a>&#160;<a href=#fnref:2 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:3 role=doc-endnote><p>Averaging 5 seconds times the number of places in fact&#160;<a href=#fnref:3 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:4 role=doc-endnote><p>Which is probably just an artifact of the timing. There&rsquo;s no particular reason this code should actually be faster.&#160;<a href=#fnref:4 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li></ol></section></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
 <script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
-<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:'loose'})</script>
-<script defer src=/custom.js></script>
-</body>
-</html>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>
