@@ -1,325 +1,445 @@
-<!doctype html><html><head><title>Go is faster than Python? (an example parsing huge JSON logs) – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<!doctype html><html>
+<head>
+<title>Go is faster than Python? (an example parsing huge JSON logs) – jverkamp.com</title>
+<meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/>
+<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous>
+<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous>
+<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous>
+<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet>
+<link rel=stylesheet href=/custom.css defer>
+<script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script>
+</head>
+<body>
+<div id=wrapper><header id=page-header role=banner>
+<h1><a href=/>JP's Blog</a></h1>
+<ul id=page-header-links>
+<li>
+<a href=https://github.com/jpverkamp>GitHub</a> *
 <a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
-<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<a href=/resume>Resume</a>
+</li>
+<li>
+<form action=//www.google.com/search method=get onsubmit="(function(a){a.q.value='site:blog.jverkamp.com '+a.qfront.value})(this)" class="navbar-form navbar-right" role=search _lpchecked=1>
+<div class=form-group>
+<input name=q type=hidden>
 <input name=qfront type=text class=form-control placeholder=Search>
-<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Go is faster than Python? (an example parsing huge JSON logs)</h1><div class=entry-meta><span class=entry-date>2022-02-11</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2021/07/15/crosslinks-by-title-in-hugo/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/go>Go</a></li><li><a href=https://blog.jverkamp.com/2022/02/03/a-cli-tool-for-bulk-processing-github-dependabot-alerts-with-graphql/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/python>Python</a></li></ul></li><li><a class=taxonomy-key href=/programming/sources/>Sources</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/03/a-cli-tool-for-bulk-processing-github-dependabot-alerts-with-graphql/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/small-scripts>Small Scripts</a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/01/a-simple-flask-logging/echo-server/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/json>JSON</a></li><li><a class=taxonomy-value href=/programming/topics/logs>Logs</a></li><li><a href=https://blog.jverkamp.com/2021/12/24/aoc-2021-day-24-aluinator/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/optimization>Optimization</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/02/03/a-cli-tool-for-bulk-processing-github-dependabot-alerts-with-graphql/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/02/11/hellblazer-vol.-14-good-intentions/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2022/02/13/hellblazer-vol.-15-highwater/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p>Recently at work I came across a problem where I had to go through a year&rsquo;s worth of logs and corelate two different fields across all of our requests. On the good side, we have the logs stored as JSON objects (archived from Datadog which collects them). On the down side&mldr; it&rsquo;s kind of a huge amount of data. Not as much as I&rsquo;ve dealt with at previous jobs/in some academic problems, but we&rsquo;re still talking on the order of terabytes.</p><p>On one hand, write up a quick Python script, fire and forget. It takes maybe ten minutes to write the code and (for this specific example) half an hour to run it on the specific cloud instance the logs lived on. So we&rsquo;ll start with that. But then I got thinking&mldr; Python is supposed to be super slow right? Can I do better?</p><p>(Note: This problem is mostly disk bound. So Python actually for the most part does just fine.)</p><h2 id=problem-statement>Problem statement</h2><ul><li>Logs contain one JSON object per line</li><li>There are multiple gzipped collections of log files</li><li>The specific requests we are looking at have an object <code>attributes.log.response.body.user</code> with <code>id</code> and <code>name</code> fields</li><li>There are many (<em>many</em>) other services with differently formatted logs, we should ignore all lines that don&rsquo;t have the above structure</li><li>We have a specific list of IDs that we&rsquo;re interested in, we want to print the <code>name</code> supplied for each <code>id</code> <em>once</em> as a tab-delimited file</li></ul><h2 id=version-1-python>Version 1: Python</h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-python data-lang=python><span style=display:flex><span><span style=color:#f92672>import</span> fileinput
-</span></span><span style=display:flex><span><span style=color:#f92672>import</span> json
-</span></span><span style=display:flex><span><span style=color:#f92672>import</span> logging
-</span></span><span style=display:flex><span><span style=color:#f92672>import</span> os
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>os<span style=color:#f92672>.</span>makedirs(<span style=color:#e6db74>&#39;output&#39;</span>, exist_ok<span style=color:#f92672>=</span><span style=color:#66d9ef>True</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>with</span> open(<span style=color:#e6db74>&#39;ids.txt&#39;</span>, <span style=color:#e6db74>&#39;r&#39;</span>) <span style=color:#66d9ef>as</span> fin:
-</span></span><span style=display:flex><span>    target_ids <span style=color:#f92672>=</span> {
-</span></span><span style=display:flex><span>        int(line<span style=color:#f92672>.</span>strip())
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> line <span style=color:#f92672>in</span> fin
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> line<span style=color:#f92672>.</span>strip()
-</span></span><span style=display:flex><span>    }
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>seen_ids <span style=color:#f92672>=</span> set()
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>logging<span style=color:#f92672>.</span>info(<span style=color:#e6db74>&#39;Parsing input data&#39;</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>for</span> line <span style=color:#f92672>in</span> fileinput<span style=color:#f92672>.</span>input(openhook<span style=color:#f92672>=</span>fileinput<span style=color:#f92672>.</span>hook_compressed):
-</span></span><span style=display:flex><span>    line <span style=color:#f92672>=</span> line<span style=color:#f92672>.</span>decode()
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span>:
-</span></span><span style=display:flex><span>        obj <span style=color:#f92672>=</span> json<span style=color:#f92672>.</span>loads(line)
-</span></span><span style=display:flex><span>        log <span style=color:#f92672>=</span> obj[<span style=color:#e6db74>&#39;attributes&#39;</span>][<span style=color:#e6db74>&#39;log&#39;</span>]
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>except</span>:
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>pass</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>try</span>:
-</span></span><span style=display:flex><span>        id <span style=color:#f92672>=</span> int(log[<span style=color:#e6db74>&#39;response&#39;</span>][<span style=color:#e6db74>&#39;body&#39;</span>][<span style=color:#e6db74>&#39;user&#39;</span>][<span style=color:#e6db74>&#39;id&#39;</span>])
-</span></span><span style=display:flex><span>        name <span style=color:#f92672>=</span> log[<span style=color:#e6db74>&#39;response&#39;</span>][<span style=color:#e6db74>&#39;body&#39;</span>][<span style=color:#e6db74>&#39;user&#39;</span>][<span style=color:#e6db74>&#39;name&#39;</span>]<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;T&#39;</span>)[<span style=color:#ae81ff>0</span>]
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> id <span style=color:#f92672>not</span> <span style=color:#f92672>in</span> target_ids:
-</span></span><span style=display:flex><span>            <span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> id <span style=color:#f92672>in</span> seen_ids:
-</span></span><span style=display:flex><span>            <span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        print(id, name, sep<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;</span><span style=color:#ae81ff>\t</span><span style=color:#e6db74>&#39;</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        seen_ids<span style=color:#f92672>.</span>add(id)
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>except</span>:
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>pass</span>
-</span></span></code></pre></div><p>Okay, at least in my opinion, that&rsquo;s fairly clean code. Easy to write, easy to read, and gets the job done.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ time python3 scan2.py filtered-logs-30days.json.gz &gt; output-python.txt
-</span></span><span style=display:flex><span>2022-02-11 03:40:35 INFO Parsing input data
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>real    2m11.221s
-</span></span><span style=display:flex><span>user    1m43.117s
-</span></span><span style=display:flex><span>sys     0m2.514s
-</span></span></code></pre></div><p>This is a subset of the logs that specifically only deals with 30 days and already filters out most of the requests. Still has about 1/3 of a million records to parse though. I feel like it shouldn&rsquo;t take 2 minutes to do even that, but it gives us a baseline (and those are some very large JSON records).</p><h2 id=version-2-go-with-the-built-in-json-library>Version 2: Go with the built in JSON library</h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#f92672>package</span> <span style=color:#a6e22e>main</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#f92672>import</span> (
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;bufio&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;compress/gzip&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;encoding/json&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;fmt&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;log&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;os&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;strconv&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;strings&#34;</span>
-</span></span><span style=display:flex><span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>target_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>seen_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>rget</span>(<span style=color:#a6e22e>obj</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{}, <span style=color:#a6e22e>key</span> <span style=color:#66d9ef>string</span>) (<span style=color:#66d9ef>string</span>, <span style=color:#66d9ef>bool</span>) {
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>parts</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>strings</span>.<span style=color:#a6e22e>Split</span>(<span style=color:#a6e22e>key</span>, <span style=color:#e6db74>&#34;/&#34;</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>part</span> <span style=color:#f92672>:=</span> <span style=color:#66d9ef>range</span> <span style=color:#a6e22e>parts</span>[:len(<span style=color:#a6e22e>parts</span>)<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>] {
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>obj</span>[<span style=color:#a6e22e>part</span>]; <span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>is_map</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{}); <span style=color:#a6e22e>is_map</span> {
-</span></span><span style=display:flex><span>				<span style=color:#a6e22e>obj</span> = <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{})
-</span></span><span style=display:flex><span>			} <span style=color:#66d9ef>else</span> {
-</span></span><span style=display:flex><span>				<span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;&#34;</span>, <span style=color:#66d9ef>false</span>
-</span></span><span style=display:flex><span>			}
-</span></span><span style=display:flex><span>		} <span style=color:#66d9ef>else</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;&#34;</span>, <span style=color:#66d9ef>false</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>obj</span>[<span style=color:#a6e22e>parts</span>[len(<span style=color:#a6e22e>parts</span>)<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>]]; <span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value_str</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>string</span>); <span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>value_str</span>, <span style=color:#66d9ef>true</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value_int</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>float64</span>); <span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>strconv</span>.<span style=color:#a6e22e>Itoa</span>(int(<span style=color:#a6e22e>value_int</span>)), <span style=color:#66d9ef>true</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;&#34;</span>, <span style=color:#66d9ef>false</span>
-</span></span><span style=display:flex><span>}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>scan</span>(<span style=color:#a6e22e>scanner</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>Scanner</span>) <span style=color:#66d9ef>int</span> {
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>obj</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Scan</span>() {
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>line</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Text</span>()
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>line_bytes</span> <span style=color:#f92672>:=</span> []byte(<span style=color:#a6e22e>line</span>)
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Err</span>(); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Fatalf</span>(<span style=color:#e6db74>&#34;Failed to scan: %v&#34;</span>, <span style=color:#a6e22e>err</span>)
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>json</span>.<span style=color:#a6e22e>Unmarshal</span>(<span style=color:#a6e22e>line_bytes</span>, <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>obj</span>); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>user_id</span>, <span style=color:#a6e22e>ok1</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>rget</span>(<span style=color:#a6e22e>obj</span>, <span style=color:#e6db74>&#34;attributes/log/response/body/user/id&#34;</span>)
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>name</span>, <span style=color:#a6e22e>ok2</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>rget</span>(<span style=color:#a6e22e>obj</span>, <span style=color:#e6db74>&#34;attributes/log/response/body/user/name&#34;</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>ok1</span> <span style=color:#f92672>||</span> !<span style=color:#a6e22e>ok2</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>user_id</span>]; !<span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>]; <span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>] = <span style=color:#66d9ef>true</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>name</span> = <span style=color:#a6e22e>strings</span>.<span style=color:#a6e22e>Split</span>(<span style=color:#a6e22e>name</span>, <span style=color:#e6db74>&#34;T&#34;</span>)[<span style=color:#ae81ff>0</span>]
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v\t%v\n&#34;</span>, <span style=color:#a6e22e>user_id</span>, <span style=color:#a6e22e>name</span>)
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>lines_scanned</span>
-</span></span><span style=display:flex><span>}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>main</span>() {
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>target_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>)
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>seen_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	{
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>_</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#e6db74>&#34;ids.txt&#34;</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>f</span>.<span style=color:#a6e22e>Close</span>()
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>s</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>f</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Scan</span>() {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>strings</span>.<span style=color:#a6e22e>TrimSpace</span>(<span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Text</span>())] = <span style=color:#66d9ef>true</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>path</span> <span style=color:#f92672>:=</span> <span style=color:#66d9ef>range</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Args</span> {
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Scanning %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>file</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to open %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>file</span>.<span style=color:#a6e22e>Close</span>()
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>gunzip</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gzip</span>.<span style=color:#a6e22e>NewReader</span>(<span style=color:#a6e22e>file</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to gunzip stream from %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>gunzip</span>.<span style=color:#a6e22e>Close</span>()
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>scanner</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>gunzip</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#75715e>// https://stackoverflow.com/questions/21124327/how-to-read-a-text-file-line-by-line-in-go-when-some-lines-are-long-enough-to-ca
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>		<span style=color:#a6e22e>buffer</span> <span style=color:#f92672>:=</span> make([]<span style=color:#66d9ef>byte</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Buffer</span>(<span style=color:#a6e22e>buffer</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#a6e22e>scan</span>(<span style=color:#f92672>*</span><span style=color:#a6e22e>scanner</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v lines scanned in %v\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v total scanned\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>)
-</span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>Okay, I&rsquo;ll admit. I have not written that much Go code. It&rsquo;s rather verbose&mldr; but I think it is nice and readable enough. Certainly a lot of manual error handling, but since I want to catch and pass over those anyways, that&rsquo;s fine. Marshalling the JSON into a <code>map[string]interface{}</code> is&mldr; a bit weird, but the structs are far far too weird to actually fully define (many different services). That did mean that I had to write the <code>rget</code> function that would be able to pull a value out of a deeply nested structure and the types on that got a bit odd.</p><p>But overall, I think it&rsquo;s pretty clean.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ time ./scan filtered-logs-30days.json.gz &gt; output-go.txt
-</span></span><span style=display:flex><span>2022/02/11 03:54:32 Scanning ./scan2
-</span></span><span style=display:flex><span>2022/02/11 03:54:32 Unable to gunzip stream from ./scan2
-</span></span><span style=display:flex><span>2022/02/11 03:54:32 Scanning filtered-logs-30days.json.gz
-</span></span><span style=display:flex><span>2022/02/11 03:55:48 <span style=color:#ae81ff>365573</span> lines scanned in filtered-logs-30days.json.gz
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>real    1m45.055s
-</span></span><span style=display:flex><span>user    1m28.048s
-</span></span><span style=display:flex><span>sys     0m3.553s
-</span></span></code></pre></div><p>Not bad. About twice as fast already. The scanning is a bit ugly though&mldr; can we do better?</p><p>One thing that I did absolutely love being able to do:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ GOOS<span style=color:#f92672>=</span>linux GOARCH<span style=color:#f92672>=</span>amd64 go build scan.go
-</span></span></code></pre></div><p>I&rsquo;m on an M1 Mac, but I was perfectly fine cross compiling for an x86_64 Linux AWS EC2 instance with a single simple command. <code>scp</code> the binary and it just runs. How cool is that?</p><h2 id=version-3-go-with-gjson>Version 3: Go with gjson</h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#f92672>package</span> <span style=color:#a6e22e>main</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#f92672>import</span> (
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;bufio&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;compress/gzip&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;fmt&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;log&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;os&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;strconv&#34;</span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;strings&#34;</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#e6db74>&#34;github.com/tidwall/gjson&#34;</span>
-</span></span><span style=display:flex><span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>target_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>var</span> <span style=color:#a6e22e>seen_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>scan</span>(<span style=color:#a6e22e>scanner</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>Scanner</span>) <span style=color:#66d9ef>int</span> {
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Scan</span>() {
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>line</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Text</span>()
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>lines_scanned</span><span style=color:#f92672>%</span><span style=color:#ae81ff>100000</span> <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span> {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v lines scanned\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>)
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Err</span>(); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Fatalf</span>(<span style=color:#e6db74>&#34;Failed to scan: %v&#34;</span>, <span style=color:#a6e22e>err</span>)
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>gj_user</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gjson</span>.<span style=color:#a6e22e>Get</span>(<span style=color:#a6e22e>line</span>, <span style=color:#e6db74>&#34;attributes.log.response.body.user&#34;</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>gj_user</span>.<span style=color:#a6e22e>Exists</span>() {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>gj_user_id</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_user</span>.<span style=color:#a6e22e>Get</span>(<span style=color:#e6db74>&#34;id&#34;</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>gj_user_id</span>.<span style=color:#a6e22e>Exists</span>() {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>gj_name</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_user</span>.<span style=color:#a6e22e>Get</span>(<span style=color:#e6db74>&#34;name&#34;</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>gj_name</span>.<span style=color:#a6e22e>Exists</span>() {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>user_id</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_user_id</span>.<span style=color:#a6e22e>Int</span>()
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>name</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_name</span>.<span style=color:#a6e22e>String</span>()
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>user_id</span>]; !<span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>]; <span style=color:#a6e22e>ok</span> {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>] = <span style=color:#66d9ef>true</span>
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        <span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v\t%v\n&#34;</span>, <span style=color:#a6e22e>user_id</span>, <span style=color:#a6e22e>name</span>)
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>lines_scanned</span>
-</span></span><span style=display:flex><span>}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>main</span>() {
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>target_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>)
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>seen_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	{
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>_</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#e6db74>&#34;ids.txt&#34;</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>f</span>.<span style=color:#a6e22e>Close</span>()
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>s</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>f</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Scan</span>() {
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>id</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>strconv</span>.<span style=color:#a6e22e>ParseInt</span>(<span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Text</span>(), <span style=color:#ae81ff>10</span>, <span style=color:#ae81ff>64</span>); <span style=color:#a6e22e>err</span> <span style=color:#f92672>==</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>				<span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>id</span>] = <span style=color:#66d9ef>true</span>
-</span></span><span style=display:flex><span>			}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
-</span></span><span style=display:flex><span>	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>path</span> <span style=color:#f92672>:=</span> <span style=color:#66d9ef>range</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Args</span>[<span style=color:#ae81ff>1</span>:] {
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Scanning %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>file</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to open %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>file</span>.<span style=color:#a6e22e>Close</span>()
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>gunzip</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gzip</span>.<span style=color:#a6e22e>NewReader</span>(<span style=color:#a6e22e>file</span>)
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to gunzip stream from %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>			<span style=color:#66d9ef>continue</span>
-</span></span><span style=display:flex><span>		}
-</span></span><span style=display:flex><span>		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>gunzip</span>.<span style=color:#a6e22e>Close</span>()
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>scanner</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>gunzip</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#75715e>// https://stackoverflow.com/questions/21124327/how-to-read-a-text-file-line-by-line-in-go-when-some-lines-are-long-enough-to-ca
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>		<span style=color:#a6e22e>buffer</span> <span style=color:#f92672>:=</span> make([]<span style=color:#66d9ef>byte</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Buffer</span>(<span style=color:#a6e22e>buffer</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#a6e22e>scan</span>(<span style=color:#f92672>*</span><span style=color:#a6e22e>scanner</span>)
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v lines scanned in %v\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>, <span style=color:#a6e22e>path</span>)
-</span></span><span style=display:flex><span>	}
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v total scanned\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>)
-</span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>This time around I&rsquo;m using a third party library <a href=https://github.com/tidwall/gjson>gjson</a>. They claim to be <code>fast</code> and <code>simple</code>&ndash;and, it&rsquo;s true! It takes the <code>rget</code> code I wrote and bundles it up for me in a way that seems a lot better.</p><p>I did learn a good lesson about making sure you deal with <code>scanner.Err()</code> though&mldr; I have some lines that happen to go over the <code>scanner</code> Token default length&mldr; which meant it just silently stopped running (since I wasn&rsquo;t catching the err). Oops&mldr; (I backported it to the previous solution but found it here&mldr;)</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Err</span>(); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
-</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Fatalf</span>(<span style=color:#e6db74>&#34;Failed to scan: %v&#34;</span>, <span style=color:#a6e22e>err</span>)
-</span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>Other than that, nice relatively elegant code and&mldr;</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ time ./scan2 filtered-logs-30days.json.gz &gt; output-go3.txt
-</span></span><span style=display:flex><span>2022/02/11 04:19:15 Scanning filtered-logs-30days.json.gz
-</span></span><span style=display:flex><span>2022/02/11 04:19:34 <span style=color:#ae81ff>100000</span> lines scanned
-</span></span><span style=display:flex><span>2022/02/11 04:19:56 <span style=color:#ae81ff>200000</span> lines scanned
-</span></span><span style=display:flex><span>2022/02/11 04:20:17 <span style=color:#ae81ff>300000</span> lines scanned
-</span></span><span style=display:flex><span>2022/02/11 04:20:30 <span style=color:#ae81ff>365573</span> lines scanned in filtered-logs-30days.json.gz
-</span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>real    1m15.648s
-</span></span><span style=display:flex><span>user    0m57.985s
-</span></span><span style=display:flex><span>sys     0m2.308s
-</span></span></code></pre></div><p>Nice! It&rsquo;s slightly faster than the above!</p><p>Run it on the full example and now instead of half an hour, we&rsquo;re done in 18 minutes. Granted, I spent more than the difference getting the Go code working.</p><p><a href=https://xkcd.com/1205><img src=https://imgs.xkcd.com/comics/is_it_worth_the_time.png alt="XKCD has a comic for everything"></a></p><p>Overall, I found it an interesting experience. I hope you do as well. :D</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
-<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<button type=submit class="btn btn-default" value=Search>Search</button>
+</div>
+</form>
+</li>
+</ul>
+<nav id=header-navigation role=navigation class=ribbon>
+<ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li>
+</ul>
+</nav>
+</header>
+<div id=page-content-wrapper>
+<div id=page-content><article>
+<header>
+<h1 class=entry-title>Go is faster than Python? (an example parsing huge JSON logs)</h1>
+<div class=entry-meta><span class=entry-date>2022-02-11</span>
+</div>
+<div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li>
+<a class=taxonomy-key href=/programming/languages/>Languages</a>
+<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2021/07/15/crosslinks-by-title-in-hugo/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/go>Go</a></li><li><a href=https://blog.jverkamp.com/2022/02/03/a-cli-tool-for-bulk-processing-github-dependabot-alerts-with-graphql/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/python>Python</a></li></ul>
+</li><li>
+<a class=taxonomy-key href=/programming/sources/>Sources</a>
+<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/03/a-cli-tool-for-bulk-processing-github-dependabot-alerts-with-graphql/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/small-scripts>Small Scripts</a></li></ul>
+</li><li>
+<a class=taxonomy-key href=/programming/topics/>Topics</a>
+<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/01/a-simple-flask-logging/echo-server/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/json>JSON</a></li><li><a class=taxonomy-value href=/programming/topics/logs>Logs</a></li><li><a href=https://blog.jverkamp.com/2021/12/24/aoc-2021-day-24-aluinator/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/optimization>Optimization</a></li></ul>
+</li><li><a class=taxonomy-key href=/programming>programming</a>
+<ul>
+<li><a href=https://blog.jverkamp.com/2022/02/03/a-cli-tool-for-bulk-processing-github-dependabot-alerts-with-graphql/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/ class=next-link>Next</a></ul>
+</li><li><a class=taxonomy-key href=/>All Posts</a>
+<ul>
+<li><a href=https://blog.jverkamp.com/2022/02/11/hellblazer-vol.-14-good-intentions/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/02/13/hellblazer-vol.-15-highwater/ class=next-link>Next</a></ul>
+</li></ul>
+</div>
+</div>
+</header>
+<div class=entry-content><p>Recently at work I came across a problem where I had to go through a year&rsquo;s worth of logs and corelate two different fields across all of our requests. On the good side, we have the logs stored as JSON objects (archived from Datadog which collects them). On the down side&mldr; it&rsquo;s kind of a huge amount of data. Not as much as I&rsquo;ve dealt with at previous jobs/in some academic problems, but we&rsquo;re still talking on the order of terabytes.</p>
+<p>On one hand, write up a quick Python script, fire and forget. It takes maybe ten minutes to write the code and (for this specific example) half an hour to run it on the specific cloud instance the logs lived on. So we&rsquo;ll start with that. But then I got thinking&mldr; Python is supposed to be super slow right? Can I do better?</p>
+<p>(Note: This problem is mostly disk bound. So Python actually for the most part does just fine.)</p>
+<h2 id=problem-statement>Problem statement</h2>
+<ul>
+<li>Logs contain one JSON object per line</li>
+<li>There are multiple gzipped collections of log files</li>
+<li>The specific requests we are looking at have an object <code>attributes.log.response.body.user</code> with <code>id</code> and <code>name</code> fields</li>
+<li>There are many (<em>many</em>) other services with differently formatted logs, we should ignore all lines that don&rsquo;t have the above structure</li>
+<li>We have a specific list of IDs that we&rsquo;re interested in, we want to print the <code>name</code> supplied for each <code>id</code> <em>once</em> as a tab-delimited file</li>
+</ul>
+<h2 id=version-1-python>Version 1: Python</h2>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-python data-lang=python><span style=color:#f92672>import</span> fileinput
+<span style=color:#f92672>import</span> json
+<span style=color:#f92672>import</span> logging
+<span style=color:#f92672>import</span> os
+
+os<span style=color:#f92672>.</span>makedirs(<span style=color:#e6db74>&#39;output&#39;</span>, exist_ok<span style=color:#f92672>=</span><span style=color:#66d9ef>True</span>)
+
+<span style=color:#66d9ef>with</span> open(<span style=color:#e6db74>&#39;ids.txt&#39;</span>, <span style=color:#e6db74>&#39;r&#39;</span>) <span style=color:#66d9ef>as</span> fin:
+    target_ids <span style=color:#f92672>=</span> {
+        int(line<span style=color:#f92672>.</span>strip())
+        <span style=color:#66d9ef>for</span> line <span style=color:#f92672>in</span> fin
+        <span style=color:#66d9ef>if</span> line<span style=color:#f92672>.</span>strip()
+    }
+
+seen_ids <span style=color:#f92672>=</span> set()
+
+logging<span style=color:#f92672>.</span>info(<span style=color:#e6db74>&#39;Parsing input data&#39;</span>)
+
+<span style=color:#66d9ef>for</span> line <span style=color:#f92672>in</span> fileinput<span style=color:#f92672>.</span>input(openhook<span style=color:#f92672>=</span>fileinput<span style=color:#f92672>.</span>hook_compressed):
+    line <span style=color:#f92672>=</span> line<span style=color:#f92672>.</span>decode()
+
+    <span style=color:#66d9ef>try</span>:
+        obj <span style=color:#f92672>=</span> json<span style=color:#f92672>.</span>loads(line)
+        log <span style=color:#f92672>=</span> obj[<span style=color:#e6db74>&#39;attributes&#39;</span>][<span style=color:#e6db74>&#39;log&#39;</span>]
+    <span style=color:#66d9ef>except</span>:
+        <span style=color:#66d9ef>pass</span>
+
+    <span style=color:#66d9ef>try</span>:
+        id <span style=color:#f92672>=</span> int(log[<span style=color:#e6db74>&#39;response&#39;</span>][<span style=color:#e6db74>&#39;body&#39;</span>][<span style=color:#e6db74>&#39;user&#39;</span>][<span style=color:#e6db74>&#39;id&#39;</span>])
+        name <span style=color:#f92672>=</span> log[<span style=color:#e6db74>&#39;response&#39;</span>][<span style=color:#e6db74>&#39;body&#39;</span>][<span style=color:#e6db74>&#39;user&#39;</span>][<span style=color:#e6db74>&#39;name&#39;</span>]<span style=color:#f92672>.</span>split(<span style=color:#e6db74>&#39;T&#39;</span>)[<span style=color:#ae81ff>0</span>]
+
+        <span style=color:#66d9ef>if</span> id <span style=color:#f92672>not</span> <span style=color:#f92672>in</span> target_ids:
+            <span style=color:#66d9ef>continue</span>
+
+        <span style=color:#66d9ef>if</span> id <span style=color:#f92672>in</span> seen_ids:
+            <span style=color:#66d9ef>continue</span>
+
+        print(id, name, sep<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;</span><span style=color:#ae81ff>\t</span><span style=color:#e6db74>&#39;</span>)
+
+        seen_ids<span style=color:#f92672>.</span>add(id)
+    <span style=color:#66d9ef>except</span>:
+        <span style=color:#66d9ef>pass</span>
+</code></pre></div><p>Okay, at least in my opinion, that&rsquo;s fairly clean code. Easy to write, easy to read, and gets the job done.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ time python3 scan2.py filtered-logs-30days.json.gz &gt; output-python.txt
+2022-02-11 03:40:35 INFO Parsing input data
+
+real    2m11.221s
+user    1m43.117s
+sys     0m2.514s
+</code></pre></div><p>This is a subset of the logs that specifically only deals with 30 days and already filters out most of the requests. Still has about 1/3 of a million records to parse though. I feel like it shouldn&rsquo;t take 2 minutes to do even that, but it gives us a baseline (and those are some very large JSON records).</p>
+<h2 id=version-2-go-with-the-built-in-json-library>Version 2: Go with the built in JSON library</h2>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=color:#f92672>package</span> <span style=color:#a6e22e>main</span>
+
+<span style=color:#f92672>import</span> (
+	<span style=color:#e6db74>&#34;bufio&#34;</span>
+	<span style=color:#e6db74>&#34;compress/gzip&#34;</span>
+	<span style=color:#e6db74>&#34;encoding/json&#34;</span>
+	<span style=color:#e6db74>&#34;fmt&#34;</span>
+	<span style=color:#e6db74>&#34;log&#34;</span>
+	<span style=color:#e6db74>&#34;os&#34;</span>
+	<span style=color:#e6db74>&#34;strconv&#34;</span>
+	<span style=color:#e6db74>&#34;strings&#34;</span>
+)
+
+<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>target_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>
+<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>seen_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>
+
+<span style=color:#66d9ef>func</span> <span style=color:#a6e22e>rget</span>(<span style=color:#a6e22e>obj</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{}, <span style=color:#a6e22e>key</span> <span style=color:#66d9ef>string</span>) (<span style=color:#66d9ef>string</span>, <span style=color:#66d9ef>bool</span>) {
+	<span style=color:#a6e22e>parts</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>strings</span>.<span style=color:#a6e22e>Split</span>(<span style=color:#a6e22e>key</span>, <span style=color:#e6db74>&#34;/&#34;</span>)
+
+	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>part</span> <span style=color:#f92672>:=</span> <span style=color:#66d9ef>range</span> <span style=color:#a6e22e>parts</span>[:len(<span style=color:#a6e22e>parts</span>)<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>] {
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>obj</span>[<span style=color:#a6e22e>part</span>]; <span style=color:#a6e22e>ok</span> {
+			<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>is_map</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{}); <span style=color:#a6e22e>is_map</span> {
+				<span style=color:#a6e22e>obj</span> = <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{})
+			} <span style=color:#66d9ef>else</span> {
+				<span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;&#34;</span>, <span style=color:#66d9ef>false</span>
+			}
+		} <span style=color:#66d9ef>else</span> {
+			<span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;&#34;</span>, <span style=color:#66d9ef>false</span>
+		}
+	}
+
+	<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>obj</span>[<span style=color:#a6e22e>parts</span>[len(<span style=color:#a6e22e>parts</span>)<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>]]; <span style=color:#a6e22e>ok</span> {
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value_str</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>string</span>); <span style=color:#a6e22e>ok</span> {
+			<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>value_str</span>, <span style=color:#66d9ef>true</span>
+		}
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>value_int</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>value</span>.(<span style=color:#66d9ef>float64</span>); <span style=color:#a6e22e>ok</span> {
+			<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>strconv</span>.<span style=color:#a6e22e>Itoa</span>(int(<span style=color:#a6e22e>value_int</span>)), <span style=color:#66d9ef>true</span>
+		}
+	}
+
+	<span style=color:#66d9ef>return</span> <span style=color:#e6db74>&#34;&#34;</span>, <span style=color:#66d9ef>false</span>
+}
+
+<span style=color:#66d9ef>func</span> <span style=color:#a6e22e>scan</span>(<span style=color:#a6e22e>scanner</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>Scanner</span>) <span style=color:#66d9ef>int</span> {
+	<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>obj</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{}
+
+	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
+	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Scan</span>() {
+		<span style=color:#a6e22e>line</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Text</span>()
+		<span style=color:#a6e22e>line_bytes</span> <span style=color:#f92672>:=</span> []byte(<span style=color:#a6e22e>line</span>)
+		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Err</span>(); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Fatalf</span>(<span style=color:#e6db74>&#34;Failed to scan: %v&#34;</span>, <span style=color:#a6e22e>err</span>)
+		}
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>json</span>.<span style=color:#a6e22e>Unmarshal</span>(<span style=color:#a6e22e>line_bytes</span>, <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>obj</span>); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+			<span style=color:#66d9ef>continue</span>
+		}
+
+		<span style=color:#a6e22e>user_id</span>, <span style=color:#a6e22e>ok1</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>rget</span>(<span style=color:#a6e22e>obj</span>, <span style=color:#e6db74>&#34;attributes/log/response/body/user/id&#34;</span>)
+		<span style=color:#a6e22e>name</span>, <span style=color:#a6e22e>ok2</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>rget</span>(<span style=color:#a6e22e>obj</span>, <span style=color:#e6db74>&#34;attributes/log/response/body/user/name&#34;</span>)
+
+		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>ok1</span> <span style=color:#f92672>||</span> !<span style=color:#a6e22e>ok2</span> {
+			<span style=color:#66d9ef>continue</span>
+		}
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>user_id</span>]; !<span style=color:#a6e22e>ok</span> {
+			<span style=color:#66d9ef>continue</span>
+		}
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>]; <span style=color:#a6e22e>ok</span> {
+			<span style=color:#66d9ef>continue</span>
+		}
+		<span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>] = <span style=color:#66d9ef>true</span>
+
+		<span style=color:#a6e22e>name</span> = <span style=color:#a6e22e>strings</span>.<span style=color:#a6e22e>Split</span>(<span style=color:#a6e22e>name</span>, <span style=color:#e6db74>&#34;T&#34;</span>)[<span style=color:#ae81ff>0</span>]
+		<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v\t%v\n&#34;</span>, <span style=color:#a6e22e>user_id</span>, <span style=color:#a6e22e>name</span>)
+	}
+
+	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>lines_scanned</span>
+}
+
+<span style=color:#66d9ef>func</span> <span style=color:#a6e22e>main</span>() {
+	<span style=color:#a6e22e>target_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>)
+	<span style=color:#a6e22e>seen_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>bool</span>)
+
+	{
+		<span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>_</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#e6db74>&#34;ids.txt&#34;</span>)
+		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>f</span>.<span style=color:#a6e22e>Close</span>()
+		<span style=color:#a6e22e>s</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>f</span>)
+
+		<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Scan</span>() {
+			<span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>strings</span>.<span style=color:#a6e22e>TrimSpace</span>(<span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Text</span>())] = <span style=color:#66d9ef>true</span>
+		}
+	}
+
+	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
+	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>path</span> <span style=color:#f92672>:=</span> <span style=color:#66d9ef>range</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Args</span> {
+		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Scanning %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
+
+		<span style=color:#a6e22e>file</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#a6e22e>path</span>)
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to open %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
+			<span style=color:#66d9ef>continue</span>
+		}
+		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>file</span>.<span style=color:#a6e22e>Close</span>()
+
+		<span style=color:#a6e22e>gunzip</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gzip</span>.<span style=color:#a6e22e>NewReader</span>(<span style=color:#a6e22e>file</span>)
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to gunzip stream from %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
+			<span style=color:#66d9ef>continue</span>
+		}
+		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>gunzip</span>.<span style=color:#a6e22e>Close</span>()
+
+		<span style=color:#a6e22e>scanner</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>gunzip</span>)
+
+		<span style=color:#75715e>// https://stackoverflow.com/questions/21124327/how-to-read-a-text-file-line-by-line-in-go-when-some-lines-are-long-enough-to-ca
+</span><span style=color:#75715e></span>		<span style=color:#a6e22e>buffer</span> <span style=color:#f92672>:=</span> make([]<span style=color:#66d9ef>byte</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
+		<span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Buffer</span>(<span style=color:#a6e22e>buffer</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
+
+		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#a6e22e>scan</span>(<span style=color:#f92672>*</span><span style=color:#a6e22e>scanner</span>)
+
+		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v lines scanned in %v\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>, <span style=color:#a6e22e>path</span>)
+	}
+
+	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v total scanned\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>)
+}
+</code></pre></div><p>Okay, I&rsquo;ll admit. I have not written that much Go code. It&rsquo;s rather verbose&mldr; but I think it is nice and readable enough. Certainly a lot of manual error handling, but since I want to catch and pass over those anyways, that&rsquo;s fine. Marshalling the JSON into a <code>map[string]interface{}</code> is&mldr; a bit weird, but the structs are far far too weird to actually fully define (many different services). That did mean that I had to write the <code>rget</code> function that would be able to pull a value out of a deeply nested structure and the types on that got a bit odd.</p>
+<p>But overall, I think it&rsquo;s pretty clean.</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ time ./scan filtered-logs-30days.json.gz &gt; output-go.txt
+2022/02/11 03:54:32 Scanning ./scan2
+2022/02/11 03:54:32 Unable to gunzip stream from ./scan2
+2022/02/11 03:54:32 Scanning filtered-logs-30days.json.gz
+2022/02/11 03:55:48 <span style=color:#ae81ff>365573</span> lines scanned in filtered-logs-30days.json.gz
+
+real    1m45.055s
+user    1m28.048s
+sys     0m3.553s
+</code></pre></div><p>Not bad. About twice as fast already. The scanning is a bit ugly though&mldr; can we do better?</p>
+<p>One thing that I did absolutely love being able to do:</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ GOOS<span style=color:#f92672>=</span>linux GOARCH<span style=color:#f92672>=</span>amd64 go build scan.go
+</code></pre></div><p>I&rsquo;m on an M1 Mac, but I was perfectly fine cross compiling for an x86_64 Linux AWS EC2 instance with a single simple command. <code>scp</code> the binary and it just runs. How cool is that?</p>
+<h2 id=version-3-go-with-gjson>Version 3: Go with gjson</h2>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=color:#f92672>package</span> <span style=color:#a6e22e>main</span>
+
+<span style=color:#f92672>import</span> (
+	<span style=color:#e6db74>&#34;bufio&#34;</span>
+	<span style=color:#e6db74>&#34;compress/gzip&#34;</span>
+	<span style=color:#e6db74>&#34;fmt&#34;</span>
+	<span style=color:#e6db74>&#34;log&#34;</span>
+	<span style=color:#e6db74>&#34;os&#34;</span>
+	<span style=color:#e6db74>&#34;strconv&#34;</span>
+	<span style=color:#e6db74>&#34;strings&#34;</span>
+
+	<span style=color:#e6db74>&#34;github.com/tidwall/gjson&#34;</span>
+)
+
+<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>target_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>
+<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>seen_ids</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>
+
+<span style=color:#66d9ef>func</span> <span style=color:#a6e22e>scan</span>(<span style=color:#a6e22e>scanner</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>Scanner</span>) <span style=color:#66d9ef>int</span> {
+	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
+	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Scan</span>() {
+		<span style=color:#a6e22e>line</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Text</span>()
+		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>lines_scanned</span><span style=color:#f92672>%</span><span style=color:#ae81ff>100000</span> <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span> {
+			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v lines scanned\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>)
+		}
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Err</span>(); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Fatalf</span>(<span style=color:#e6db74>&#34;Failed to scan: %v&#34;</span>, <span style=color:#a6e22e>err</span>)
+		}
+
+		<span style=color:#a6e22e>gj_user</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gjson</span>.<span style=color:#a6e22e>Get</span>(<span style=color:#a6e22e>line</span>, <span style=color:#e6db74>&#34;attributes.log.response.body.user&#34;</span>)
+		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>gj_user</span>.<span style=color:#a6e22e>Exists</span>() {
+			<span style=color:#66d9ef>continue</span>
+		}
+
+		<span style=color:#a6e22e>gj_user_id</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_user</span>.<span style=color:#a6e22e>Get</span>(<span style=color:#e6db74>&#34;id&#34;</span>)
+		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>gj_user_id</span>.<span style=color:#a6e22e>Exists</span>() {
+			<span style=color:#66d9ef>continue</span>
+		}
+
+		<span style=color:#a6e22e>gj_name</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_user</span>.<span style=color:#a6e22e>Get</span>(<span style=color:#e6db74>&#34;name&#34;</span>)
+		<span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>gj_name</span>.<span style=color:#a6e22e>Exists</span>() {
+			<span style=color:#66d9ef>continue</span>
+		}
+
+		<span style=color:#a6e22e>user_id</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_user_id</span>.<span style=color:#a6e22e>Int</span>()
+		<span style=color:#a6e22e>name</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gj_name</span>.<span style=color:#a6e22e>String</span>()
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>user_id</span>]; !<span style=color:#a6e22e>ok</span> {
+			<span style=color:#66d9ef>continue</span>
+		}
+
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>]; <span style=color:#a6e22e>ok</span> {
+			<span style=color:#66d9ef>continue</span>
+		}
+		<span style=color:#a6e22e>seen_ids</span>[<span style=color:#a6e22e>user_id</span>] = <span style=color:#66d9ef>true</span>
+
+        <span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v\t%v\n&#34;</span>, <span style=color:#a6e22e>user_id</span>, <span style=color:#a6e22e>name</span>)
+	}
+
+	<span style=color:#66d9ef>return</span> <span style=color:#a6e22e>lines_scanned</span>
+}
+
+<span style=color:#66d9ef>func</span> <span style=color:#a6e22e>main</span>() {
+	<span style=color:#a6e22e>target_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>)
+	<span style=color:#a6e22e>seen_ids</span> = make(<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>int64</span>]<span style=color:#66d9ef>bool</span>)
+
+	{
+		<span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>_</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#e6db74>&#34;ids.txt&#34;</span>)
+		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>f</span>.<span style=color:#a6e22e>Close</span>()
+		<span style=color:#a6e22e>s</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>f</span>)
+
+		<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Scan</span>() {
+			<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>id</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>strconv</span>.<span style=color:#a6e22e>ParseInt</span>(<span style=color:#a6e22e>s</span>.<span style=color:#a6e22e>Text</span>(), <span style=color:#ae81ff>10</span>, <span style=color:#ae81ff>64</span>); <span style=color:#a6e22e>err</span> <span style=color:#f92672>==</span> <span style=color:#66d9ef>nil</span> {
+				<span style=color:#a6e22e>target_ids</span>[<span style=color:#a6e22e>id</span>] = <span style=color:#66d9ef>true</span>
+			}
+
+		}
+	}
+
+	<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>:=</span> <span style=color:#ae81ff>0</span>
+	<span style=color:#66d9ef>for</span> <span style=color:#a6e22e>_</span>, <span style=color:#a6e22e>path</span> <span style=color:#f92672>:=</span> <span style=color:#66d9ef>range</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Args</span>[<span style=color:#ae81ff>1</span>:] {
+		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Scanning %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
+
+		<span style=color:#a6e22e>file</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>os</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#a6e22e>path</span>)
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to open %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
+			<span style=color:#66d9ef>continue</span>
+		}
+		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>file</span>.<span style=color:#a6e22e>Close</span>()
+
+		<span style=color:#a6e22e>gunzip</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>gzip</span>.<span style=color:#a6e22e>NewReader</span>(<span style=color:#a6e22e>file</span>)
+		<span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+			<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;Unable to gunzip stream from %v\n&#34;</span>, <span style=color:#a6e22e>path</span>)
+			<span style=color:#66d9ef>continue</span>
+		}
+		<span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>gunzip</span>.<span style=color:#a6e22e>Close</span>()
+
+		<span style=color:#a6e22e>scanner</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bufio</span>.<span style=color:#a6e22e>NewScanner</span>(<span style=color:#a6e22e>gunzip</span>)
+
+		<span style=color:#75715e>// https://stackoverflow.com/questions/21124327/how-to-read-a-text-file-line-by-line-in-go-when-some-lines-are-long-enough-to-ca
+</span><span style=color:#75715e></span>		<span style=color:#a6e22e>buffer</span> <span style=color:#f92672>:=</span> make([]<span style=color:#66d9ef>byte</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
+		<span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Buffer</span>(<span style=color:#a6e22e>buffer</span>, <span style=color:#ae81ff>1024</span><span style=color:#f92672>*</span><span style=color:#ae81ff>1024</span>)
+
+		<span style=color:#a6e22e>lines_scanned</span> <span style=color:#f92672>+=</span> <span style=color:#a6e22e>scan</span>(<span style=color:#f92672>*</span><span style=color:#a6e22e>scanner</span>)
+
+		<span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v lines scanned in %v\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>, <span style=color:#a6e22e>path</span>)
+	}
+
+	<span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Printf</span>(<span style=color:#e6db74>&#34;%v total scanned\n&#34;</span>, <span style=color:#a6e22e>lines_scanned</span>)
+}
+</code></pre></div><p>This time around I&rsquo;m using a third party library <a href=https://github.com/tidwall/gjson>gjson</a>. They claim to be <code>fast</code> and <code>simple</code>&ndash;and, it&rsquo;s true! It takes the <code>rget</code> code I wrote and bundles it up for me in a way that seems a lot better.</p>
+<p>I did learn a good lesson about making sure you deal with <code>scanner.Err()</code> though&mldr; I have some lines that happen to go over the <code>scanner</code> Token default length&mldr; which meant it just silently stopped running (since I wasn&rsquo;t catching the err). Oops&mldr; (I backported it to the previous solution but found it here&mldr;)</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>scanner</span>.<span style=color:#a6e22e>Err</span>(); <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>Fatalf</span>(<span style=color:#e6db74>&#34;Failed to scan: %v&#34;</span>, <span style=color:#a6e22e>err</span>)
+}
+</code></pre></div><p>Other than that, nice relatively elegant code and&mldr;</p>
+<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ time ./scan2 filtered-logs-30days.json.gz &gt; output-go3.txt
+2022/02/11 04:19:15 Scanning filtered-logs-30days.json.gz
+2022/02/11 04:19:34 <span style=color:#ae81ff>100000</span> lines scanned
+2022/02/11 04:19:56 <span style=color:#ae81ff>200000</span> lines scanned
+2022/02/11 04:20:17 <span style=color:#ae81ff>300000</span> lines scanned
+2022/02/11 04:20:30 <span style=color:#ae81ff>365573</span> lines scanned in filtered-logs-30days.json.gz
+
+real    1m15.648s
+user    0m57.985s
+sys     0m2.308s
+</code></pre></div><p>Nice! It&rsquo;s slightly faster than the above!</p>
+<p>Run it on the full example and now instead of half an hour, we&rsquo;re done in 18 minutes. Granted, I spent more than the difference getting the Go code working.</p>
+<p><a href=https://xkcd.com/1205><img src=https://imgs.xkcd.com/comics/is_it_worth_the_time.png alt="XKCD has a comic for everything"></a></p>
+<p>Overall, I found it an interesting experience. I hope you do as well. :D</p></div>
+</article></div>
+</div><footer id=page-footer role=contentinfo>
+<nav id=footer-navigation role=navigation class=ribbon>
+<ul class=main-navigation>
+<li><a href=/archive-by-date/>All posts: By Date</a></li>
+<li><a href=/archive-by-tag/>All posts: By Tag</a></li>
+<li>
+<a href=/atom.xml>
+RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
+</sup>
+</a>
+</li><li>
+<a href=/programming/atom.xml>
+RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
+</sup>
+</a>
+</li></ul>
+</nav>
+<div id=page-footer-content>
+<div class=legal>
+<p>
+All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US>
+<img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png>
+</a>
+</p>
+<p>
+Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a>
+</p>
+</div>
+</div>
+</footer>
+</div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
 <script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
-<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:'loose'})</script>
+<script defer src=/custom.js></script>
+</body>
+</html>
