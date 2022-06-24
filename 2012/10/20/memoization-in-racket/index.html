@@ -1,152 +1,52 @@
-<!doctype html><html>
-<head>
-<title>Memoization in Racket – jverkamp.com</title>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous>
-<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet>
-<link rel=stylesheet href=/custom.css defer>
-<script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script>
-</head>
-<body>
-<div id=wrapper><header id=page-header role=banner>
-<h1><a href=/>JP's Blog</a></h1>
-<ul id=page-header-links>
-<li>
-<a href=https://github.com/jpverkamp>GitHub</a> *
+<!doctype html><html><head><title>Memoization in Racket – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
 <a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
-<a href=/resume>Resume</a>
-</li>
-<li>
-<form action=//www.google.com/search method=get onsubmit="(function(a){a.q.value='site:blog.jverkamp.com '+a.qfront.value})(this)" class="navbar-form navbar-right" role=search _lpchecked=1>
-<div class=form-group>
-<input name=q type=hidden>
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
 <input name=qfront type=text class=form-control placeholder=Search>
-<button type=submit class="btn btn-default" value=Search>Search</button>
-</div>
-</form>
-</li>
-</ul>
-<nav id=header-navigation role=navigation class=ribbon>
-<ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li>
-</ul>
-</nav>
-</header>
-<div id=page-content-wrapper>
-<div id=page-content><article>
-<header>
-<h1 class=entry-title>Memoization in Racket</h1>
-<div class=entry-meta><span class=entry-date>2012-10-20</span>
-</div>
-<div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li>
-<a class=taxonomy-key href=/programming/languages/>Languages</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/18/the-evolution-of-flibs/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/racket>Racket</a><a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2012/10/18/the-evolution-of-flibs/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/scheme>Scheme</a><a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link></a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/sources/>Sources</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/18/the-evolution-of-flibs/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/programming-praxis>Programming Praxis</a><a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link></a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/topics/>Topics</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/11/dictionary-tries-in-racket/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/data-structures>Data Structures</a><a href=https://blog.jverkamp.com/2012/10/29/bitvectors-in-racket/ class=next-link></a></li></ul>
-</li><li><a class=taxonomy-key href=/programming>programming</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2012/10/19/small-projects-source-code-on-github/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link>Next</a></ul>
-</li><li><a class=taxonomy-key href=/>All Posts</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2012/10/19/small-projects-source-code-on-github/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link>Next</a></ul>
-</li></ul>
-</div>
-</div>
-</header>
-<div class=entry-content><p><a href=https://en.wikipedia.org/wiki/Memoization>Memoization</a> is awesome!</p>
-<p>I&rsquo;ve already written <a href=https://blog.jverkamp.com/2012/09/29/pickles-and-memoization/>one post</a> on the subject in Python, but this time we&rsquo;ll do the same in Racket. It&rsquo;s particularly timely as without it, <a href=https://blog.jverkamp.com/2012/10/22/prime-partitions-ii-the-listing/>today&rsquo;s post</a> on determining the number of prime partitions of a number would take longer to run than I care to wait.</p>
-<p>The basic macro isn&rsquo;t actually too bad. Basically, we want to create a function with an associated hash table associating arguments with their result. It doesn&rsquo;t work out so well if the function is non-deterministic or has state of its own, but for a purely functional solution, it&rsquo;s exactly what we&rsquo;re looking for.</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; replace define with a memoized version</span>
-(<span style=color:#66d9ef>define-syntax </span>define-memoized
-  (<span style=color:#66d9ef>syntax-rules </span>()
-    [(<span style=color:#a6e22e>_</span> (<span style=color:#a6e22e>f</span> args <span style=color:#f92672>...</span>) bodies <span style=color:#f92672>...</span>)
-     (<span style=color:#66d9ef>define </span>f
-       <span style=color:#75715e>; store the cache as a hash of args =&gt; result</span>
-       (<span style=color:#66d9ef>let </span>([results (<span style=color:#a6e22e>make-hash</span>)])
-         <span style=color:#75715e>; need to do this to capture both the names and the values</span>
-         (<span style=color:#66d9ef>lambda </span>(<span style=color:#a6e22e>args</span> <span style=color:#f92672>...</span>)
-           ((<span style=color:#66d9ef>lambda </span>vals
-              <span style=color:#75715e>; if we haven&#39;t calculated it before, do so now</span>
-              (<span style=color:#a6e22e>when</span> (not (<span style=color:#a6e22e>hash-has-key?</span> results vals))
-                (<span style=color:#a6e22e>hash-set!</span> results vals (<span style=color:#66d9ef>begin </span>bodies <span style=color:#f92672>...</span>)))
-              <span style=color:#75715e>; return the cached result</span>
-              (<span style=color:#a6e22e>hash-ref</span> results vals))
-            args <span style=color:#f92672>...</span>))))]))
-</code></pre></div><p>The code gets a bit strange on the inner part as I&rsquo;m actually creating two functions only to immediately apply the inner one. Why? Because it&rsquo;s the only way that I could think of to capture both the names of the arguments and their values (which are the actual key to the hash). If you have a better solution, I&rsquo;d love to hear it. 😄</p>
-<p>But with that, it&rsquo;s really straight forward to turn a normal function into a memoized one. Here&rsquo;s an example using that particularly poor way of writing Fibonacci:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=color:#75715e>; example, fibonacci without memoization</span>
-(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>fib</span> n)
-  (<span style=color:#a6e22e>cond</span>
-    [(&lt; n <span style=color:#ae81ff>1</span>) <span style=color:#ae81ff>1</span>]
-    [<span style=color:#66d9ef>else </span>(+ (<span style=color:#a6e22e>fib</span> (- n <span style=color:#ae81ff>1</span>)) (<span style=color:#a6e22e>fib</span> (- n <span style=color:#ae81ff>2</span>)))]))
-
-<span style=color:#75715e>; example, fibonacci with memoization</span>
-(<span style=color:#a6e22e>define-memoized</span> (<span style=color:#a6e22e>mfib</span> n)
-  (<span style=color:#a6e22e>cond</span>
-    [(&lt; n <span style=color:#ae81ff>1</span>) <span style=color:#ae81ff>1</span>]
-    [<span style=color:#66d9ef>else </span>(+ (<span style=color:#a6e22e>mfib</span> (- n <span style=color:#ae81ff>1</span>)) (<span style=color:#a6e22e>mfib</span> (- n <span style=color:#ae81ff>2</span>)))]))
-</code></pre></div><p>So, moment of truth. Does it work?</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme>&gt; (<span style=color:#a6e22e>time</span> (<span style=color:#a6e22e>fib</span> <span style=color:#ae81ff>35</span>))
-cpu time: <span style=color:#ae81ff>5022</span> real time: <span style=color:#ae81ff>5038</span> gc time: <span style=color:#ae81ff>37</span>
-<span style=color:#ae81ff>24157817</span>
-
-&gt; (<span style=color:#a6e22e>time</span> (<span style=color:#a6e22e>mfib</span> <span style=color:#ae81ff>35</span>))
-cpu time: <span style=color:#ae81ff>0</span> real time: <span style=color:#ae81ff>0</span> gc time: <span style=color:#ae81ff>0</span>
-<span style=color:#ae81ff>24157817</span>
-</code></pre></div><p>I&rsquo;d say that&rsquo;s a pretty definitive yes. With this, we can calculate values we wouldn&rsquo;t even have considered with the non-memoized version.</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme>&gt; (<span style=color:#a6e22e>time</span> (<span style=color:#a6e22e>mfib</span> <span style=color:#ae81ff>1000</span>))
-cpu time: <span style=color:#ae81ff>2</span> real time: <span style=color:#ae81ff>1</span> gc time: <span style=color:#ae81ff>0</span>
-<span style=color:#ae81ff>113796925398360272257523782552224175572745930353730513145086634176691092536145</span>
-<span style=color:#ae81ff>985470146129334641866902783673042322088625863396052888690096969577173696370562</span>
-<span style=color:#ae81ff>180400527049497109023054114771394568040040412172632376</span>
-</code></pre></div><p>And that&rsquo;s all there is too it. Memoization in Racket. Bam!</p></div>
-</article></div>
-</div><footer id=page-footer role=contentinfo>
-<nav id=footer-navigation role=navigation class=ribbon>
-<ul class=main-navigation>
-<li><a href=/archive-by-date/>All posts: By Date</a></li>
-<li><a href=/archive-by-tag/>All posts: By Tag</a></li>
-<li>
-<a href=/atom.xml>
-RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li><li>
-<a href=/programming/atom.xml>
-RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li></ul>
-</nav>
-<div id=page-footer-content>
-<div class=legal>
-<p>
-All posts unless otherwise mentioned are licensed under
-<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US>
-<img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png>
-</a>
-</p>
-<p>
-Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a>
-</p>
-</div>
-</div>
-</footer>
-</div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Memoization in Racket</h1><div class=entry-meta><span class=entry-date>2012-10-20</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/18/the-evolution-of-flibs/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/racket>Racket</a><a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2012/10/18/the-evolution-of-flibs/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/scheme>Scheme</a><a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/sources/>Sources</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/18/the-evolution-of-flibs/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/programming-praxis>Programming Praxis</a><a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2012/10/11/dictionary-tries-in-racket/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/data-structures>Data Structures</a><a href=https://blog.jverkamp.com/2012/10/29/bitvectors-in-racket/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2012/10/19/small-projects-source-code-on-github/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2012/10/19/small-projects-source-code-on-github/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2012/10/20/prime-partitions/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p><a href=https://en.wikipedia.org/wiki/Memoization>Memoization</a> is awesome!</p><p>I&rsquo;ve already written <a href=https://blog.jverkamp.com/2012/09/29/pickles-and-memoization/>one post</a> on the subject in Python, but this time we&rsquo;ll do the same in Racket. It&rsquo;s particularly timely as without it, <a href=https://blog.jverkamp.com/2012/10/22/prime-partitions-ii-the-listing/>today&rsquo;s post</a> on determining the number of prime partitions of a number would take longer to run than I care to wait.</p><p>The basic macro isn&rsquo;t actually too bad. Basically, we want to create a function with an associated hash table associating arguments with their result. It doesn&rsquo;t work out so well if the function is non-deterministic or has state of its own, but for a purely functional solution, it&rsquo;s exactly what we&rsquo;re looking for.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; replace define with a memoized version</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define-syntax </span>define-memoized
+</span></span><span style=display:flex><span>  (<span style=color:#66d9ef>syntax-rules </span>()
+</span></span><span style=display:flex><span>    [(<span style=color:#a6e22e>_</span> (<span style=color:#a6e22e>f</span> args <span style=color:#f92672>...</span>) bodies <span style=color:#f92672>...</span>)
+</span></span><span style=display:flex><span>     (<span style=color:#66d9ef>define </span>f
+</span></span><span style=display:flex><span>       <span style=color:#75715e>; store the cache as a hash of args =&gt; result</span>
+</span></span><span style=display:flex><span>       (<span style=color:#66d9ef>let </span>([results (<span style=color:#a6e22e>make-hash</span>)])
+</span></span><span style=display:flex><span>         <span style=color:#75715e>; need to do this to capture both the names and the values</span>
+</span></span><span style=display:flex><span>         (<span style=color:#66d9ef>lambda </span>(<span style=color:#a6e22e>args</span> <span style=color:#f92672>...</span>)
+</span></span><span style=display:flex><span>           ((<span style=color:#66d9ef>lambda </span>vals
+</span></span><span style=display:flex><span>              <span style=color:#75715e>; if we haven&#39;t calculated it before, do so now</span>
+</span></span><span style=display:flex><span>              (<span style=color:#a6e22e>when</span> (not (<span style=color:#a6e22e>hash-has-key?</span> results vals))
+</span></span><span style=display:flex><span>                (<span style=color:#a6e22e>hash-set!</span> results vals (<span style=color:#66d9ef>begin </span>bodies <span style=color:#f92672>...</span>)))
+</span></span><span style=display:flex><span>              <span style=color:#75715e>; return the cached result</span>
+</span></span><span style=display:flex><span>              (<span style=color:#a6e22e>hash-ref</span> results vals))
+</span></span><span style=display:flex><span>            args <span style=color:#f92672>...</span>))))]))
+</span></span></code></pre></div><p>The code gets a bit strange on the inner part as I&rsquo;m actually creating two functions only to immediately apply the inner one. Why? Because it&rsquo;s the only way that I could think of to capture both the names of the arguments and their values (which are the actual key to the hash). If you have a better solution, I&rsquo;d love to hear it. 😄</p><p>But with that, it&rsquo;s really straight forward to turn a normal function into a memoized one. Here&rsquo;s an example using that particularly poor way of writing Fibonacci:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span><span style=color:#75715e>; example, fibonacci without memoization</span>
+</span></span><span style=display:flex><span>(<span style=color:#66d9ef>define </span>(<span style=color:#a6e22e>fib</span> n)
+</span></span><span style=display:flex><span>  (<span style=color:#a6e22e>cond</span>
+</span></span><span style=display:flex><span>    [(&lt; n <span style=color:#ae81ff>1</span>) <span style=color:#ae81ff>1</span>]
+</span></span><span style=display:flex><span>    [<span style=color:#66d9ef>else </span>(+ (<span style=color:#a6e22e>fib</span> (- n <span style=color:#ae81ff>1</span>)) (<span style=color:#a6e22e>fib</span> (- n <span style=color:#ae81ff>2</span>)))]))
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; example, fibonacci with memoization</span>
+</span></span><span style=display:flex><span>(<span style=color:#a6e22e>define-memoized</span> (<span style=color:#a6e22e>mfib</span> n)
+</span></span><span style=display:flex><span>  (<span style=color:#a6e22e>cond</span>
+</span></span><span style=display:flex><span>    [(&lt; n <span style=color:#ae81ff>1</span>) <span style=color:#ae81ff>1</span>]
+</span></span><span style=display:flex><span>    [<span style=color:#66d9ef>else </span>(+ (<span style=color:#a6e22e>mfib</span> (- n <span style=color:#ae81ff>1</span>)) (<span style=color:#a6e22e>mfib</span> (- n <span style=color:#ae81ff>2</span>)))]))
+</span></span></code></pre></div><p>So, moment of truth. Does it work?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span>&gt; (<span style=color:#a6e22e>time</span> (<span style=color:#a6e22e>fib</span> <span style=color:#ae81ff>35</span>))
+</span></span><span style=display:flex><span>cpu time: <span style=color:#ae81ff>5022</span> real time: <span style=color:#ae81ff>5038</span> gc time: <span style=color:#ae81ff>37</span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>24157817</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>&gt; (<span style=color:#a6e22e>time</span> (<span style=color:#a6e22e>mfib</span> <span style=color:#ae81ff>35</span>))
+</span></span><span style=display:flex><span>cpu time: <span style=color:#ae81ff>0</span> real time: <span style=color:#ae81ff>0</span> gc time: <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>24157817</span>
+</span></span></code></pre></div><p>I&rsquo;d say that&rsquo;s a pretty definitive yes. With this, we can calculate values we wouldn&rsquo;t even have considered with the non-memoized version.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-scheme data-lang=scheme><span style=display:flex><span>&gt; (<span style=color:#a6e22e>time</span> (<span style=color:#a6e22e>mfib</span> <span style=color:#ae81ff>1000</span>))
+</span></span><span style=display:flex><span>cpu time: <span style=color:#ae81ff>2</span> real time: <span style=color:#ae81ff>1</span> gc time: <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>113796925398360272257523782552224175572745930353730513145086634176691092536145</span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>985470146129334641866902783673042322088625863396052888690096969577173696370562</span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>180400527049497109023054114771394568040040412172632376</span>
+</span></span></code></pre></div><p>And that&rsquo;s all there is too it. Memoization in Racket. Bam!</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
 <script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
-<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:'loose'})</script>
-<script defer src=/custom.js></script>
-</body>
-</html>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>

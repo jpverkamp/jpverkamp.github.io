@@ -1,465 +1,286 @@
-<!doctype html><html>
-<head>
-<title>Runelang: The Parser (Part 1) – jverkamp.com</title>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous>
-<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet>
-<link rel=stylesheet href=/custom.css defer>
-<script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script>
-</head>
-<body>
-<div id=wrapper><header id=page-header role=banner>
-<h1><a href=/>JP's Blog</a></h1>
-<ul id=page-header-links>
-<li>
-<a href=https://github.com/jpverkamp>GitHub</a> *
+<!doctype html><html><head><title>Runelang: The Parser (Part 1) – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
 <a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
-<a href=/resume>Resume</a>
-</li>
-<li>
-<form action=//www.google.com/search method=get onsubmit="(function(a){a.q.value='site:blog.jverkamp.com '+a.qfront.value})(this)" class="navbar-form navbar-right" role=search _lpchecked=1>
-<div class=form-group>
-<input name=q type=hidden>
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
 <input name=qfront type=text class=form-control placeholder=Search>
-<button type=submit class="btn btn-default" value=Search>Search</button>
-</div>
-</form>
-</li>
-</ul>
-<nav id=header-navigation role=navigation class=ribbon>
-<ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li>
-</ul>
-</nav>
-</header>
-<div id=page-content-wrapper>
-<div id=page-content><article>
-<header>
-<h1 class=entry-title>Runelang: The Parser (Part 1)</h1>
-<div class=entry-meta><span class=entry-date>2022-03-15</span>
-</div>
-<div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li>
-<a class=taxonomy-key href=/programming/languages/>Languages</a>
-<ul class=taxonomy-values></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/topics/>Topics</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/generative-art>Generative Art</a><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/procedural-content>Procedural Content</a><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link></a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/series/>Series</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link></a><a class=taxonomy-value href=/series/runelang-in-the-browser>Runelang in the Browser</a><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link></a></li></ul>
-</li><li><a class=taxonomy-key href=/programming>programming</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link>Next</a></ul>
-</li><li><a class=taxonomy-key href=/>All Posts</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2022/03/14/hellblazer-vol.-17-out-of-season/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2022/03/15/nate-the-great-stalks-stupidweed/ class=next-link>Next</a></ul>
-</li></ul>
-</div>
-</div>
-</header>
-<div class=entry-content><p>I&rsquo;m still here! And less sick now.</p>
-<p>Last time(s), we <a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/>described</a> and <a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/>lexed</a> Runelang! This time around, let&rsquo;s take the lexed tokens and go one step further and parse them!</p>
-<p>So, how do we go about this? With a <a href=https://en.wikipedia.org/wiki/recursive%20descent%20parser>recursive descent parser</a>!</p>
-<ul>
-<li>Start with a list/stream of tokens</li>
-<li>Using the first <em>k</em> (in a <a href=https://en.wikipedia.org/wiki/LL%28k%29%20parser>LL(k) parser</a>) elements of the list, identify which sort of object we are parsing (a <code>group</code> / <code>identifier</code> / <code>literal</code> / <code>expression</code> / etc)</li>
-<li>Call a parsing function for that object type (<code>parseGroup</code> etc) that will:
-<ul>
-<li>Recursively parse the given object type (this may in turn call more parse functions)</li>
-<li>Advance the token stream &lsquo;consuming&rsquo; any tokens used in this group so the new &lsquo;first&rsquo; element is the next object</li>
-</ul>
-</li>
-</ul>
-<h2 id=initialization-and-parsing-groups>Initialization and parsing groups</h2>
-<p>Okay, let&rsquo;s just get to the code. The outermost object that we&rsquo;re always going to be parsing is a <code>group</code>, which is a sequence of other objects grouped by <code>{...}</code>. In fact, I&rsquo;m actually going to add an implicit group around whatever code you type. So if you have something like <code>rune { circle }</code>, the actual parser will see <code>{ rune { circle } }</code>, so we know we can always parse a group first.</p>
-<p>Code:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>export</span> <span style=color:#66d9ef>default</span> <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parse</span>(<span style=color:#a6e22e>tokens</span>) {
-  <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseGroup</span>(<span style=color:#a6e22e>terminator</span> <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;}&#34;</span>) {
-    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseGroup&#34;</span>, <span style=color:#a6e22e>token</span>)
-
-    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>nodes</span> <span style=color:#f92672>=</span> []
-
-    <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
-      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-        <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>token</span>)
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated group&#34;</span>, <span style=color:#a6e22e>token</span>)
-      }
-
-      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;}&#34;</span>) {
-        <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-        <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span>, <span style=color:#a6e22e>token</span> }
-      }
-
-      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;define&#34;</span>) {
-        <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseDefine</span>())
-      } <span style=color:#66d9ef>else</span> {
-        <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseNode</span>())
-      }
-
-      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>) {
-        <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>2</span>].<span style=color:#a6e22e>next</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
-      }
-    }
-  }
-
-  <span style=color:#75715e>// Implicitly add a group
-</span><span style=color:#75715e></span>  <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>({ <span style=color:#a6e22e>token</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;{&#34;</span>, <span style=color:#a6e22e>row</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>col</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span> })
-  <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>token</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;}&#34;</span>, <span style=color:#a6e22e>row</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>col</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span> })
-
-  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>parseGroup</span>()
-}
-</code></pre></div><p>Okay, what does that mean? Well, let&rsquo;s go through the parts:</p>
-<ul>
-<li>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-</code></pre></div><p>Consumes the first <code>{</code> and marks that as the <code>token</code> where the group starts (for debugging purposes)</p>
-</li>
-<li>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>let</span> <span style=color:#a6e22e>nodes</span> <span style=color:#f92672>=</span> []
-
-<span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>token</span>)
-    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated group&#34;</span>, <span style=color:#a6e22e>token</span>)
-  }
-
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;}&#34;</span>) {
-    <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-    <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span>, <span style=color:#a6e22e>token</span> }
-  }
-
-  ...
-}
-</code></pre></div><p>Keep consuming tokens until one of two things happens:</p>
-<ul>
-<li>If we hit the end of teh file, report a parse error</li>
-<li>If we hit a <code>}</code>, that&rsquo;s the end of the group, consume the <code>}</code> with <code>tokens.shift</code> and return the group along with any nodes we&rsquo;ve parsed (next)</li>
-</ul>
-</li>
-<li>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
-  ...
-
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;define&#34;</span>) {
-    <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseDefine</span>())
-  } <span style=color:#66d9ef>else</span> {
-    <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseNode</span>())
-  }
-
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>) {
-    <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>2</span>].<span style=color:#a6e22e>next</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
-  }
-</code></pre></div><p>Finally, we parse either a normal node (with <code>parseNode</code>) or the special <code>define</code> syntax(s) (we&rsquo;ll come back to defines later). A <code>node</code> in this case is basically a function call (with a few different forms). You can have terminals with no arguments or children like <code>circle</code>, parameters like <code>star(5, 2)</code>, nodes (<code>modifiers</code>) that apply to a child group like <code>double circle</code> and <code>rotate(0.25) { star(5, 2) }</code>, or even <code>stackers</code> that apply specifically to lists, a la <code>radial(scale: 0.5) [ circle times 5 ]</code>.</p>
-<p>The last bit of code there (assigning a value to <code>.next</code>) looks a bit strange, but essentially what we&rsquo;re doing is making a data structure that is a hybrid between an <a href=https://en.wikipedia.org/wiki/abstract%20syntax%20tree>abstract syntax tree</a> and a <a href=https://en.wikipedia.org/wiki/linked%20list>linked list</a>. Each node is normally placed in a tree, but one thing that I wanted was to be able to treat <code>{...}</code> as implicit whenever I could. So instead of something like <code>double { circle }</code>, which would easily be parsed as a <code>Node&lt;double></code> with a child <code>Group&lt;Node&lt;circle>></code>.</p>
-<p>But I want to be able to write <code>double circle</code> and have it work the same way. To do that, each time I parse a node in a single group, if it&rsquo;s at least the second, I add a <code>.next</code> link that shows what the next node would be. That will cause some complications when running (for example: making sure I don&rsquo;t evaluate the <code>.next</code> node as a child and then again at the top level).</p>
-</li>
-</ul>
-<p>So, we have the entire <code>parseGroup</code> function. Not at all that bad! But it depends on <code>parseDefine</code> and <code>parseNode</code>, so that&rsquo;s what&rsquo;s next!</p>
-<h2 id=parsing-nodes-function-calls>Parsing nodes (function calls)</h2>
-<p>As mentioned above, a <code>node</code> is basically a function call. It can have up to 4 parts, depending on which kind of <code>node</code> it is. All but the <code>identifier</code> are optional, but if present, they have to be in this order:</p>
-<ul>
-<li>An <code>identifier</code> which represents the name of the <code>terminal</code> / <code>modifier</code> / <code>stacker</code> that we&rsquo;re going to be applying</li>
-<li>A <code>(</code>, which signifies the start of a parameter list (either positional or key/value args); all three kinds of nodes can have this</li>
-<li>A <code>[</code>, which signifies the start of a <code>list</code> child, only stackers should have these (but we&rsquo;ll deal with that at runtime)</li>
-<li>A <code>{</code>, which signifies the start of a <code>group</code> of children, which is primarily for <code>modifiers</code> (although they can also use the <code>.next</code> described above, but only <em>if no group is present here</em>)</li>
-</ul>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseNode</span>() {
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>]
-  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseNode&#34;</span>, <span style=color:#a6e22e>token</span>)
-
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>identifier</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseIdentifier</span>()
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>params</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>,
-    <span style=color:#a6e22e>list</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>,
-    <span style=color:#a6e22e>body</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>
-
-  <span style=color:#75715e>// Nodes have an identifier and then optionally a param list, list body, and group body (in that order)
-</span><span style=color:#75715e></span>
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
-    <span style=color:#a6e22e>params</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseParams</span>()
-  }
-
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;[&#34;</span>) {
-    <span style=color:#a6e22e>list</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseList</span>()
-  }
-
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;{&#34;</span>) {
-    <span style=color:#a6e22e>body</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseGroup</span>()
-  }
-
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;node&#34;</span>, <span style=color:#a6e22e>identifier</span>, <span style=color:#a6e22e>token</span> }
-
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>params</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>params</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>params</span>
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>list</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>list</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>list</span>
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>body</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>body</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>body</span>
-
-  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
-}
-</code></pre></div><p>Not so bad! And we&rsquo;re already getting into the recursive part, since <code>parseGroup</code> can call <code>parseNode</code>, which then can immediately (after the <code>identifier</code>) have another <code>parseGroup</code> to deal with. That&rsquo;s what you&rsquo;d see in something like <code>double { circle }</code>:</p>
-<ul>
-<li>An implicit <code>parseGroup</code>
-<ul>
-<li><code>parseNode</code> on <code>double { circle }</code>
-<ul>
-<li><code>identifier</code> gets value <code>double</code></li>
-<li><code>parseGroup</code> on <code>{ circle }</code>
-<ul>
-<li><code>parseNode</code> on <code>circle }</code>
-<ul>
-<li><code>identifier</code> gets value <code>circle</code></li>
-<li>No opening <code>([{</code>, so return the <code>Node&lt;circle></code></li>
-</ul>
-</li>
-</ul>
-</li>
-<li>Parse the closing <code>}</code>, so return <code>Group&lt;Node&lt;circle>></code></li>
-</ul>
-</li>
-<li>Parsed a <code>group</code>, so done parsing the node, got <code>Node&lt;double, group: &lt;Group&lt;Node&lt;circle>>>></code></li>
-</ul>
-</li>
-<li>Done parsing</li>
-</ul>
-<p>I don&rsquo;t know about you, but I think that&rsquo;s pretty cool!</p>
-<p>So we already have <code>parseGroup</code>, but now we&rsquo;re missing <code>parseParams</code> and <code>parseList</code>, both of which are a bit trickier. Let&rsquo;s start with params.</p>
-<h2 id=parsing-parameters>Parsing parameters</h2>
-<p>Okay, a parameter list. For this, I&rsquo;ve chosen a syntax that looks like this: <code>(x, y: 5)</code>, which can be overloaded depending on if you&rsquo;re defining arguments (in a <code>define</code>) or calling a <code>node</code> (see above). But there are always a few rules:</p>
-<ul>
-<li>Starts with <code>(</code>, ends with <code>)</code></li>
-<li>May contain 0, 1, or more params; params will be delimited by a comma: <code>,</code></li>
-<li>Positional params will come first, these will either be a single variable name (for definitions) or an expression (for calls, see <code>parseExpression</code>)</li>
-<li>After 0 or more positional params, keyword params (kwargs) will come next, these will always have a name (an <code>identifier</code>), a colon <code>:</code>, and an expression for their value</li>
-<li>No positional params can occur after the first keyword param</li>
-<li>No param can be both a positional and keyword param (with the same <code>identifier</code>)</li>
-</ul>
-<p>Why yes, it does look a lot like Python. I&rsquo;ve written a <em>lot</em> of Python :D.</p>
-<p>So, let&rsquo;s make that (overly (properly?) commented) code:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseParams</span>() {
-  <span style=color:#75715e>// Consume the leading (
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseParams&#34;</span>, <span style=color:#a6e22e>token</span>)
-
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>args</span> <span style=color:#f92672>=</span> []
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>kwargs</span> <span style=color:#f92672>=</span> {}
-
-  <span style=color:#75715e>// Start by parsing args (not kwargs) until we see a kwarg (with a `:`)
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>parsingKwargs</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>
-  <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
-    <span style=color:#75715e>// Failure state: no closing )
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated params&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;)&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;EOF&#34;</span> })
-    }
-    <span style=color:#75715e>// End state: closing ), consume it and return the parsed params
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
-      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;params&#34;</span>, <span style=color:#a6e22e>args</span>, <span style=color:#a6e22e>kwargs</span>, <span style=color:#a6e22e>token</span> }
-    }
-
-    <span style=color:#75715e>// Parse the first part of the expression:
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// * When in a define, this should always be a single name
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// * When in a call as an arg, this can be a name or a complicated expression
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// * When in a kwarg, this is always a name
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>identifier</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
-
-    <span style=color:#75715e>// Failure states: ran out of input or we&#39;ve started parsing kwargs and got a , (should be a :)
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated params, expected , or : got EOF&#34;</span>, <span style=color:#a6e22e>token</span>)
-    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>parsingKwargs</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
-      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;args cannot come after kwargs&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;;&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;,&#34;</span> })
-    }
-
-    <span style=color:#75715e>// If the next token is a : switch to kwargs mode and parse the value of the key/value pair
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;:&#34;</span>) {
-      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-      <span style=color:#a6e22e>parsingKwargs</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>
-
-      <span style=color:#75715e>// This is where we check the above case that for kwargs the left side of the `:` must just be a name
-</span><span style=color:#75715e></span>      <span style=color:#75715e>// .asName is populated by `parseExpression`, when it returns a single identifier it will be filled
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;kwargs key must be an identifier&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;identifer&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>token</span> })
-      }
-
-      <span style=color:#75715e>// Parsing kwargs and ran out of input
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;missing kwargs body&#34;</span>, <span style=color:#a6e22e>key</span>)
-      }
-
-      <span style=color:#75715e>// Parsing the value
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
-
-      <span style=color:#75715e>// Cannot have duplicate values in kwargs (we&#39;ll check that there are no duplicates in args at runtime)
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>kwargs</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;duplicate kwarg&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>name</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span> })
-      }
-
-      <span style=color:#75715e>// All kwargs are also positional `args`, store the new arg in both places here
-</span><span style=color:#75715e></span>      <span style=color:#a6e22e>args</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>identifier</span>)
-      <span style=color:#a6e22e>kwargs</span>[<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>value</span>
-    }
-    <span style=color:#75715e>// A regular arg, not a kwarg, just store it
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> {
-      <span style=color:#a6e22e>args</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>identifier</span>)
-    }
-
-    <span style=color:#75715e>// If the next argument is a `,` we&#39;re still parsing the list
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// If it&#39;s ) we&#39;ll catch the end of the list at the top of the loop
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// If it&#39;s anything else, we have malformed input (this previously caused an infinite loop)
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
-      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
-      <span style=color:#66d9ef>continue</span>
-    } <span style=color:#66d9ef>else</span> {
-      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;badly formed parameters&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> [<span style=color:#e6db74>&#34;,&#34;</span>, <span style=color:#e6db74>&#34;)&#34;</span>], <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
-    }
-  }
-}
-</code></pre></div><p>Okay, we&rsquo;ve got groups, nodes, and parameters, next up will be lists!</p>
-<h2 id=parsing-lists>Parsing lists</h2>
-<p>Okay, we have the concept of <code>stackers</code>, where you can take a list of items and spread them in a line or around a circle (or just on top of one another, but that&rsquo;s already done by a group). But what would be nice would be if we didn&rsquo;t have to manually define all of the nodes. For example, if we want a series of stars in a circle, you could do:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>rotate(0.0) translate(1.0) scale(0.5) star(2)
-rotate(0.2) translate(1.0) scale(0.5) star(3)
-rotate(0.4) translate(1.0) scale(0.5) star(4)
-rotate(0.6) translate(1.0) scale(0.5) star(5)
-rotate(0.8) translate(1.0) scale(0.5) star(6)
-</code></pre></div><p>But I&rsquo;d much rather write:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text>radial(scale: 0.5) [
-  star(n)
-  for n in 2..6
-]
-</code></pre></div><p>Especially since we can get <em>much</em> more complicated than that with what we&rsquo;re putting in the nested expression.</p>
-<p>So to do that, I want to be able to define three different list constructors, two based directly on Python (list literals and <code>for</code> lists, which are list generators) and another that&rsquo;s more specific to what I&rsquo;m doing (<code>times</code> lists):</p>
-<table>
-<thead>
-<tr>
-<th>mode</th>
-<th>syntax</th>
-<th>example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>literal</td>
-<td><code>[ &lt;nodes:node>* ]</code></td>
-<td><code>[circle star { circle star }]</code></td>
-</tr>
-<tr>
-<td>for</td>
-<td><code>[ &lt;nodes:node>* for &lt;variable:identifier> in &lt;expression:iterable> ]</code></td>
-<td><code>[star(n) for n in 2..6]</code></td>
-</tr>
-<tr>
-<td>times</td>
-<td><code>[ &lt;nodes:node>* times &lt;variable:integer> ]</code></td>
-<td><code>[star(5) times 3]</code></td>
-</tr>
-</tbody>
-</table>
-<p>In each case, the initial list of children can be made of either nodes or groups. We can use the <code>.next</code> syntax here, so this will mostly be to distinguish <code>[circle star ...]</code> from <code>[{circle star} ...]</code> where in the first case we have two children: a <code>circle</code> and a <code>star</code> and in the second, we have only one: a <code>circle</code> with a <code>star</code> overlaid on it.</p>
-<p>So, how do we parse that?</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseList</span>() {
-  <span style=color:#75715e>// Consume the opening [
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseList&#34;</span>, <span style=color:#a6e22e>token</span>)
-
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>nodes</span> <span style=color:#f92672>=</span> []
-
-  <span style=color:#75715e>// Lists can be:
-</span><span style=color:#75715e></span>  <span style=color:#75715e>// literal-list:    [ &lt;nodes:node&gt;* ]
-</span><span style=color:#75715e></span>  <span style=color:#75715e>// for-list:        [ &lt;nodes:node&gt;* for &lt;variable:identifier&gt; in &lt;expression:iterable&gt; ]
-</span><span style=color:#75715e></span>  <span style=color:#75715e>// times-list:      [ &lt;nodes:node&gt;* times &lt;variable:integer&gt; ]
-</span><span style=color:#75715e></span>
-  <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
-    <span style=color:#75715e>// Error state: never saw a closing ]
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated list&#34;</span>, <span style=color:#a6e22e>token</span>)
-    }
-
-    <span style=color:#75715e>// Saw a ] before seeing for or times (see below), this must have been a literal list
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;]&#34;</span>) {
-      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;list&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>nodes</span>, <span style=color:#a6e22e>token</span> }
-    }
-
-    <span style=color:#75715e>// If we see the `for` keyword, then we&#39;re parsing a `for` special form
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// [ &lt;nodes:node&gt;* for &lt;variable:identifier&gt; in &lt;expression:iterable&gt; ]
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;for&#34;</span>) {
-      <span style=color:#75715e>// Consume the for and parse what the variable we&#39;re looping over is
-</span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>variable</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseIdentifier</span>()
-
-      <span style=color:#75715e>// Error states: no more input or no &#39;in&#39; keyword after the variable name
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated for-list&#34;</span>, <span style=color:#a6e22e>token</span>)
-      } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>!==</span> <span style=color:#e6db74>&#34;in&#34;</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;invalid for-list&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;in&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
-      }
-      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>() <span style=color:#75715e>// in
-</span><span style=color:#75715e></span>
-      <span style=color:#75715e>// The expression should return any iterable object (we&#39;re fuzzy on times)
-</span><span style=color:#75715e></span>      <span style=color:#75715e>// We only check this at runtime, for now, just parse an expression
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>expression</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
-
-      <span style=color:#75715e>// The for list is done, make sure that we have a closing ]
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated for-list&#34;</span>, <span style=color:#a6e22e>token</span>)
-      } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#34;]&#34;</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated for-list&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;]&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
-      }
-
-      <span style=color:#75715e>// Consume the closing ] and return the `list` with mode `for`
-</span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;list&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;for&#34;</span>, <span style=color:#a6e22e>body</span><span style=color:#f92672>:</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span> }, <span style=color:#a6e22e>variable</span>, <span style=color:#a6e22e>expression</span>, <span style=color:#a6e22e>token</span> }
-    }
-
-    <span style=color:#75715e>// If we see the `times` keyword, then we&#39;re parsing the `times` special form
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// [ &lt;nodes:node&gt;* times &lt;variable:integer&gt; ]
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;times&#34;</span>) {
-      <span style=color:#75715e>// Consume the times
-</span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-
-      <span style=color:#75715e>// Parse an expression, this should evaluate to a numeric value but we&#39;ll deal with that at runtime
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>expression</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
-
-      <span style=color:#75715e>// That&#39;s everything for a times list, so make sure we have a closing ]
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated times-list&#34;</span>, <span style=color:#a6e22e>token</span>)
-      } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#34;]&#34;</span>) {
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated times-list&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;]&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
-      }
-
-      <span style=color:#75715e>// Consume the closing ] and return the `times` `list`
-</span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;list&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;times&#34;</span>, <span style=color:#a6e22e>body</span><span style=color:#f92672>:</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span> }, <span style=color:#a6e22e>expression</span>, <span style=color:#a6e22e>token</span> }
-    }
-
-    <span style=color:#75715e>// Otherwise we don&#39;t know what kind of list it is yet
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// But for all three cases, we will build up more nodes or groups
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// The next token ({, define, or anything else) defines what sort of child we&#39;re parsing next
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;{&#34;</span>) {
-      <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseGroup</span>())
-    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;define&#34;</span>) {
-      <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseDefine</span>())
-    } <span style=color:#66d9ef>else</span> {
-      <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseNode</span>())
-    }
-
-    <span style=color:#75715e>// As we do in groups, apply the `.next` parameter
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>) {
-      <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>2</span>].<span style=color:#a6e22e>next</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
-    }
-  }
-}
-</code></pre></div><p>I think the main oddity here is that while we know we&rsquo;re parsing a list, we don&rsquo;t actually know which kind (literal/for/times) we&rsquo;re parsing until we see either the <code>for</code> or <code>times</code> keyword. We don&rsquo;t have to have a state machine though, because in both cases there&rsquo;s an exact (known) number of children after those nodes: <code>for</code> has 3 more things to parse after the <code>for</code>, times has 1.</p>
-<p>Here again, we have the recursion. We&rsquo;re relying only on the previously defined <code>parseGroup</code> / <code>parseDefine</code> / <code>parseNode</code> for objects in the list. Pretty cool!</p>
-<h2 id=demo>Demo</h2>
-<p>Okay. That&rsquo;s a lot of parsing&mldr; so far we can parse groups, nodes, parameters, and lists. That leaves two big ones: expressions and defines. I think each of those is complicated enough to give their own post, so we&rsquo;ll be back for that. Keep posted!</p>
-<p>But for now, a demo of parsing!</p>
-<script defer type=module>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Runelang: The Parser (Part 1)</h1><div class=entry-meta><span class=entry-date>2022-03-15</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/generative-art>Generative Art</a><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link></a></li><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/procedural-content>Procedural Content</a><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link></a><a class=taxonomy-value href=/series/runelang-in-the-browser>Runelang in the Browser</a><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/03/14/hellblazer-vol.-17-out-of-season/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/03/15/nate-the-great-stalks-stupidweed/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p>I&rsquo;m still here! And less sick now.</p><p>Last time(s), we <a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/>described</a> and <a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/>lexed</a> Runelang! This time around, let&rsquo;s take the lexed tokens and go one step further and parse them!</p><p>So, how do we go about this? With a <a href=https://en.wikipedia.org/wiki/recursive%20descent%20parser>recursive descent parser</a>!</p><ul><li>Start with a list/stream of tokens</li><li>Using the first <em>k</em> (in a <a href=https://en.wikipedia.org/wiki/LL%28k%29%20parser>LL(k) parser</a>) elements of the list, identify which sort of object we are parsing (a <code>group</code> / <code>identifier</code> / <code>literal</code> / <code>expression</code> / etc)</li><li>Call a parsing function for that object type (<code>parseGroup</code> etc) that will:<ul><li>Recursively parse the given object type (this may in turn call more parse functions)</li><li>Advance the token stream &lsquo;consuming&rsquo; any tokens used in this group so the new &lsquo;first&rsquo; element is the next object</li></ul></li></ul><h2 id=initialization-and-parsing-groups>Initialization and parsing groups</h2><p>Okay, let&rsquo;s just get to the code. The outermost object that we&rsquo;re always going to be parsing is a <code>group</code>, which is a sequence of other objects grouped by <code>{...}</code>. In fact, I&rsquo;m actually going to add an implicit group around whatever code you type. So if you have something like <code>rune { circle }</code>, the actual parser will see <code>{ rune { circle } }</code>, so we know we can always parse a group first.</p><p>Code:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>export</span> <span style=color:#66d9ef>default</span> <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parse</span>(<span style=color:#a6e22e>tokens</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseGroup</span>(<span style=color:#a6e22e>terminator</span> <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;}&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseGroup&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>nodes</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated group&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;}&#34;</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;define&#34;</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseDefine</span>())
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseNode</span>())
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>2</span>].<span style=color:#a6e22e>next</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Implicitly add a group
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>({ <span style=color:#a6e22e>token</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;{&#34;</span>, <span style=color:#a6e22e>row</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>col</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span> })
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>token</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;}&#34;</span>, <span style=color:#a6e22e>row</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>col</span><span style=color:#f92672>:</span> <span style=color:#ae81ff>0</span> })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>parseGroup</span>()
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Okay, what does that mean? Well, let&rsquo;s go through the parts:</p><ul><li><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span></code></pre></div><p>Consumes the first <code>{</code> and marks that as the <code>token</code> where the group starts (for debugging purposes)</p></li><li><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>let</span> <span style=color:#a6e22e>nodes</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>console</span>.<span style=color:#a6e22e>log</span>(<span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated group&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;}&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  ...
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Keep consuming tokens until one of two things happens:</p><ul><li>If we hit the end of teh file, report a parse error</li><li>If we hit a <code>}</code>, that&rsquo;s the end of the group, consume the <code>}</code> with <code>tokens.shift</code> and return the group along with any nodes we&rsquo;ve parsed (next)</li></ul></li><li><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
+</span></span><span style=display:flex><span>  ...
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;define&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseDefine</span>())
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseNode</span>())
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>2</span>].<span style=color:#a6e22e>next</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
+</span></span><span style=display:flex><span>  }
+</span></span></code></pre></div><p>Finally, we parse either a normal node (with <code>parseNode</code>) or the special <code>define</code> syntax(s) (we&rsquo;ll come back to defines later). A <code>node</code> in this case is basically a function call (with a few different forms). You can have terminals with no arguments or children like <code>circle</code>, parameters like <code>star(5, 2)</code>, nodes (<code>modifiers</code>) that apply to a child group like <code>double circle</code> and <code>rotate(0.25) { star(5, 2) }</code>, or even <code>stackers</code> that apply specifically to lists, a la <code>radial(scale: 0.5) [ circle times 5 ]</code>.</p><p>The last bit of code there (assigning a value to <code>.next</code>) looks a bit strange, but essentially what we&rsquo;re doing is making a data structure that is a hybrid between an <a href=https://en.wikipedia.org/wiki/abstract%20syntax%20tree>abstract syntax tree</a> and a <a href=https://en.wikipedia.org/wiki/linked%20list>linked list</a>. Each node is normally placed in a tree, but one thing that I wanted was to be able to treat <code>{...}</code> as implicit whenever I could. So instead of something like <code>double { circle }</code>, which would easily be parsed as a <code>Node&lt;double></code> with a child <code>Group&lt;Node&lt;circle>></code>.</p><p>But I want to be able to write <code>double circle</code> and have it work the same way. To do that, each time I parse a node in a single group, if it&rsquo;s at least the second, I add a <code>.next</code> link that shows what the next node would be. That will cause some complications when running (for example: making sure I don&rsquo;t evaluate the <code>.next</code> node as a child and then again at the top level).</p></li></ul><p>So, we have the entire <code>parseGroup</code> function. Not at all that bad! But it depends on <code>parseDefine</code> and <code>parseNode</code>, so that&rsquo;s what&rsquo;s next!</p><h2 id=parsing-nodes-function-calls>Parsing nodes (function calls)</h2><p>As mentioned above, a <code>node</code> is basically a function call. It can have up to 4 parts, depending on which kind of <code>node</code> it is. All but the <code>identifier</code> are optional, but if present, they have to be in this order:</p><ul><li>An <code>identifier</code> which represents the name of the <code>terminal</code> / <code>modifier</code> / <code>stacker</code> that we&rsquo;re going to be applying</li><li>A <code>(</code>, which signifies the start of a parameter list (either positional or key/value args); all three kinds of nodes can have this</li><li>A <code>[</code>, which signifies the start of a <code>list</code> child, only stackers should have these (but we&rsquo;ll deal with that at runtime)</li><li>A <code>{</code>, which signifies the start of a <code>group</code> of children, which is primarily for <code>modifiers</code> (although they can also use the <code>.next</code> described above, but only <em>if no group is present here</em>)</li></ul><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseNode</span>() {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseNode&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>identifier</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseIdentifier</span>()
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>params</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>list</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>body</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Nodes have an identifier and then optionally a param list, list body, and group body (in that order)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>params</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseParams</span>()
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;[&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>list</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseList</span>()
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;{&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>body</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseGroup</span>()
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;node&#34;</span>, <span style=color:#a6e22e>identifier</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>params</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>params</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>params</span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>list</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>list</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>list</span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>body</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>body</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>body</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Not so bad! And we&rsquo;re already getting into the recursive part, since <code>parseGroup</code> can call <code>parseNode</code>, which then can immediately (after the <code>identifier</code>) have another <code>parseGroup</code> to deal with. That&rsquo;s what you&rsquo;d see in something like <code>double { circle }</code>:</p><ul><li>An implicit <code>parseGroup</code><ul><li><code>parseNode</code> on <code>double { circle }</code><ul><li><code>identifier</code> gets value <code>double</code></li><li><code>parseGroup</code> on <code>{ circle }</code><ul><li><code>parseNode</code> on <code>circle }</code><ul><li><code>identifier</code> gets value <code>circle</code></li><li>No opening <code>([{</code>, so return the <code>Node&lt;circle></code></li></ul></li></ul></li><li>Parse the closing <code>}</code>, so return <code>Group&lt;Node&lt;circle>></code></li></ul></li><li>Parsed a <code>group</code>, so done parsing the node, got <code>Node&lt;double, group: &lt;Group&lt;Node&lt;circle>>>></code></li></ul></li><li>Done parsing</li></ul><p>I don&rsquo;t know about you, but I think that&rsquo;s pretty cool!</p><p>So we already have <code>parseGroup</code>, but now we&rsquo;re missing <code>parseParams</code> and <code>parseList</code>, both of which are a bit trickier. Let&rsquo;s start with params.</p><h2 id=parsing-parameters>Parsing parameters</h2><p>Okay, a parameter list. For this, I&rsquo;ve chosen a syntax that looks like this: <code>(x, y: 5)</code>, which can be overloaded depending on if you&rsquo;re defining arguments (in a <code>define</code>) or calling a <code>node</code> (see above). But there are always a few rules:</p><ul><li>Starts with <code>(</code>, ends with <code>)</code></li><li>May contain 0, 1, or more params; params will be delimited by a comma: <code>,</code></li><li>Positional params will come first, these will either be a single variable name (for definitions) or an expression (for calls, see <code>parseExpression</code>)</li><li>After 0 or more positional params, keyword params (kwargs) will come next, these will always have a name (an <code>identifier</code>), a colon <code>:</code>, and an expression for their value</li><li>No positional params can occur after the first keyword param</li><li>No param can be both a positional and keyword param (with the same <code>identifier</code>)</li></ul><p>Why yes, it does look a lot like Python. I&rsquo;ve written a <em>lot</em> of Python :D.</p><p>So, let&rsquo;s make that (overly (properly?) commented) code:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseParams</span>() {
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Consume the leading (
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseParams&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>args</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>kwargs</span> <span style=color:#f92672>=</span> {}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Start by parsing args (not kwargs) until we see a kwarg (with a `:`)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>parsingKwargs</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Failure state: no closing )
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated params&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;)&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;EOF&#34;</span> })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// End state: closing ), consume it and return the parsed params
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;params&#34;</span>, <span style=color:#a6e22e>args</span>, <span style=color:#a6e22e>kwargs</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Parse the first part of the expression:
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// * When in a define, this should always be a single name
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// * When in a call as an arg, this can be a name or a complicated expression
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// * When in a kwarg, this is always a name
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>identifier</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Failure states: ran out of input or we&#39;ve started parsing kwargs and got a , (should be a :)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated params, expected , or : got EOF&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>parsingKwargs</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;args cannot come after kwargs&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;;&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;,&#34;</span> })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If the next token is a : switch to kwargs mode and parse the value of the key/value pair
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;:&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>parsingKwargs</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// This is where we check the above case that for kwargs the left side of the `:` must just be a name
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#75715e>// .asName is populated by `parseExpression`, when it returns a single identifier it will be filled
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;kwargs key must be an identifier&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;identifer&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Parsing kwargs and ran out of input
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;missing kwargs body&#34;</span>, <span style=color:#a6e22e>key</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Parsing the value
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Cannot have duplicate values in kwargs (we&#39;ll check that there are no duplicates in args at runtime)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>kwargs</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;duplicate kwarg&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>name</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// All kwargs are also positional `args`, store the new arg in both places here
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#a6e22e>args</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>identifier</span>)
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>kwargs</span>[<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>asName</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>value</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// A regular arg, not a kwarg, just store it
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>args</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>identifier</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If the next argument is a `,` we&#39;re still parsing the list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// If it&#39;s ) we&#39;ll catch the end of the list at the top of the loop
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// If it&#39;s anything else, we have malformed input (this previously caused an infinite loop)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>continue</span>
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;badly formed parameters&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> [<span style=color:#e6db74>&#34;,&#34;</span>, <span style=color:#e6db74>&#34;)&#34;</span>], <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Okay, we&rsquo;ve got groups, nodes, and parameters, next up will be lists!</p><h2 id=parsing-lists>Parsing lists</h2><p>Okay, we have the concept of <code>stackers</code>, where you can take a list of items and spread them in a line or around a circle (or just on top of one another, but that&rsquo;s already done by a group). But what would be nice would be if we didn&rsquo;t have to manually define all of the nodes. For example, if we want a series of stars in a circle, you could do:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>rotate(0.0) translate(1.0) scale(0.5) star(2)
+</span></span><span style=display:flex><span>rotate(0.2) translate(1.0) scale(0.5) star(3)
+</span></span><span style=display:flex><span>rotate(0.4) translate(1.0) scale(0.5) star(4)
+</span></span><span style=display:flex><span>rotate(0.6) translate(1.0) scale(0.5) star(5)
+</span></span><span style=display:flex><span>rotate(0.8) translate(1.0) scale(0.5) star(6)
+</span></span></code></pre></div><p>But I&rsquo;d much rather write:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>radial(scale: 0.5) [
+</span></span><span style=display:flex><span>  star(n)
+</span></span><span style=display:flex><span>  for n in 2..6
+</span></span><span style=display:flex><span>]
+</span></span></code></pre></div><p>Especially since we can get <em>much</em> more complicated than that with what we&rsquo;re putting in the nested expression.</p><p>So to do that, I want to be able to define three different list constructors, two based directly on Python (list literals and <code>for</code> lists, which are list generators) and another that&rsquo;s more specific to what I&rsquo;m doing (<code>times</code> lists):</p><table><thead><tr><th>mode</th><th>syntax</th><th>example</th></tr></thead><tbody><tr><td>literal</td><td><code>[ &lt;nodes:node>* ]</code></td><td><code>[circle star { circle star }]</code></td></tr><tr><td>for</td><td><code>[ &lt;nodes:node>* for &lt;variable:identifier> in &lt;expression:iterable> ]</code></td><td><code>[star(n) for n in 2..6]</code></td></tr><tr><td>times</td><td><code>[ &lt;nodes:node>* times &lt;variable:integer> ]</code></td><td><code>[star(5) times 3]</code></td></tr></tbody></table><p>In each case, the initial list of children can be made of either nodes or groups. We can use the <code>.next</code> syntax here, so this will mostly be to distinguish <code>[circle star ...]</code> from <code>[{circle star} ...]</code> where in the first case we have two children: a <code>circle</code> and a <code>star</code> and in the second, we have only one: a <code>circle</code> with a <code>star</code> overlaid on it.</p><p>So, how do we parse that?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseList</span>() {
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Consume the opening [
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseList&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>nodes</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Lists can be:
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#75715e>// literal-list:    [ &lt;nodes:node&gt;* ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#75715e>// for-list:        [ &lt;nodes:node&gt;* for &lt;variable:identifier&gt; in &lt;expression:iterable&gt; ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#75715e>// times-list:      [ &lt;nodes:node&gt;* times &lt;variable:integer&gt; ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Error state: never saw a closing ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated list&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Saw a ] before seeing for or times (see below), this must have been a literal list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;]&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;list&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>nodes</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we see the `for` keyword, then we&#39;re parsing a `for` special form
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// [ &lt;nodes:node&gt;* for &lt;variable:identifier&gt; in &lt;expression:iterable&gt; ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;for&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Consume the for and parse what the variable we&#39;re looping over is
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>variable</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseIdentifier</span>()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Error states: no more input or no &#39;in&#39; keyword after the variable name
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated for-list&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>!==</span> <span style=color:#e6db74>&#34;in&#34;</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;invalid for-list&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;in&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>() <span style=color:#75715e>// in
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// The expression should return any iterable object (we&#39;re fuzzy on times)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#75715e>// We only check this at runtime, for now, just parse an expression
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>expression</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// The for list is done, make sure that we have a closing ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated for-list&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#34;]&#34;</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated for-list&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;]&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Consume the closing ] and return the `list` with mode `for`
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;list&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;for&#34;</span>, <span style=color:#a6e22e>body</span><span style=color:#f92672>:</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span> }, <span style=color:#a6e22e>variable</span>, <span style=color:#a6e22e>expression</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we see the `times` keyword, then we&#39;re parsing the `times` special form
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// [ &lt;nodes:node&gt;* times &lt;variable:integer&gt; ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;times&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Consume the times
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Parse an expression, this should evaluate to a numeric value but we&#39;ll deal with that at runtime
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>expression</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parseExpression</span>()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// That&#39;s everything for a times list, so make sure we have a closing ]
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated times-list&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>!=</span> <span style=color:#e6db74>&#34;]&#34;</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unterminated times-list&#34;</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>expected</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;]&#34;</span>, <span style=color:#a6e22e>got</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>] })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Consume the closing ] and return the `times` `list`
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>return</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;list&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;times&#34;</span>, <span style=color:#a6e22e>body</span><span style=color:#f92672>:</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;group&#34;</span>, <span style=color:#a6e22e>nodes</span> }, <span style=color:#a6e22e>expression</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Otherwise we don&#39;t know what kind of list it is yet
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// But for all three cases, we will build up more nodes or groups
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// The next token ({, define, or anything else) defines what sort of child we&#39;re parsing next
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;{&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseGroup</span>())
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;define&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseDefine</span>())
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>parseNode</span>())
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// As we do in groups, apply the `.next` parameter
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>2</span>].<span style=color:#a6e22e>next</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>nodes</span>[<span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>I think the main oddity here is that while we know we&rsquo;re parsing a list, we don&rsquo;t actually know which kind (literal/for/times) we&rsquo;re parsing until we see either the <code>for</code> or <code>times</code> keyword. We don&rsquo;t have to have a state machine though, because in both cases there&rsquo;s an exact (known) number of children after those nodes: <code>for</code> has 3 more things to parse after the <code>for</code>, times has 1.</p><p>Here again, we have the recursion. We&rsquo;re relying only on the previously defined <code>parseGroup</code> / <code>parseDefine</code> / <code>parseNode</code> for objects in the list. Pretty cool!</p><h2 id=demo>Demo</h2><p>Okay. That&rsquo;s a lot of parsing&mldr; so far we can parse groups, nodes, parameters, and lists. That leaves two big ones: expressions and defines. I think each of those is complicated enough to give their own post, so we&rsquo;ll be back for that. Keep posted!</p><p>But for now, a demo of parsing!</p><script defer type=module>
 import lex from '/embeds/runelang/runelang/lexer.js'
 import parse from '/embeds/runelang/runelang/parser.js'
 import logging from '/embeds/runelang/lib/logging.js'
@@ -511,73 +332,10 @@ function debounce(f, timeout = 500) {
 
 document.addEventListener('keyup', debounce(doParse))
 doParse()
-</script>
-<style>textarea[data-input],textarea[data-output]{width:80%;height:600px;padding:1em}td{width:45%;vertical-align:top}</style>
-<h3>Source</h3>
-<textarea data-input></textarea>
-<h3>Parsed</h3>
-<textarea readonly data-output></textarea>
-<h3>Log (most recent messages first):</h2>
-<ul data-log></ul>
-<h2 id=conclusion>Conclusion</h2>
-<p>As before, here&rsquo;s the current source: <a href=https://github.com/jpverkamp/runelang>jpverkamp/runelang</a></p>
-<p>And here is the entire series (as I write them):</p>
-<div class=ranking>
-<h3 class=title>Posts in <a href=/series/runelang-in-the-browser/>Runelang in the Browser</a>:</h3>
-<div class=content>
-<ul><li>
-<a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/>
-Runelang: Language Specification
-</a></li><li>
-<a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/>
-Runelang: The Lexer
-</a></li><li>
-<a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/>
-Runelang: The Parser (Part 1)
-</a></li><li>
-<a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/>
-Runelang: The Parser (Part 2: Expressions)
-</a></li></ul>
-</div>
-</div></div>
-</article></div>
-</div><footer id=page-footer role=contentinfo>
-<nav id=footer-navigation role=navigation class=ribbon>
-<ul class=main-navigation>
-<li><a href=/archive-by-date/>All posts: By Date</a></li>
-<li><a href=/archive-by-tag/>All posts: By Tag</a></li>
-<li>
-<a href=/atom.xml>
-RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li><li>
-<a href=/programming/atom.xml>
-RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li></ul>
-</nav>
-<div id=page-footer-content>
-<div class=legal>
-<p>
-All posts unless otherwise mentioned are licensed under
-<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US>
-<img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png>
-</a>
-</p>
-<p>
-Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a>
-</p>
-</div>
-</div>
-</footer>
-</div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+</script><style>textarea[data-input],textarea[data-output]{width:80%;height:600px;padding:1em}td{width:45%;vertical-align:top}</style><h3>Source</h3><textarea data-input></textarea><h3>Parsed</h3><textarea readonly data-output></textarea><h3>Log (most recent messages first):</h2><ul data-log></ul><h2 id=conclusion>Conclusion</h2><p>As before, here&rsquo;s the current source: <a href=https://github.com/jpverkamp/runelang>jpverkamp/runelang</a></p><p>And here is the entire series (as I write them):</p><div class=ranking><h3 class=title>Posts in <a href=/series/runelang-in-the-browser/>Runelang in the Browser</a>:</h3><div class=content><ul><li><a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/>Runelang: Language Specification</a></li><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/>Runelang: The Lexer</a></li><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/>Runelang: The Parser (Part 1)</a></li><li><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/>Runelang: The Parser (Part 2: Expressions)</a></li></ul></div></div></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
 <script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
-<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:'loose'})</script>
-<script defer src=/custom.js></script>
-</body>
-</html>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>

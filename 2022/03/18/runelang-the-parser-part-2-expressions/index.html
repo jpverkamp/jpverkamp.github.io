@@ -1,361 +1,267 @@
-<!doctype html><html>
-<head>
-<title>Runelang: The Parser (Part 2: Expressions) – jverkamp.com</title>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
-<meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous>
-<link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous>
-<link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet>
-<link rel=stylesheet href=/custom.css defer>
-<script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script>
-</head>
-<body>
-<div id=wrapper><header id=page-header role=banner>
-<h1><a href=/>JP's Blog</a></h1>
-<ul id=page-header-links>
-<li>
-<a href=https://github.com/jpverkamp>GitHub</a> *
+<!doctype html><html><head><title>Runelang: The Parser (Part 2: Expressions) – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
 <a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
-<a href=/resume>Resume</a>
-</li>
-<li>
-<form action=//www.google.com/search method=get onsubmit="(function(a){a.q.value='site:blog.jverkamp.com '+a.qfront.value})(this)" class="navbar-form navbar-right" role=search _lpchecked=1>
-<div class=form-group>
-<input name=q type=hidden>
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
 <input name=qfront type=text class=form-control placeholder=Search>
-<button type=submit class="btn btn-default" value=Search>Search</button>
-</div>
-</form>
-</li>
-</ul>
-<nav id=header-navigation role=navigation class=ribbon>
-<ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li>
-</ul>
-</nav>
-</header>
-<div id=page-content-wrapper>
-<div id=page-content><article>
-<header>
-<h1 class=entry-title>Runelang: The Parser (Part 2: Expressions)</h1>
-<div class=entry-meta><span class=entry-date>2022-03-18</span>
-</div>
-<div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li>
-<a class=taxonomy-key href=/programming/languages/>Languages</a>
-<ul class=taxonomy-values></ul>
-</li><li>
-<a class=taxonomy-key href=/programming/topics/>Topics</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/generative-art>Generative Art</a></li><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/procedural-content>Procedural Content</a></li></ul>
-</li><li>
-<a class=taxonomy-key href=/series/>Series</a>
-<ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link></a><a class=taxonomy-value href=/series/runelang-in-the-browser>Runelang in the Browser</a></li></ul>
-</li><li><a class=taxonomy-key href=/programming>programming</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link>Prev</a>
-</ul>
-</li><li><a class=taxonomy-key href=/>All Posts</a>
-<ul>
-<li><a href=https://blog.jverkamp.com/2022/03/18/spider-man-no-way-home/ class=previous-link>Prev</a>
-<a href=https://blog.jverkamp.com/2022/03/21/physics-of-the-impossible/ class=next-link>Next</a></ul>
-</li></ul>
-</div>
-</div>
-</header>
-<div class=entry-content><p><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/>Earlier this week</a>, we started parsing, getting through groups, nodes, params, and lists. A pretty good start, but it also leaves out two very powerful things (expressions and defines), one of which we absolutely do need to start actually evaluating things: expressions. Since we use them in every param, we pretty much need to know how to parse them, so let&rsquo;s do it!</p>
-<h2 id=parsing-expressions>Parsing expressions</h2>
-<p>My goals for expressions are:</p>
-<ul>
-<li>A variety of literal values (integers, decimals, fractions, hex/binary literals, angles, strings)</li>
-<li>Simple <a href=https://en.wikipedia.org/wiki/infix>infix</a> style expressions: <code>a + b</code>, rather than <code>(+ a b)</code> or <code>a b +</code></li>
-<li><a href=https://en.wikipedia.org/wiki/Operator%20precedence>Operator precedence</a>: <code>a + b * c</code> should be evaluated as <code>a + (b * c)</code> rather than <code>(a + b) * c</code></li>
-<li><code>()</code> for grouping when you want to override precedence (so <code>(a + b) * c</code> does what it should)</li>
-<li>Built in functions (<code>sin(x)</code>)</li>
-</ul>
-<p>This isn&rsquo;t really something that works directly with our current <a href=https://en.wikipedia.org/wiki/recursive%20descent%20parser>recursive descent parser</a>, but we can switch modes (while parsing an expression) to instead use the <a href=https://en.wikipedia.org/wiki/Shunting-Yard%20Algorithm>Shunting-Yard Algorithm</a>. It&rsquo;s designed for exactly this sort of thing and does pretty well.</p>
-<p>It doesn&rsquo;t directly evaluate the expressions, but what it does is parse them into a list that is in <a href=https://en.wikipedia.org/wiki/Reverse%20Polish%20Notation>Reverse Polish Notation</a> form. The advantage of that is RPN is unambiguous and doesn&rsquo;t have to deal with precedence&ndash;you just evaluate the list of expressions left to right. So by using the Shunting-Yard to deal with precedence now, we&rsquo;re hopefully making the expression evaluation easier. Let&rsquo;s do it!</p>
-<p>First, the entire code:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseExpression</span>() {
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>]
-  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseExpression&#34;</span>, <span style=color:#a6e22e>token</span>)
-
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
-    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unable to parse expression, got EOF&#34;</span>)
-  }
-
-  <span style=color:#75715e>// Parse using the [Shunting-Yard algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm)
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>output</span> <span style=color:#f92672>=</span> []
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>operator_stack</span> <span style=color:#f92672>=</span> []
-
-  <span style=color:#75715e>// Loop through tokens until we hit a token that can&#39;t be part of the expression
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
-    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
-    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>text</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>token</span>.<span style=color:#a6e22e>token</span>
-
-    <span style=color:#75715e>// Literal string
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>===</span> <span style=color:#e6db74>&#39;&#34;&#39;</span>) {
-      <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;string&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>1</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>), <span style=color:#a6e22e>token</span> })
-    }
-    <span style=color:#75715e>// A parameter list
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>text</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
-    }
-    <span style=color:#75715e>// A constant
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>) {
-      <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;constant&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>[<span style=color:#a6e22e>text</span>], <span style=color:#a6e22e>token</span> })
-    }
-    <span style=color:#75715e>// A predefined function
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
-      <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
-    }
-    <span style=color:#75715e>// Some kind of number
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^\-?[0-9]/</span>)) {
-      <span style=color:#75715e>// Rational numbers/fractions
-</span><span style=color:#75715e></span>      <span style=color:#75715e>// TODO: Divided by zero error
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\//</span>)) {
-        <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>num</span>, <span style=color:#a6e22e>den</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;/&#34;</span>)
-        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> (<span style=color:#ae81ff>1.0</span> <span style=color:#f92672>*</span> parseInt(<span style=color:#a6e22e>num</span>)) <span style=color:#f92672>/</span> parseInt(<span style=color:#a6e22e>den</span>)
-
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>token</span> })
-      }
-      <span style=color:#75715e>// Decimal
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\./</span>)) {
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseFloat(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
-      }
-      <span style=color:#75715e>// Hexadecimal
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^0x/</span>)) {
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>2</span>), <span style=color:#ae81ff>16</span>) })
-      }
-      <span style=color:#75715e>// Degrees (stored internally angles 0-1 for a circle)
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+deg/</span>)) {
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;degrees&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> <span style=color:#ae81ff>360</span>, <span style=color:#a6e22e>token</span> })
-      }
-      <span style=color:#75715e>// Radians (stored internally angles 0-1 for a circle)
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+rad/</span>)) {
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;radians&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> (<span style=color:#ae81ff>2</span> <span style=color:#f92672>*</span> Math.<span style=color:#a6e22e>PI</span>), <span style=color:#a6e22e>token</span> })
-      }
-      <span style=color:#75715e>// Anything else should be an integer
-</span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> {
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
-      }
-    }
-    <span style=color:#75715e>// Parens, either a function call or grouping
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
-      <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#e6db74>&#34;(&#34;</span>)
-    }
-    <span style=color:#75715e>// Closing parens
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
-      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>)) {
-        <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
-          <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
-          <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
-            <span style=color:#66d9ef>break</span>
-          } <span style=color:#66d9ef>else</span> {
-            <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>token</span>)
-          }
-        }
-
-        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
-          <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>maybeFunction</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
-          <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>maybeFunction</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
-            <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>f</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>[<span style=color:#a6e22e>maybeFunction</span>]
-            <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>arity</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>f</span>
-              .<span style=color:#a6e22e>toString</span>()
-              .<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\(.*?\)/</span>)[<span style=color:#ae81ff>0</span>]
-              .<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;,&#34;</span>).<span style=color:#a6e22e>length</span>
-
-            <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;function&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>arity</span>, <span style=color:#a6e22e>token</span> })
-          } <span style=color:#66d9ef>else</span> {
-            <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>maybeFunction</span>)
-          }
-        }
-      } <span style=color:#66d9ef>else</span> {
-        <span style=color:#75715e>// No ( on the stack means this is finishing the expression
-</span><span style=color:#75715e></span>        <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>(<span style=color:#a6e22e>token</span>)
-        <span style=color:#66d9ef>break</span>
-      }
-    }
-    <span style=color:#75715e>// An operator
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// https://en.wikipedia.org/wiki/Shunting-yard_algorithm
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>) {
-      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>text</span>].<span style=color:#a6e22e>precedence</span>
-      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Working on operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>text</span>, <span style=color:#a6e22e>precedence</span> })
-
-      <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
-        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>[<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
-        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#66d9ef>break</span>
-
-        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>stack_operator</span>].<span style=color:#a6e22e>precedence</span>
-
-        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Continuing operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_operator</span>, <span style=color:#a6e22e>stack_precedence</span> })
-
-        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>precedence</span>) {
-          <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Done popping`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_precedence</span>, <span style=color:#a6e22e>precedence</span> })
-          <span style=color:#66d9ef>break</span>
-        }
-
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;operator&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>() })
-      }
-      <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
-    }
-    <span style=color:#75715e>// A variable
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/[a-zA-Z]/</span>) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span><span style=color:#a6e22e>EVAL_KEYWORDS</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#a6e22e>text</span>)) {
-      <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;variable&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>text</span>, <span style=color:#a6e22e>token</span> })
-    }
-    <span style=color:#75715e>// Anything else means that we&#39;re done parsing the expression
-</span><span style=color:#75715e></span>    <span style=color:#75715e>// Remember to put the token back!
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> {
-      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>(<span style=color:#a6e22e>token</span>)
-      <span style=color:#66d9ef>break</span>
-    }
-  }
-  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Done parsing expression`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>output</span>, <span style=color:#a6e22e>operator_stack</span> })
-
-  <span style=color:#75715e>// After we exit the list, any remaining operators get added to the stack
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;operator&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>() })
-  }
-
-  <span style=color:#75715e>// Construct the result value
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;expression&#34;</span>, <span style=color:#a6e22e>rpn</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>output</span>, <span style=color:#a6e22e>token</span> }
-
-  <span style=color:#75715e>// Special case: if the expression was a single identifier
-</span><span style=color:#75715e></span>  <span style=color:#75715e>// It&#39;s probably being used as a variable name in a param/kwarg, store an alias for this
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>output</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;variable&#34;</span>) {
-    <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>asName</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>output</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>value</span>
-  }
-
-  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
-}
-</code></pre></div><p>It&rsquo;s a bit much, so let&rsquo;s break it apart!</p>
-<h3 id=literals>Literals</h3>
-<p>The first case is any of our various sorts of literals:</p>
-<ul>
-<li>integers like 0, 5, -10</li>
-<li>decimals like 3.14, -0.7</li>
-<li>rationals/fractions like 1/2, 1/7, -3/2</li>
-<li>hexadecimal literals like: 0xFF (primarily used for <a href=https://en.wikipedia.org/wiki/Unicode%20code%20points>Unicode code points</a>)</li>
-<li>angles in degrees or radians (30deg, 1rad), TODO: I need to combine these with decimals and fractions</li>
-<li>strings like &ldquo;hello world&rdquo;</li>
-<li>constants like <code>true</code> and <code>false</code></li>
-<li>predefined functions like <code>chooseOne</code> (choose one item from a list)</li>
-</ul>
-<p>Most of the parsing methods of those are pretty straight forward (thus, literals):</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript>...
-<span style=color:#75715e>// Literal string
-</span><span style=color:#75715e></span><span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>===</span> <span style=color:#e6db74>&#39;&#34;&#39;</span>) {
-  <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;string&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>1</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>), <span style=color:#a6e22e>token</span> })
-}
-<span style=color:#75715e>// A parameter list
-</span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>text</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
-}
-<span style=color:#75715e>// A constant
-</span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>) {
-  <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;constant&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>[<span style=color:#a6e22e>text</span>], <span style=color:#a6e22e>token</span> })
-}
-<span style=color:#75715e>// A predefined function
-</span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
-  <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
-}
-<span style=color:#75715e>// Some kind of number
-</span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^\-?[0-9]/</span>)) {
-  <span style=color:#75715e>// Rational numbers/fractions
-</span><span style=color:#75715e></span>  <span style=color:#75715e>// TODO: Divided by zero error
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\//</span>)) {
-    <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>num</span>, <span style=color:#a6e22e>den</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;/&#34;</span>)
-    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> (<span style=color:#ae81ff>1.0</span> <span style=color:#f92672>*</span> parseInt(<span style=color:#a6e22e>num</span>)) <span style=color:#f92672>/</span> parseInt(<span style=color:#a6e22e>den</span>)
-
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>token</span> })
-  }
-  <span style=color:#75715e>// Decimal
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\./</span>)) {
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseFloat(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
-  }
-  <span style=color:#75715e>// Hexadecimal
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^0x/</span>)) {
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>2</span>), <span style=color:#ae81ff>16</span>) })
-  }
-  <span style=color:#75715e>// Degrees (stored internally angles 0-1 for a circle)
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+deg/</span>)) {
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;degrees&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> <span style=color:#ae81ff>360</span>, <span style=color:#a6e22e>token</span> })
-  }
-  <span style=color:#75715e>// Radians (stored internally angles 0-1 for a circle)
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+rad/</span>)) {
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;radians&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> (<span style=color:#ae81ff>2</span> <span style=color:#f92672>*</span> Math.<span style=color:#a6e22e>PI</span>), <span style=color:#a6e22e>token</span> })
-  }
-  <span style=color:#75715e>// Anything else should be an integer
-</span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> {
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
-  }
-}
-...
-</code></pre></div><p>The main complication is that we have to make sure this is in the right order. For example, if we try to parse integers before angles, we&rsquo;ll never see the <code>deg</code> / <code>rad</code> and things will get confusing.</p>
-<h2 id=operators>Operators</h2>
-<p>The next step is a core part of the Shunting-Yard algorithm: operators:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript>...
-<span style=color:#75715e>// An operator
-</span><span style=color:#75715e>// https://en.wikipedia.org/wiki/Shunting-yard_algorithm
-</span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>) {
-  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>text</span>].<span style=color:#a6e22e>precedence</span>
-  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Working on operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>text</span>, <span style=color:#a6e22e>precedence</span> })
-
-  <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
-    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>[<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
-    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#66d9ef>break</span>
-
-    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>stack_operator</span>].<span style=color:#a6e22e>precedence</span>
-
-    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Continuing operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_operator</span>, <span style=color:#a6e22e>stack_precedence</span> })
-
-    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>precedence</span>) {
-      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Done popping`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_precedence</span>, <span style=color:#a6e22e>precedence</span> })
-      <span style=color:#66d9ef>break</span>
-    }
-
-    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;operator&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>() })
-  }
-  <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
-}
-...
-</code></pre></div><p>This is a pretty direct implementation of the Shunting-Yard algorithm. Every operator has an associated precedence. Whenever we see an operator with higher precedence, that means that any currently on the operator stack need to be evaluated &lsquo;first&rsquo;, so they get pushed to output. Any with higher precedence needs to be done later, so stays on the stack.</p>
-<p>There&rsquo;s also another complication when you run into a <code>)</code>:</p>
-<div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript>...
-<span style=color:#75715e>// Closing parens
-</span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
-  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>)) {
-    <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
-      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
-      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
-        <span style=color:#66d9ef>break</span>
-      } <span style=color:#66d9ef>else</span> {
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>token</span>)
-      }
-    }
-
-    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
-      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>maybeFunction</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
-      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>maybeFunction</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
-        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>f</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>[<span style=color:#a6e22e>maybeFunction</span>]
-        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>arity</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>f</span>
-          .<span style=color:#a6e22e>toString</span>()
-          .<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\(.*?\)/</span>)[<span style=color:#ae81ff>0</span>]
-          .<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;,&#34;</span>).<span style=color:#a6e22e>length</span>
-
-        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;function&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>arity</span>, <span style=color:#a6e22e>token</span> })
-      } <span style=color:#66d9ef>else</span> {
-        <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>maybeFunction</span>)
-      }
-    }
-  } <span style=color:#66d9ef>else</span> {
-    <span style=color:#75715e>// No ( on the stack means this is finishing the expression
-</span><span style=color:#75715e></span>    <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>(<span style=color:#a6e22e>token</span>)
-    <span style=color:#66d9ef>break</span>
-  }
-}
-...
-</code></pre></div><p>If we see a <code>)</code>, it could either be closing an internal paren (in which case we&rsquo;re staying in expression mode) or closing the parameter list (for example) in which case w&rsquo;re done with the expression. What we do next is a much hackier method of making sure that we can parse any <a href=https://en.wikipedia.org/wiki/arity>arity</a> of function with the function&rsquo;s <code>toString</code> method. This is&mldr; hacky. But it works and I don&rsquo;t believe there&rsquo;s a better way to evaluate this in Javascript.</p>
-<h2 id=back-to-the-top>Back to the top</h2>
-<p>And that&rsquo;s the majority of how we parse expressions. It took a while to get the detail right (and I really should be writing more (any) test cases), but it does work great now. Try it in the demo:</p>
-<script defer type=module>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Runelang: The Parser (Part 2: Expressions)</h1><div class=entry-meta><span class=entry-date>2022-03-18</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/generative-art>Generative Art</a></li><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/procedural-content>Procedural Content</a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link></a><a class=taxonomy-value href=/series/runelang-in-the-browser>Runelang in the Browser</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/03/18/spider-man-no-way-home/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/03/21/physics-of-the-impossible/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/>Earlier this week</a>, we started parsing, getting through groups, nodes, params, and lists. A pretty good start, but it also leaves out two very powerful things (expressions and defines), one of which we absolutely do need to start actually evaluating things: expressions. Since we use them in every param, we pretty much need to know how to parse them, so let&rsquo;s do it!</p><h2 id=parsing-expressions>Parsing expressions</h2><p>My goals for expressions are:</p><ul><li>A variety of literal values (integers, decimals, fractions, hex/binary literals, angles, strings)</li><li>Simple <a href=https://en.wikipedia.org/wiki/infix>infix</a> style expressions: <code>a + b</code>, rather than <code>(+ a b)</code> or <code>a b +</code></li><li><a href=https://en.wikipedia.org/wiki/Operator%20precedence>Operator precedence</a>: <code>a + b * c</code> should be evaluated as <code>a + (b * c)</code> rather than <code>(a + b) * c</code></li><li><code>()</code> for grouping when you want to override precedence (so <code>(a + b) * c</code> does what it should)</li><li>Built in functions (<code>sin(x)</code>)</li></ul><p>This isn&rsquo;t really something that works directly with our current <a href=https://en.wikipedia.org/wiki/recursive%20descent%20parser>recursive descent parser</a>, but we can switch modes (while parsing an expression) to instead use the <a href=https://en.wikipedia.org/wiki/Shunting-Yard%20Algorithm>Shunting-Yard Algorithm</a>. It&rsquo;s designed for exactly this sort of thing and does pretty well.</p><p>It doesn&rsquo;t directly evaluate the expressions, but what it does is parse them into a list that is in <a href=https://en.wikipedia.org/wiki/Reverse%20Polish%20Notation>Reverse Polish Notation</a> form. The advantage of that is RPN is unambiguous and doesn&rsquo;t have to deal with precedence&ndash;you just evaluate the list of expressions left to right. So by using the Shunting-Yard to deal with precedence now, we&rsquo;re hopefully making the expression evaluation easier. Let&rsquo;s do it!</p><p>First, the entire code:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>parseExpression</span>() {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>[<span style=color:#ae81ff>0</span>]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;parseExpression&#34;</span>, <span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unable to parse expression, got EOF&#34;</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Parse using the [Shunting-Yard algorithm](https://en.wikipedia.org/wiki/Shunting-yard_algorithm)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>output</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>operator_stack</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Loop through tokens until we hit a token that can&#39;t be part of the expression
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>shift</span>()
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>text</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>token</span>.<span style=color:#a6e22e>token</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Literal string
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>===</span> <span style=color:#e6db74>&#39;&#34;&#39;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;string&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>1</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// A parameter list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>text</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// A constant
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;constant&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>[<span style=color:#a6e22e>text</span>], <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// A predefined function
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Some kind of number
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^\-?[0-9]/</span>)) {
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Rational numbers/fractions
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#75715e>// TODO: Divided by zero error
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\//</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>num</span>, <span style=color:#a6e22e>den</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;/&#34;</span>)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> (<span style=color:#ae81ff>1.0</span> <span style=color:#f92672>*</span> parseInt(<span style=color:#a6e22e>num</span>)) <span style=color:#f92672>/</span> parseInt(<span style=color:#a6e22e>den</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Decimal
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\./</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseFloat(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Hexadecimal
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^0x/</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>2</span>), <span style=color:#ae81ff>16</span>) })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Degrees (stored internally angles 0-1 for a circle)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+deg/</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;degrees&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> <span style=color:#ae81ff>360</span>, <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Radians (stored internally angles 0-1 for a circle)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+rad/</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;radians&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> (<span style=color:#ae81ff>2</span> <span style=color:#f92672>*</span> Math.<span style=color:#a6e22e>PI</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Anything else should be an integer
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Parens, either a function call or grouping
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#e6db74>&#34;(&#34;</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Closing parens
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>          } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>          }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>maybeFunction</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>maybeFunction</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>f</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>[<span style=color:#a6e22e>maybeFunction</span>]
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>arity</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>f</span>
+</span></span><span style=display:flex><span>              .<span style=color:#a6e22e>toString</span>()
+</span></span><span style=display:flex><span>              .<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\(.*?\)/</span>)[<span style=color:#ae81ff>0</span>]
+</span></span><span style=display:flex><span>              .<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;,&#34;</span>).<span style=color:#a6e22e>length</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;function&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>arity</span>, <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>          } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>maybeFunction</span>)
+</span></span><span style=display:flex><span>          }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// No ( on the stack means this is finishing the expression
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>(<span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// An operator
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>text</span>].<span style=color:#a6e22e>precedence</span>
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Working on operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>text</span>, <span style=color:#a6e22e>precedence</span> })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>[<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>stack_operator</span>].<span style=color:#a6e22e>precedence</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Continuing operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_operator</span>, <span style=color:#a6e22e>stack_precedence</span> })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>precedence</span>) {
+</span></span><span style=display:flex><span>          <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Done popping`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_precedence</span>, <span style=color:#a6e22e>precedence</span> })
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;operator&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>() })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// A variable
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/[a-zA-Z]/</span>) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span><span style=color:#a6e22e>EVAL_KEYWORDS</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#a6e22e>text</span>)) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;variable&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>text</span>, <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Anything else means that we&#39;re done parsing the expression
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// Remember to put the token back!
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>(<span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Done parsing expression`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>output</span>, <span style=color:#a6e22e>operator_stack</span> })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// After we exit the list, any remaining operators get added to the stack
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;operator&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>() })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Construct the result value
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;expression&#34;</span>, <span style=color:#a6e22e>rpn</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>output</span>, <span style=color:#a6e22e>token</span> }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Special case: if the expression was a single identifier
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#75715e>// It&#39;s probably being used as a variable name in a param/kwarg, store an alias for this
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>===</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>output</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;variable&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>asName</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>output</span>[<span style=color:#ae81ff>0</span>].<span style=color:#a6e22e>value</span>
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>It&rsquo;s a bit much, so let&rsquo;s break it apart!</p><h3 id=literals>Literals</h3><p>The first case is any of our various sorts of literals:</p><ul><li>integers like 0, 5, -10</li><li>decimals like 3.14, -0.7</li><li>rationals/fractions like 1/2, 1/7, -3/2</li><li>hexadecimal literals like: 0xFF (primarily used for <a href=https://en.wikipedia.org/wiki/Unicode%20code%20points>Unicode code points</a>)</li><li>angles in degrees or radians (30deg, 1rad), TODO: I need to combine these with decimals and fractions</li><li>strings like &ldquo;hello world&rdquo;</li><li>constants like <code>true</code> and <code>false</code></li><li>predefined functions like <code>chooseOne</code> (choose one item from a list)</li></ul><p>Most of the parsing methods of those are pretty straight forward (thus, literals):</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span>...
+</span></span><span style=display:flex><span><span style=color:#75715e>// Literal string
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>===</span> <span style=color:#e6db74>&#39;&#34;&#39;</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;string&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>1</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// A parameter list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>text</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;,&#34;</span>) {
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// A constant
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;constant&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>EVAL_CONSTANTS</span>[<span style=color:#a6e22e>text</span>], <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// A predefined function
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#75715e>// Some kind of number
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^\-?[0-9]/</span>)) {
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Rational numbers/fractions
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#75715e>// TODO: Divided by zero error
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\//</span>)) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>num</span>, <span style=color:#a6e22e>den</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;/&#34;</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> (<span style=color:#ae81ff>1.0</span> <span style=color:#f92672>*</span> parseInt(<span style=color:#a6e22e>num</span>)) <span style=color:#f92672>/</span> parseInt(<span style=color:#a6e22e>den</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span>, <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Decimal
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\./</span>)) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseFloat(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Hexadecimal
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/^0x/</span>)) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>2</span>), <span style=color:#ae81ff>16</span>) })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Degrees (stored internally angles 0-1 for a circle)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+deg/</span>)) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;degrees&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> <span style=color:#ae81ff>360</span>, <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Radians (stored internally angles 0-1 for a circle)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\-?\d+rad/</span>)) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>unit</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;radians&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>substring</span>(<span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>text</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>3</span>)) <span style=color:#f92672>/</span> (<span style=color:#ae81ff>2</span> <span style=color:#f92672>*</span> Math.<span style=color:#a6e22e>PI</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Anything else should be an integer
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;literal&#34;</span>, <span style=color:#a6e22e>mode</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;number&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> parseInt(<span style=color:#a6e22e>text</span>), <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>...
+</span></span></code></pre></div><p>The main complication is that we have to make sure this is in the right order. For example, if we try to parse integers before angles, we&rsquo;ll never see the <code>deg</code> / <code>rad</code> and things will get confusing.</p><h2 id=operators>Operators</h2><p>The next step is a core part of the Shunting-Yard algorithm: operators:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span>...
+</span></span><span style=display:flex><span><span style=color:#75715e>// An operator
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>text</span>].<span style=color:#a6e22e>precedence</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Working on operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>text</span>, <span style=color:#a6e22e>precedence</span> })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>while</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>[<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>]
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_operator</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;(&#34;</span>) <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>stack_operator</span>].<span style=color:#a6e22e>precedence</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Continuing operator`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_operator</span>, <span style=color:#a6e22e>stack_precedence</span> })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack_precedence</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>precedence</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Done popping`</span>, <span style=color:#a6e22e>token</span>, { <span style=color:#a6e22e>stack_precedence</span>, <span style=color:#a6e22e>precedence</span> })
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;operator&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>() })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>text</span>)
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>...
+</span></span></code></pre></div><p>This is a pretty direct implementation of the Shunting-Yard algorithm. Every operator has an associated precedence. Whenever we see an operator with higher precedence, that means that any currently on the operator stack need to be evaluated &lsquo;first&rsquo;, so they get pushed to output. Any with higher precedence needs to be done later, so stays on the stack.</p><p>There&rsquo;s also another complication when you run into a <code>)</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span>...
+</span></span><span style=display:flex><span><span style=color:#75715e>// Closing parens
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>text</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;)&#34;</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;(&#34;</span>)) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>while</span> (<span style=color:#66d9ef>true</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>token</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>token</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;(&#34;</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>maybeFunction</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>pop</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>maybeFunction</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>f</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_FUNCTIONS</span>[<span style=color:#a6e22e>maybeFunction</span>]
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>arity</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>f</span>
+</span></span><span style=display:flex><span>          .<span style=color:#a6e22e>toString</span>()
+</span></span><span style=display:flex><span>          .<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\(.*?\)/</span>)[<span style=color:#ae81ff>0</span>]
+</span></span><span style=display:flex><span>          .<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;,&#34;</span>).<span style=color:#a6e22e>length</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>output</span>.<span style=color:#a6e22e>push</span>({ <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#e6db74>&#34;function&#34;</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>f</span>, <span style=color:#a6e22e>arity</span>, <span style=color:#a6e22e>token</span> })
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>operator_stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>maybeFunction</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// No ( on the stack means this is finishing the expression
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>tokens</span>.<span style=color:#a6e22e>unshift</span>(<span style=color:#a6e22e>token</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>break</span>
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>...
+</span></span></code></pre></div><p>If we see a <code>)</code>, it could either be closing an internal paren (in which case we&rsquo;re staying in expression mode) or closing the parameter list (for example) in which case w&rsquo;re done with the expression. What we do next is a much hackier method of making sure that we can parse any <a href=https://en.wikipedia.org/wiki/arity>arity</a> of function with the function&rsquo;s <code>toString</code> method. This is&mldr; hacky. But it works and I don&rsquo;t believe there&rsquo;s a better way to evaluate this in Javascript.</p><h2 id=back-to-the-top>Back to the top</h2><p>And that&rsquo;s the majority of how we parse expressions. It took a while to get the detail right (and I really should be writing more (any) test cases), but it does work great now. Try it in the demo:</p><script defer type=module>
 import lex from '/embeds/runelang/runelang/lexer.js'
 import parse from '/embeds/runelang/runelang/parser.js'
 import logging from '/embeds/runelang/lib/logging.js'
@@ -407,73 +313,10 @@ function debounce(f, timeout = 500) {
 
 document.addEventListener('keyup', debounce(doParse))
 doParse()
-</script>
-<style>textarea[data-input],textarea[data-output]{width:80%;height:600px;padding:1em}td{width:45%;vertical-align:top}</style>
-<h3>Source</h3>
-<textarea data-input></textarea>
-<h3>Parsed</h3>
-<textarea readonly data-output></textarea>
-<h3>Log (most recent messages first):</h2>
-<ul data-log></ul>
-<h2 id=conclusion>Conclusion</h2>
-<p>As before, here&rsquo;s the current source: <a href=https://github.com/jpverkamp/runelang>jpverkamp/runelang</a></p>
-<p>And here is the entire series (as I write them):</p>
-<div class=ranking>
-<h3 class=title>Posts in <a href=/series/runelang-in-the-browser/>Runelang in the Browser</a>:</h3>
-<div class=content>
-<ul><li>
-<a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/>
-Runelang: Language Specification
-</a></li><li>
-<a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/>
-Runelang: The Lexer
-</a></li><li>
-<a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/>
-Runelang: The Parser (Part 1)
-</a></li><li>
-<a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/>
-Runelang: The Parser (Part 2: Expressions)
-</a></li></ul>
-</div>
-</div></div>
-</article></div>
-</div><footer id=page-footer role=contentinfo>
-<nav id=footer-navigation role=navigation class=ribbon>
-<ul class=main-navigation>
-<li><a href=/archive-by-date/>All posts: By Date</a></li>
-<li><a href=/archive-by-tag/>All posts: By Tag</a></li>
-<li>
-<a href=/atom.xml>
-RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li><li>
-<a href=/programming/atom.xml>
-RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg>
-</sup>
-</a>
-</li></ul>
-</nav>
-<div id=page-footer-content>
-<div class=legal>
-<p>
-All posts unless otherwise mentioned are licensed under
-<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US>
-<img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png>
-</a>
-</p>
-<p>
-Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a>
-</p>
-</div>
-</div>
-</footer>
-</div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+</script><style>textarea[data-input],textarea[data-output]{width:80%;height:600px;padding:1em}td{width:45%;vertical-align:top}</style><h3>Source</h3><textarea data-input></textarea><h3>Parsed</h3><textarea readonly data-output></textarea><h3>Log (most recent messages first):</h2><ul data-log></ul><h2 id=conclusion>Conclusion</h2><p>As before, here&rsquo;s the current source: <a href=https://github.com/jpverkamp/runelang>jpverkamp/runelang</a></p><p>And here is the entire series (as I write them):</p><div class=ranking><h3 class=title>Posts in <a href=/series/runelang-in-the-browser/>Runelang in the Browser</a>:</h3><div class=content><ul><li><a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/>Runelang: Language Specification</a></li><li><a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/>Runelang: The Lexer</a></li><li><a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/>Runelang: The Parser (Part 1)</a></li><li><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/>Runelang: The Parser (Part 2: Expressions)</a></li></ul></div></div></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
 <script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
 <script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
-<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:'loose'})</script>
-<script defer src=/custom.js></script>
-</body>
-</html>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>
