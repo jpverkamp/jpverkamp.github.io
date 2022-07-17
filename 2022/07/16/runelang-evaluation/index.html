@@ -1,0 +1,615 @@
+<!doctype html><html><head><title>Runelang: Evaluation – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Runelang: Evaluation</h1><div class=entry-meta><span class=entry-date>2022-07-16</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/generative-art>Generative Art</a></li><li><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/procedural-content>Procedural Content</a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=previous-link></a><a class=taxonomy-value href=/series/runelang-in-the-browser>Runelang in the Browser</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/07/15/underworld/ class=previous-link>Prev</a></ul></li></ul></div></div></header><div class=entry-content><p>As they say, life is what happens when you&rsquo;re making other plans. But I&rsquo;m back, so let&rsquo;s talk some more about <a href=/series/runelang-in-the-browser/>Runelang</a>. In the interest of not dragging on months without finishing, we&rsquo;re going to go ahead and push through the rest of the project. Onward!</p><p>So far, we&rsquo;ve <a href=https://blog.jverkamp.com/2022/02/23/runelang-language-specification/>described the language</a>, <a href=https://blog.jverkamp.com/2022/02/24/runelang-the-lexer/>wrote a lexer</a>, and parsed both <a href=https://blog.jverkamp.com/2022/03/15/runelang-the-parser-part-1/>nodes, parameters, and lists</a> and <a href=https://blog.jverkamp.com/2022/03/18/runelang-the-parser-part-2-expressions/>more complicated expressions, literals, and an expression sublanguage</a>.</p><p>Next up? Evaluation!</p><p>To do that, we need a few things:</p><ul><li><p>An environment (so we can handle variables passed to function calls, along with a top level <code>define</code> syntax)</p></li><li><p><code>evaluate*</code> functions for each kind of object we might have parsed (group, terminal, node, stacker, literal, list, &mldr; you get the idea)</p></li></ul><h2 id=table-of-contents>Table of Contents</h2><nav id=TableOfContents><ul><li><a href=#table-of-contents>Table of Contents</a></li><li><a href=#the-environment>The environment</a></li><li><a href=#the-root-of-evaluation>The root of evaluation</a></li><li><a href=#globals>Globals</a></li><li><a href=#turning-globals-and-other-things-into-callable-objects>Turning globals (and other things) into callable objects</a></li><li><a href=#evaluating-groups>Evaluating groups</a></li><li><a href=#evaluating-nodes>Evaluating nodes</a><ul><li><a href=#terminal-nodes>Terminal nodes</a></li><li><a href=#modifier-nodes>Modifier nodes</a></li><li><a href=#stacker-nodes>Stacker nodes</a></li></ul></li><li><a href=#evaluating-lists>Evaluating lists</a></li><li><a href=#evaluating-expressions>Evaluating expressions</a></li><li><a href=#evaluating-defines>Evaluating defines</a></li><li><a href=#summary>Summary</a></li><li><a href=#demo>Demo</a></li><li><a href=#next-steps>Next steps</a></li></ul></nav><h2 id=the-environment>The environment</h2><p>The goal of the environment is to properly handle <a href=https://en.wikipedia.org/wiki/lexical%20scope>lexical scope</a>. If we have code like this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>define test(x) {
+</span></span><span style=display:flex><span>  radial(scale: 1/8) [
+</span></span><span style=display:flex><span>    text(x)
+</span></span><span style=display:flex><span>    for x in 1..x
+</span></span><span style=display:flex><span>  ]
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>rune {
+</span></span><span style=display:flex><span>  test(5)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>It should <em>work</em>. We should be able to take <code>5</code>, assign it to <code>x</code> when we call <code>test</code>, and then within the radial, assign an inner <code>x</code> the values 1 up to <code>x = 5</code>.</p><p>So to do that, we&rsquo;re going to store a series of objects, each of which can store their own data (as a map), and a pointer to the parent. If you <code>get</code> / lookup a value, look in the current environment. So long as you don&rsquo;t find it, ask the parent, then it&rsquo;s parent, and so on. Likewise, if you set a variable, start at the current scope and move up the ladder to set a value. That&rsquo;s why the <code>for x in 1..x</code> works. The outermost <code>x</code> is being written to, but the <code>x=5</code> passed into <code>test</code> isn&rsquo;t modified.</p><p>To make this all work:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Environment</span> {
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>constructor</span>(<span style=color:#a6e22e>parent</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>parent</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>parent</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>data</span> <span style=color:#f92672>=</span> {}
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>set</span>(<span style=color:#a6e22e>key</span>, <span style=color:#a6e22e>value</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>data</span>[<span style=color:#a6e22e>key</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>value</span>
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>get</span>(<span style=color:#a6e22e>key</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>key</span> <span style=color:#66d9ef>in</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>data</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>data</span>[<span style=color:#a6e22e>key</span>]
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>parent</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>parent</span>.<span style=color:#a6e22e>get</span>(<span style=color:#a6e22e>key</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>extend</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> <span style=color:#a6e22e>Environment</span>(<span style=color:#66d9ef>this</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Not much, but it does what we need!</p><h2 id=the-root-of-evaluation>The root of evaluation</h2><p>Okay, now that&rsquo;s out of the way, let&rsquo;s start with the base evaluation function <code>evaluate</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>export</span> <span style=color:#66d9ef>default</span> <span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>, <span style=color:#a6e22e>asNext</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>id</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>IDGenerator</span>.<span style=color:#a6e22e>next</span>().<span style=color:#a6e22e>value</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Construct base environment
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>environment</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;Building base environment&#34;</span>)
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>environment</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> <span style=color:#a6e22e>Environment</span>()
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>type</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>GLOBALS</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>name</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>GLOBALS</span>[<span style=color:#a6e22e>type</span>]) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Loading global </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>type</span><span style=color:#e6db74>}</span><span style=color:#e6db74>.</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>name</span><span style=color:#e6db74>}</span><span style=color:#e6db74>:\n---\n</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>GLOBALS</span>[<span style=color:#a6e22e>type</span>][<span style=color:#a6e22e>name</span>].<span style=color:#a6e22e>toString</span>()<span style=color:#e6db74>}</span><span style=color:#e6db74>\n---`</span>)
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>set</span>(<span style=color:#a6e22e>name</span>, { <span style=color:#a6e22e>type</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#66d9ef>new</span> <span style=color:#a6e22e>Callable</span>(<span style=color:#a6e22e>GLOBALS</span>[<span style=color:#a6e22e>type</span>][<span style=color:#a6e22e>name</span>]) })
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;Resulting callable:&#34;</span>, <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>get</span>(<span style=color:#a6e22e>name</span>))
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>environment</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>extend</span>()
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;Finished building base environment&#34;</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>undefined</span> <span style=color:#f92672>||</span> <span style=color:#a6e22e>node</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>null</span>) <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// We&#39;ve already evaluated this node (for example as a .next)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>evaluated</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span><span style=color:#a6e22e>asNext</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>&#34;Skipping evaluation, already evaluated&#34;</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>null</span>
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>formatNode</span> <span style=color:#f92672>=</span> (<span style=color:#a6e22e>node</span>) =&gt; {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>JSON</span>.<span style=color:#a6e22e>stringify</span>(<span style=color:#a6e22e>node</span>, (<span style=color:#a6e22e>k</span>, <span style=color:#a6e22e>v</span>) =&gt; ([<span style=color:#e6db74>&#34;body&#34;</span>].<span style=color:#a6e22e>includes</span>(<span style=color:#a6e22e>k</span>) <span style=color:#f92672>?</span> <span style=color:#e6db74>&#34;&lt;removed&gt;&#34;</span> <span style=color:#f92672>:</span> <span style=color:#a6e22e>v</span>))
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>formatEnvironment</span> <span style=color:#f92672>=</span> (<span style=color:#a6e22e>environment</span>) =&gt; {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>parent</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>`&lt;GLOBAL&gt;`</span>
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>`&lt;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>JSON</span>.<span style=color:#a6e22e>stringify</span>(<span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>data</span>)<span style=color:#e6db74>}</span><span style=color:#e6db74> extends </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>formatEnvironment</span>(<span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>parent</span>)<span style=color:#e6db74>}</span><span style=color:#e6db74>&gt;`</span>
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>info</span>(<span style=color:#e6db74>`[</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>id</span><span style=color:#e6db74>}</span><span style=color:#e6db74>] Evaluating </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>formatNode</span>(<span style=color:#a6e22e>node</span>)<span style=color:#e6db74>}</span><span style=color:#e6db74> in </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>formatEnvironment</span>(<span style=color:#a6e22e>environment</span>)<span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Evaluate a node group by evaluating each and concating results
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;group&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluateGroup</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Define a new callable in the environment
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;define&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluateDefine</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Get the value for a node type
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;node&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluateNode</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// A parameter list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;params&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluateParams</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// An expression
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;expression&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluateExpression</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Different kinds of lists
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;list&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluateList</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Get the value for a parameter list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;Runtime error, unknown node type to evaluate&#34;</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>info</span>(<span style=color:#e6db74>`[</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>id</span><span style=color:#e6db74>}</span><span style=color:#e6db74>] Returning: </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>result</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>)
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>A few things this does:</p><ul><li><p>Construct the base environment by defining all of the functions that are in the <code>GLOBALS</code> array (see the next section)</p></li><li><p>Evaluate each node in turn. This is a bit tricky, since we have the syntax like this: <code>scale(0.9) circle</code>. That should be equivalent to <code>scale(0.9) { circle }</code>, so we want to evaluate the <code>circle</code> as a child of <code>scale</code> and then <em>not again</em> as the next node in the list. That&rsquo;s what the <code>node.evaluate && !asNext</code> chunk does.</p></li><li><p>Debugging. That&rsquo;s what <code>IDGenerator</code> is. In essence, it&rsquo;s a JavaScript generator function that will return the next integer so we can keep track of each invocation when recurring.</p></li><li><p>Dispatch to specific functions, such as <code>evaluateGroup</code> etc. We&rsquo;ll come back to those.</p></li></ul><h2 id=globals>Globals</h2><p>As a quick aside, a discussion about how globals are handled. You can see the full code for them <a href=https://github.com/jpverkamp/runelang/blob/07c8fbb2cb9ef52114447d5e366dbcb172ad20dd/runelang/constants.js>here</a>, but the idea is something like this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>const</span> <span style=color:#a6e22e>GLOBALS</span> <span style=color:#f92672>=</span> {
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Terminals do not have any children, they just generate content
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#a6e22e>terminal</span><span style=color:#f92672>:</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>line</span><span style=color:#f92672>:</span> (<span style=color:#a6e22e>min</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>, <span style=color:#a6e22e>max</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>) =&gt; <span style=color:#e6db74>`&lt;line x1=&#34;0&#34; y1=&#34;</span><span style=color:#e6db74>${</span><span style=color:#ae81ff>100.0</span> <span style=color:#f92672>*</span> <span style=color:#a6e22e>min</span><span style=color:#e6db74>}</span><span style=color:#e6db74>&#34; x2=&#34;0&#34; y2=&#34;</span><span style=color:#e6db74>${</span><span style=color:#ae81ff>100.0</span> <span style=color:#f92672>*</span> <span style=color:#a6e22e>max</span><span style=color:#e6db74>}</span><span style=color:#e6db74>&#34; /&gt;`</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>circle</span><span style=color:#f92672>:</span> () =&gt; <span style=color:#e6db74>&#39;&lt;circle cx=&#34;0&#34; cy=&#34;0&#34; r=&#34;100&#34; /&gt;&#39;</span>,
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span>  },
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Modifiers take a child and apply their changes to them
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#a6e22e>modifier</span><span style=color:#f92672>:</span> {
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>scale</span><span style=color:#f92672>:</span> (<span style=color:#a6e22e>x</span>, <span style=color:#a6e22e>y</span>) =&gt; (<span style=color:#a6e22e>child</span>) =&gt; <span style=color:#e6db74>`&lt;g data-source=&#34;scale(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>y</span> <span style=color:#f92672>?</span> [<span style=color:#a6e22e>x</span>, <span style=color:#a6e22e>y</span>] <span style=color:#f92672>:</span> <span style=color:#a6e22e>x</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)&#34; transform=&#34;scale(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>x</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>y</span> <span style=color:#f92672>?</span> <span style=color:#a6e22e>y</span> <span style=color:#f92672>:</span> <span style=color:#a6e22e>x</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)&#34;&gt;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>child</span>.eval()<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/g&gt;`</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>fill</span><span style=color:#f92672>:</span> (<span style=color:#a6e22e>color</span>) =&gt; (<span style=color:#a6e22e>child</span>) =&gt; <span style=color:#e6db74>`&lt;g data-source=&#34;fill(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>color</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)&#34; fill=&#34;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>color</span><span style=color:#e6db74>}</span><span style=color:#e6db74>&#34;&gt;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>child</span>.eval()<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/g&gt;`</span>,
+</span></span><span style=display:flex><span>    ...
+</span></span><span style=display:flex><span>  }, 
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Stackers apply to a list of children and organize them in various ways
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#a6e22e>stacker</span><span style=color:#f92672>:</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>stack</span><span style=color:#f92672>:</span> () =&gt; (<span style=color:#a6e22e>children</span>) =&gt; <span style=color:#e6db74>`&lt;g data-source=&#34;stack()&#34;&gt;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>children</span>.<span style=color:#a6e22e>join</span>(<span style=color:#e6db74>&#34; &#34;</span>)<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/g&gt;`</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>radial</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>scale</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>, <span style=color:#a6e22e>offset</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>, <span style=color:#a6e22e>rotate</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>) =&gt;
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>children</span>) =&gt; {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>points</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>onCircle</span>(<span style=color:#a6e22e>children</span>.<span style=color:#a6e22e>length</span>)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>nodes</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>children</span>.<span style=color:#a6e22e>length</span>; <span style=color:#a6e22e>i</span><span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>x</span>, <span style=color:#a6e22e>y</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>points</span>[<span style=color:#a6e22e>i</span>]
+</span></span><span style=display:flex><span>          <span style=color:#a6e22e>x</span> <span style=color:#f92672>*=</span> <span style=color:#a6e22e>offset</span>
+</span></span><span style=display:flex><span>          <span style=color:#a6e22e>y</span> <span style=color:#f92672>*=</span> <span style=color:#a6e22e>offset</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>transforms</span> <span style=color:#f92672>=</span> [<span style=color:#e6db74>`translate(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>x</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>y</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)`</span>, <span style=color:#e6db74>`scale(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>scale</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)`</span>]
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>rotate</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>transforms</span>.<span style=color:#a6e22e>push</span>(<span style=color:#e6db74>`rotate(</span><span style=color:#e6db74>${</span>(<span style=color:#ae81ff>360.0</span> <span style=color:#f92672>*</span> <span style=color:#a6e22e>i</span>) <span style=color:#f92672>/</span> <span style=color:#a6e22e>children</span>.<span style=color:#a6e22e>length</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)`</span>)
+</span></span><span style=display:flex><span>          }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>          <span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>push</span>(<span style=color:#e6db74>`&lt;g data-source=&#34;radial(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>scale</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>offset</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>rotate</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)&#34; data-child=&#34;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>i</span><span style=color:#e6db74>}</span><span style=color:#e6db74>&#34; transform=&#34;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>transforms</span>.<span style=color:#a6e22e>join</span>(<span style=color:#e6db74>&#34; &#34;</span>)<span style=color:#e6db74>}</span><span style=color:#e6db74>&#34;&gt;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>children</span>[<span style=color:#a6e22e>i</span>]<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/g&gt;`</span>)
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#e6db74>`&lt;g data-source=&#34;radial(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>scale</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>offset</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>rotate</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)&#34;&gt;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>nodes</span>.<span style=color:#a6e22e>join</span>(<span style=color:#e6db74>&#34; &#34;</span>)<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/g&gt;`</span>
+</span></span><span style=display:flex><span>      },
+</span></span><span style=display:flex><span>      ...
+</span></span><span style=display:flex><span>  },
+</span></span></code></pre></div><p>For each of the different kind of functions, you will have a different kind of inline function.</p><p>For terminals (with no children), they can take arbitrary parameters and render that to SVG. So <code>line(0.5)</code> becomes a line from <code>0,0</code> to <code>50,0</code> (everything assumes a unit circle of 100 so the numbers don&rsquo;t end up too tiny too fast), <code>circle</code> becomes a unit circle.</p><p>For modifiers, you have base parameters (the same as terminals) first, then you have a single child node that you&rsquo;re modifying. So something like <code>scale(0.9) circle</code> would pass <code>0.9</code> as <code>x</code> and <code>circle</code> as the child node. It will render some wrapper (usually) and then evaluate the child in turn.</p><p>For stackers, you do the same thing, but this time with a list of children (either literal or with one of the list constructors). Either way, the contents of the child nodes will already have been evaluated at this point, but you can wrap them with all sorts of interesting things. For example, in the <code>radial</code> above which will arrange the list of child nodes in a circle.</p><p>If you want any more complicated behavior, this is where you&rsquo;d put it, but as I&rsquo;ve mentioned before, if you just want to combine this primitives, you can do so with defines.</p><h2 id=turning-globals-and-other-things-into-callable-objects>Turning globals (and other things) into callable objects</h2><p>But these functions alone aren&rsquo;t enough, we need a bit more magic to make them &lsquo;callable&rsquo;:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Callable</span> {
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>constructor</span>(<span style=color:#a6e22e>f</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>f</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>undefined</span>) <span style=color:#66d9ef>return</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>f</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>f</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>defaults</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>match</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>f</span>.<span style=color:#a6e22e>toString</span>().<span style=color:#a6e22e>match</span>(<span style=color:#e6db74>/\((.*?)\)/</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>match</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`could not find params in </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>f</span>.<span style=color:#a6e22e>toString</span>()<span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#66d9ef>null</span>, <span style=color:#a6e22e>f</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>arg</span> <span style=color:#66d9ef>of</span> <span style=color:#a6e22e>match</span>[<span style=color:#ae81ff>1</span>].<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;,&#34;</span>)) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>arg</span>.<span style=color:#a6e22e>includes</span>(<span style=color:#e6db74>&#34;=&#34;</span>)) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>key</span>, <span style=color:#a6e22e>def</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>arg</span>.<span style=color:#a6e22e>split</span>(<span style=color:#e6db74>&#34;=&#34;</span>)
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>defaults</span>.<span style=color:#a6e22e>push</span>([<span style=color:#a6e22e>key</span>.<span style=color:#a6e22e>trim</span>(), <span style=color:#a6e22e>def</span>.<span style=color:#a6e22e>trim</span>()])
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>defaults</span>.<span style=color:#a6e22e>push</span>([<span style=color:#a6e22e>arg</span>.<span style=color:#a6e22e>trim</span>(), <span style=color:#66d9ef>undefined</span>])
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span>(<span style=color:#a6e22e>params</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// this.defaults comes from the definition of the function
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// params comes from the call
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>//    params might contain zero, one, or both of args and kwargs
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>//    params duplicates args in both args and kwargs, if it&#39;s in both it&#39;s passed as a kwarg
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// argsToCall is what we&#39;ll send to the internal function with apply
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>args</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>params</span><span style=color:#f92672>?</span>.<span style=color:#a6e22e>args</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>kwargs</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>params</span><span style=color:#f92672>?</span>.<span style=color:#a6e22e>kwargs</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>passedArgsCount</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>args</span>) <span style=color:#a6e22e>passedArgsCount</span> <span style=color:#f92672>+=</span> <span style=color:#a6e22e>args</span>.<span style=color:#a6e22e>length</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>kwargs</span>) <span style=color:#a6e22e>passedArgsCount</span> <span style=color:#f92672>-=</span> Object.<span style=color:#a6e22e>keys</span>(<span style=color:#a6e22e>kwargs</span>).<span style=color:#a6e22e>length</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>argsToCall</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>defaults</span>.<span style=color:#a6e22e>length</span>; <span style=color:#a6e22e>i</span><span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>name</span>, <span style=color:#a6e22e>defaultValue</span>] <span style=color:#f92672>=</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>defaults</span>[<span style=color:#a6e22e>i</span>]
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Try to get each value from args, kwargs, then default
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>args</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>passedArgsCount</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>kwargs</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>args</span>[<span style=color:#a6e22e>i</span>].<span style=color:#a6e22e>asName</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>args</span>[<span style=color:#a6e22e>i</span>].<span style=color:#a6e22e>asName</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>kwargs</span>) {
+</span></span><span style=display:flex><span>          <span style=color:#a6e22e>argsToCall</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>kwargs</span>[<span style=color:#a6e22e>args</span>[<span style=color:#a6e22e>i</span>].<span style=color:#a6e22e>asName</span>], <span style=color:#a6e22e>environment</span>))
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>          <span style=color:#a6e22e>argsToCall</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>args</span>[<span style=color:#a6e22e>i</span>], <span style=color:#a6e22e>environment</span>))
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>kwargs</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>name</span> <span style=color:#66d9ef>in</span> <span style=color:#a6e22e>kwargs</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>argsToCall</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>kwargs</span>[<span style=color:#a6e22e>name</span>], <span style=color:#a6e22e>environment</span>))
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>argsToCall</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>defaultValue</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>this</span>.<span style=color:#a6e22e>f</span>.<span style=color:#a6e22e>apply</span>(<span style=color:#66d9ef>this</span>, <span style=color:#a6e22e>argsToCall</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>First, when we construct it, we&rsquo;re going to dynamically pull in the parameter list. This really should be something that has a better way to do it built into JavaScript, but for better or for worse, we&rsquo;re literally going to turn the function into a string of the original code (with <code>toString</code> and use regex to parse the first parameter list, parsing that (looking for defaults)). It&rsquo;s ugly, but it works.</p><p>After that, the <code>call</code> function will take in any parameters plus the current environment and then use any defaults from above to fill in args that are missing before finally calling <code>this.f.apply</code> to actually call the wrapped function.</p><p>This is&mldr; more complicated than I wish it was, but at least the user never really needs to use it. Just me!</p><h2 id=evaluating-groups>Evaluating groups</h2><p>Okay, first we have <code>groups</code>. These are just collections of nodes that are being grouped together. For example, if you want something like <code>scale(0.9) { circle star }</code>, you want both the <code>circle</code> and the <code>star</code> to be scaled, so you&rsquo;ll evaluate the two as a group.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateGroup</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>children</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>child</span> <span style=color:#66d9ef>of</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>nodes</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>child</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>result</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) <span style=color:#a6e22e>children</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>result</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>children</span>.<span style=color:#a6e22e>join</span>(<span style=color:#e6db74>&#34;&#34;</span>)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=evaluating-nodes>Evaluating nodes</h2><p>Next up, the three types of nodes: terminals, modifiers, and stackers. They all work closely together, but there are a few differences to be mindful of.</p><p>So first the dispatcher:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateNode</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#75715e>/* Special case for includes */</span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// TODO: Better error handling
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>text</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;include&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>path</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>.<span style=color:#a6e22e>args</span>[<span style=color:#ae81ff>0</span>], <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>include</span>(<span style=color:#a6e22e>path</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>object</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>get</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>text</span>)
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>object</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`object </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>text</span><span style=color:#e6db74>}</span><span style=color:#e6db74> is not defined`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>object</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;terminal&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>evaluateTerminalNode</span>(<span style=color:#a6e22e>object</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>object</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;modifier&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>evaluateModifierNode</span>(<span style=color:#a6e22e>object</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>object</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;stacker&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>evaluateStackerNode</span>(<span style=color:#a6e22e>object</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>object</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;group&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>evaluateGroup</span>(<span style=color:#a6e22e>object</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;unknown object type&#34;</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>object</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>This also handles the one special case I have: <code>include</code> which only really works locally, but can include other files. Other than that, we&rsquo;ll just go for one of the kinds we have below (or group, which we&rsquo;ve already mentioned).</p><h3 id=terminal-nodes>Terminal nodes</h3><p>In this case, it&rsquo;s just a straight function evaluation of the <code>callable</code> as defined above / in the globals.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateTerminalNode</span>(<span style=color:#a6e22e>object</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;terminal should not have a body&#34;</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>group</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;terminal should not have a group&#34;</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>object</span>.<span style=color:#a6e22e>value</span>.<span style=color:#a6e22e>call</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=modifier-nodes>Modifier nodes</h3><p>Here we want to find and pass along a child node. This could either be a literal child or group (if we have the <code>{}</code> syntax) or just the next node in line if we don&rsquo;t. A modifier always has a child though.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateModifierNode</span>(<span style=color:#a6e22e>object</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// If we have a group evaluate it as child, otherwise take the next node
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>child</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>asNext</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>!==</span> <span style=color:#e6db74>&#34;group&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;modifiers can only modify groups&#34;</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>child</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>next</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>child</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>next</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>asNext</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>next</span>.<span style=color:#a6e22e>evaluated</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;modifiers must have a following group or node&#34;</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>child</span>.eval <span style=color:#f92672>=</span> (<span style=color:#a6e22e>env</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>null</span>) =&gt; <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>child</span>, <span style=color:#a6e22e>env</span> <span style=color:#f92672>||</span> <span style=color:#a6e22e>environment</span>, <span style=color:#a6e22e>asNext</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>object</span>.<span style=color:#a6e22e>value</span>.<span style=color:#a6e22e>call</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>, <span style=color:#a6e22e>environment</span>)(<span style=color:#a6e22e>child</span>)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>In the end, we have the nested functions as I mentioned in globals. The first level is handled by the callable, but that will return the inner function that takes just the child.</p><p>So for this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#a6e22e>scale</span><span style=color:#f92672>:</span> (<span style=color:#a6e22e>x</span>, <span style=color:#a6e22e>y</span>) =&gt; (<span style=color:#a6e22e>child</span>) =&gt; <span style=color:#e6db74>`&lt;g data-source=&#34;scale(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>y</span> <span style=color:#f92672>?</span> [<span style=color:#a6e22e>x</span>, <span style=color:#a6e22e>y</span>] <span style=color:#f92672>:</span> <span style=color:#a6e22e>x</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)&#34; transform=&#34;scale(</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>x</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>y</span> <span style=color:#f92672>?</span> <span style=color:#a6e22e>y</span> <span style=color:#f92672>:</span> <span style=color:#a6e22e>x</span><span style=color:#e6db74>}</span><span style=color:#e6db74>)&#34;&gt;</span><span style=color:#e6db74>${</span><span style=color:#a6e22e>child</span>.eval()<span style=color:#e6db74>}</span><span style=color:#e6db74>&lt;/g&gt;`</span>,
+</span></span></code></pre></div><p>The callable will parse the <code>(x, y)</code> and that&rsquo;s what <code>object.value.call</code> will handle and return the second function: <code>(child) => ...</code>. I hope that&rsquo;s clear?</p><h3 id=stacker-nodes>Stacker nodes</h3><p>These work basically the same way as modifiers, except they can&rsquo;t have a implicit child node, they always have to be given a list of some sort:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateStackerNode</span>(<span style=color:#a6e22e>object</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#75715e>// Stackers apply to the following list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>  <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>list</span> <span style=color:#f92672>||</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>&#34;stackers can only modify lists&#34;</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>children</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>list</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>object</span>.<span style=color:#a6e22e>value</span>.<span style=color:#a6e22e>call</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>, <span style=color:#a6e22e>environment</span>)(<span style=color:#a6e22e>children</span>)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>They still use the nested function approach though, this time passing first the <code>call</code> parameters and the list of <code>children</code>.</p><h2 id=evaluating-lists>Evaluating lists</h2><p>Okay, nodes are done, next up is the three kinds of lists: literal lists, for lists, and times lists. Each of them has slightly different behavior.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateList</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;literal&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>childNode</span> <span style=color:#66d9ef>of</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>nodes</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>childNode</span>, <span style=color:#a6e22e>environment</span>))
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;for&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>variable</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>!==</span> <span style=color:#e6db74>&#34;identifier&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`for-list variable must be an identifier, got </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>variable</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>variable</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>variable</span>.<span style=color:#a6e22e>text</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>iterable</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>expression</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>forEnvironment</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>extend</span>()
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`In for-loop, iterable is </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>iterable</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>eachValue</span> <span style=color:#66d9ef>of</span> <span style=color:#a6e22e>iterable</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`In for-loop, setting </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>variable</span><span style=color:#e6db74>}</span><span style=color:#e6db74> to </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>eachValue</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>forEnvironment</span>.<span style=color:#a6e22e>set</span>(<span style=color:#a6e22e>variable</span>, <span style=color:#a6e22e>eachValue</span>)
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>, <span style=color:#a6e22e>forEnvironment</span>))
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;times&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>times</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>expression</span>, <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#66d9ef>typeof</span> <span style=color:#a6e22e>times</span> <span style=color:#f92672>!==</span> <span style=color:#e6db74>&#34;number&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`times-list must be a number, got </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>times</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>times</span>; <span style=color:#a6e22e>i</span><span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>result</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>, <span style=color:#a6e22e>environment</span>))
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>result</span>
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`unknown list mode </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The literal list is basically the same thing as a <code>group</code>, but the difference comes in what you can pass them to. <code>groups</code> can be passed to <code>modifiers</code> (or used directly), while <code>lists</code> are passed to <code>stackers</code>. I&rsquo;m not sure if the distinction is 100% necessary, but it did make it easier to reason about.</p><p>For <code>for</code> lists we&rsquo;re going to extend the environment, since in each case, we&rsquo;re going to define a new variable, scoped just to the evaluation of the list. To do that, we&rsquo;ll evaluate the range-like object (see <code>expressions</code> below) and assign each value in turn as the <code>variable</code> and then evaluate the <code>node</code> with that value.</p><p>For the <code>times</code> list, we do the same (evaluating the same body many times), but this time without a new variable/environment. Mostly useful for copying the same thing a few times without having to ignore a <code>for</code> loop and constructing a range every time.</p><h2 id=evaluating-expressions>Evaluating expressions</h2><p>Now here&rsquo;s one of the big (and honestly more alien) bits of the code: expressions. Really, it&rsquo;s a language within a language, since at this point, we have an <a href=https://en.wikipedia.org/wiki/>RPN</a> expression to evaluate.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateExpression</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`Evaluating RPN`</span>, <span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>rpn</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>stack</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>el</span> <span style=color:#66d9ef>of</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>rpn</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>debug</span>(<span style=color:#e6db74>`In RPN: Current stack`</span>, <span style=color:#a6e22e>node</span>, { <span style=color:#a6e22e>el</span>, <span style=color:#a6e22e>stack</span> })
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;literal&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>value</span>)
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;operator&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>2</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`In RPN: tried to evaluate </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>el</span><span style=color:#e6db74>}</span><span style=color:#e6db74> but needed two parameters`</span>, <span style=color:#a6e22e>node</span>, { <span style=color:#a6e22e>el</span>, <span style=color:#a6e22e>stack</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>right</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>pop</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>left</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>pop</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>f</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>EVAL_OPERATORS</span>[<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>value</span>].<span style=color:#a6e22e>f</span>
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>f</span>(<span style=color:#a6e22e>left</span>, <span style=color:#a6e22e>right</span>))
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;variable&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>key</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>value</span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>get</span>(<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>value</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>value</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>undefined</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>!==</span> <span style=color:#66d9ef>null</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>value</span>)
+</span></span><span style=display:flex><span>      } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`In RPN: failed to evaluate variable </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>key</span><span style=color:#e6db74>}</span><span style=color:#e6db74> not defined`</span>, <span style=color:#a6e22e>node</span>, { <span style=color:#a6e22e>el</span>, <span style=color:#a6e22e>stack</span> })
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>type</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;function&#34;</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>args</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>arity</span>; <span style=color:#a6e22e>i</span><span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>args</span>.<span style=color:#a6e22e>unshift</span>(<span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>pop</span>())
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>result</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>el</span>.<span style=color:#a6e22e>value</span>.<span style=color:#a6e22e>apply</span>(<span style=color:#66d9ef>null</span>, <span style=color:#a6e22e>args</span>)
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>push</span>(<span style=color:#a6e22e>result</span>)
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`In RPN: unknown type </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>el</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>, { <span style=color:#a6e22e>el</span>, <span style=color:#a6e22e>stack</span> })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>stack</span>.<span style=color:#a6e22e>length</span> <span style=color:#f92672>!==</span> <span style=color:#ae81ff>1</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`In RPN: expressions must result in exactly one value, got </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>stack</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>, { <span style=color:#a6e22e>el</span>, <span style=color:#a6e22e>stack</span> })
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>stack</span>[<span style=color:#ae81ff>0</span>]
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Really, the wikipedia article above does a good job explaining what&rsquo;s going on here, but the basic idea is this: we either have a literal&ndash;which we push onto a stack&ndash;or a function with a known arity. For functions, we pull as many params as we need off the stack, apply the function, and then push the result back onto the stack.</p><p>Really, most of the work here was done in parsing, but we do have a few built in operators in the same <a href=https://github.com/jpverkamp/runelang/blob/07c8fbb2cb9ef52114447d5e366dbcb172ad20dd/runelang/constants.js>constants.js</a> function mentioned earlier. Specifically, things like <code>chooseOne</code> and <code>chooseMany</code> can take 1 or 2 parameters respectively. And you can easily add more functions here to do all sorts of things. Randomness? Loading external data? External API access? Who knows!</p><h2 id=evaluating-defines>Evaluating defines</h2><p>Okay, last, but certainly not least, we have <code>evaluateDefine</code>. This is a special syntax that lets you define your very own <code>terminal</code> or <code>modifier</code>. Unfortunately, I haven&rsquo;t yet figured out how to define custom <code>stackers</code> yet, but we&rsquo;ll see if we can yet.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-javascript data-lang=javascript><span style=display:flex><span><span style=color:#66d9ef>function</span> <span style=color:#a6e22e>evaluateDefine</span>(<span style=color:#a6e22e>node</span>, <span style=color:#a6e22e>environment</span>) {
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>identifier</span>.<span style=color:#a6e22e>text</span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>get</span>(<span style=color:#a6e22e>name</span>)) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`unable to redefine </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>name</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>location</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>defaults</span> <span style=color:#f92672>=</span> []
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>var</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>.<span style=color:#a6e22e>args</span>.<span style=color:#a6e22e>length</span>; <span style=color:#a6e22e>i</span><span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>name</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>.<span style=color:#a6e22e>args</span>[<span style=color:#a6e22e>i</span>].<span style=color:#a6e22e>asName</span>
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>if</span> (<span style=color:#f92672>!</span><span style=color:#a6e22e>name</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`Unable to define </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>name</span><span style=color:#e6db74>}</span><span style=color:#e6db74>, missing a name in args`</span>, <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>location</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// This will be undefined if no default is set, this is fine
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>def</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>params</span>.<span style=color:#a6e22e>kwargs</span>[<span style=color:#a6e22e>name</span>], <span style=color:#a6e22e>environment</span>)
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>defaults</span>.<span style=color:#a6e22e>push</span>([<span style=color:#a6e22e>name</span>, <span style=color:#a6e22e>def</span>])
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>definedFunction</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;terminal&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Create the new function for the callable object
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>definedFunction</span> <span style=color:#f92672>=</span> (...<span style=color:#a6e22e>args</span>) =&gt; {
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Bind passed variables into the local environment
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>definedEnvironment</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>extend</span>()
+</span></span><span style=display:flex><span>      <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>defaults</span>.<span style=color:#a6e22e>length</span>; <span style=color:#a6e22e>i</span><span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>key</span>, <span style=color:#a6e22e>def</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>defaults</span>[<span style=color:#a6e22e>i</span>]
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>args</span>[<span style=color:#a6e22e>i</span>]
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>value</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>undefined</span>) <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>def</span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>definedEnvironment</span>.<span style=color:#a6e22e>set</span>(<span style=color:#a6e22e>key</span>, <span style=color:#a6e22e>value</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>      <span style=color:#75715e>// Call the body (a single group) with those args/kwargs
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>      <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>, <span style=color:#a6e22e>definedEnvironment</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;modifier&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Create the new function for the callable object
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#a6e22e>definedFunction</span> <span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>      (...<span style=color:#a6e22e>args</span>) =&gt;
+</span></span><span style=display:flex><span>      (<span style=color:#a6e22e>child</span>) =&gt; {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Bind passed variables into the local environment
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>definedEnvironment</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>extend</span>()
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>let</span> <span style=color:#a6e22e>i</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; <span style=color:#a6e22e>i</span> <span style=color:#f92672>&lt;</span> <span style=color:#a6e22e>defaults</span>.<span style=color:#a6e22e>length</span>; <span style=color:#a6e22e>i</span><span style=color:#f92672>++</span>) {
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>let</span> [<span style=color:#a6e22e>key</span>, <span style=color:#a6e22e>def</span>] <span style=color:#f92672>=</span> <span style=color:#a6e22e>defaults</span>[<span style=color:#a6e22e>i</span>]
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>args</span>[<span style=color:#a6e22e>i</span>]
+</span></span><span style=display:flex><span>          <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>value</span> <span style=color:#f92672>===</span> <span style=color:#66d9ef>undefined</span>) <span style=color:#a6e22e>value</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>def</span>
+</span></span><span style=display:flex><span>          <span style=color:#a6e22e>definedEnvironment</span>.<span style=color:#a6e22e>set</span>(<span style=color:#a6e22e>key</span>, <span style=color:#a6e22e>value</span>)
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>definedEnvironment</span>.<span style=color:#a6e22e>set</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>child</span>, <span style=color:#a6e22e>child</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Call the body (a single group) with those args/kwargs
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>evaluate</span>(<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>body</span>, <span style=color:#a6e22e>definedEnvironment</span>)
+</span></span><span style=display:flex><span>      }
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> (<span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span> <span style=color:#f92672>===</span> <span style=color:#e6db74>&#34;stacker&#34;</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>throw</span> <span style=color:#e6db74>&#34;define stacker not implemented&#34;</span>
+</span></span><span style=display:flex><span>  } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>error</span>(<span style=color:#e6db74>`unknown define mode </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>location</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>  }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>log</span>.<span style=color:#a6e22e>awesome</span>(<span style=color:#e6db74>`Created a new function </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>name</span><span style=color:#e6db74>}</span><span style=color:#e6db74> of type </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span><span style=color:#e6db74>}</span><span style=color:#e6db74> with defaults = </span><span style=color:#e6db74>${</span><span style=color:#a6e22e>defaults</span><span style=color:#e6db74>}</span><span style=color:#e6db74>`</span>, <span style=color:#a6e22e>node</span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>callable</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>new</span> <span style=color:#a6e22e>Callable</span>()
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>callable</span>.<span style=color:#a6e22e>defaults</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>defaults</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>callable</span>.<span style=color:#a6e22e>f</span> <span style=color:#f92672>=</span> <span style=color:#a6e22e>definedFunction</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>let</span> <span style=color:#a6e22e>obj</span> <span style=color:#f92672>=</span> { <span style=color:#a6e22e>type</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>node</span>.<span style=color:#a6e22e>mode</span>, <span style=color:#a6e22e>value</span><span style=color:#f92672>:</span> <span style=color:#a6e22e>callable</span> }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>environment</span>.<span style=color:#a6e22e>set</span>(<span style=color:#a6e22e>name</span>, <span style=color:#a6e22e>obj</span>)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Essentially, we have to:</p><ul><li><p>Evaluate the parameters that we&rsquo;re being passed in parens</p></li><li><p>Figure out what kind of node we&rsquo;re defining based on if we have a group or list (or neither) following it</p></li><li><p>Define a custom function that will take in the parameters from above and return something that can be passed to <code>Callable</code> and work like the native functions we have</p></li><li><p>Extend the current environment with the newly defined function (you can actually define local functions within other functions and it will work as it &lsquo;should&rsquo;)</p></li></ul><p>It&rsquo;s a neat bit of code if I do say so myself!</p><h2 id=summary>Summary</h2><p>And&mldr; that&rsquo;s it. It&rsquo;s a bit of a long writeup and I probably could have gone into more detail, but I hope anything I missed in the writeup was in the comments or the code and anything I missed there&mldr; well <a href=mailto:blog@jverkamp.com>let me know</a>. Always happy to chat!</p><h2 id=demo>Demo</h2><p><a href=https://en.wikipedia.org/wiki/Vegv%c3%adsir>Vegvísir</a>.</p><p>It&rsquo;s something that I always wanted to do with my older <a href=https://blog.jverkamp.com/2021/01/26/a-dsl-for-rendering-magic-circles-and-runes/>rune DSL</a> but couldn&rsquo;t make work. Now I did!</p><p>(Fully functional, give it a try and see what you can make!)</p><script defer type=module>
+import { render } from '/embeds/runelang/runelang/main.js'
+import logging from '/embeds/runelang/lib/logging.js'
+
+const log = logging.get("system")
+
+let elInput = document.querySelector('[data-input]')
+let elOutput = document.querySelector('[data-output]')
+let elLog = document.querySelector('[data-log]')
+
+elInput.value = `
+define bar { translate(x: 0.5) rotate(0.25) line }
+define fork(n) {
+  translate(x: 0.5) rotate(0.25) {
+    line
+    linear [
+      rotate(0.25) translate(y: -0.5) scale(0.5) line
+      times n
+    ]
+  }
+}
+
+rune stroke(weight: 5) scale(0.75) {
+  radial(offset: 0) [
+    # N
+    stack [
+      line
+      linear(scale: 0.25, min: 0.75) [
+        bar
+        bar
+        bar
+        fork(3)
+      ]
+    ]
+
+    # NE
+    stack [
+      line
+      linear(scale: 0.25, min: 0.5) [
+        scale(0.5) {
+          arc(-1/4, 1/4)
+          fill("black") stack [
+            { translate(-0.5) scale(0.1) circle }
+            { translate( 0.5) scale(0.1) circle }
+          ]
+        }
+        scale(0.75) translate(y: 1.6) arc(1/3, 2/3)
+        fork(3)
+      ]
+    ]
+
+    # E
+    stack [
+      line
+      linear(scale: 0.25, min: 0.5) [
+        group { translate(y: -0.25) scale(0.5) arc(-1/4, 1/4) }
+        bar
+        group { translate(y: 0.25) scale(0.5) arc(1/4, -1/4) }
+        fork(3)
+      ]
+    ]
+
+    # SE
+    stack [
+      line
+      linear(scale: 0.25, min: 0.75) [
+        bar
+        bar
+        bar
+        fork(3)
+      ]
+    ]
+
+    # S
+    stack [
+      line
+      linear(scale: 0.25, min: 0.75) [
+        group { 
+          scale(x: 2) fork(3) 
+          
+          translate(x: -0.8) scale(0.25) line
+          translate(x: -1, y: 0.8) scale(0.25) bar
+          translate(x: -1, y: 1) scale(0.25) bar
+          
+          translate(x: 0.8) scale(0.25) line
+          translate(x:  1, y: 0.8) scale(0.25) bar
+          translate(x:  1, y: 1) scale(0.25) bar
+        }
+        group { scale(x: 1, y: 0.75) fork(3) }
+        group { scale(0.5) bar }
+      ]
+    ]
+
+    # SW
+    stack [
+      line
+      linear(scale: 0.25, min: 0.5) [
+        group { translate(y: -0.5) scale(0.5) arc(-1/4, 1/4) }
+        bar
+        group { scale(x: 1, y: 2) fork(3) }
+        group { scale(0.5) bar }
+        group { scale(0.5) bar }
+        group {}
+      ]
+    ]
+
+    # W
+    stack [
+      line
+      translate(y: 0.9) scale(x: 0.5, y: 0.25) fork(5)
+    ]
+
+    # NW
+    stack [
+      line
+      linear(scale: 0.25, min: 0.50) [
+        scale(0.5) { translate(y: -0.25) arc(-1/4, 1/4) }
+        group { scale(x: 2, y: 2) fork(3) }
+        group { translate(y: -0.25) bar }
+        group { translate(y: -0.25) scale(0.25) fill("none") circle }
+      ]
+    ]
+  ]
+
+  scale(0.15) circle
+}
+`
+
+logging.register((msg) => {
+   let node = document.createElement('li')
+   node.innerText = msg
+   elLog.prepend(node)
+})
+
+logging.setMode('ERROR')
+
+function doRender() {
+  elLog.innerHTML = ''
+  let input = elInput.value
+
+  try {
+      let svg = render(input)
+      elOutput.innerHTML = svg
+      log.awesome('IT WORKED!')
+   } catch (exception) {
+      console.log(exception)
+   }
+}
+
+function debounce(f, timeout = 500) {
+   let timer
+   return (...args) => {
+         clearTimeout(timer)
+         timer = setTimeout(() => f.apply(this, args), timeout)
+   }
+}
+
+document.addEventListener('keyup', debounce(doRender))
+doRender()
+</script><style>textarea[data-input],div[data-output]{width:80%;height:600px;padding:1em}td{width:45%;vertical-align:top}</style><h3>Output</h3><div data-output></div><h3>Source</h3><textarea data-input></textarea><h3>Log (most recent messages first):</h2><ul data-log></ul><h2 id=next-steps>Next steps</h2><p>I think that&rsquo;s enough for this code for now and I&rsquo;m looking forward to other things, but there are two things that I still want to try:</p><ul><li><p>a better looking stand alone editor for Runelang (that still runs in a browser) rather than the semi hacky demo above</p></li><li><p>a full CLI release with examples so you can download and run it yourself</p></li></ul><p>Look for these soon! (At the very least hopefully not months more&mldr;)</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
+<script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
+<script defer>mermaid.initialize({startOnLoad:!0,securityLevel:"loose"})</script><script defer src=/custom.js></script></body></html>
