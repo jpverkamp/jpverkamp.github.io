@@ -1,0 +1,405 @@
+<!doctype html><html><head><title>Stateful Solvers and Iterators – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Stateful Solvers and Iterators</h1><div class=entry-meta><span class=entry-date>2022-10-16</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/algorithms>Algorithms</a></li><li><a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/backtracking>Backtracking</a></li><li><a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/generators>Generators</a></li><li><a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/puzzles>Puzzles</a></li><li><a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/sudoku>Sudoku</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/10/14/she-hulk-attorney-at-law/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/10/21/the-unwritten-vol.-7-the-wound/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><p><a href=programming/languages/rust/>Rust</a>, yet again! Let&rsquo;s take what we did last time with <a href=https://blog.jverkamp.com/2022/10/04/solving-sudoku-again/>Solving Sudoku (again)</a> and improve the code structure a bit more.</p><p>Goals:</p><ul><li>Create a &lsquo;Solver&rsquo; struct that can maintain state (such as how many states we&rsquo;ve visited, how much time we&rsquo;ve spent)</li><li>Track the above stats</li><li>Turn the &lsquo;Solver&rsquo; into an iterator which will iterate through given solutions (a single call will give the first solution or you can run through the iterator to get all of them)</li></ul><p>If you&rsquo;d like to follow along, I&rsquo;ve started uploading the code here: <a href=https://github.com/jpverkamp/rust-solvers>https://github.com/jpverkamp/rust-solvers</a></p><h2 id=the-solver>The <code>Solver</code></h2><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>SearchMode</span> {
+</span></span><span style=display:flex><span>    BreadthFirst,
+</span></span><span style=display:flex><span>    DepthFirst,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Solver</span><span style=color:#f92672>&lt;</span>S: <span style=color:#a6e22e>State</span><span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    to_check: <span style=color:#a6e22e>VecDeque</span><span style=color:#f92672>&lt;</span>S<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    checked: <span style=color:#a6e22e>HashSet</span><span style=color:#f92672>&lt;</span>S<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    search_mode: <span style=color:#a6e22e>SearchMode</span>,
+</span></span><span style=display:flex><span>    time_spent: <span style=color:#66d9ef>f32</span>,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Okay, first up, let&rsquo;s store the data in the <code>Solver</code> that we&rsquo;ll use for any solution. The same <code>to_check</code> and <code>checked</code> objects from the previous solver (length of <code>checked</code> will be the number of states we&rsquo;ve visited), the mode we&rsquo;re searching in (can add more later), and time spent.</p><p>Next, constructors:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;</span>S<span style=color:#f92672>&gt;</span> Solver<span style=color:#f92672>&lt;</span>S<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>where</span> S: <span style=color:#a6e22e>State</span> <span style=color:#f92672>+</span> Copy {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>new</span>(initial_state: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>S</span>) -&gt; <span style=color:#a6e22e>Solver</span><span style=color:#f92672>&lt;</span>S<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        Solver {
+</span></span><span style=display:flex><span>            to_check: <span style=color:#a6e22e>VecDeque</span>::from([initial_state.clone()]),
+</span></span><span style=display:flex><span>            checked: <span style=color:#a6e22e>HashSet</span>::new(),
+</span></span><span style=display:flex><span>            search_mode: <span style=color:#a6e22e>SearchMode</span>::DepthFirst,
+</span></span><span style=display:flex><span>            time_spent: <span style=color:#ae81ff>0</span> <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>f32</span>,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>set_mode</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, new_mode: <span style=color:#a6e22e>SearchMode</span>) {
+</span></span><span style=display:flex><span>        self.search_mode <span style=color:#f92672>=</span> new_mode;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>states_checked</span>(<span style=color:#f92672>&amp;</span>self) -&gt; <span style=color:#66d9ef>usize</span> {
+</span></span><span style=display:flex><span>        self.checked.len()
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>time_spent</span>(<span style=color:#f92672>&amp;</span>self) -&gt; <span style=color:#66d9ef>f32</span> {
+</span></span><span style=display:flex><span>        self.time_spent
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Sometimes, I wish that Rust allowed function overloading a la Java, so that you can provide defaults to parameters more easily. I do like that it&rsquo;s explicit sometimes though. And hey, chaining with <code>set_mode</code> works well enough.</p><h2 id=implementing-iterator>Implementing <code>Iterator</code></h2><p>Next up, let&rsquo;s implement <code>Iterator</code>. This let&rsquo;s us do awesome things like <code>for</code> loops, <code>.next()</code> and <code>.iter()</code> etc.</p><p>Specifically, I&rsquo;m going to take the current state and run through the search until we find the next valid state. This is the previous solve function, just wrapped up in the iterator syntax.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Iterate through the solver&#39;s given solutions until all are returned
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;</span>S<span style=color:#f92672>&gt;</span> Iterator <span style=color:#66d9ef>for</span> Solver<span style=color:#f92672>&lt;</span>S<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>where</span> S: <span style=color:#a6e22e>State</span> <span style=color:#f92672>+</span> Copy {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Item</span> <span style=color:#f92672>=</span> S;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>next</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self) -&gt; Option<span style=color:#f92672>&lt;</span>Self::Item<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> start <span style=color:#f92672>=</span> Instant::now();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> <span style=color:#f92672>!</span>self.to_check.is_empty() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> current_state <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> self.search_mode {
+</span></span><span style=display:flex><span>                SearchMode::BreadthFirst <span style=color:#f92672>=&gt;</span> self.to_check.pop_front().unwrap(),
+</span></span><span style=display:flex><span>                SearchMode::DepthFirst <span style=color:#f92672>=&gt;</span> self.to_check.pop_back().unwrap()
+</span></span><span style=display:flex><span>            };
+</span></span><span style=display:flex><span>            self.checked.insert(current_state);
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If this is a valid solution, return it from our iterator
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>if</span> current_state.is_solved() {
+</span></span><span style=display:flex><span>                self.time_spent <span style=color:#f92672>+=</span> start.elapsed().as_secs_f32();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Some(current_state);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Otherwise:
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#75715e>// - If we have next states, push those onto the queue
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#75715e>// - If not, just drop this state (and effectively backtrack)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(ls) <span style=color:#f92672>=</span> current_state.next_states() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>for</span> next_state <span style=color:#66d9ef>in</span> ls {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> self.checked.contains(<span style=color:#f92672>&amp;</span>next_state) { <span style=color:#66d9ef>continue</span>; }
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>next_state.is_valid() { <span style=color:#66d9ef>continue</span>; }
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>                    self.to_check.push_back(next_state);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If we make it here, return None to stop iterator
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        self.time_spent <span style=color:#f92672>+=</span> start.elapsed().as_secs_f32();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>This actually seems really clean. I did add the <code>Instant.now()</code> so that any time spent working on solving the problem is recorded. But otherwise, it&rsquo;s the same function.</p><h2 id=a-new-binsudokurs-binary>A new <code>bin/sudoku.rs</code> binary</h2><p>As another fun bit, I&rsquo;m actually going to be moving the solver into it&rsquo;s own binary. If I put it in <code>src/bin/sudoku.rs</code>, when I build the project I get <code>./sudoku</code>, which is pretty cool!</p><p>Specifically, I&rsquo;m going to make that binary load a Sudoku puzzle from a file and solve it several ways with timing:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>main</span>() {
+</span></span><span style=display:flex><span>    env_logger::init();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> board <span style=color:#f92672>=</span> [
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>        [<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>],
+</span></span><span style=display:flex><span>    ];
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (i, line) <span style=color:#66d9ef>in</span> io::stdin().lock().lines().enumerate() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (j, c) <span style=color:#66d9ef>in</span> line.unwrap().as_bytes().iter().enumerate() {
+</span></span><span style=display:flex><span>            board[i][j] <span style=color:#f92672>=</span> c <span style=color:#f92672>-</span> <span style=color:#e6db74>b&#39;0&#39;</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> initial_state <span style=color:#f92672>=</span> Sudoku { board };
+</span></span><span style=display:flex><span>    println!(<span style=color:#e6db74>&#34;initial: {}&#34;</span>, initial_state);
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;\nBreadth first:&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> solver <span style=color:#f92672>=</span> Solver::new(<span style=color:#f92672>&amp;</span>initial_state);
+</span></span><span style=display:flex><span>        solver.set_mode(SearchMode::BreadthFirst);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> solver.next() {
+</span></span><span style=display:flex><span>            Some(solution) <span style=color:#f92672>=&gt;</span> println!(<span style=color:#e6db74>&#34;solution: {}&#34;</span>, solution),
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> println!(<span style=color:#e6db74>&#34;no solution found! :(&#34;</span>)
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;{} states, {} seconds&#34;</span>, solver.states_checked(), solver.time_spent());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;\nDepth first:&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> solver <span style=color:#f92672>=</span> Solver::new(<span style=color:#f92672>&amp;</span>initial_state);
+</span></span><span style=display:flex><span>        solver.set_mode(SearchMode::DepthFirst);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> solver.next() {
+</span></span><span style=display:flex><span>            Some(solution) <span style=color:#f92672>=&gt;</span> println!(<span style=color:#e6db74>&#34;solution: {}&#34;</span>, solution),
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> println!(<span style=color:#e6db74>&#34;no solution found! :(&#34;</span>)
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;{} states, {} seconds&#34;</span>, solver.states_checked(), solver.time_spent());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;\nCheck all (loop):&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> solver <span style=color:#f92672>=</span> Solver::new(<span style=color:#f92672>&amp;</span>initial_state);
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> solver.next() {
+</span></span><span style=display:flex><span>                Some(solution) <span style=color:#f92672>=&gt;</span> println!(<span style=color:#e6db74>&#34;solution: {}&#34;</span>, solution),
+</span></span><span style=display:flex><span>                None <span style=color:#f92672>=&gt;</span> { <span style=color:#66d9ef>break</span>; }
+</span></span><span style=display:flex><span>            };
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;{} states, {} seconds&#34;</span>, solver.states_checked(), solver.time_spent());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;\nCheck all (for):&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> solver <span style=color:#f92672>=</span> Solver::new(<span style=color:#f92672>&amp;</span>initial_state);
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> solution <span style=color:#66d9ef>in</span> <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> solver {
+</span></span><span style=display:flex><span>            println!(<span style=color:#e6db74>&#34;solution: {}&#34;</span>, solution);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;{} states, {} seconds&#34;</span>, solver.states_checked(), solver.time_spent());
+</span></span><span style=display:flex><span>    }    
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>I think that&rsquo;s pretty cool!</p><p>One interesting thing that I had to deal with was eventually getting the <code>for</code> loop working. For the longest time, I could use <code>for</code>, but then the borrow checker got made when I tried to get the default information back out at the end, since the <code>for</code> loop would take ownership.</p><p>Manually managing it with <code>loop</code> worked fine, but not <code>for</code>, since it uses <code>into_iter</code> (as far as I understand). But I did get it working eventually&mldr; just add an <code>&mut</code> to explicitly mutably reference the solver. Still getting used to that.</p><h2 id=testing-and-timing>Testing and timing</h2><p>Using a few random puzzles I found on the internet (<a href=https://github.com/jpverkamp/rust-solvers/blob/main/data/sudoku/easy.txt>easy</a>, <a href=https://github.com/jpverkamp/rust-solvers/blob/main/data/sudoku/hard.txt>hard</a>, and <a href=https://github.com/jpverkamp/rust-solvers/blob/main/data/sudoku/evil.txt>evil</a>):</p><h3 id=easy><code>easy</code></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>$ cat data/sudoku/easy.txt | ./target/release/sudoku
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>initial: sudoku &lt;
+</span></span><span style=display:flex><span>     |26 |7 1
+</span></span><span style=display:flex><span>  68 | 7 | 9
+</span></span><span style=display:flex><span>  19 |  4|5
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  82 |1  | 4
+</span></span><span style=display:flex><span>    4|6 2|9
+</span></span><span style=display:flex><span>   5 |  3| 28
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>    9|3  | 74
+</span></span><span style=display:flex><span>   4 | 5 | 36
+</span></span><span style=display:flex><span>  7 3| 18|
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Breadth first:
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  435|269|781
+</span></span><span style=display:flex><span>  682|571|493
+</span></span><span style=display:flex><span>  197|834|562
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  826|195|347
+</span></span><span style=display:flex><span>  374|682|915
+</span></span><span style=display:flex><span>  951|743|628
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|326|874
+</span></span><span style=display:flex><span>  248|957|136
+</span></span><span style=display:flex><span>  763|418|259
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>69 states, 0.000126291 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Depth first:
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  435|269|781
+</span></span><span style=display:flex><span>  682|571|493
+</span></span><span style=display:flex><span>  197|834|562
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  826|195|347
+</span></span><span style=display:flex><span>  374|682|915
+</span></span><span style=display:flex><span>  951|743|628
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|326|874
+</span></span><span style=display:flex><span>  248|957|136
+</span></span><span style=display:flex><span>  763|418|259
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>60 states, 0.000105416 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Check all (loop):
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  435|269|781
+</span></span><span style=display:flex><span>  682|571|493
+</span></span><span style=display:flex><span>  197|834|562
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  826|195|347
+</span></span><span style=display:flex><span>  374|682|915
+</span></span><span style=display:flex><span>  951|743|628
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|326|874
+</span></span><span style=display:flex><span>  248|957|136
+</span></span><span style=display:flex><span>  763|418|259
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>69 states, 0.000111166 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Check all (for):
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  435|269|781
+</span></span><span style=display:flex><span>  682|571|493
+</span></span><span style=display:flex><span>  197|834|562
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  826|195|347
+</span></span><span style=display:flex><span>  374|682|915
+</span></span><span style=display:flex><span>  951|743|628
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|326|874
+</span></span><span style=display:flex><span>  248|957|136
+</span></span><span style=display:flex><span>  763|418|259
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>69 states, 0.000109541004 seconds
+</span></span></code></pre></div><h3 id=hard><code>hard</code></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>cat data/sudoku/hard.txt | ./target/release/sudoku
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>initial: sudoku &lt;
+</span></span><span style=display:flex><span>  385|   |
+</span></span><span style=display:flex><span>    1|  9|
+</span></span><span style=display:flex><span>    2| 61|
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>   2 | 5 |  8
+</span></span><span style=display:flex><span>     | 3 |
+</span></span><span style=display:flex><span>     |1  | 35
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>     |7 4|6
+</span></span><span style=display:flex><span>  8  |   |2
+</span></span><span style=display:flex><span>   7 |   | 1
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Breadth first:
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  385|247|961
+</span></span><span style=display:flex><span>  761|589|342
+</span></span><span style=display:flex><span>  942|361|857
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  123|456|798
+</span></span><span style=display:flex><span>  457|938|126
+</span></span><span style=display:flex><span>  698|172|435
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|724|683
+</span></span><span style=display:flex><span>  834|615|279
+</span></span><span style=display:flex><span>  276|893|514
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>165994 states, 0.11690296 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Depth first:
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  385|247|961
+</span></span><span style=display:flex><span>  761|589|342
+</span></span><span style=display:flex><span>  942|361|857
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  123|456|798
+</span></span><span style=display:flex><span>  457|938|126
+</span></span><span style=display:flex><span>  698|172|435
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|724|683
+</span></span><span style=display:flex><span>  834|615|279
+</span></span><span style=display:flex><span>  276|893|514
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>113892 states, 0.053865753 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Check all (loop):
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  385|247|961
+</span></span><span style=display:flex><span>  761|589|342
+</span></span><span style=display:flex><span>  942|361|857
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  123|456|798
+</span></span><span style=display:flex><span>  457|938|126
+</span></span><span style=display:flex><span>  698|172|435
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|724|683
+</span></span><span style=display:flex><span>  834|615|279
+</span></span><span style=display:flex><span>  276|893|514
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>165994 states, 0.088472456 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Check all (for):
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  385|247|961
+</span></span><span style=display:flex><span>  761|589|342
+</span></span><span style=display:flex><span>  942|361|857
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  123|456|798
+</span></span><span style=display:flex><span>  457|938|126
+</span></span><span style=display:flex><span>  698|172|435
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  519|724|683
+</span></span><span style=display:flex><span>  834|615|279
+</span></span><span style=display:flex><span>  276|893|514
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>165994 states, 0.09432971 seconds
+</span></span></code></pre></div><h3 id=evil><code>evil</code></h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>cat data/sudoku/evil.txt | ./target/release/sudoku
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>initial: sudoku &lt;
+</span></span><span style=display:flex><span>  3  |   | 2
+</span></span><span style=display:flex><span>  4  | 9 |
+</span></span><span style=display:flex><span>   92|6  |8
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  9  |   |
+</span></span><span style=display:flex><span>   51| 6 | 4
+</span></span><span style=display:flex><span>     |8  |  7
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>     |  1|4
+</span></span><span style=display:flex><span>    3|   |
+</span></span><span style=display:flex><span>   26| 5 | 1
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Breadth first:
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  365|178|924
+</span></span><span style=display:flex><span>  418|293|675
+</span></span><span style=display:flex><span>  792|645|831
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  987|534|162
+</span></span><span style=display:flex><span>  251|967|348
+</span></span><span style=display:flex><span>  634|812|597
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  579|321|486
+</span></span><span style=display:flex><span>  143|786|259
+</span></span><span style=display:flex><span>  826|459|713
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>1121590 states, 0.7149536 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Depth first:
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  365|178|924
+</span></span><span style=display:flex><span>  418|293|675
+</span></span><span style=display:flex><span>  792|645|831
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  987|534|162
+</span></span><span style=display:flex><span>  251|967|348
+</span></span><span style=display:flex><span>  634|812|597
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  579|321|486
+</span></span><span style=display:flex><span>  143|786|259
+</span></span><span style=display:flex><span>  826|459|713
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>951510 states, 0.58878344 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Check all (loop):
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  365|178|924
+</span></span><span style=display:flex><span>  418|293|675
+</span></span><span style=display:flex><span>  792|645|831
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  987|534|162
+</span></span><span style=display:flex><span>  251|967|348
+</span></span><span style=display:flex><span>  634|812|597
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  579|321|486
+</span></span><span style=display:flex><span>  143|786|259
+</span></span><span style=display:flex><span>  826|459|713
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>1121590 states, 0.6640801 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>Check all (for):
+</span></span><span style=display:flex><span>solution: sudoku &lt;
+</span></span><span style=display:flex><span>  365|178|924
+</span></span><span style=display:flex><span>  418|293|675
+</span></span><span style=display:flex><span>  792|645|831
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  987|534|162
+</span></span><span style=display:flex><span>  251|967|348
+</span></span><span style=display:flex><span>  634|812|597
+</span></span><span style=display:flex><span>  ---+---+---
+</span></span><span style=display:flex><span>  579|321|486
+</span></span><span style=display:flex><span>  143|786|259
+</span></span><span style=display:flex><span>  826|459|713
+</span></span><span style=display:flex><span>&gt;
+</span></span><span style=display:flex><span>1121590 states, 0.69278765 seconds
+</span></span></code></pre></div><h2 id=the-advantages-of-release-mode>The advantages of release mode</h2><p>Speaking of, there&rsquo;s one interesting thing to note. <code>--release</code> mode is <em>so much faster</em>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>$ cargo build 
+</span></span><span style=display:flex><span>$ cat data/sudoku/evil.txt | ./target/debug/sudoku
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>1121590 states, 10.613164 seconds
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>$ cargo build --release
+</span></span><span style=display:flex><span>$ cat data/sudoku/evil.txt | ./target/release/sudoku
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>1121590 states, 0.69278765 seconds
+</span></span></code></pre></div><p>Nice.</p><h2 id=next-steps>Next steps</h2><p>A few possibilities:</p><ul><li>Implement different <code>nextStates</code> possibilities a la <a href=https://blog.jverkamp.com/2021/08/17/immutable.js-solvers/>Immutable.js Solvers</a></li><li>Implement other puzzles a la <a href=https://blog.jverkamp.com/2021/08/18/solving-snakebird/>Solving Snakebird</a></li></ul><p>Onward!</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
+<script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
+<script defer src=/custom.js></script></body></html>
