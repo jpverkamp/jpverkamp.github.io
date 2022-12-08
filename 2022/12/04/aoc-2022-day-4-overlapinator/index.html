@@ -15,7 +15,11 @@
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        Span {
 </span></span><span style=display:flex><span>            min: <span style=color:#a6e22e>min</span>.parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>isize</span><span style=color:#f92672>&gt;</span>().expect(<span style=color:#e6db74>&#34;min is not an integer&#34;</span>),
-</span></span><span style=display:flex><span>            max: <span style=color:#a6e22e>max</span>.strip_prefix(<span style=color:#e6db74>&#34;-&#34;</span>).expect(<span style=color:#e6db74>&#34;malformed prefix, missing dash&#34;</span>).parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>isize</span><span style=color:#f92672>&gt;</span>().expect(<span style=color:#e6db74>&#34;max is not an integer&#34;</span>),
+</span></span><span style=display:flex><span>            max: <span style=color:#a6e22e>max</span>
+</span></span><span style=display:flex><span>                .strip_prefix(<span style=color:#e6db74>&#34;-&#34;</span>)
+</span></span><span style=display:flex><span>                .expect(<span style=color:#e6db74>&#34;malformed prefix, missing dash&#34;</span>)
+</span></span><span style=display:flex><span>                .parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>isize</span><span style=color:#f92672>&gt;</span>()
+</span></span><span style=display:flex><span>                .expect(<span style=color:#e6db74>&#34;max is not an integer&#34;</span>),
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>
@@ -29,7 +33,14 @@
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> line <span style=color:#66d9ef>in</span> lines {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> (left, right) <span style=color:#f92672>=</span> line.split_at(line.find(<span style=color:#e6db74>&#34;,&#34;</span>).expect(<span style=color:#e6db74>&#34;missing comma in line&#34;</span>));
-</span></span><span style=display:flex><span>        result.push((Span::new(left), Span::new(right.strip_prefix(<span style=color:#e6db74>&#34;,&#34;</span>).expect(<span style=color:#e6db74>&#34;malformed prefix, missing comma&#34;</span>))))
+</span></span><span style=display:flex><span>        result.push((
+</span></span><span style=display:flex><span>            Span::new(left),
+</span></span><span style=display:flex><span>            Span::new(
+</span></span><span style=display:flex><span>                right
+</span></span><span style=display:flex><span>                    .strip_prefix(<span style=color:#e6db74>&#34;,&#34;</span>)
+</span></span><span style=display:flex><span>                    .expect(<span style=color:#e6db74>&#34;malformed prefix, missing comma&#34;</span>),
+</span></span><span style=display:flex><span>            ),
+</span></span><span style=display:flex><span>        ))
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    result
@@ -44,9 +55,11 @@
 </span></span><span style=display:flex><span>    containing.len().to_string()
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>That works well enough, but one downside is that we&rsquo;re allocating memory for the collected results when&mldr; we don&rsquo;t really care what the values are. Just that they exist. You can&rsquo;t directly use <code>len</code> on an iterator (such as a Filter)&mldr; but you can use <code>count</code>!</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part1</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
-</span></span><span style=display:flex><span>    parse(<span style=color:#f92672>&amp;</span>read_lines(filename)).iter().filter(
-</span></span><span style=display:flex><span>        <span style=color:#f92672>|</span>pair<span style=color:#f92672>|</span> pair.<span style=color:#ae81ff>0.</span>contains(<span style=color:#f92672>&amp;</span>pair.<span style=color:#ae81ff>1</span>) <span style=color:#f92672>||</span> pair.<span style=color:#ae81ff>1.</span>contains(<span style=color:#f92672>&amp;</span>pair.<span style=color:#ae81ff>0</span>)
-</span></span><span style=display:flex><span>    ).count().to_string()
+</span></span><span style=display:flex><span>    parse(<span style=color:#f92672>&amp;</span>read_lines(filename))
+</span></span><span style=display:flex><span>        .iter()
+</span></span><span style=display:flex><span>        .filter(<span style=color:#f92672>|</span>pair<span style=color:#f92672>|</span> pair.<span style=color:#ae81ff>0.</span>contains(<span style=color:#f92672>&amp;</span>pair.<span style=color:#ae81ff>1</span>) <span style=color:#f92672>||</span> pair.<span style=color:#ae81ff>1.</span>contains(<span style=color:#f92672>&amp;</span>pair.<span style=color:#ae81ff>0</span>))
+</span></span><span style=display:flex><span>        .count()
+</span></span><span style=display:flex><span>        .to_string()
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>That&rsquo;s pretty minimal. Is it actually more or less readable? I think it&rsquo;s pretty decent at least.</p><h4 id=part-2-instead-count-how-many-spans-have-one-overlapping-the-other-at-all><strong>Part 2:</strong> Instead, count how many spans have one overlapping the other at all.</h4><p>Okay, expand the implementation of <code>Span</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Span {
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>overlaps</span>(<span style=color:#f92672>&amp;</span>self, other: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Span</span>) -&gt; <span style=color:#66d9ef>bool</span> {
@@ -57,9 +70,11 @@
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>A bit messier, but it needs to be to deal properly with the single value edge cases (<code>6-6</code>). And it&rsquo;ll all short circuit nicely if they don&rsquo;t overlap, so it works. The <code>part2</code> itself just subs out the function:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part2</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
-</span></span><span style=display:flex><span>    parse(<span style=color:#f92672>&amp;</span>read_lines(filename)).iter().filter(
-</span></span><span style=display:flex><span>        <span style=color:#f92672>|</span>pair<span style=color:#f92672>|</span> pair.<span style=color:#ae81ff>0.</span>overlaps(<span style=color:#f92672>&amp;</span>pair.<span style=color:#ae81ff>1</span>)
-</span></span><span style=display:flex><span>    ).count().to_string()
+</span></span><span style=display:flex><span>    parse(<span style=color:#f92672>&amp;</span>read_lines(filename))
+</span></span><span style=display:flex><span>        .iter()
+</span></span><span style=display:flex><span>        .filter(<span style=color:#f92672>|</span>pair<span style=color:#f92672>|</span> pair.<span style=color:#ae81ff>0.</span>overlaps(<span style=color:#f92672>&amp;</span>pair.<span style=color:#ae81ff>1</span>))
+</span></span><span style=display:flex><span>        .count()
+</span></span><span style=display:flex><span>        .to_string()
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><h4 id=performance>Performance</h4><p>Quick.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>$</span> .<span style=color:#f92672>/</span>target<span style=color:#f92672>/</span>release<span style=color:#f92672>/</span><span style=color:#ae81ff>04</span><span style=color:#f92672>-</span>overlapinator <span style=color:#ae81ff>1</span> data<span style=color:#f92672>/</span><span style=color:#ae81ff>04.</span>txt
 </span></span><span style=display:flex><span>
