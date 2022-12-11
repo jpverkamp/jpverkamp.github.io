@@ -1,0 +1,237 @@
+<!doctype html><html><head><title>AoC 2022 Day 10: Interpretator – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>AoC 2022 Day 10: Interpretator</h1><div class=entry-meta><span class=entry-date>2022-12-10</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/09/aoc-2022-day-9-ropeinator/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming/sources/>Sources</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/09/aoc-2022-day-9-ropeinator/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/advent-of-code>Advent of Code</a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/09/aoc-2022-day-9-ropeinator/ class=previous-link></a><a class=taxonomy-value href=/series/advent-of-code-2022>Advent of Code 2022</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/12/09/aoc-2022-day-9-ropeinator/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/12/09/aoc-2022-day-9-ropeinator/ class=previous-link>Prev</a></ul></li></ul></div></div></header><div class=entry-content><h3 id=source-cathode-ray-tubehttpsadventofcodecom2022day10>Source: <a href=https://adventofcode.com/2022/day/10>Cathode-Ray Tube</a></h3><h4 id=part-1-implement-a-simple-virtual-machine-with-two-instructions-nop-which-does-nothing-for-1-cycles-and-addx-n-which-adds-n-to-the-x-register-initial-value-1-in-two-cycles-calculate-the-sum-of-cycle--x-for-the-cycles-20-60-100-140-180-220><strong>Part 1:</strong> Implement a simple virtual machine with two instructions: <code>nop</code> which does nothing for 1 cycles and <code>addx $n</code> which adds <code>$n</code> to the <code>X</code> register (initial value 1) in two cycles. Calculate the sum of <code>cycle * X</code> for the cycles 20, 60, 100, 140, 180, 220.</h4><p>I do love virtual machines.</p><p>First, parse and store the instructions:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>/* ----- A single instruction for the virtual machine ----- */</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>Instruction</span> {
+</span></span><span style=display:flex><span>    Noop,
+</span></span><span style=display:flex><span>    AddX(<span style=color:#66d9ef>isize</span>),
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> Instruction {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>cycles</span>(self) -&gt; <span style=color:#66d9ef>usize</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self {
+</span></span><span style=display:flex><span>            Noop <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>            AddX(_) <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>2</span>,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> From<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Instruction {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>from</span>(line: String) -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> parts <span style=color:#f92672>=</span> line.split_ascii_whitespace();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> parts.next().expect(<span style=color:#e6db74>&#34;must have a first part&#34;</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#e6db74>&#34;noop&#34;</span> <span style=color:#f92672>=&gt;</span> Noop,
+</span></span><span style=display:flex><span>            <span style=color:#e6db74>&#34;addx&#34;</span> <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> v <span style=color:#f92672>=</span> parts
+</span></span><span style=display:flex><span>                    .next()
+</span></span><span style=display:flex><span>                    .expect(<span style=color:#e6db74>&#34;addx must have a value&#34;</span>)
+</span></span><span style=display:flex><span>                    .parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>isize</span><span style=color:#f92672>&gt;</span>()
+</span></span><span style=display:flex><span>                    .expect(<span style=color:#e6db74>&#34;addx value must be numeric&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                AddX(v)
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;unknown instruction format {:?}&#34;</span>, line),
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Second, create the struct for the <code>VM</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>/* ----- Implement a simple virtual machine ----- */</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>VM</span> {
+</span></span><span style=display:flex><span>    instructions: Vec<span style=color:#f92672>&lt;</span>Instruction<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    program_counter: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    time_counter: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    delayed_instructions: <span style=color:#a6e22e>VecDeque</span><span style=color:#f92672>&lt;</span>Vec<span style=color:#f92672>&lt;</span>Instruction<span style=color:#f92672>&gt;&gt;</span>,
+</span></span><span style=display:flex><span>    registers: <span style=color:#a6e22e>HashMap</span><span style=color:#f92672>&lt;</span>String, <span style=color:#66d9ef>isize</span><span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    previous_registers: <span style=color:#a6e22e>HashMap</span><span style=color:#f92672>&lt;</span>String, <span style=color:#66d9ef>isize</span><span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> VM {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>new</span>(instructions: Vec<span style=color:#f92672>&lt;</span>Instruction<span style=color:#f92672>&gt;</span>) -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        VM {
+</span></span><span style=display:flex><span>            instructions,
+</span></span><span style=display:flex><span>            program_counter: <span style=color:#ae81ff>0</span>,
+</span></span><span style=display:flex><span>            time_counter: <span style=color:#ae81ff>0</span>,
+</span></span><span style=display:flex><span>            delayed_instructions: <span style=color:#a6e22e>VecDeque</span>::new(),
+</span></span><span style=display:flex><span>            registers: <span style=color:#a6e22e>HashMap</span>::new(),
+</span></span><span style=display:flex><span>            previous_registers: <span style=color:#a6e22e>HashMap</span>::new(),
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The fields probably need a bit of talking about:</p><ul><li><code>instructions</code> stores the full program</li><li><code>program_counter</code> is the current instruction being executed</li><li><code>time_counter</code> advances one for each tick</li><li><code>delayed_instructions</code> is a stack of instructions that are waiting to be executed; this is structured a bit oddly, since originally I read the prompt wrong and implemented an (IMO) more interesting architecture, one with <a href=https://en.wikipedia.org/wiki/instruction%20pipelining>instruction pipelining</a>&ndash;essentially, an <code>addx</code> followed by a <code>nop</code> would finish both on the same clock cycle; mostly it messed up the timing</li><li><code>registers</code> stores the current value of registers, this could just be a single value since we only use <code>X</code>, but 🤷</li><li><code>previous_registers</code> stores the values the registers had on the tick before this one, since that&rsquo;s the value &lsquo;during&rsquo; the current cycle (which is what part 1 actually wants) while <code>registers</code> is what it is after the cycle; again, I could just offset the <code>time_counter</code>, but I think this is more explicit</li></ul><p>Okay, with all that, let&rsquo;s write the function that actually updates the <code>VM</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> VM {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>step</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self) {
+</span></span><span style=display:flex><span>        self.time_counter <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self.delayed_instructions.get(<span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// We have a current instruction, don&#39;t queue any more
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            Some(v) <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>v.is_empty() <span style=color:#f92672>=&gt;</span> {}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// We don&#39;t have a current instruction, queue one
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            _ <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> instruction <span style=color:#f92672>=</span> self.instructions.get(self.program_counter).unwrap();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> cycles <span style=color:#f92672>=</span> instruction.cycles();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>while</span> self.delayed_instructions.len() <span style=color:#f92672>&lt;</span> cycles {
+</span></span><span style=display:flex><span>                    self.delayed_instructions.push_back(Vec::new());
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                self.delayed_instructions
+</span></span><span style=display:flex><span>                    .get_mut(cycles <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>                    .unwrap()
+</span></span><span style=display:flex><span>                    .push(<span style=color:#f92672>*</span>instruction);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                self.program_counter <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Copy the registers
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>for</span> (k, v) <span style=color:#66d9ef>in</span> self.registers.iter() {
+</span></span><span style=display:flex><span>            self.previous_registers.insert(k.clone(), <span style=color:#f92672>*</span>v);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Run any current instructions
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>for</span> instructions <span style=color:#66d9ef>in</span> self.delayed_instructions.pop_front() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> instruction <span style=color:#66d9ef>in</span> instructions {
+</span></span><span style=display:flex><span>                self.eval(instruction);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>As noted, I&rsquo;m using <code>delayed_instructions</code> to handle the offset of various ticks. In this case, when an instruction executes, it&rsquo;s added to <code>delayed_instructions</code> offset by the number of cycles it will take to finish. So <code>nop</code> will end up at the <code>front</code> of the <code>VecDeque</code> (and thus will be executed this cycle) and <code>addx</code> will be added a cycle further down.</p><p>This is (as I tend to do) rather overengineered. You could easily add both many instructions and already do some pipelining, although with this <code>step</code> function, it will never matter (since the next instruction is only queued if there isn&rsquo;t one ready to run).</p><p>Since I think it&rsquo;s cool, here is the pipelined step function:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> VM {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>#[allow(dead_code)]</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>pipelined_step</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self) {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Add the current instruction to the correct delay cycle
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> self.program_counter <span style=color:#f92672>&lt;</span> self.instructions.len() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> instruction <span style=color:#f92672>=</span> self.instructions.get(self.program_counter).unwrap();
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> cycles <span style=color:#f92672>=</span> instruction.cycles();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>while</span> self.delayed_instructions.len() <span style=color:#f92672>&lt;</span> cycles <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span> {
+</span></span><span style=display:flex><span>                self.delayed_instructions.push_back(Vec::new());
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            self.delayed_instructions
+</span></span><span style=display:flex><span>                .get_mut(cycles)
+</span></span><span style=display:flex><span>                .unwrap()
+</span></span><span style=display:flex><span>                .push(<span style=color:#f92672>*</span>instruction);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Copy the registers
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>for</span> (k, v) <span style=color:#66d9ef>in</span> self.registers.iter() {
+</span></span><span style=display:flex><span>            self.previous_registers.insert(k.clone(), <span style=color:#f92672>*</span>v);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Pop and run all currently delay instructions
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>for</span> instructions <span style=color:#66d9ef>in</span> self.delayed_instructions.pop_front() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> instruction <span style=color:#66d9ef>in</span> instructions {
+</span></span><span style=display:flex><span>                self.eval(instruction);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Increment program counter
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        self.program_counter <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Again, overengineered, but this time much more interesting. If you have some very long instructions, it can properly start each one cycle at a time and they&rsquo;ll finish when they finish. This of course doesn&rsquo;t take into account problems with data access etc that actual pipelined architectures handle, but rather assumes that the programmer will add the proper number of <code>nop</code> instructions and/or move code around so that it isn&rsquo;t a problem.</p><p>I thought it was neat. 😄</p><p>In any case, we do need two more functions, one to tell the user when the VM is done (in this case, the <code>program_counter</code> is out of bounds and all <code>delayed_instructions</code> are completed) plus an actual <code>eval</code> function for all currently defined instructions:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> VM {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>is_finished</span>(<span style=color:#f92672>&amp;</span>self) -&gt; <span style=color:#66d9ef>bool</span> {
+</span></span><span style=display:flex><span>        self.program_counter <span style=color:#f92672>&gt;=</span> self.instructions.len() <span style=color:#f92672>&amp;&amp;</span> self.delayed_instructions.is_empty()
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>eval</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, instruction: <span style=color:#a6e22e>Instruction</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> instruction {
+</span></span><span style=display:flex><span>            Noop <span style=color:#f92672>=&gt;</span> {}
+</span></span><span style=display:flex><span>            AddX(v) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                self.registers.insert(
+</span></span><span style=display:flex><span>                    String::from(<span style=color:#e6db74>&#34;X&#34;</span>),
+</span></span><span style=display:flex><span>                    self.registers.get(<span style=color:#e6db74>&#34;X&#34;</span>).or(Some(<span style=color:#f92672>&amp;</span>(<span style=color:#ae81ff>1</span> <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>))).unwrap() <span style=color:#f92672>+</span> v,
+</span></span><span style=display:flex><span>                );
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The <code>.get("X").or(Some(&1))</code> is pretty cool, not going to lie. The ability to default is always neat.</p><p>In any case, now that we have the VM, the next step is to use it to solve the requested problem:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part1</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> instructions <span style=color:#f92672>=</span> iter_lines(filename).map(Instruction::from).collect();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> vm <span style=color:#f92672>=</span> VM::new(instructions);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> sample_sum <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>        vm.step();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> cfg!(debug_assertions) {
+</span></span><span style=display:flex><span>            println!(
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;[{:4}] [{:4}] {:?}, {:?}&#34;</span>,
+</span></span><span style=display:flex><span>                vm.time_counter, vm.program_counter, vm.registers, vm.delayed_instructions
+</span></span><span style=display:flex><span>            );
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> vm.time_counter {
+</span></span><span style=display:flex><span>            <span style=color:#ae81ff>20</span> <span style=color:#f92672>|</span> <span style=color:#ae81ff>60</span> <span style=color:#f92672>|</span> <span style=color:#ae81ff>100</span> <span style=color:#f92672>|</span> <span style=color:#ae81ff>140</span> <span style=color:#f92672>|</span> <span style=color:#ae81ff>180</span> <span style=color:#f92672>|</span> <span style=color:#ae81ff>220</span> <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> signal <span style=color:#f92672>=</span> vm.time_counter <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>*</span> <span style=color:#f92672>*</span>vm.previous_registers.get(<span style=color:#e6db74>&#34;X&#34;</span>).unwrap();
+</span></span><span style=display:flex><span>                sample_sum <span style=color:#f92672>+=</span> signal;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> {}
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> vm.is_finished() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    sample_sum.to_string()
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>And it even has the <code>debug_assertions</code> code to print out the current state of the VM at each tick!</p><h4 id=part-2-simulate-an-old-fashioned-monitor-that-works-by-displaying-one-bit-at-a-time-across-each-row-and-then-down-to-the-next-row-each-tick-display-a--if-the-current-value-of-the-x-register-is--1-the-current-bit-being-displayed-otherwise-><strong>Part 2:</strong> Simulate an old fashioned monitor that works by displaying one bit at a time, across each row and then down to the next row. Each tick, display a <code>#</code> if the current value of the <code>X</code> register is +-1 the current bit being displayed, otherwise, <code>.</code>.</h4><p>Check out <a href=https://en.wikipedia.org/wiki/racing%20the%20beam>racing the beam</a>. It&rsquo;s something that you could do to really get some extra performance out of the <em>old</em> video game systems. Not so much an issue with modern computers. Fascinating what different trade offs have been made over the years.</p><p>In any case, the <code>VM</code> will handle this absolutely perfectly, so let&rsquo;s go ahead and modify <code>part2</code> to instead generate an <code>output_buffer</code> for one frame:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part2</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> instructions <span style=color:#f92672>=</span> iter_lines(filename).map(Instruction::from).collect();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> vm <span style=color:#f92672>=</span> VM::new(instructions);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> output_buffer <span style=color:#f92672>=</span> String::new();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> crt_x <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>        vm.step();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> sprite_center_x <span style=color:#f92672>=</span> <span style=color:#f92672>*</span>vm.previous_registers.get(<span style=color:#e6db74>&#34;X&#34;</span>).or(Some(<span style=color:#f92672>&amp;</span><span style=color:#ae81ff>1</span>)).unwrap();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> c <span style=color:#f92672>=</span> <span style=color:#66d9ef>if</span> crt_x <span style=color:#f92672>&gt;=</span> sprite_center_x <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&amp;&amp;</span> crt_x <span style=color:#f92672>&lt;=</span> sprite_center_x <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span> {
+</span></span><span style=display:flex><span>            <span style=color:#e6db74>&#39;#&#39;</span>
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#e6db74>&#39;.&#39;</span>
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        output_buffer.push(c);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        crt_x <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> crt_x <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>40</span> {
+</span></span><span style=display:flex><span>            output_buffer.push(<span style=color:#e6db74>&#39;\n&#39;</span>);
+</span></span><span style=display:flex><span>            crt_x <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> vm.is_finished() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    output_buffer.to_string()
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>That&rsquo;s a pretty neat function and I think easy enough to understand. It does hardcode the sprite as a 3px wide block, but so it goes.</p><h4 id=performance>Performance</h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ ./target/release/10-interpretator <span style=color:#ae81ff>1</span> data/10.txt
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>15140</span>
+</span></span><span style=display:flex><span>took 201.791µs
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>$ ./target/release/10-interpretator <span style=color:#ae81ff>2</span> data/10.txt
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>###..###....##..##..####..##...##..###..</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#..#.#..#....#.#..#....#.#..#.#..#.#..#.</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>###..#..#....#.#..#...#..#....#..#.#..#.</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#..#.###.....#.####..#...#.##.####.###..</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#..#.#....#..#.#..#.#....#..#.#..#.#....</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>###..#.....##..#..#.####..###.#..#.#....</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>took 481.583µs
+</span></span></code></pre></div><p>Yeah, that&rsquo;s pretty cool. And it&rsquo;s actually still <em>well</em> under the ~16.67ms you need to be able to render a frame in to get 60fps. Granted, it&rsquo;s not <em>doing</em> anything and without any branching, it&rsquo;s not really capable of doing anything interesting (read: <a href=https://en.wikipedia.org/wiki/Turing%20complete>Turing complete</a>). But it&rsquo;s a start! I&rsquo;m curious if a later day will go there.</p><p>In any case, onward!</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
+<script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
+<script defer src=/custom.js></script></body></html>
