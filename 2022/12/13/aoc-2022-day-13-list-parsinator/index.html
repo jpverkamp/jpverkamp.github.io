@@ -1,0 +1,174 @@
+<!doctype html><html><head><title>AoC 2022 Day 13: List Parsinator – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>AoC 2022 Day 13: List Parsinator</h1><div class=entry-meta><span class=entry-date>2022-12-13</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/12/aoc-2022-day-12-climbiantor/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a><a href=https://blog.jverkamp.com/2022/12/14/aoc-2022-day-14-sandinator/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/sources/>Sources</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/12/aoc-2022-day-12-climbiantor/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/advent-of-code>Advent of Code</a><a href=https://blog.jverkamp.com/2022/12/14/aoc-2022-day-14-sandinator/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/12/aoc-2022-day-12-climbiantor/ class=previous-link></a><a class=taxonomy-value href=/series/advent-of-code-2022>Advent of Code 2022</a><a href=https://blog.jverkamp.com/2022/12/14/aoc-2022-day-14-sandinator/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/12/12/aoc-2022-day-12-climbiantor/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/12/14/aoc-2022-day-14-sandinator/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/12/12/aoc-2022-day-12-climbiantor/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/12/14/aoc-2022-day-14-sandinator/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><h3 id=source-distress-signalhttpsadventofcodecom2022day13>Source: <a href=https://adventofcode.com/2022/day/13>Distress Signal</a></h3><h4 id=part-1-given-pairs-of-signals-where-a-signal-is-a-nested-list-example-1234-count-how-many-pairs-are-in-order><strong>Part 1:</strong> Given pairs of <code>Signal</code>s (where a <code>Signal</code> is a nested list ;example: <code>[[1],[2,3,4]]</code>), count how many pairs are &lsquo;in order&rsquo;.</h4><p>One <code>Signal</code> is less than the other if:</p><ul><li>Both are an integer and the first is less than the second</li><li>Both are a list and the first value is less than the second<ul><li>If the first values are the same, compare the second</li><li>If the first has fewer elements, it is treated as less than the second</li></ul></li><li>When comparing an integer and a list, wrap the integer as a single element list and compare them</li></ul><p>This is actually a pretty fun problem. Basically, it breaks down into two halves:</p><ul><li>Parse a recursive list structure <code>From&lt;String></code></li><li>Implement <code>PartialOrd</code> for two lists</li></ul><p>So let&rsquo;s do it!</p><p>First, parsing:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Clone, Debug, Ord, Eq, PartialEq)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>Signal</span> {
+</span></span><span style=display:flex><span>    Value(<span style=color:#66d9ef>u8</span>),
+</span></span><span style=display:flex><span>    List(Vec<span style=color:#f92672>&lt;</span>Signal<span style=color:#f92672>&gt;</span>),
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> From<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Signal {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>from</span>(line: String) -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> stack <span style=color:#f92672>=</span> RefCell::new(Vec::new());
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> current_number <span style=color:#f92672>=</span> RefCell::new(String::new());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Push an initial &#39;wrapper&#39; list that we&#39;ll remove before returning
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        stack.borrow_mut().push(Signal::List(Vec::new()));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Helper function that will check if we&#39;re currently parsing a number
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#75715e>// If so, push it onto the current list (malformed input if it&#39;s not a list)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> try_push_number <span style=color:#f92672>=</span> <span style=color:#f92672>||</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> current_number.borrow().is_empty() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> current_number
+</span></span><span style=display:flex><span>                .borrow()
+</span></span><span style=display:flex><span>                .parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>u8</span><span style=color:#f92672>&gt;</span>()
+</span></span><span style=display:flex><span>                .expect(<span style=color:#e6db74>&#34;number should be a number&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            current_number.borrow_mut().clear();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> stack
+</span></span><span style=display:flex><span>                .borrow_mut()
+</span></span><span style=display:flex><span>                .last_mut()
+</span></span><span style=display:flex><span>                .expect(<span style=color:#e6db74>&#34;must still have one item to push to&#34;</span>)
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                Signal::List(v) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    v.push(Signal::Value(value));
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;malformed stack, expected list to put thing in&#34;</span>),
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Process the input one char at a time
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>for</span> c <span style=color:#66d9ef>in</span> line.chars() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> c {
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Start a new nested list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#e6db74>&#39;[&#39;</span> <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    stack.borrow_mut().push(Signal::List(Vec::new()));
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Finish the most recent nested list
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#75715e>// Make sure to finish a number if we were parsing one
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#75715e>// Then push this list into the one before it as an element
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#e6db74>&#39;]&#39;</span> <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    try_push_number();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>let</span> thing <span style=color:#f92672>=</span> stack.borrow_mut().pop().expect(<span style=color:#e6db74>&#34;mismatched []&#34;</span>);
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>match</span> stack
+</span></span><span style=display:flex><span>                        .borrow_mut()
+</span></span><span style=display:flex><span>                        .last_mut()
+</span></span><span style=display:flex><span>                        .expect(<span style=color:#e6db74>&#34;must still have one item to push to&#34;</span>)
+</span></span><span style=display:flex><span>                    {
+</span></span><span style=display:flex><span>                        Signal::List(v) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                            v.push(thing);
+</span></span><span style=display:flex><span>                        }
+</span></span><span style=display:flex><span>                        _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;malformed stack, expected list to put thing in&#34;</span>),
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Finish the current number and start a new one
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#e6db74>&#39;,&#39;</span> <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    try_push_number();
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Building up a number one digit at a time
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                c <span style=color:#66d9ef>if</span> c.is_digit(<span style=color:#ae81ff>10</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    current_number.borrow_mut().push(c);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Anything else is bad input
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;unexpected char {}&#34;</span>, c),
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Verify that we have exactly one element left
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        assert_eq!(stack.borrow().len(), <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> wrapper <span style=color:#f92672>=</span> stack.borrow_mut().pop().unwrap();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Unwrap the initial &#39;wrapper&#39; list we made at the beginning
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>match</span> wrapper {
+</span></span><span style=display:flex><span>            Signal::List(v) <span style=color:#66d9ef>if</span> v.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>=&gt;</span> v[<span style=color:#ae81ff>0</span>].clone(),
+</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;must end with the final wrapper list with only one element&#34;</span>),
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>I&rsquo;ve commented the heck out of it, but what it boils down to is that you have three special characters:</p><ul><li><code>[</code> starts a sublist</li><li><code>,</code> delimits elements, finishing the parsing of a number</li><li><code>]</code> ends a sublist (and also finishing the parsing of a number)</li></ul><p>Anything else is part of a digit. So we build up the numbers and keep a stack of which list we&rsquo;re currently building up on. When we finish a list, attach it to the parent.</p><p>There&rsquo;s one interesting bit in that we wrap the whole thing up in an initial <code>List</code>. This mostly makes the parsing easier. We don&rsquo;t need a special case for the first level, just remove the wrapper at the end.</p><p>Now that we have the lists, we want to <code>PartialOrd</code> them:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Doing PartialOrd instead of Ord to get the &#39;correct&#39; default behavior for Vecs in List
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>impl</span> PartialOrd <span style=color:#66d9ef>for</span> Signal {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>partial_cmp</span>(<span style=color:#f92672>&amp;</span>self, other: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Self</span>) -&gt; Option<span style=color:#f92672>&lt;</span>std::cmp::Ordering<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>use</span> Signal::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> (self, other) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Two values or two lists use the built in partial_cmp functions
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            (Value(a), Value(b)) <span style=color:#f92672>=&gt;</span> a.partial_cmp(b),
+</span></span><span style=display:flex><span>            (List(a), List(b)) <span style=color:#f92672>=&gt;</span> a.partial_cmp(b),
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// One of each turns the value into a singleton list and then compares
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            (Value(a), List(<span style=color:#f92672>..</span>)) <span style=color:#f92672>=&gt;</span> List(vec![Value(<span style=color:#f92672>*</span>a)]).partial_cmp(other),
+</span></span><span style=display:flex><span>            (List(<span style=color:#f92672>..</span>), Value(b)) <span style=color:#f92672>=&gt;</span> self.partial_cmp(<span style=color:#f92672>&amp;</span>List(vec![Value(<span style=color:#f92672>*</span>b)])),
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>We do have two choices here: implementing <code>Ord</code> or <code>PartialOrd</code>. In this case, since we&rsquo;re relying on the <code>Ord</code>/<code>PartialOrd</code> implementation of <code>u8</code> and <code>Vec</code>, we want <code>PartialOrd</code>. Specifically, <code>Ord</code> will return the opposite value we want for lists of unequal length.</p><p>And there we have it:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part1</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> lines <span style=color:#f92672>=</span> iter_lines(filename).peekable();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> sum_of_ordered <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Iterate over pairs of input
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>for</span> index <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>1</span><span style=color:#f92672>..</span> {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If is_none, we&#39;ve reached the end of the file
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> lines.peek().is_none() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Read the signals, consume the next newline if there is one (otherwise EOF)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> s1 <span style=color:#f92672>=</span> Signal::from(lines.next().expect(<span style=color:#e6db74>&#34;must have first signal&#34;</span>));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> s2 <span style=color:#f92672>=</span> Signal::from(lines.next().expect(<span style=color:#e6db74>&#34;must have second signal&#34;</span>));
+</span></span><span style=display:flex><span>        lines.next_if_eq(<span style=color:#f92672>&amp;</span><span style=color:#e6db74>&#34;&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> s1 <span style=color:#f92672>&lt;</span> s2 {
+</span></span><span style=display:flex><span>            sum_of_ordered <span style=color:#f92672>+=</span> index;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    sum_of_ordered.to_string()
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Grab the pairs of <code>Signal</code>, compare with <code>s1 &lt; s2</code> (how cool is that) and sum of the indexes in the right order.</p><h4 id=part-2-take-all-signals-and-add-two-special-divider-values-2-and-6-sort-the-entire-list-and-return-the-product-of-the-indices-where-the-dividers-end-up><strong>Part 2:</strong> Take all <code>Signal</code>s and add two special &lsquo;divider&rsquo; values: <code>[[2]]</code> and <code>[[6]]</code>. Sort the entire list and return the product of the indices where the &lsquo;dividers&rsquo; end up.</h4><p>Nothing new to do here, just literally turn it into code:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part2</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Remove newlines and parse everything else as signals
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> signals <span style=color:#f92672>=</span> iter_lines(filename)
+</span></span><span style=display:flex><span>        .filter(<span style=color:#f92672>|</span>line<span style=color:#f92672>|</span> <span style=color:#f92672>!</span>line.is_empty())
+</span></span><span style=display:flex><span>        .map(Signal::from)
+</span></span><span style=display:flex><span>        .collect::<span style=color:#f92672>&lt;</span>Vec<span style=color:#f92672>&lt;</span>_<span style=color:#f92672>&gt;&gt;</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Define and add our &#39;divider&#39; signals
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> dividers <span style=color:#f92672>=</span> vec![
+</span></span><span style=display:flex><span>        Signal::from(String::from(<span style=color:#e6db74>&#34;[[2]]&#34;</span>)),
+</span></span><span style=display:flex><span>        Signal::from(String::from(<span style=color:#e6db74>&#34;[[6]]&#34;</span>)),
+</span></span><span style=display:flex><span>    ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> divider <span style=color:#66d9ef>in</span> dividers.iter() {
+</span></span><span style=display:flex><span>        signals.push(divider.clone());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    signals.sort();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Extract the indices of any dividers and multiply as requested
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    dividers
+</span></span><span style=display:flex><span>        .iter()
+</span></span><span style=display:flex><span>        .map(<span style=color:#f92672>|</span>d<span style=color:#f92672>|</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>+</span> signals.iter().position(<span style=color:#f92672>|</span>s<span style=color:#f92672>|</span> s <span style=color:#f92672>==</span> d).unwrap())
+</span></span><span style=display:flex><span>        .product::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>usize</span><span style=color:#f92672>&gt;</span>()
+</span></span><span style=display:flex><span>        .to_string()
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><code>signals.iter().position</code> was a fun little bit to find the dividers. I do like writing mostly-<a href=https://en.wikipedia.org/wiki/functional%20programming>functional programming</a> style Rust.</p><h4 id=performance>Performance</h4><p>We&rsquo;re really not doing much, the heavy part is the parsing honestly. So it&rsquo;s fast:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>$</span> .<span style=color:#f92672>/</span>target<span style=color:#f92672>/</span>release<span style=color:#f92672>/</span><span style=color:#ae81ff>13</span><span style=color:#f92672>-</span>list<span style=color:#f92672>-</span>parsinator <span style=color:#ae81ff>1</span> data<span style=color:#f92672>/</span><span style=color:#ae81ff>13.</span>txt
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>5506</span>
+</span></span><span style=display:flex><span>took <span style=color:#ae81ff>1.420833</span>ms
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>.<span style=color:#f92672>/</span>target<span style=color:#f92672>/</span>release<span style=color:#f92672>/</span><span style=color:#ae81ff>13</span><span style=color:#f92672>-</span>list<span style=color:#f92672>-</span>parsinator <span style=color:#ae81ff>2</span> data<span style=color:#f92672>/</span><span style=color:#ae81ff>13.</span>txt
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>21756</span>
+</span></span><span style=display:flex><span>took <span style=color:#ae81ff>2.013041</span>ms
+</span></span></code></pre></div></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
+<script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
+<script defer src=/custom.js></script></body></html>
