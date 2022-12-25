@@ -1,0 +1,485 @@
+<!doctype html><html><head><title>AoC 2022 Day 22: Wonderator – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>AoC 2022 Day 22: Wonderator</h1><div class=entry-meta><span class=entry-date>2022-12-22</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/21/aoc-2022-day-21-yellinator/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a><a href=https://blog.jverkamp.com/2022/12/23/aoc-2022-day-23-elf-scattinator/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming/sources/>Sources</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/21/aoc-2022-day-21-yellinator/ class=previous-link></a><a class=taxonomy-value href=/programming/sources/advent-of-code>Advent of Code</a><a href=https://blog.jverkamp.com/2022/12/23/aoc-2022-day-23-elf-scattinator/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2022/12/21/aoc-2022-day-21-yellinator/ class=previous-link></a><a class=taxonomy-value href=/series/advent-of-code-2022>Advent of Code 2022</a><a href=https://blog.jverkamp.com/2022/12/23/aoc-2022-day-23-elf-scattinator/ class=next-link></a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2022/12/21/aoc-2022-day-21-yellinator/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/12/23/aoc-2022-day-23-elf-scattinator/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/12/22/the-wicked--the-divine-vol.-3-commercial-suicide/ class=previous-link>Prev</a>
+<a href=https://blog.jverkamp.com/2022/12/23/the-wicked--the-divine-vol.-4-rising-action/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><h2 id=source-monkey-maphttpsadventofcodecom2022day22>Source: <a href=https://adventofcode.com/2022/day/22>Monkey Map</a></h2><h2 id=part-1>Part 1</h2><blockquote><p>Given a map and a series of instructions formatted as distance + turn (<code>L</code> or <code>R</code>), find the final position. Any time you would walk off the edge of the map, wrap to the opposite edge.</p></blockquote><p>Well that&rsquo;s fun. Let&rsquo;s load the map first:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Map</span> {
+</span></span><span style=display:flex><span>    start: <span style=color:#a6e22e>Point</span>,
+</span></span><span style=display:flex><span>    width: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    height: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    walls: <span style=color:#a6e22e>HashSet</span><span style=color:#f92672>&lt;</span>Point<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    floors: <span style=color:#a6e22e>HashSet</span><span style=color:#f92672>&lt;</span>Point<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    path_data: Vec<span style=color:#f92672>&lt;</span>(Point, <span style=color:#66d9ef>char</span>)<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;</span>I<span style=color:#f92672>&gt;</span> From<span style=color:#f92672>&lt;&amp;</span><span style=color:#66d9ef>mut</span> I<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Map
+</span></span><span style=display:flex><span><span style=color:#66d9ef>where</span>
+</span></span><span style=display:flex><span>    I: Iterator<span style=color:#f92672>&lt;</span>Item <span style=color:#f92672>=</span> String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>from</span>(iter: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> I) -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> walls <span style=color:#f92672>=</span> HashSet::new();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> floors <span style=color:#f92672>=</span> HashSet::new();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> width <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> height <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> start: Option<span style=color:#f92672>&lt;</span>Point<span style=color:#f92672>&gt;</span> <span style=color:#f92672>=</span> None;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        iter.take_while(<span style=color:#f92672>|</span>line<span style=color:#f92672>|</span> <span style=color:#f92672>!</span>line.is_empty())
+</span></span><span style=display:flex><span>            .enumerate()
+</span></span><span style=display:flex><span>            .for_each(<span style=color:#f92672>|</span>(y, line)<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>                height <span style=color:#f92672>=</span> height.max(y <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>                line.chars().enumerate().for_each(<span style=color:#f92672>|</span>(x, c)<span style=color:#f92672>|</span> <span style=color:#66d9ef>match</span> c {
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#39;#&#39;</span> <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                        width <span style=color:#f92672>=</span> width.max(x <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>                        walls.insert(Point::new(x <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>, y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>));
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#39;.&#39;</span> <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>if</span> start.is_none()
+</span></span><span style=display:flex><span>                            <span style=color:#f92672>||</span> y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&lt;</span> start.unwrap().y
+</span></span><span style=display:flex><span>                            <span style=color:#f92672>||</span> (y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&lt;=</span> start.unwrap().y
+</span></span><span style=display:flex><span>                                <span style=color:#f92672>&amp;&amp;</span> x <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&lt;</span> start.unwrap().x)
+</span></span><span style=display:flex><span>                        {
+</span></span><span style=display:flex><span>                            start <span style=color:#f92672>=</span> Some(Point::new(x <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>, y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>));
+</span></span><span style=display:flex><span>                        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                        width <span style=color:#f92672>=</span> width.max(x <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>                        floors.insert(Point::new(x <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>, y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>));
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                    _ <span style=color:#f92672>=&gt;</span> {}
+</span></span><span style=display:flex><span>                })
+</span></span><span style=display:flex><span>            });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Map {
+</span></span><span style=display:flex><span>            start: <span style=color:#a6e22e>start</span>.unwrap(),
+</span></span><span style=display:flex><span>            width,
+</span></span><span style=display:flex><span>            height,
+</span></span><span style=display:flex><span>            walls,
+</span></span><span style=display:flex><span>            floors,
+</span></span><span style=display:flex><span>            path_data: <span style=color:#a6e22e>vec</span><span style=color:#f92672>!</span>[(start.unwrap(), <span style=color:#e6db74>&#39;&gt;&#39;</span>)],
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>I&rsquo;m again using <code>HashSets</code> to store (relatively) sparse point data. Storing it in a single vector and accessing it would probably be as quick if not quicker with caching and direct <code>O(1)</code> access, but this is perfectly fine for what I&rsquo;m working on.</p><p>Next up, parsing and storing the list of moves:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Moves</span> {
+</span></span><span style=display:flex><span>    data: Vec<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>usize</span>, <span style=color:#66d9ef>char</span>)<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> From<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Moves {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>from</span>(line: String) -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> iter <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> line.chars().peekable();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> data <span style=color:#f92672>=</span> Vec::new();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> <span style=color:#f92672>!</span>iter.peek().is_none() {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Distance is a positive integer, might be more than one digit
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>let</span> distance <span style=color:#f92672>=</span> iter
+</span></span><span style=display:flex><span>                .peeking_take_while(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.is_digit(<span style=color:#ae81ff>10</span>))
+</span></span><span style=display:flex><span>                .collect::<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>()
+</span></span><span style=display:flex><span>                .parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>usize</span><span style=color:#f92672>&gt;</span>()
+</span></span><span style=display:flex><span>                .expect(<span style=color:#e6db74>&#34;must be parsable as a number&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Parse L or R as a turn, add an L at the end if we end with a number
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>let</span> turn <span style=color:#f92672>=</span> <span style=color:#66d9ef>if</span> iter.peek().is_some() {
+</span></span><span style=display:flex><span>                iter.next().unwrap()
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#39;X&#39;</span>
+</span></span><span style=display:flex><span>            };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            data.push((distance, turn));
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Moves { data }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The one oddity here is that the original problem doesn&rsquo;t have a last turn in the test data, but the final scoring requested relies on a turn. So I added a <code>X</code> &lsquo;don&rsquo;t turn&rsquo; instruction.</p><p>Lastly, we&rsquo;ll have one more <code>struct</code> that represents which way we&rsquo;re currently <code>Facing</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>Facing</span> {
+</span></span><span style=display:flex><span>    North,
+</span></span><span style=display:flex><span>    South,
+</span></span><span style=display:flex><span>    East,
+</span></span><span style=display:flex><span>    West,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> Default <span style=color:#66d9ef>for</span> Facing {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>default</span>() -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        Facing::East
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> Facing {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>turn</span>(self, turn: <span style=color:#66d9ef>char</span>) -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>use</span> Facing::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> (self, turn) {
+</span></span><span style=display:flex><span>            (North, <span style=color:#e6db74>&#39;L&#39;</span>) <span style=color:#f92672>=&gt;</span> West,
+</span></span><span style=display:flex><span>            (North, <span style=color:#e6db74>&#39;R&#39;</span>) <span style=color:#f92672>=&gt;</span> East,
+</span></span><span style=display:flex><span>            (South, <span style=color:#e6db74>&#39;L&#39;</span>) <span style=color:#f92672>=&gt;</span> East,
+</span></span><span style=display:flex><span>            (South, <span style=color:#e6db74>&#39;R&#39;</span>) <span style=color:#f92672>=&gt;</span> West,
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            (East, <span style=color:#e6db74>&#39;L&#39;</span>) <span style=color:#f92672>=&gt;</span> North,
+</span></span><span style=display:flex><span>            (East, <span style=color:#e6db74>&#39;R&#39;</span>) <span style=color:#f92672>=&gt;</span> South,
+</span></span><span style=display:flex><span>            (West, <span style=color:#e6db74>&#39;L&#39;</span>) <span style=color:#f92672>=&gt;</span> South,
+</span></span><span style=display:flex><span>            (West, <span style=color:#e6db74>&#39;R&#39;</span>) <span style=color:#f92672>=&gt;</span> North,
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            (_, <span style=color:#e6db74>&#39;X&#39;</span>) <span style=color:#f92672>=&gt;</span> self,
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;don&#39;t know how to turn {turn} from {self:?}&#34;</span>),
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>opposite</span>(self) -&gt; <span style=color:#a6e22e>Self</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>use</span> Facing::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self {
+</span></span><span style=display:flex><span>            North <span style=color:#f92672>=&gt;</span> South,
+</span></span><span style=display:flex><span>            South <span style=color:#f92672>=&gt;</span> North,
+</span></span><span style=display:flex><span>            East <span style=color:#f92672>=&gt;</span> West,
+</span></span><span style=display:flex><span>            West <span style=color:#f92672>=&gt;</span> East,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>delta</span>(self) -&gt; <span style=color:#a6e22e>Point</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>use</span> Facing::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self {
+</span></span><span style=display:flex><span>            North <span style=color:#f92672>=&gt;</span> Point::new(<span style=color:#ae81ff>0</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>            South <span style=color:#f92672>=&gt;</span> Point::new(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>            East <span style=color:#f92672>=&gt;</span> Point::new(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>),
+</span></span><span style=display:flex><span>            West <span style=color:#f92672>=&gt;</span> Point::new(<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>),
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>char</span>(<span style=color:#f92672>&amp;</span>self) -&gt; <span style=color:#66d9ef>char</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>use</span> Facing::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self {
+</span></span><span style=display:flex><span>            North <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;^&#39;</span>,
+</span></span><span style=display:flex><span>            South <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;v&#39;</span>,
+</span></span><span style=display:flex><span>            East <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&gt;&#39;</span>,
+</span></span><span style=display:flex><span>            West <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;&lt;&#39;</span>,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>value</span>(<span style=color:#f92672>&amp;</span>self) -&gt; <span style=color:#66d9ef>isize</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>use</span> Facing::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self {
+</span></span><span style=display:flex><span>            East <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>0</span>,
+</span></span><span style=display:flex><span>            South <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>            West <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>2</span>,
+</span></span><span style=display:flex><span>            North <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>3</span>,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Basically, this is the cardinal direction and you can apply the <code>L</code> and <code>R</code> to this to get a new facing plus you can get the <code>value</code> for scoring that I mentioned or the <code>delta</code> for how you should move.</p><p>Take all that and we&rsquo;re ready to apply a <code>Move</code> to the <code>Map</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Map {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>calculate_move</span>(
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self,
+</span></span><span style=display:flex><span>        location: <span style=color:#a6e22e>Point</span>,
+</span></span><span style=display:flex><span>        facing: <span style=color:#a6e22e>Facing</span>,
+</span></span><span style=display:flex><span>        distance: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    ) -&gt; <span style=color:#a6e22e>Point</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> current <span style=color:#f92672>=</span> location;
+</span></span><span style=display:flex><span>        self.path_data.push(current);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> _i <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>distance {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> next <span style=color:#f92672>=</span> current <span style=color:#f92672>+</span> facing.delta();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we run into a wall, just stop moving
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>if</span> self.walls.contains(<span style=color:#f92672>&amp;</span>next) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we run off the map, wrap
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>self.floors.contains(<span style=color:#f92672>&amp;</span>next) {
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Step back onto the floor
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                next <span style=color:#f92672>=</span> current;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Skip back across the walls and floors this time
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>while</span> self.floors.contains(<span style=color:#f92672>&amp;</span>next) <span style=color:#f92672>||</span> self.walls.contains(<span style=color:#f92672>&amp;</span>next) {
+</span></span><span style=display:flex><span>                    next <span style=color:#f92672>=</span> next <span style=color:#f92672>-</span> facing.delta();
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Step back once off empty space
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                next <span style=color:#f92672>=</span> next <span style=color:#f92672>+</span> facing.delta();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// If we have a wall after wrapping, don&#39;t move
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>if</span> self.walls.contains(<span style=color:#f92672>&amp;</span>next) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we made it out of both checks, we have the new current point
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            self.path_data.push((current));
+</span></span><span style=display:flex><span>            current <span style=color:#f92672>=</span> next;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        current
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Fairly clean. Wrap it up and off we go:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part1</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> iter <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> iter_lines(filename);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> map <span style=color:#f92672>=</span> Map::from(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> iter);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> moves <span style=color:#f92672>=</span> Moves::from(iter.next().expect(<span style=color:#e6db74>&#34;must have moves&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> location <span style=color:#f92672>=</span> map.start.clone();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> facing <span style=color:#f92672>=</span> Facing::East;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> move_count <span style=color:#f92672>=</span> moves.data.len();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (frame, (distance, turn)) <span style=color:#66d9ef>in</span> moves.data.into_iter().enumerate() {
+</span></span><span style=display:flex><span>        location <span style=color:#f92672>=</span> map.calculate_move(location, facing, distance);
+</span></span><span style=display:flex><span>        facing <span style=color:#f92672>=</span> facing.turn(turn);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> password <span style=color:#f92672>=</span> <span style=color:#ae81ff>1000</span> <span style=color:#f92672>*</span> location.y <span style=color:#f92672>+</span> <span style=color:#ae81ff>4</span> <span style=color:#f92672>*</span> location.x <span style=color:#f92672>+</span> facing.value();
+</span></span><span style=display:flex><span>    password.to_string()
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Not so bad. One fun thing that I did was to make a rendering function (<a href=#writing-a-rendering-function>see below</a> so that I could generate fun animations like this:</p><p><video controls src=/embeds/2022/aoc22-1-red.mp4></video></p><p>Or more colorful (the 4 different colors are the facings):</p><p><video controls src=/embeds/2022/aoc22-1-colorful.mp4></video></p><p>Did it help solve the problem? Nope. Printing to the console was better for that. Is it fun to watch? Absolutely! (Especially with the paths fading over time.)</p><h2 id=part-2>Part 2</h2><blockquote><p>Instead of wrapping around to the next edge, fold the map you are given into a cube and proceed onto the next face. Calculate the final position as before.</p></blockquote><p>&mldr;</p><figure><img src=/embeds/2022/aoc22-papercraft.jpg height=400px></figure><figure><img src=/embeds/2022/aoc22-cubular.jpg height=400px></figure><p>Why yes. I did make a physical cube in order to figure out how all of the different adjacencies work:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>part2</span>(filename: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Path</span>) -&gt; String {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> iter <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> iter_lines(filename);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> map <span style=color:#f92672>=</span> Map::from(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> iter);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> moves <span style=color:#f92672>=</span> Moves::from(iter.next().expect(<span style=color:#e6db74>&#34;must have moves&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> location <span style=color:#f92672>=</span> map.start.clone();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> facing <span style=color:#f92672>=</span> Facing::East;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>use</span> Facing::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> test_mode <span style=color:#f92672>=</span> filename.to_str().unwrap().contains(<span style=color:#e6db74>&#34;test&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> size <span style=color:#f92672>=</span> <span style=color:#66d9ef>if</span> test_mode { <span style=color:#ae81ff>4</span> } <span style=color:#66d9ef>else</span> { <span style=color:#ae81ff>50</span> };
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> adjacency_map: <span style=color:#a6e22e>HashMap</span><span style=color:#f92672>&lt;</span>(Point, Facing), (Point, Facing)<span style=color:#f92672>&gt;</span> <span style=color:#f92672>=</span> (<span style=color:#66d9ef>if</span> test_mode {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> faces <span style=color:#f92672>=</span> [
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>2</span>, <span style=color:#ae81ff>0</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>2</span>, <span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>2</span>, <span style=color:#ae81ff>2</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>3</span>, <span style=color:#ae81ff>2</span>),
+</span></span><span style=display:flex><span>        ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Hand calculated for the test map
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#75715e>// TODO: Can this be automated?
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        vec![
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West), (faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North), (faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East), (faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North), (faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West), (faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South), (faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North), (faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South), (faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>4</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East), (faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West), (faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South), (faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North), (faces[<span style=color:#ae81ff>4</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East), (faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South), (faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East)),
+</span></span><span style=display:flex><span>        ]
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> faces <span style=color:#f92672>=</span> [
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>2</span>, <span style=color:#ae81ff>0</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>2</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>2</span>),
+</span></span><span style=display:flex><span>            Point::new(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>3</span>),
+</span></span><span style=display:flex><span>        ];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Hand calculated for my map
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#75715e>// TODO: Can this be automated?
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        vec![
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North), (faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West), (faces[<span style=color:#ae81ff>4</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North), (faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East), (faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South), (faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West), (faces[<span style=color:#ae81ff>4</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East), (faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>4</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North), (faces[<span style=color:#ae81ff>3</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>4</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West), (faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East), (faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South), (faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], West), (faces[<span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], East), (faces[<span style=color:#ae81ff>5</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], North)),
+</span></span><span style=display:flex><span>            ((faces[<span style=color:#ae81ff>6</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South), (faces[<span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>], South)),
+</span></span><span style=display:flex><span>        ]
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>    .into_iter()
+</span></span><span style=display:flex><span>    .collect();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (pf1, pf2) <span style=color:#66d9ef>in</span> adjacency_map.iter() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> pf1p <span style=color:#f92672>=</span> (pf1.<span style=color:#ae81ff>0</span>, pf1.<span style=color:#ae81ff>1.</span>opposite());
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> pf2p <span style=color:#f92672>=</span> (pf2.<span style=color:#ae81ff>0</span>, pf2.<span style=color:#ae81ff>1.</span>opposite());
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>adjacency_map.contains_key(<span style=color:#f92672>&amp;</span>pf2p) {
+</span></span><span style=display:flex><span>            panic!(<span style=color:#e6db74>&#34;Expecing {pf2p:?} in adjacency_map to match {pf2:?}&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> adjacency_map[<span style=color:#f92672>&amp;</span>pf2p] <span style=color:#f92672>!=</span> pf1p {
+</span></span><span style=display:flex><span>            panic!(
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;Expecing value of {pf2p:?} to be {pf1p:?}, got {:?}&#34;</span>,
+</span></span><span style=display:flex><span>                adjacency_map[<span style=color:#f92672>&amp;</span>pf2p]
+</span></span><span style=display:flex><span>            );
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> wrap_mode <span style=color:#f92672>=</span> WrapMode::Cube(size, adjacency_map);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> move_count <span style=color:#f92672>=</span> moves.data.len();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (frame, (distance, turn)) <span style=color:#66d9ef>in</span> moves.data.into_iter().enumerate() {
+</span></span><span style=display:flex><span>        (location, facing) <span style=color:#f92672>=</span> map.calculate_move(location, facing, distance, <span style=color:#f92672>&amp;</span>wrap_mode);
+</span></span><span style=display:flex><span>        facing <span style=color:#f92672>=</span> facing.turn(turn);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> password <span style=color:#f92672>=</span> <span style=color:#ae81ff>1000</span> <span style=color:#f92672>*</span> location.y <span style=color:#f92672>+</span> <span style=color:#ae81ff>4</span> <span style=color:#f92672>*</span> location.x <span style=color:#f92672>+</span> facing.value();
+</span></span><span style=display:flex><span>    password.to_string()
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>And yes, I did handcode the adjacency map for both the test cube and my regular cube. What of it?</p><p>😄</p><p>Making sure that I got everything right took a while. That&rsquo;s why there&rsquo;s the check function in there that <code>panic!</code>s if I got something wrong. This works because each edge is bidirectional, just the orientations are flipped. If I ever make a mistake, hopefully I don&rsquo;t make the same (opposite) mistake as well, so it will pop out. I caught 3&mldr;</p><p>I expect there&rsquo;s probably a way to automatically do this, first by finding any 90 degree bends and folding those then folding in the rest that are left over, but this was already mind bendy enough.</p><p>As you may have noticed, I also introduced a new <code>WrapMode</code> to handle the two different options:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>WrapMode</span> {
+</span></span><span style=display:flex><span>    Loop,
+</span></span><span style=display:flex><span>    Cube(<span style=color:#66d9ef>usize</span>, HashMap<span style=color:#f92672>&lt;</span>(Point, Facing), (Point, Facing)<span style=color:#f92672>&gt;</span>),
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>And then, it&rsquo;s <em>just</em> a matter of updating the <code>calculate_move</code> function:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Map {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>calculate_move</span>(
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self,
+</span></span><span style=display:flex><span>        location: <span style=color:#a6e22e>Point</span>,
+</span></span><span style=display:flex><span>        facing: <span style=color:#a6e22e>Facing</span>,
+</span></span><span style=display:flex><span>        distance: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>        wrap_mode: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>WrapMode</span>,
+</span></span><span style=display:flex><span>    ) -&gt; (Point, Facing) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>use</span> Facing::<span style=color:#f92672>*</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> current <span style=color:#f92672>=</span> (location, facing);
+</span></span><span style=display:flex><span>        self.path_data.push((current.<span style=color:#ae81ff>0</span>, current.<span style=color:#ae81ff>1.</span><span style=color:#66d9ef>char</span>()));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> _i <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>distance {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> next <span style=color:#f92672>=</span> (current.<span style=color:#ae81ff>0</span> <span style=color:#f92672>+</span> current.<span style=color:#ae81ff>1.</span>delta(), current.<span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we run into a wall, just stop moving
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>if</span> self.walls.contains(<span style=color:#f92672>&amp;</span>next.<span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we run off the map, wrap
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>self.floors.contains(<span style=color:#f92672>&amp;</span>next.<span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Step back onto the floor
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                next <span style=color:#f92672>=</span> current;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Different wrapping options depending on the mode
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>match</span> wrap_mode {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Loop is defined as walking the opposite way until you hit an empty space
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    WrapMode::Loop <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                        <span style=color:#75715e>// Skip back across the walls and floors this time
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                        <span style=color:#66d9ef>while</span> self.floors.contains(<span style=color:#f92672>&amp;</span>next.<span style=color:#ae81ff>0</span>) <span style=color:#f92672>||</span> self.walls.contains(<span style=color:#f92672>&amp;</span>next.<span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>                            next.<span style=color:#ae81ff>0</span> <span style=color:#f92672>=</span> next.<span style=color:#ae81ff>0</span> <span style=color:#f92672>-</span> current.<span style=color:#ae81ff>1.</span>delta();
+</span></span><span style=display:flex><span>                        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                        <span style=color:#75715e>// Step back once off empty space
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                        next.<span style=color:#ae81ff>0</span> <span style=color:#f92672>=</span> next.<span style=color:#ae81ff>0</span> <span style=color:#f92672>+</span> current.<span style=color:#ae81ff>1.</span>delta();
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Cube is defined as wrapping onto the next face of a cube
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    WrapMode::Cube(width, adjacencies) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                        <span style=color:#75715e>// Determine the index of the face
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                        <span style=color:#66d9ef>let</span> current_face <span style=color:#f92672>=</span> Point::new(
+</span></span><span style=display:flex><span>                            (next.<span style=color:#ae81ff>0.</span>x <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>/</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>),
+</span></span><span style=display:flex><span>                            (next.<span style=color:#ae81ff>0.</span>y <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>/</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>),
+</span></span><span style=display:flex><span>                        );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                        <span style=color:#75715e>// Figure out how far we are side to side on that face
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                        <span style=color:#75715e>// Offset is from the &#39;left&#39; according to facing
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                        <span style=color:#66d9ef>let</span> current_offset <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> facing {
+</span></span><span style=display:flex><span>                            North <span style=color:#f92672>=&gt;</span> (next.<span style=color:#ae81ff>0.</span>x <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>%</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>),
+</span></span><span style=display:flex><span>                            South <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>-</span> (next.<span style=color:#ae81ff>0.</span>x <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>%</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>                            East <span style=color:#f92672>=&gt;</span> (next.<span style=color:#ae81ff>0.</span>y <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>%</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>),
+</span></span><span style=display:flex><span>                            West <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>-</span> (next.<span style=color:#ae81ff>0.</span>y <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>%</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>                        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                        <span style=color:#75715e>// Determine the next face and facing
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                        <span style=color:#66d9ef>let</span> (next_face, next_facing) <span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>                            adjacencies.get(<span style=color:#f92672>&amp;</span>(current_face, facing)).expect(
+</span></span><span style=display:flex><span>                                format!(<span style=color:#e6db74>&#34;unknown adjacency for {current_face:?} facing {facing:?}&#34;</span>)
+</span></span><span style=display:flex><span>                                    .as_str(),
+</span></span><span style=display:flex><span>                            );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                        next <span style=color:#f92672>=</span> (
+</span></span><span style=display:flex><span>                            Point::new(
+</span></span><span style=display:flex><span>                                <span style=color:#ae81ff>1</span> <span style=color:#f92672>+</span> next_face.x <span style=color:#f92672>*</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>)
+</span></span><span style=display:flex><span>                                    <span style=color:#f92672>+</span> <span style=color:#66d9ef>match</span> next_facing {
+</span></span><span style=display:flex><span>                                        North <span style=color:#f92672>=&gt;</span> current_offset,
+</span></span><span style=display:flex><span>                                        South <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>-</span> current_offset <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>                                        East <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>0</span>,
+</span></span><span style=display:flex><span>                                        West <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>                                    },
+</span></span><span style=display:flex><span>                                <span style=color:#ae81ff>1</span> <span style=color:#f92672>+</span> next_face.y <span style=color:#f92672>*</span> (<span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>)
+</span></span><span style=display:flex><span>                                    <span style=color:#f92672>+</span> <span style=color:#66d9ef>match</span> next_facing {
+</span></span><span style=display:flex><span>                                        North <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>                                        South <span style=color:#f92672>=&gt;</span> <span style=color:#ae81ff>0</span>,
+</span></span><span style=display:flex><span>                                        East <span style=color:#f92672>=&gt;</span> current_offset,
+</span></span><span style=display:flex><span>                                        West <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span> <span style=color:#f92672>-</span> current_offset <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>                                    },
+</span></span><span style=display:flex><span>                            ),
+</span></span><span style=display:flex><span>                            <span style=color:#f92672>*</span>next_facing,
+</span></span><span style=display:flex><span>                        );
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// If we have a wall after wrapping, don&#39;t move
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>if</span> self.walls.contains(<span style=color:#f92672>&amp;</span>next.<span style=color:#ae81ff>0</span>) {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we made it out of both checks, we have the new current point
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            self.path_data.push((current.<span style=color:#ae81ff>0</span>, current.<span style=color:#ae81ff>1.</span><span style=color:#66d9ef>char</span>()));
+</span></span><span style=display:flex><span>            current <span style=color:#f92672>=</span> next;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        current
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Yeah&mldr; that&rsquo;s a bit much.</p><p>So a few of the interesting things that I had to end up doing to get cubes working:</p><ul><li>Change <code>current</code> to include both <code>Point</code> and <code>Facing</code>, since <code>Facing</code> can now change (multiple times) in the middle of a move if/when you move from one fact to another.</li><li>Correctly handle the hole <code>WrapMode::Loop</code></li><li>In the new <code>WrapMode::Cube</code>:<ul><li>Determine which face we&rsquo;re on (modular arithmetic)</li><li>Determine how far along that face we are (counting from the &rsquo;left&rsquo; from the perspective of the agent walking around)</li><li>Determine which face + facing is next, based on the <code>adjacency_map</code> from above</li><li>Figure out what the coordinates in flat space correspond to moving onto the new face</li><li>Check for a wall and don&rsquo;t make the move if there is one</li></ul></li></ul><p>There are an absolute ton of fiddly bits around this, particularly around making sure that the offset is correct for each of the 4 orientations plus making sure that we correctly offset the maximums by 1 (zero based indexing), but after all that&rsquo;s working, the problem itself (as shown above) doesn&rsquo;t change.</p><p>And we still get pretty videos!</p><p><video controls src=/embeds/2022/aoc22-2-red.mp4></video></p><p>And more colorful:</p><p><video controls src=/embeds/2022/aoc22-2-colorful.mp4></video></p><p>It&rsquo;s fun to try to watch it go around the faces of the cube. If I had the time and inclination, I would animate this on the surface of an actual cube (I already have the texture), but that&rsquo;s a problem for another day.</p><h2 id=performance>Performance</h2><p>Yet another one where the vast majority of the problem is typing it out:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ ./target/release/22-wonderator <span style=color:#ae81ff>1</span> data/22.txt
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>196134</span>
+</span></span><span style=display:flex><span>took 5.115ms
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>$ ./target/release/22-wonderator <span style=color:#ae81ff>2</span> data/22.txt
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#ae81ff>146011</span>
+</span></span><span style=display:flex><span>took 4.83525ms
+</span></span></code></pre></div><h2 id=writing-a-rendering-function>Writing a rendering function</h2><p>In case you&rsquo;re wondering, the rendering uses the same basic framework as I did in <a href=https://blog.jverkamp.com/2022/12/14/aoc-2022-day-14-sandinator/>AoC 2022 Day 14: Sandinator</a>, just with a rendering function aware of the map + handling the face effects. Here&rsquo;s the colorful one:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Map {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>render</span>(<span style=color:#f92672>&amp;</span>self) -&gt; <span style=color:#a6e22e>RgbImage</span> {
+</span></span><span style=display:flex><span>        ImageBuffer::from_fn(self.width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u32</span>, self.height <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u32</span>, <span style=color:#f92672>|</span>x, y<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> p <span style=color:#f92672>=</span> Point::new(x <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>, y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> self.walls.contains(<span style=color:#f92672>&amp;</span>p) {
+</span></span><span style=display:flex><span>                image::Rgb([<span style=color:#ae81ff>127</span>, <span style=color:#ae81ff>127</span>, <span style=color:#ae81ff>127</span>])
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> self.floors.contains(<span style=color:#f92672>&amp;</span>p) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some((index, (_, facing))) <span style=color:#f92672>=</span> self
+</span></span><span style=display:flex><span>                    .path_data
+</span></span><span style=display:flex><span>                    .iter()
+</span></span><span style=display:flex><span>                    .rev()
+</span></span><span style=display:flex><span>                    .enumerate()
+</span></span><span style=display:flex><span>                    .find(<span style=color:#f92672>|</span>(_, (pp, _))<span style=color:#f92672>|</span> p <span style=color:#f92672>==</span> <span style=color:#f92672>*</span>pp)
+</span></span><span style=display:flex><span>                {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>let</span> c <span style=color:#f92672>=</span> <span style=color:#66d9ef>if</span> index <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>223</span> { <span style=color:#ae81ff>32</span> } <span style=color:#66d9ef>else</span> { (<span style=color:#ae81ff>255</span> <span style=color:#f92672>-</span> index) <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u8</span> };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>match</span> facing {
+</span></span><span style=display:flex><span>                        <span style=color:#e6db74>&#39;^&#39;</span> <span style=color:#f92672>=&gt;</span> image::Rgb([c, <span style=color:#ae81ff>15</span>, <span style=color:#ae81ff>15</span>]),
+</span></span><span style=display:flex><span>                        <span style=color:#e6db74>&#39;v&#39;</span> <span style=color:#f92672>=&gt;</span> image::Rgb([<span style=color:#ae81ff>15</span>, c, <span style=color:#ae81ff>15</span>]),
+</span></span><span style=display:flex><span>                        <span style=color:#e6db74>&#39;&lt;&#39;</span> <span style=color:#f92672>=&gt;</span> image::Rgb([<span style=color:#ae81ff>15</span>, <span style=color:#ae81ff>15</span>, c]),
+</span></span><span style=display:flex><span>                        <span style=color:#e6db74>&#39;&gt;&#39;</span> <span style=color:#f92672>=&gt;</span> image::Rgb([c, c, <span style=color:#ae81ff>15</span>]),
+</span></span><span style=display:flex><span>                        _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;unknown facing char {c}&#34;</span>),
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    image::Rgb([<span style=color:#ae81ff>15</span>, <span style=color:#ae81ff>15</span>, <span style=color:#ae81ff>15</span>])
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                image::Rgb([<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>])
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The <code>c</code> value figures out how far we are from the beginning of the trail and fades down to the basic gray I&rsquo;m using as a floor color (to differentiate from black empty space).</p><p>Onward!</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
+<script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
+<script defer src=/custom.js></script></body></html>
