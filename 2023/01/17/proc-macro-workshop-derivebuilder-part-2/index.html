@@ -1,0 +1,713 @@
+<!doctype html><html><head><title>Proc Macro Workshop: derive(Builder) [Part 2] – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.css integrity=sha384-exe4Ak6B0EoJI0ogGxjJ8rn+RN3ftPnEQrGwX59KTCl5ybGzvHGKjhPKk/KC3abb crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot-default.min.css integrity="sha256-s0KLB0LnI5oqhHF8gkgfmxU4usUFEHlWJTxT8q72Tq4=" crossorigin=anonymous><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin=anonymous><link href="https://fonts.googleapis.com/css?family=Spectral+SC|Lato|Share+Tech+Mono" rel=stylesheet><link rel=stylesheet href=/custom.css defer><script type=text/javascript src=//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js></script></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Proc Macro Workshop: derive(Builder) [Part 2]</h1><div class=entry-meta><span class=entry-date>2023-01-17</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/01/16/a-justfile-for-my-blog/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/01/15/proc-macro-workshop-derivebuilder-part-1/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/compilers>Compilers</a></li><li><a href=https://blog.jverkamp.com/2023/01/15/proc-macro-workshop-derivebuilder-part-1/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/macros>Macros</a></li><li><a href=https://blog.jverkamp.com/2023/01/16/a-justfile-for-my-blog/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/rust>Rust</a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/01/15/proc-macro-workshop-derivebuilder-part-1/ class=previous-link></a><a class=taxonomy-value href=/series/proc-macro-workshop>Proc Macro Workshop</a></li><li><a href=https://blog.jverkamp.com/2023/01/15/proc-macro-workshop-derivebuilder-part-1/ class=previous-link></a><a class=taxonomy-value href=/series/proc-macro-workshop-derivebuilder>Proc Macro Workshop: derive(Builder)</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2023/01/16/a-justfile-for-my-blog/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2023/01/16/a-justfile-for-my-blog/ class=previous-link>Prev</a></ul></li></ul></div></div></header><div class=entry-content><p>Okay, in <a href=https://blog.jverkamp.com/2023/01/15/proc-macro-workshop-derivebuilder-part-1/>Proc Macro Workshop: derive(Builder) [Part 1]</a> we created a <code>derive(Builder)</code> macro to implement the <a href=https://en.wikipedia.org/wiki/builder%20pattern>builder pattern</a>. We created a new <code>*Builder</code> struct, created methods to set each field in a chain, and allowed some fields to be optional.</p><p>So what&rsquo;s left? (Be sure to start with <a href=https://blog.jverkamp.com/2023/01/15/proc-macro-workshop-derivebuilder-part-1/>Part 1</a> if you haven&rsquo;t read that!)</p><nav id=TableOfContents><ul><li><a href=#7-repeated-fields>7. Repeated fields</a></li><li><a href=#8-unrecognized-attributes>8. Unrecognized attributes</a></li><li><a href=#9-redefined-prelude-types>9. Redefined prelude types</a></li><li><a href=#whats-next>What&rsquo;s next?</a></li></ul></nav><p>Let&rsquo;s do this!</p><h2 id=7-repeated-fields>7. Repeated fields</h2><p>For this, we want to add support for:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>let</span> command <span style=color:#f92672>=</span> Command::builder()
+</span></span><span style=display:flex><span>    .executable(<span style=color:#e6db74>&#34;cargo&#34;</span>.to_owned())
+</span></span><span style=display:flex><span>    .arg(<span style=color:#e6db74>&#34;build&#34;</span>.to_owned())
+</span></span><span style=display:flex><span>    .arg(<span style=color:#e6db74>&#34;--release&#34;</span>.to_owned())
+</span></span><span style=display:flex><span>    .build()
+</span></span><span style=display:flex><span>    .unwrap();
+</span></span></code></pre></div><p>Explicitly, to be able to specify the <code>args</code> one at a time (if we want). To do that, one option would be to automagically create the singular for plural field names&mldr; but that doesn&rsquo;t seem very Rusty. Instead, we&rsquo;ll use <code>attributes</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Builder)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Command</span> {
+</span></span><span style=display:flex><span>    executable: String,
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[builder(each = </span><span style=color:#e6db74>&#34;arg&#34;</span><span style=color:#75715e>)]</span>
+</span></span><span style=display:flex><span>    args: Vec<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[builder(each = </span><span style=color:#e6db74>&#34;env&#34;</span><span style=color:#75715e>)]</span>
+</span></span><span style=display:flex><span>    env: Vec<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    current_dir: Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Any time you specify <code>builder(each = $name)</code>, you should create a second method that takes the values one at a time. One additional gotcha: if the name is different (a la <code>args</code> and <code>arg</code>), generate both. If they aren&rsquo;t (a la <code>env</code>), only generate the one at a time method.</p><p>That&rsquo;ll be interesting!</p><p>So first, we&rsquo;ll need to parse the attributes. To tell the macro library that we&rsquo;re doing this, we actually need to change the first <code>proc_macro_derive</code> call with an additional <code>attributes</code> parameter. It&rsquo;s macros all the way down!</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder, attributes(builder))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>Then, let&rsquo;s look at what we&rsquo;re actually getting here. Putting a <code>println!("{:#?}", ...)</code> on the first field above (args), we get:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>Some(
+</span></span><span style=display:flex><span>    Field {
+</span></span><span style=display:flex><span>        attrs: [
+</span></span><span style=display:flex><span>            Attribute {
+</span></span><span style=display:flex><span>                pound_token: <span style=color:#a6e22e>Pound</span>,
+</span></span><span style=display:flex><span>                style: <span style=color:#a6e22e>Outer</span>,
+</span></span><span style=display:flex><span>                bracket_token: <span style=color:#a6e22e>Bracket</span>,
+</span></span><span style=display:flex><span>                path: <span style=color:#a6e22e>Path</span> {
+</span></span><span style=display:flex><span>                    leading_colon: None,
+</span></span><span style=display:flex><span>                    segments: [
+</span></span><span style=display:flex><span>                        PathSegment {
+</span></span><span style=display:flex><span>                            ident: <span style=color:#a6e22e>Ident</span> {
+</span></span><span style=display:flex><span>                                ident: <span style=color:#e6db74>&#34;builder&#34;</span>,
+</span></span><span style=display:flex><span>                                span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1468</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1475</span>),
+</span></span><span style=display:flex><span>                            },
+</span></span><span style=display:flex><span>                            arguments: None,
+</span></span><span style=display:flex><span>                        },
+</span></span><span style=display:flex><span>                    ],
+</span></span><span style=display:flex><span>                },
+</span></span><span style=display:flex><span>                tokens: <span style=color:#a6e22e>TokenStream</span> [
+</span></span><span style=display:flex><span>                    Group {
+</span></span><span style=display:flex><span>                        delimiter: <span style=color:#a6e22e>Parenthesis</span>,
+</span></span><span style=display:flex><span>                        stream: <span style=color:#a6e22e>TokenStream</span> [
+</span></span><span style=display:flex><span>                            Ident {
+</span></span><span style=display:flex><span>                                ident: <span style=color:#e6db74>&#34;each&#34;</span>,
+</span></span><span style=display:flex><span>                                span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1476</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1480</span>),
+</span></span><span style=display:flex><span>                            },
+</span></span><span style=display:flex><span>                            Punct {
+</span></span><span style=display:flex><span>                                ch: <span style=color:#f92672>&#39;=&#39;</span>,
+</span></span><span style=display:flex><span>                                spacing: <span style=color:#a6e22e>Alone</span>,
+</span></span><span style=display:flex><span>                                span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1481</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1482</span>),
+</span></span><span style=display:flex><span>                            },
+</span></span><span style=display:flex><span>                            Literal {
+</span></span><span style=display:flex><span>                                kind: <span style=color:#a6e22e>Str</span>,
+</span></span><span style=display:flex><span>                                symbol: <span style=color:#e6db74>&#34;arg&#34;</span>,
+</span></span><span style=display:flex><span>                                suffix: None,
+</span></span><span style=display:flex><span>                                span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1483</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1488</span>),
+</span></span><span style=display:flex><span>                            },
+</span></span><span style=display:flex><span>                        ],
+</span></span><span style=display:flex><span>                        span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1475</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1489</span>),
+</span></span><span style=display:flex><span>                    },
+</span></span><span style=display:flex><span>                ],
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>        ],
+</span></span><span style=display:flex><span>        vis: <span style=color:#a6e22e>Inherited</span>,
+</span></span><span style=display:flex><span>        ident: Some(
+</span></span><span style=display:flex><span>            Ident {
+</span></span><span style=display:flex><span>                ident: <span style=color:#e6db74>&#34;args&#34;</span>,
+</span></span><span style=display:flex><span>                span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1495</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1499</span>),
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>        ),
+</span></span><span style=display:flex><span>        colon_token: Some(
+</span></span><span style=display:flex><span>            Colon,
+</span></span><span style=display:flex><span>        ),
+</span></span><span style=display:flex><span>        ty: <span style=color:#a6e22e>Path</span>(
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        ),
+</span></span><span style=display:flex><span>    },
+</span></span><span style=display:flex><span>)
+</span></span></code></pre></div><p>So. We&rsquo;ll have <code>attrs</code>, which is a list of some sort containing the <code>path</code> part (<code>builder</code>) and the internal <code>tokens</code> part (<code>each = "arg"</code>). Let&rsquo;s make a function that can pull out a specific attribute as a hash map.</p><p>I feel like we should be able to get a bit more structure out of that though&mldr; and thankfully the <code>syn</code> maintainers agreed. There&rsquo;s a <a href=https://docs.rs/syn/latest/syn/struct.Attribute.html#method.parse_meta>parse_meta</a> method on <code>Attribute</code> that (if possible) parses the attribute into a <code>Meta</code> form:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>Ok(
+</span></span><span style=display:flex><span>    List(
+</span></span><span style=display:flex><span>        MetaList {
+</span></span><span style=display:flex><span>            path: <span style=color:#a6e22e>Path</span> {
+</span></span><span style=display:flex><span>                leading_colon: None,
+</span></span><span style=display:flex><span>                segments: [
+</span></span><span style=display:flex><span>                    PathSegment {
+</span></span><span style=display:flex><span>                        ident: <span style=color:#a6e22e>Ident</span> {
+</span></span><span style=display:flex><span>                            ident: <span style=color:#e6db74>&#34;builder&#34;</span>,
+</span></span><span style=display:flex><span>                            span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1468</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1475</span>),
+</span></span><span style=display:flex><span>                        },
+</span></span><span style=display:flex><span>                        arguments: None,
+</span></span><span style=display:flex><span>                    },
+</span></span><span style=display:flex><span>                ],
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>            paren_token: <span style=color:#a6e22e>Paren</span>,
+</span></span><span style=display:flex><span>            nested: [
+</span></span><span style=display:flex><span>                Meta(
+</span></span><span style=display:flex><span>                    NameValue(
+</span></span><span style=display:flex><span>                        MetaNameValue {
+</span></span><span style=display:flex><span>                            path: <span style=color:#a6e22e>Path</span> {
+</span></span><span style=display:flex><span>                                leading_colon: None,
+</span></span><span style=display:flex><span>                                segments: [
+</span></span><span style=display:flex><span>                                    PathSegment {
+</span></span><span style=display:flex><span>                                        ident: <span style=color:#a6e22e>Ident</span> {
+</span></span><span style=display:flex><span>                                            ident: <span style=color:#e6db74>&#34;each&#34;</span>,
+</span></span><span style=display:flex><span>                                            span: #<span style=color:#ae81ff>0</span> bytes(<span style=color:#ae81ff>1476</span><span style=color:#f92672>..</span><span style=color:#ae81ff>1480</span>),
+</span></span><span style=display:flex><span>                                        },
+</span></span><span style=display:flex><span>                                        arguments: None,
+</span></span><span style=display:flex><span>                                    },
+</span></span><span style=display:flex><span>                                ],
+</span></span><span style=display:flex><span>                            },
+</span></span><span style=display:flex><span>                            eq_token: Eq,
+</span></span><span style=display:flex><span>                            lit: <span style=color:#a6e22e>Str</span>(
+</span></span><span style=display:flex><span>                                LitStr {
+</span></span><span style=display:flex><span>                                    token: <span style=color:#e6db74>&#34;arg&#34;</span>,
+</span></span><span style=display:flex><span>                                },
+</span></span><span style=display:flex><span>                            ),
+</span></span><span style=display:flex><span>                        },
+</span></span><span style=display:flex><span>                    ),
+</span></span><span style=display:flex><span>                ),
+</span></span><span style=display:flex><span>            ],
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    ),
+</span></span><span style=display:flex><span>)
+</span></span></code></pre></div><p>So let&rsquo;s see what we can do to parse this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_parse_builder_each</span>(field: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>syn</span>::Field) -&gt; <span style=color:#a6e22e>std</span>::result::Result<span style=color:#f92672>&lt;</span>std::option::Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>, syn::Error<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> attr <span style=color:#66d9ef>in</span> field.attrs.iter() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> std::result::Result::Err(syn::Error::new(field.span(), <span style=color:#e6db74>&#34;Unknown attribute form&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> nested <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> attr.parse_meta() {
+</span></span><span style=display:flex><span>            Ok(syn::Meta::List(
+</span></span><span style=display:flex><span>                syn::MetaList { 
+</span></span><span style=display:flex><span>                    path: <span style=color:#a6e22e>syn</span>::Path {
+</span></span><span style=display:flex><span>                        segments,
+</span></span><span style=display:flex><span>                        <span style=color:#f92672>..</span>
+</span></span><span style=display:flex><span>                    },
+</span></span><span style=display:flex><span>                    nested,
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>..</span> 
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            )) <span style=color:#66d9ef>if</span> segments.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&amp;&amp;</span> segments[<span style=color:#ae81ff>0</span>].ident <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;builder&#34;</span> <span style=color:#f92672>&amp;&amp;</span> nested.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>=&gt;</span> nested[<span style=color:#ae81ff>0</span>].clone(),
+</span></span><span style=display:flex><span>            Ok(_) <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> err,
+</span></span><span style=display:flex><span>            Err(e) <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> std::result::Result::Err(e),
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// TODO: check the eq_token?
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> nested {
+</span></span><span style=display:flex><span>            syn::NestedMeta::Meta (
+</span></span><span style=display:flex><span>                syn::Meta::NameValue (
+</span></span><span style=display:flex><span>                    syn::MetaNameValue {
+</span></span><span style=display:flex><span>                        path: <span style=color:#a6e22e>syn</span>::Path {
+</span></span><span style=display:flex><span>                            segments,
+</span></span><span style=display:flex><span>                            <span style=color:#f92672>..</span>
+</span></span><span style=display:flex><span>                        },
+</span></span><span style=display:flex><span>                        eq_token,
+</span></span><span style=display:flex><span>                        lit: <span style=color:#a6e22e>syn</span>::Lit::Str(<span style=color:#66d9ef>str</span>)
+</span></span><span style=display:flex><span>                    } 
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                )
+</span></span><span style=display:flex><span>            ) <span style=color:#66d9ef>if</span> segments.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&amp;&amp;</span> segments[<span style=color:#ae81ff>0</span>].ident <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;each&#34;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>str</span>.value(),
+</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> err,
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> std::result::Result::Ok(std::option::Option::Some(value));
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we make it out of the loop, no (matching) attributes; response is Ok but None
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    std::result::Result::Ok(std::option::Option::None)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>I&rsquo;m not sure if I&rsquo;m happy with this or not. It&rsquo;s a bit weird to have a <code>Result&lt;Option&lt;String>></code>, but I think that&rsquo;s what I want. It&rsquo;s <code>Ok</code> if it parses correctly, <code>Err</code> if it doesn&rsquo;t. And then it&rsquo;s <code>Some&lt;String></code> if we get back a value and <code>None</code> if it parsed correctly but without a value.</p><p>Other than that, we do the same as we did yesterday for <code>try_optional</code> and unpack the meta structure, checking it as we go.</p><p>To test it out:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// ----- lib.rs -----
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder, attributes(builder))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> field <span style=color:#66d9ef>in</span> fields.iter() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.clone().unwrap();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> v <span style=color:#f92672>=</span> try_parse_builder_each(field);
+</span></span><span style=display:flex><span>        println!(<span style=color:#e6db74>&#34;{id:#}: {v:?}&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// $ cargo expand
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>executable: Ok(None)
+</span></span><span style=display:flex><span>args: Ok(Some(<span style=color:#e6db74>&#34;arg&#34;</span>))
+</span></span><span style=display:flex><span>env: Ok(Some(<span style=color:#e6db74>&#34;env&#34;</span>))
+</span></span><span style=display:flex><span>current_dir: Ok(None)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// ...
+</span></span></span></code></pre></div><p>That&rsquo;s a good sign!</p><p>So we know which ones are optional&mldr; and actually which ones have two methods (if the names are different) versus just one (if they&rsquo;re the same).</p><p>But&mldr; now we&rsquo;re really getting into the weeds, so I&rsquo;m going to go back and do something I should have done a while ago&mldr; I&rsquo;m going to replaced <code>fields</code> with a custom struct that has exactly what I want:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder, attributes(builder))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input<span style=color:#f92672>!</span>(input <span style=color:#66d9ef>as</span> syn::DeriveInput);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ident <span style=color:#f92672>=</span> ast.ident.clone();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Unwrap the nested fields information
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> fields <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> ast {
+</span></span><span style=display:flex><span>        syn::DeriveInput{
+</span></span><span style=display:flex><span>            data: <span style=color:#a6e22e>syn</span>::Data::Struct(
+</span></span><span style=display:flex><span>                syn::DataStruct{
+</span></span><span style=display:flex><span>                    fields: <span style=color:#a6e22e>syn</span>::Fields::Named (
+</span></span><span style=display:flex><span>                        syn::FieldsNamed{
+</span></span><span style=display:flex><span>                            named: <span style=color:#a6e22e>fields</span>,
+</span></span><span style=display:flex><span>                            <span style=color:#f92672>..</span>
+</span></span><span style=display:flex><span>                        },
+</span></span><span style=display:flex><span>                    ),
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>..</span>
+</span></span><span style=display:flex><span>                },
+</span></span><span style=display:flex><span>            ),
+</span></span><span style=display:flex><span>            <span style=color:#f92672>..</span>
+</span></span><span style=display:flex><span>        } <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>            fields
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        _ <span style=color:#f92672>=&gt;</span> unimplemented!(<span style=color:#e6db74>&#34;derive(Builder) only supports structs with named fields&#34;</span>)
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>FieldData</span> {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Main identifier and type for the field
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        id: <span style=color:#a6e22e>syn</span>::Ident,
+</span></span><span style=display:flex><span>        ty: <span style=color:#a6e22e>syn</span>::Type,
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If the type is a simply nested type (a la Option&lt;Thing&gt; or Vec&lt;Thing&gt;), populate these
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        nested_ty: <span style=color:#a6e22e>std</span>::option::Option<span style=color:#f92672>&lt;</span>(String, syn::Type)<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If the field has an each id
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        each_id: <span style=color:#a6e22e>std</span>::option::Option<span style=color:#f92672>&lt;</span>syn::Ident<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Parse the fields information we actually care about
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> fields <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.as_ref().unwrap().clone();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> ty <span style=color:#f92672>=</span> field.ty.clone();
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> nested_ty <span style=color:#f92672>=</span> std::option::Option::None;
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> valid_outer_types <span style=color:#f92672>=</span> [<span style=color:#e6db74>&#34;Option&#34;</span>, <span style=color:#e6db74>&#34;Vec&#34;</span>];
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> target <span style=color:#66d9ef>in</span> valid_outer_types {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> std::option::Option::Some(ty) <span style=color:#f92672>=</span> try_nested_type(<span style=color:#f92672>&amp;</span>ty, target) {
+</span></span><span style=display:flex><span>                nested_ty <span style=color:#f92672>=</span> std::option::Option::Some((target.to_owned(), ty));
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> each_id <span style=color:#f92672>=</span> <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> std::option::Option::Some(id) <span style=color:#f92672>=</span> try_parse_builder_each(<span style=color:#f92672>&amp;</span>field).unwrap() {
+</span></span><span style=display:flex><span>            std::option::Option::Some(format_ident<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;{}&#34;</span>, id))
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            std::option::Option::None
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        FieldData {
+</span></span><span style=display:flex><span>            id,
+</span></span><span style=display:flex><span>            ty,
+</span></span><span style=display:flex><span>            nested_ty,
+</span></span><span style=display:flex><span>            each_id,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }).collect::<span style=color:#f92672>&lt;</span>Vec<span style=color:#f92672>&lt;</span>_<span style=color:#f92672>&gt;&gt;</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>Basically, go ahead and keep the <code>id</code> and <code>ty</code> as we have, but now, we&rsquo;re going to also:</p><ul><li>Parse a few known inner types (<code>Option</code> for the previously used intentionally optional fields and <code>Vec</code> for the currently only supported <code>each</code> type)</li><li>Use the function above to parse the <code>each</code> attribute as an identifier (this code could be inlined, since this is now the only place that calls it)</li></ul><p>Then&mldr; we get to go through and use this in all of the previous methods:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder, attributes(builder))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Build the fields that will be placed in XBuilder
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// Each fields do not wrap in Option, everything else does
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> builder_fields <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> FieldData { id, ty, nested_ty, each_id, <span style=color:#f92672>..</span> } <span style=color:#f92672>=</span> field;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> each_id.is_some() <span style=color:#f92672>||</span> nested_ty.is_some() <span style=color:#f92672>&amp;&amp;</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>0</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;Option&#34;</span> {
+</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> { #id: #ty }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> { #id: <span style=color:#a6e22e>std</span>::option::Option<span style=color:#f92672>&lt;</span>#ty<span style=color:#f92672>&gt;</span> }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Build the default values for each XBuilder
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// Each fields should be special cased, everything else is None
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> builder_defaults <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> FieldData { id, nested_ty, each_id, <span style=color:#f92672>..</span> } <span style=color:#f92672>=</span> field;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> each_id.is_some() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> nested_ty.is_some() <span style=color:#f92672>&amp;&amp;</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>0</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;Vec&#34;</span> {
+</span></span><span style=display:flex><span>                quote<span style=color:#f92672>!</span> { #id: <span style=color:#a6e22e>std</span>::vec::Vec::new() }
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                unimplemented!(<span style=color:#e6db74>&#34;The only each fields currently supported must be Vec&#34;</span>)
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> { #id: <span style=color:#a6e22e>std</span>::option::Option::None }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Generate setters for each field in XBuilder
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// Full setters set the entire value at once
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// Each setters append one value at a time to a field
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> setters <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> FieldData { id, ty, nested_ty, each_id } <span style=color:#f92672>=</span> field;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> setters <span style=color:#f92672>=</span> Vec::new();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// We have only full setter (no each setter)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> each_id.is_none() {
+</span></span><span style=display:flex><span>            setters.push(
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> nested_ty.is_some() <span style=color:#f92672>&amp;&amp;</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>0</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;Option&#34;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// It is for an optional value
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    <span style=color:#66d9ef>let</span> inner_ty <span style=color:#f92672>=</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>1.</span>clone();
+</span></span><span style=display:flex><span>                    quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> #id(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: #inner_ty) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>                            self.#id <span style=color:#f92672>=</span> std::option::Option::Some(value);
+</span></span><span style=display:flex><span>                            self
+</span></span><span style=display:flex><span>                        }
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Non-optional value, need to Some it
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> #id(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: #ty) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>                            self.#id <span style=color:#f92672>=</span> std::option::Option::Some(value);
+</span></span><span style=display:flex><span>                            self
+</span></span><span style=display:flex><span>                        }
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            );
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// We have a full setter and an each setter (the names don&#39;t collide)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> each_id.is_some() <span style=color:#f92672>&amp;&amp;</span> id <span style=color:#f92672>!=</span> each_id.as_ref().unwrap() {
+</span></span><span style=display:flex><span>            setters.push(quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> #id(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: #ty) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>                    self.#id <span style=color:#f92672>=</span> value;
+</span></span><span style=display:flex><span>                    self
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            });
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// We have an each setter
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span> each_id.is_some() <span style=color:#f92672>&amp;&amp;</span> nested_ty.is_some() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>0</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;Vec&#34;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> inner_ty <span style=color:#f92672>=</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>1.</span>clone();
+</span></span><span style=display:flex><span>                setters.push(quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> #each_id(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: #inner_ty) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>                        self.#id.push(value);
+</span></span><span style=display:flex><span>                        self
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                });
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                unimplemented!(<span style=color:#e6db74>&#34;Builder each setters only support Vec fields for now&#34;</span>)
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>         
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Output one or both, depending on if they&#39;re set
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        quote<span style=color:#f92672>!</span> { 
+</span></span><span style=display:flex><span>            #(#setters)<span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Any fields that are required should be set to something
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> build_checkers <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> FieldData { id, nested_ty, <span style=color:#f92672>..</span> } <span style=color:#f92672>=</span> field;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> format!(<span style=color:#e6db74>&#34;{id} was not set&#34;</span>);
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> nested_ty.is_none() <span style=color:#f92672>||</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>0</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;Optional&#34;</span> {
+</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> self.#id.is_none() {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> std::result::Result::Err(#err.into());
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {}
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Unpack the values from XBuilder in order to make an X
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> build_fields <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> FieldData { id, nested_ty, each_id, <span style=color:#f92672>..</span>} <span style=color:#f92672>=</span> field;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> each_id.is_some() <span style=color:#f92672>||</span> nested_ty.is_some() <span style=color:#f92672>&amp;&amp;</span> nested_ty.as_ref().unwrap().<span style=color:#ae81ff>0</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;Option&#34;</span> {
+</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>               #id: <span style=color:#a6e22e>self</span>.#id.clone()
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>               #id: <span style=color:#a6e22e>self</span>.#id.clone().unwrap()
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 🎵 All together now 🎵
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> #builder_ident {
+</span></span><span style=display:flex><span>            #(#builder_fields),<span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>impl</span> #builder_ident {
+</span></span><span style=display:flex><span>            #(#setters)<span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>build</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self) -&gt; <span style=color:#a6e22e>std</span>::result::Result<span style=color:#f92672>&lt;</span>#ident, std::boxed::Box<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>dyn</span> std::error::Error<span style=color:#f92672>&gt;&gt;</span> {
+</span></span><span style=display:flex><span>                #(#build_checkers);<span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                std::result::Result::Ok(#ident {
+</span></span><span style=display:flex><span>                    #(#build_fields),<span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span>                })
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>impl</span> #ident {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>builder</span>() -&gt; #builder_ident {
+</span></span><span style=display:flex><span>                #builder_ident { 
+</span></span><span style=display:flex><span>                    #(#builder_defaults),<span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    proc_macro::TokenStream::from(output)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>I&rsquo;m not 100% sure that is actually cleaner&mldr; but I think I like it.</p><p>So what does that actually expand to?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// $ cargo expand
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Command</span> {
+</span></span><span style=display:flex><span>    executable: String,
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[builder(each = </span><span style=color:#e6db74>&#34;arg&#34;</span><span style=color:#75715e>)]</span>
+</span></span><span style=display:flex><span>    args: Vec<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[builder(each = </span><span style=color:#e6db74>&#34;env&#34;</span><span style=color:#75715e>)]</span>
+</span></span><span style=display:flex><span>    env: Vec<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    current_dir: Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>CommandBuilder</span> {
+</span></span><span style=display:flex><span>    executable: <span style=color:#a6e22e>std</span>::option::Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    args: Vec<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    env: Vec<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    current_dir: Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> CommandBuilder {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>executable</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: String) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>        self.executable <span style=color:#f92672>=</span> std::option::Option::Some(value);
+</span></span><span style=display:flex><span>        self
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>args</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: Vec<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>        self.args <span style=color:#f92672>=</span> value;
+</span></span><span style=display:flex><span>        self
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>arg</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: String) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>        self.args.push(value);
+</span></span><span style=display:flex><span>        self
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>env</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: String) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>        self.env.push(value);
+</span></span><span style=display:flex><span>        self
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>current_dir</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: String) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
+</span></span><span style=display:flex><span>        self.current_dir <span style=color:#f92672>=</span> std::option::Option::Some(value);
+</span></span><span style=display:flex><span>        self
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>build</span>(
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self,
+</span></span><span style=display:flex><span>    ) -&gt; <span style=color:#a6e22e>std</span>::result::Result<span style=color:#f92672>&lt;</span>Command, std::boxed::Box<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>dyn</span> std::error::Error<span style=color:#f92672>&gt;&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> self.executable.is_none() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> std::result::Result::Err(<span style=color:#e6db74>&#34;executable was not set&#34;</span>.into());
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        std::result::Result::Ok(Command {
+</span></span><span style=display:flex><span>            executable: <span style=color:#a6e22e>self</span>.executable.clone().unwrap(),
+</span></span><span style=display:flex><span>            args: <span style=color:#a6e22e>self</span>.args.clone(),
+</span></span><span style=display:flex><span>            env: <span style=color:#a6e22e>self</span>.env.clone(),
+</span></span><span style=display:flex><span>            current_dir: <span style=color:#a6e22e>self</span>.current_dir.clone(),
+</span></span><span style=display:flex><span>        })
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> Command {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>builder</span>() -&gt; <span style=color:#a6e22e>CommandBuilder</span> {
+</span></span><span style=display:flex><span>        CommandBuilder {
+</span></span><span style=display:flex><span>            executable: <span style=color:#a6e22e>std</span>::option::Option::None,
+</span></span><span style=display:flex><span>            args: <span style=color:#a6e22e>std</span>::vec::Vec::new(),
+</span></span><span style=display:flex><span>            env: <span style=color:#a6e22e>std</span>::vec::Vec::new(),
+</span></span><span style=display:flex><span>            current_dir: <span style=color:#a6e22e>std</span>::option::Option::None,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>main</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> command <span style=color:#f92672>=</span> Command::builder()
+</span></span><span style=display:flex><span>        .executable(<span style=color:#e6db74>&#34;cargo&#34;</span>.to_owned())
+</span></span><span style=display:flex><span>        .arg(<span style=color:#e6db74>&#34;build&#34;</span>.to_owned())
+</span></span><span style=display:flex><span>        .arg(<span style=color:#e6db74>&#34;--release&#34;</span>.to_owned())
+</span></span><span style=display:flex><span>        .build()
+</span></span><span style=display:flex><span>        .unwrap();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>match</span> (<span style=color:#f92672>&amp;</span>command.executable, <span style=color:#f92672>&amp;</span><span style=color:#e6db74>&#34;cargo&#34;</span>) {
+</span></span><span style=display:flex><span>        (left_val, right_val) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>(<span style=color:#f92672>*</span>left_val <span style=color:#f92672>==</span> <span style=color:#f92672>*</span>right_val) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> kind <span style=color:#f92672>=</span> ::core::panicking::AssertKind::Eq;
+</span></span><span style=display:flex><span>                ::core::panicking::assert_failed(
+</span></span><span style=display:flex><span>                    kind,
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>&amp;*</span>left_val,
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>&amp;*</span>right_val,
+</span></span><span style=display:flex><span>                    ::core::option::Option::None,
+</span></span><span style=display:flex><span>                );
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>match</span> (
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&amp;</span>command.args,
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&amp;&lt;</span>[_]<span style=color:#f92672>&gt;</span>::into_vec(<span style=color:#75715e>#[rustc_box]</span> ::alloc::boxed::Box::new([<span style=color:#e6db74>&#34;build&#34;</span>, <span style=color:#e6db74>&#34;--release&#34;</span>])),
+</span></span><span style=display:flex><span>    ) {
+</span></span><span style=display:flex><span>        (left_val, right_val) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>(<span style=color:#f92672>*</span>left_val <span style=color:#f92672>==</span> <span style=color:#f92672>*</span>right_val) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> kind <span style=color:#f92672>=</span> ::core::panicking::AssertKind::Eq;
+</span></span><span style=display:flex><span>                ::core::panicking::assert_failed(
+</span></span><span style=display:flex><span>                    kind,
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>&amp;*</span>left_val,
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>&amp;*</span>right_val,
+</span></span><span style=display:flex><span>                    ::core::option::Option::None,
+</span></span><span style=display:flex><span>                );
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>You know? That&rsquo;s not bad.</p><p>Tests?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ cargo test
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>test tests/01-parse.rs ... ok
+</span></span><span style=display:flex><span>test tests/02-create-builder.rs ... ok
+</span></span><span style=display:flex><span>test tests/03-call-setters.rs ... ok
+</span></span><span style=display:flex><span>test tests/04-call-build.rs ... ok
+</span></span><span style=display:flex><span>test tests/05-method-chaining.rs ... ok
+</span></span><span style=display:flex><span>test tests/06-optional-field.rs ... ok
+</span></span><span style=display:flex><span>test tests/07-repeated-field.rs ... ok
+</span></span><span style=display:flex><span>...
+</span></span></code></pre></div><p>Nice.</p><h2 id=8-unrecognized-attributes>8. Unrecognized attributes</h2><p>Part 8. Oh part 8. In a nutshell, if we do something silly like using the attribute as <code>builder(eac = "arg")</code>, we should generate better error messages like this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span><span style=display:flex><span>error: expected `builder(each = &#34;...&#34;)`
+</span></span><span style=display:flex><span>  --&gt; tests/08-unrecognized-attribute.rs:22:7
+</span></span><span style=display:flex><span>   |
+</span></span><span style=display:flex><span>22 |     #[builder(eac = &#34;arg&#34;)]
+</span></span><span style=display:flex><span>   |       ^^^^^^^^^^^^^^^^^^^^
+</span></span><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span></code></pre></div><p>Currently we&rsquo;re generating this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span><span style=display:flex><span>error: proc-macro derive panicked
+</span></span><span style=display:flex><span>  --&gt; tests/08-unrecognized-attribute.rs:19:10
+</span></span><span style=display:flex><span>   |
+</span></span><span style=display:flex><span>19 | #[derive(Builder)]
+</span></span><span style=display:flex><span>   |          ^^^^^^^
+</span></span><span style=display:flex><span>   |
+</span></span><span style=display:flex><span>   = help: message: called `Result::unwrap()` on an `Err` value: Error(&#34;Unknown attribute form&#34;)
+</span></span><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span></code></pre></div><p>So first pass, let&rsquo;s collect errors as we go:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder, attributes(builder))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input<span style=color:#f92672>!</span>(input <span style=color:#66d9ef>as</span> syn::DeriveInput);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ident <span style=color:#f92672>=</span> ast.ident.clone();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> errors <span style=color:#f92672>=</span> Vec::new();
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Parse the fields information we actually care about
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> fields <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> each_id <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> try_parse_builder_each(<span style=color:#f92672>&amp;</span>field) {
+</span></span><span style=display:flex><span>            std::result::Result::Ok(std::option::Option::Some(id)) <span style=color:#f92672>=&gt;</span> std::option::Option::Some(format_ident<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;{}&#34;</span>, id)),
+</span></span><span style=display:flex><span>            std::result::Result::Ok(std::option::Option::None) <span style=color:#f92672>=&gt;</span> std::option::Option::None,
+</span></span><span style=display:flex><span>            std::result::Result::Err(err) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                errors.push(err.to_compile_error());
+</span></span><span style=display:flex><span>                std::option::Option::None
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    }).collect::<span style=color:#f92672>&lt;</span>Vec<span style=color:#f92672>&lt;</span>_<span style=color:#f92672>&gt;&gt;</span>();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// 🎵 All together now 🎵
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>        #(#errors)<span style=color:#f92672>*</span>
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    proc_macro::TokenStream::from(output)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Basically, outside of my parsing, keep track of any compiler errors that I get and then at the end, add them to my stream. What&rsquo;s that output?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span><span style=display:flex><span>error: Unknown attribute form
+</span></span><span style=display:flex><span>  --&gt; tests/08-unrecognized-attribute.rs:22:5
+</span></span><span style=display:flex><span>   |
+</span></span><span style=display:flex><span>22 | /     #[builder(eac = &#34;arg&#34;)]
+</span></span><span style=display:flex><span>23 | |     args: Vec&lt;String&gt;,
+</span></span><span style=display:flex><span>   | |_____________________^
+</span></span><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span></code></pre></div><p>That&rsquo;s closer!</p><p>Update <code>try_parse_builder_each</code> to:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_parse_builder_each</span>(field: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>syn</span>::Field) -&gt; <span style=color:#a6e22e>std</span>::result::Result<span style=color:#f92672>&lt;</span>std::option::Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>, syn::Error<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> attr <span style=color:#66d9ef>in</span> field.attrs.iter() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> std::result::Result::Err(syn::Error::new(field.span(), <span style=color:#e6db74>&#34;expected `builder(each = \&#34;...\&#34;)`&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>And one step closer:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span><span style=display:flex><span>error: expected `builder(each = &#34;...&#34;)`
+</span></span><span style=display:flex><span>  --&gt; tests/08-unrecognized-attribute.rs:22:5
+</span></span><span style=display:flex><span>   |
+</span></span><span style=display:flex><span>22 | /     #[builder(eac = &#34;arg&#34;)]
+</span></span><span style=display:flex><span>23 | |     args: Vec&lt;String&gt;,
+</span></span><span style=display:flex><span>   | |_____________________^
+</span></span><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span></code></pre></div><p>We just need to get the right span on it.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_parse_builder_each</span>(field: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>syn</span>::Field) -&gt; <span style=color:#a6e22e>std</span>::result::Result<span style=color:#f92672>&lt;</span>std::option::Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>, syn::Error<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> attr <span style=color:#66d9ef>in</span> field.attrs.iter() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> std::result::Result::Err(syn::Error::new(attr.span(), <span style=color:#e6db74>&#34;expected `builder(each = \&#34;...\&#34;)`&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
+</span></span></code></pre></div><p>Gives us:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span><span style=display:flex><span>error: expected `builder(each = &#34;...&#34;)`
+</span></span><span style=display:flex><span>  --&gt; tests/08-unrecognized-attribute.rs:22:5
+</span></span><span style=display:flex><span>   |
+</span></span><span style=display:flex><span>22 |     #[builder(eac = &#34;arg&#34;)]
+</span></span><span style=display:flex><span>   |     ^^^^^^^^^^^^^^^^^^^^^^^
+</span></span><span style=display:flex><span>┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+</span></span></code></pre></div><p>Ugh.</p><p>In the end, the actual span that the test case wants is the one that&rsquo;s the <code>MetaList</code> variable in the first match. So I have to capture that, which means that I have to sprinkle in some <code>ref</code> to make things happy:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_parse_builder_each</span>(field: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>syn</span>::Field) -&gt; <span style=color:#a6e22e>std</span>::result::Result<span style=color:#f92672>&lt;</span>std::option::Option<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span>, syn::Error<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> attr <span style=color:#66d9ef>in</span> field.attrs.iter() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> <span style=color:#f92672>|</span>span<span style=color:#f92672>|</span> std::result::Result::Err(syn::Error::new(span, <span style=color:#e6db74>&#34;expected `builder(each = \&#34;...\&#34;)`&#34;</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> (attr_span, nested) <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> attr.parse_meta() {
+</span></span><span style=display:flex><span>            Ok(syn::Meta::List(
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>ref</span> metalist <span style=color:#f92672>@</span> syn::MetaList { 
+</span></span><span style=display:flex><span>                    path: <span style=color:#a6e22e>syn</span>::Path {
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>ref</span> segments,
+</span></span><span style=display:flex><span>                        <span style=color:#f92672>..</span>
+</span></span><span style=display:flex><span>                    },
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>ref</span> nested,
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>..</span> 
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            )) <span style=color:#66d9ef>if</span> segments.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&amp;&amp;</span> segments[<span style=color:#ae81ff>0</span>].ident <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;builder&#34;</span> <span style=color:#f92672>&amp;&amp;</span> nested.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>=&gt;</span> (metalist.span(), nested[<span style=color:#ae81ff>0</span>].clone()),
+</span></span><span style=display:flex><span>            Ok(thing) <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> err(thing.span()),
+</span></span><span style=display:flex><span>            Err(e) <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> std::result::Result::Err(e),
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// TODO: check the eq_token?
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> nested {
+</span></span><span style=display:flex><span>            syn::NestedMeta::Meta (
+</span></span><span style=display:flex><span>                syn::Meta::NameValue (
+</span></span><span style=display:flex><span>                    syn::MetaNameValue {
+</span></span><span style=display:flex><span>                        path: <span style=color:#a6e22e>syn</span>::Path {
+</span></span><span style=display:flex><span>                            segments,
+</span></span><span style=display:flex><span>                            <span style=color:#f92672>..</span>
+</span></span><span style=display:flex><span>                        },
+</span></span><span style=display:flex><span>                        eq_token: <span style=color:#a6e22e>_</span>,
+</span></span><span style=display:flex><span>                        lit: <span style=color:#a6e22e>syn</span>::Lit::Str(<span style=color:#66d9ef>str</span>)
+</span></span><span style=display:flex><span>                    } 
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                )
+</span></span><span style=display:flex><span>            ) <span style=color:#66d9ef>if</span> segments.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>&amp;&amp;</span> segments[<span style=color:#ae81ff>0</span>].ident <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;each&#34;</span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>str</span>.value(),
+</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> err(attr_span),
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> std::result::Result::Ok(std::option::Option::Some(value));
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we make it out of the loop, no (matching) attributes; response is Ok but None
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    std::result::Result::Ok(std::option::Option::None)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>But now that&rsquo;s all in place:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ cargo test
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>test tests/01-parse.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/02-create-builder.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/03-call-setters.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/04-call-build.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/05-method-chaining.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/06-optional-field.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/07-repeated-field.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/08-unrecognized-attribute.rs <span style=color:#f92672>[</span>should fail to compile<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>...
+</span></span></code></pre></div><p>Nice.</p><h2 id=9-redefined-prelude-types>9. Redefined prelude types</h2><p>Okay, so the last one <em>should</em> be a freebie if I&rsquo;ve been doing this right. Remember how I said people can do squirrely things with types and you should fully qualify them in macros? Well:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>use</span> derive_builder::Builder;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> Option <span style=color:#f92672>=</span> ();
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> Some <span style=color:#f92672>=</span> ();
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> None <span style=color:#f92672>=</span> ();
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> Result <span style=color:#f92672>=</span> ();
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> Box <span style=color:#f92672>=</span> ();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Builder)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Command</span> {
+</span></span><span style=display:flex><span>    executable: String,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>main</span>() {}
+</span></span></code></pre></div><p>Have I been?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ cargo test
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>...
+</span></span><span style=display:flex><span>test tests/01-parse.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/02-create-builder.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/03-call-setters.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/04-call-build.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/05-method-chaining.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/06-optional-field.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/07-repeated-field.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/08-unrecognized-attribute.rs <span style=color:#f92672>[</span>should fail to compile<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>test tests/09-redefined-prelude-types.rs <span style=color:#f92672>[</span>should pass<span style=color:#f92672>]</span> ... ok
+</span></span><span style=display:flex><span>...
+</span></span></code></pre></div><p>You bet!</p><h2 id=whats-next>What&rsquo;s next?</h2><p>And that&rsquo;s that. I&rsquo;ve finished the first of the proc-macro workshop. That&rsquo;s pretty cool, but there&rsquo;s still so much to do!</p><p>I think at this point, I want to do them in order, so I&rsquo;ll probably do <code>derive(CustomDebug)</code> next. Should be fun.</p><p>Onward!</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div><script defer src=https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.js integrity="sha256-yDarFEUo87Z0i7SaC6b70xGAKCghhWYAZ/3p+89o4lE=" crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0-alpha2/katex.min.js integrity=sha384-OMvkZ24ANLwviZR2lVq8ujbE/bUO8IR1FdBrKLQBI14Gq5Xp/lksIccGkmKL8m+h crossorigin=anonymous></script>
+<script defer src=https://cdnjs.cloudflare.com/ajax/libs/bigfoot/2.1.4/bigfoot.min.js integrity="sha256-2ylggML6rCJMc817KbE8Cx+cuxYIM+6bjG2Gpq2g7iU=" crossorigin=anonymous></script>
+<script defer src=https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js></script>
+<script defer src=/custom.js></script></body></html>
