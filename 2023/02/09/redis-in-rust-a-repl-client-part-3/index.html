@@ -1,0 +1,188 @@
+<!doctype html><html><head><title>Redis in Rust: A REPL Client [Part 3] – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><script src=/jquery_5823201688106629450.min.30448892aa1f91e9c4cb5494e5c5e5abc13b7778de7786e5256cdc7d2424813a.js defer></script>
+<script src=/jquery.fancybox_6181813213021922412.min.6ba037466db9f8843b66c38c32fe5a353344e7fd68ecda97efb63a84c881f828.js defer></script>
+<script src=/katex_12008035502722260518.min.3cc3a080c0368785179e37b0cd0a71c6cf60c4fc5a8dce503f5a542ec0a25043.js defer></script>
+<script src=/bigfoot_8444447145154709333.min.5e80bd85ebaeb95607834d6777bfe7013d1d161f0f02a31b845e4bd765898316.js defer></script>
+<script src=/mermaid_12365941879912544862.min.e8f19283a632077085b9ad74aecad54abe84429c69789fd29ffa3a254d86abdd.js defer></script>
+<script src=/custom.min.9bb1a6d1e0b58ced38df246e4479317e4561461cfabab31b36fbc36035186214.js defer></script>
+<link rel=stylesheet href=/katex_14163593549783030822.min.16bacd59fb224ae6c97a749ab0ac1e708cb5e0c9ce5c9a08d7fd73dc8e69429f.css><link rel=stylesheet href=/bigfoot-default_16482899066638414220.min.f15d4faa4519addb976f9d69b42bd9eb491b3596b6b2eda83aa3e9e1f48b8f14.css><link rel=stylesheet href=/jquery.fancybox_16222217791602823071.min.e28b5d7d9d89efacb5f708ac30cbd76b1b9a0f816dfd9da96631d1d09cbbdd76.css><link rel=stylesheet href=/css_4780214198035419921.min.7cfac95bdd962d85ceec560e50fe7b04c44b58a76e5202006ef36ca8c0a7d836.css><link rel=stylesheet href=/custom.min.3bcba67844fc4a76aa7c1947a1fcf14cddaf8e9e0f1e734fde0fa219416f058d.css></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Redis in Rust: A REPL Client [Part 3]</h1><div class=entry-meta><span class=entry-date>2023-02-09</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/02/04/redis-in-rust-an-echo-server-part-2/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a class=taxonomy-value href=/programming/topics/client>Client</a></li><li><a href=https://blog.jverkamp.com/2023/02/04/redis-in-rust-an-echo-server-part-2/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/networking>Networking</a></li><li><a href=https://blog.jverkamp.com/2023/01/31/cloning-redis-in-rust-resp-part-1/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/parsing>Parsing</a></li><li><a href=https://blog.jverkamp.com/2023/02/04/redis-in-rust-an-echo-server-part-2/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/redis>Redis</a></li><li><a class=taxonomy-value href=/programming/topics/repl>REPL</a></li><li><a href=https://blog.jverkamp.com/2023/02/04/redis-in-rust-an-echo-server-part-2/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/tcp>TCP</a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/02/04/redis-in-rust-an-echo-server-part-2/ class=previous-link></a><a class=taxonomy-value href=/series/cloning-redis-in-rust>Cloning Redis in Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2023/02/09/genuary-2023.09-plants/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2023/02/09/genuary-2023.09-plants/ class=previous-link>Prev</a></ul></li></ul></div></div></header><div class=entry-content><p>Okay, we&rsquo;ve got a server and we can ping it. Let&rsquo;s actually make a simple client, so I don&rsquo;t have to do funny things with echo any more. Specifically, let&rsquo;s make a <a href=https://en.wikipedia.org/wiki/REPL>REPL</a>!</p><nav id=TableOfContents><ul><li><a href=#a-repl>A REPL</a><ul><li><a href=#the-code>The code</a></li><li><a href=#unsafe><code>unsafe</code>&mldr;</a></li><li><a href=#server>Server</a></li><li><a href=#client>Client</a></li></ul></li><li><a href=#whats-next>What&rsquo;s next?</a></li></ul></nav><h2 id=a-repl>A REPL</h2><p>In a nutshell:</p><h3 id=the-code>The code</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>use</span> std::io::{self, BufRead, stdout, Write};
+</span></span><span style=display:flex><span><span style=color:#66d9ef>use</span> std::<span style=color:#66d9ef>str</span>::FromStr;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>use</span> redis_rs::RedisType;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>use</span> tokio::net::{TcpStream};
+</span></span><span style=display:flex><span><span style=color:#66d9ef>use</span> tokio::io::{AsyncReadExt, AsyncWriteExt};
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>use</span> tracing_subscriber;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[tokio::main]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>async</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>main</span>() -&gt; <span style=color:#a6e22e>std</span>::io::Result<span style=color:#f92672>&lt;</span>()<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    tracing_subscriber::fmt::init();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> addr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;0.0.0.0:6379&#34;</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> stream <span style=color:#f92672>=</span> TcpStream::connect(addr).<span style=color:#66d9ef>await</span><span style=color:#f92672>?</span>;
+</span></span><span style=display:flex><span>    tracing::info<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Connecting to {addr}&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> stdin <span style=color:#f92672>=</span> io::stdin();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> stdin_iterator <span style=color:#f92672>=</span> stdin.lock().lines();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> buf <span style=color:#f92672>=</span> [<span style=color:#ae81ff>0</span>; <span style=color:#ae81ff>1024</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// To match the protocol, always encode strings as bulk string even when it&#39;s not necessary
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#75715e>// TODO: Do this better :)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>unsafe</span> {
+</span></span><span style=display:flex><span>        redis_rs::ALWAYS_USE_BULK_STRING <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>        print!(<span style=color:#e6db74>&#34;redis-rs&gt; &#34;</span>);
+</span></span><span style=display:flex><span>        stdout().flush()<span style=color:#f92672>?</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> stdin_iterator.next() {
+</span></span><span style=display:flex><span>            Some(Ok(line)) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::debug<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Input read: {line}&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Parse the input into a collection of bulk strings
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> values <span style=color:#f92672>=</span> Vec::new();
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>for</span> arg <span style=color:#66d9ef>in</span> line.split_ascii_whitespace().into_iter() {
+</span></span><span style=display:flex><span>                    values.push(RedisType::String { value: String::from(arg) });
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Bundle into an array
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>let</span> array <span style=color:#f92672>=</span> RedisType::from(values);
+</span></span><span style=display:flex><span>                tracing::debug<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Input parsed: {array}&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Send them to the server
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                stream.write_all(array.to_string().as_bytes()).<span style=color:#66d9ef>await</span><span style=color:#f92672>?</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Wait for an read a response back from the server
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>let</span> bytes_read <span style=color:#f92672>=</span> stream.read(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> buf).<span style=color:#66d9ef>await</span><span style=color:#f92672>?</span>;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> bytes_read <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                tracing::debug<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Received {bytes_read} bytes from server&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Parse the response from the server
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#66d9ef>let</span> string <span style=color:#f92672>=</span> String::from_utf8_lossy(<span style=color:#f92672>&amp;</span>buf[<span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>bytes_read]);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> data <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> RedisType::from_str(<span style=color:#f92672>&amp;</span>string) {
+</span></span><span style=display:flex><span>                    Ok(data) <span style=color:#f92672>=&gt;</span> data,
+</span></span><span style=display:flex><span>                    Err(err) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                        tracing::warn<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Error parsing response from server: {err:?}&#34;</span>);
+</span></span><span style=display:flex><span>                        <span style=color:#66d9ef>continue</span>;
+</span></span><span style=display:flex><span>                    },
+</span></span><span style=display:flex><span>                };
+</span></span><span style=display:flex><span>                
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Print out the response from the server
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                <span style=color:#75715e>// TODO: Do something else with this? 
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                println!(<span style=color:#e6db74>&#34;{data:?}&#34;</span>);
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>            Some(Err(e)) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::warn<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Error reading from stdin: {e:?}&#34;</span>);
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::info<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;Reached end of stdin&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    Ok(())
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>I&rsquo;m still using <code>tracing</code> and <code>tokio</code>, but I don&rsquo;t actually need the async code for this. Instead, I&rsquo;m going to basically:</p><ul><li><code>R</code>ead a new line of input</li><li><code>P</code>arse that input by splitting on whitespace and pushing each into a string<ul><li>This isn&rsquo;t quite correct, I actually want to read off <code>"this is a test"</code> as one String. That can be a problem for tomorrow though.</li></ul></li><li><code>E</code>valuate the string&mldr; by sending it to the server, letting it parse and echo it back, and printing back what we got</li><li><code>L</code>oop back to the beginning!</li></ul><p>A REPL as it were. 😄</p><h3 id=unsafe><code>unsafe</code>&mldr;</h3><p>The one <em>really</em> ugly bit of code I have at the moment (which I will fix!) is</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// To match the protocol, always encode strings as bulk string even when it&#39;s not necessary
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// TODO: Do this better :)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>unsafe</span> {
+</span></span><span style=display:flex><span>    redis_rs::ALWAYS_USE_BULK_STRING <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>This matches a quick update in <code>lib.rs</code>, specifically in the <code>impl Display for RedisType</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> Display <span style=color:#66d9ef>for</span> RedisType {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>fmt</span>(<span style=color:#f92672>&amp;</span>self, f: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> std::fmt::Formatter<span style=color:#f92672>&lt;&#39;</span>_<span style=color:#f92672>&gt;</span>) -&gt; <span style=color:#a6e22e>std</span>::fmt::Result {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> crlf <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;\r\n&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self {
+</span></span><span style=display:flex><span>            RedisType::NullString <span style=color:#f92672>=&gt;</span> write!(f, <span style=color:#e6db74>&#34;$-1{}&#34;</span>, crlf),
+</span></span><span style=display:flex><span>            RedisType::NullArray <span style=color:#f92672>=&gt;</span> write!(f, <span style=color:#e6db74>&#34;*-1{}&#34;</span>, crlf),
+</span></span><span style=display:flex><span>            RedisType::String { value } <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> value.len() <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Empty strings
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    write!(f, <span style=color:#e6db74>&#34;$0{}{}&#34;</span>, crlf, crlf)
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>unsafe</span> { ALWAYS_USE_BULK_STRING }
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>||</span> (value
+</span></span><span style=display:flex><span>                        .chars()
+</span></span><span style=display:flex><span>                        .any(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.is_control() <span style=color:#f92672>||</span> c <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;\r&#39;</span> <span style=color:#f92672>||</span> c <span style=color:#f92672>==</span> <span style=color:#e6db74>&#39;\n&#39;</span>))
+</span></span><span style=display:flex><span>                {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Bulk strings
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    <span style=color:#75715e>// TODO: Are there any other interesting cases?
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    write!(f, <span style=color:#e6db74>&#34;${}{}{}{}&#34;</span>, value.len(), crlf, value, crlf)
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Simple strings
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>                    write!(f, <span style=color:#e6db74>&#34;+{}{}&#34;</span>, value, crlf)
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#f92672>..</span>.
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#f92672>..</span>.
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>If <code>ALWAYS_USE_BULK_STRING</code> is set, write it in the <code>$</code> bulk string format, since that&rsquo;s apparently how the client is expected to talk to the server. If it&rsquo;s not set, use the previous heuristics.</p><p>Why <code>unsafe</code>? Because if you modify this &lsquo;static&rsquo; value between two threads <em>BAD THINGS COULD HAPPEN</em>. I&rsquo;m half kidding, but I get why Rust is trying to protect me from this.</p><p>As I said though, that&rsquo;s a problem for another day.</p><p>For now:</p><h3 id=server>Server</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ RUST_LOG<span style=color:#f92672>=</span>debug cargo run --bin server
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    Finished dev <span style=color:#f92672>[</span>unoptimized + debuginfo<span style=color:#f92672>]</span> target<span style=color:#f92672>(</span>s<span style=color:#f92672>)</span> in 0.02s
+</span></span><span style=display:flex><span>     Running <span style=color:#e6db74>`</span>target/debug/server<span style=color:#e6db74>`</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:30.000510Z  INFO server: Listening on 0.0.0.0:6379
+</span></span><span style=display:flex><span>2023-02-09T06:16:36.348605Z DEBUG server: Accepted connection from 127.0.0.1:57082
+</span></span><span style=display:flex><span>2023-02-09T06:16:36.348686Z  INFO server: <span style=color:#f92672>[</span>127.0.0.1:57082<span style=color:#f92672>]</span> Accepted connection
+</span></span><span style=display:flex><span>2023-02-09T06:16:44.659516Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:57082<span style=color:#f92672>]</span> Received <span style=color:#ae81ff>38</span> bytes
+</span></span><span style=display:flex><span>2023-02-09T06:16:44.659635Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:57082 Received Array <span style=color:#f92672>{</span> value: <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;SET&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;the_answer&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;42&#34;</span> <span style=color:#f92672>}]</span> <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:52.037582Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:57082<span style=color:#f92672>]</span> Received <span style=color:#ae81ff>37</span> bytes
+</span></span><span style=display:flex><span>2023-02-09T06:16:52.037694Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:57082 Received Array <span style=color:#f92672>{</span> value: <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;SET&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;hello&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;\&#34;WORLD\&#34;&#34;</span> <span style=color:#f92672>}]</span> <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:54.533763Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:57082<span style=color:#f92672>]</span> Received <span style=color:#ae81ff>24</span> bytes
+</span></span><span style=display:flex><span>2023-02-09T06:16:54.533879Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:57082 Received Array <span style=color:#f92672>{</span> value: <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;GET&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;hello&#34;</span> <span style=color:#f92672>}]</span> <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:56.229537Z  INFO server: <span style=color:#f92672>[</span>127.0.0.1:57082<span style=color:#f92672>]</span> Ending connection
+</span></span><span style=display:flex><span>^C
+</span></span></code></pre></div><h3 id=client>Client</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span>$ RUST_LOG<span style=color:#f92672>=</span>debug cargo run --bin client
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    Finished dev <span style=color:#f92672>[</span>unoptimized + debuginfo<span style=color:#f92672>]</span> target<span style=color:#f92672>(</span>s<span style=color:#f92672>)</span> in 0.02s
+</span></span><span style=display:flex><span>     Running <span style=color:#e6db74>`</span>target/debug/client<span style=color:#e6db74>`</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:36.348568Z  INFO client: Connecting to 0.0.0.0:6379
+</span></span><span style=display:flex><span>redis-rs&gt; SET the_answer <span style=color:#ae81ff>42</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:44.659081Z DEBUG client: Input read: SET the_answer <span style=color:#ae81ff>42</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:44.659234Z DEBUG client: Input parsed: *3
+</span></span><span style=display:flex><span>$3
+</span></span><span style=display:flex><span>SET
+</span></span><span style=display:flex><span>$10
+</span></span><span style=display:flex><span>the_answer
+</span></span><span style=display:flex><span>$2
+</span></span><span style=display:flex><span><span style=color:#ae81ff>42</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:44.659788Z DEBUG client: Received <span style=color:#ae81ff>38</span> bytes from server
+</span></span><span style=display:flex><span>Array <span style=color:#f92672>{</span> value: <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;SET&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;the_answer&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;42&#34;</span> <span style=color:#f92672>}]</span> <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>redis-rs&gt; SET hello <span style=color:#e6db74>&#34;WORLD&#34;</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:52.037235Z DEBUG client: Input read: SET hello <span style=color:#e6db74>&#34;WORLD&#34;</span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:52.037322Z DEBUG client: Input parsed: *3
+</span></span><span style=display:flex><span>$3
+</span></span><span style=display:flex><span>SET
+</span></span><span style=display:flex><span>$5
+</span></span><span style=display:flex><span>hello
+</span></span><span style=display:flex><span>$7
+</span></span><span style=display:flex><span><span style=color:#e6db74>&#34;WORLD&#34;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:52.037879Z DEBUG client: Received <span style=color:#ae81ff>37</span> bytes from server
+</span></span><span style=display:flex><span>Array <span style=color:#f92672>{</span> value: <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;SET&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;hello&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;\&#34;WORLD\&#34;&#34;</span> <span style=color:#f92672>}]</span> <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>redis-rs&gt; GET hello
+</span></span><span style=display:flex><span>2023-02-09T06:16:54.533415Z DEBUG client: Input read: GET hello
+</span></span><span style=display:flex><span>2023-02-09T06:16:54.533495Z DEBUG client: Input parsed: *2
+</span></span><span style=display:flex><span>$3
+</span></span><span style=display:flex><span>GET
+</span></span><span style=display:flex><span>$5
+</span></span><span style=display:flex><span>hello
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>2023-02-09T06:16:54.534065Z DEBUG client: Received <span style=color:#ae81ff>24</span> bytes from server
+</span></span><span style=display:flex><span>Array <span style=color:#f92672>{</span> value: <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;GET&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;hello&#34;</span> <span style=color:#f92672>}]</span> <span style=color:#f92672>}</span>
+</span></span><span style=display:flex><span>redis-rs&gt; ^C
+</span></span></code></pre></div><p>That&rsquo;s pretty cool to just see it working!</p><h2 id=whats-next>What&rsquo;s next?</h2><p>Now, I have a few options for what to do next:</p><ul><li>Actually make the server do something with these values</li><li>Test my client against the &lsquo;real&rsquo; redis server</li><li>Test my server against the &lsquo;real&rsquo; redis client</li><li>Fix the <code>unsafe</code> thing</li></ul><p>We shall see which one sounds most interesting later this week!</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div></body></html>
