@@ -38,8 +38,8 @@
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input<span style=color:#f92672>!</span>(input <span style=color:#66d9ef>as</span> DeriveInput);
-</span></span><span style=display:flex><span>    eprintln!(<span style=color:#e6db74>&#34;{ast:#?}&#34;</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input!(input <span style=color:#66d9ef>as</span> DeriveInput);
+</span></span><span style=display:flex><span>    eprintln!(<span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{ast:#?}</span><span style=color:#e6db74>&#34;</span>);
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    todo!()
 </span></span><span style=display:flex><span>}
@@ -318,10 +318,10 @@
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input<span style=color:#f92672>!</span>(input <span style=color:#66d9ef>as</span> DeriveInput);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input!(input <span style=color:#66d9ef>as</span> DeriveInput);
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ident <span style=color:#f92672>=</span> ast.ident;
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote! {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>impl</span> #ident {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>builder</span>() {
 </span></span><span style=display:flex><span>                todo!()
@@ -375,11 +375,11 @@
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div></blockquote><p>Now that&mldr; that is a bit more interesting. From what I see, to do this, we need to be able to do a few things:</p><ul><li>Generate a new <code>Ident</code> for <code>CommandBuilder</code>, so figure out how to to strings into <code>Ident</code>s</li><li>Create a new struct defintion that has the same fields as our object but each made optional</li><li>Modify our currently empty <code>builder</code> function to return a new <code>CommandBuilder</code> object</li></ul><p>Neat. So, first. How can we get a new <code>Ident</code>? Well, luckily if you dig a bit in <code>quote</code>, there just so happens to be exactly the macro you might need: <a href=https://docs.rs/quote/latest/quote/macro.format_ident.html>format_ident!</a>. Taking the same same form as <code>format!</code> and makes an <code>Ident</code> out of it. So we have:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input<span style=color:#f92672>!</span>(input <span style=color:#66d9ef>as</span> DeriveInput);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input!(input <span style=color:#66d9ef>as</span> DeriveInput);
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ident <span style=color:#f92672>=</span> ast.ident;
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident!(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote! {
 </span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> #builder_ident {
@@ -403,9 +403,9 @@
 </span></span><span style=display:flex><span><span style=color:#75715e>// ...
 </span></span></span></code></pre></div><p>Well that way easy (how long has it been since the Easy Button?).</p><p>Next though, we want to parse the fields. Remember the giant AST from before? And how I mentioned the <code>fields</code> variable? Well, let&rsquo;s write a BMOD (Big Match Of Doom) and pull that field out:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input<span style=color:#f92672>!</span>(input <span style=color:#66d9ef>as</span> syn::DeriveInput);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input!(input <span style=color:#66d9ef>as</span> syn::DeriveInput);
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ident <span style=color:#f92672>=</span> ast.ident.clone();
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident!(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> fields <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> ast {
 </span></span><span style=display:flex><span>        syn::DeriveInput{
@@ -439,12 +439,12 @@
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> ty <span style=color:#f92672>=</span> field.ty;
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        quote! {
 </span></span><span style=display:flex><span>            #id: <span style=color:#a6e22e>std</span>::option::Option<span style=color:#f92672>&lt;</span>#ty<span style=color:#f92672>&gt;</span>
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    });
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote! {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>impl</span> #ident {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>builder</span>() {
 </span></span><span style=display:flex><span>                todo!()
@@ -477,10 +477,10 @@
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> field <span style=color:#f92672>=</span> field.clone();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
 </span></span><span style=display:flex><span>        
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> { #id: <span style=color:#a6e22e>std</span>::option::Option::None }
+</span></span><span style=display:flex><span>        quote! { #id: <span style=color:#a6e22e>std</span>::option::Option::None }
 </span></span><span style=display:flex><span>    });
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote! {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> #builder_ident {
 </span></span><span style=display:flex><span>            #(#builder_fields),<span style=color:#f92672>*</span>
 </span></span><span style=display:flex><span>        }
@@ -528,7 +528,7 @@ fields.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-c
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#f92672>..</span>.
 </span></span><span style=display:flex><span>}
-</span></span></code></pre></div></blockquote><p>That&rsquo;s not bad. What we want to do for each of these is:</p><ul><li>for each <code>field</code> in <code>fields</code><ul><li>create a new method with the same name as the <code>field</code></li><li>the method should take a variable of the <code>type</code> of the <code>field</code></li><li>update the <code>field</code> in the struct with <code>Some(value)</code> (since it&rsquo;s optional)</li><li>return <code>&mut self</code> so these can chain</li></ul></li></ul><p>Sweet. Let&rsquo;s do it:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
+</span></span></code></pre></div></blockquote><p>That&rsquo;s not bad. What we want to do for each of these is:</p><ul><li>for each <code>field</code> in <code>fields</code><ul><li>create a new method with the same name as the <code>field</code></li><li>the method should take a variable of the <code>type</code> of the <code>field</code></li><li>update the <code>field</code> in the struct with <code>Some(value)</code> (since it&rsquo;s optional)</li><li>return <code>&amp;mut self</code> so these can chain</li></ul></li></ul><p>Sweet. Let&rsquo;s do it:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
 </span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>
@@ -537,7 +537,7 @@ fields.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-c
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> ty <span style=color:#f92672>=</span> field.ty;
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        quote! {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> #id(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: #ty) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
 </span></span><span style=display:flex><span>                self.#id <span style=color:#f92672>=</span> std::option::Option::Some(value);
 </span></span><span style=display:flex><span>                self
@@ -545,7 +545,7 @@ fields.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-c
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    });
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote! {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> #builder_ident {
 </span></span><span style=display:flex><span>            #(#builder_fields),<span style=color:#f92672>*</span>
 </span></span><span style=display:flex><span>        }
@@ -633,9 +633,9 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> build_checkers <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> field <span style=color:#f92672>=</span> field.clone();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> format!(<span style=color:#e6db74>&#34;{id} was not set&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> format!(<span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{id}</span><span style=color:#e6db74> was not set&#34;</span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        quote! {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> self.#id.is_none() {
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> std::result::Result::Err(#err.to_owned().into());
 </span></span><span style=display:flex><span>            }
@@ -646,12 +646,12 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> field <span style=color:#f92672>=</span> field.clone();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        quote! {
 </span></span><span style=display:flex><span>            #id: <span style=color:#a6e22e>self</span>.#id.clone().unwrap()
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    });
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> output <span style=color:#f92672>=</span> quote! {
 </span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>impl</span> #builder_ident {
@@ -702,16 +702,16 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>}
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#75715e>// ...
-</span></span></span></code></pre></div><p>Each of the fields will check <code>is_none</code> and if it is, return an <code>Err</code> constructed from an <code>&str</code> (<code>into</code> is still a little weird to me&mldr;). If all of those pass, we&rsquo;ll created a new <code>Result::Ok</code> that wraps the values. One gotcha here is that we need to <code>clone()</code> each one, since the <code>CommandBuilder</code> still owns the values. Not sure I&rsquo;m a fan of that, since <code>clone()</code> can be expensive. But after that, it&rsquo;s safe to <code>unwrap()</code>, since we&rsquo;ve already checked that they are <code>Some</code>.</p><p>Is there another way to do this? Of course! <a href=https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.ok_or>ok_or</a>. Basically, if you have an <code>Option</code>, you can turn it into a <code>Result</code> that will contain the <code>Some</code> or an <code>Err</code> if it was <code>None</code>. Like this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
+</span></span></span></code></pre></div><p>Each of the fields will check <code>is_none</code> and if it is, return an <code>Err</code> constructed from an <code>&amp;str</code> (<code>into</code> is still a little weird to me&mldr;). If all of those pass, we&rsquo;ll created a new <code>Result::Ok</code> that wraps the values. One gotcha here is that we need to <code>clone()</code> each one, since the <code>CommandBuilder</code> still owns the values. Not sure I&rsquo;m a fan of that, since <code>clone()</code> can be expensive. But after that, it&rsquo;s safe to <code>unwrap()</code>, since we&rsquo;ve already checked that they are <code>Some</code>.</p><p>Is there another way to do this? Of course! <a href=https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.ok_or>ok_or</a>. Basically, if you have an <code>Option</code>, you can turn it into a <code>Result</code> that will contain the <code>Some</code> or an <code>Err</code> if it was <code>None</code>. Like this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
 </span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> build_fields <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> field <span style=color:#f92672>=</span> field.clone();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> format!(<span style=color:#e6db74>&#34;{id} was not set&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> format!(<span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{id}</span><span style=color:#e6db74> was not set&#34;</span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        quote! {
 </span></span><span style=display:flex><span>            #id: <span style=color:#a6e22e>self</span>.#id.clone().ok_or(#err.into())<span style=color:#f92672>?</span>
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    });
@@ -725,11 +725,11 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>   <span style=color:#f92672>|</span>          <span style=color:#f92672>^^^^^^^</span> cannot infer <span style=color:#66d9ef>type</span> <span style=color:#a6e22e>of</span> the <span style=color:#66d9ef>type</span> <span style=color:#a6e22e>parameter</span> <span style=color:#960050;background-color:#1e0010>`</span>E<span style=color:#960050;background-color:#1e0010>`</span> declared on the associated function <span style=color:#960050;background-color:#1e0010>`</span>ok_or<span style=color:#960050;background-color:#1e0010>`</span>
 </span></span><span style=display:flex><span>   <span style=color:#f92672>|</span>
 </span></span><span style=display:flex><span>   <span style=color:#f92672>=</span> note: <span style=color:#a6e22e>multiple</span> <span style=color:#960050;background-color:#1e0010>`</span><span style=color:#66d9ef>impl</span><span style=color:#960050;background-color:#1e0010>`</span>s satisfying <span style=color:#960050;background-color:#1e0010>`</span>Box<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>dyn</span> std::error::Error<span style=color:#f92672>&gt;</span>: From<span style=color:#f92672>&lt;</span>_<span style=color:#f92672>&gt;</span><span style=color:#960050;background-color:#1e0010>`</span> found <span style=color:#66d9ef>in</span> the following crates: <span style=color:#960050;background-color:#1e0010>`</span>alloc<span style=color:#960050;background-color:#1e0010>`</span>, <span style=color:#960050;background-color:#1e0010>`</span>core<span style=color:#960050;background-color:#1e0010>`</span>:
-</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span> From<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> <span style=color:#f92672>&#39;</span>static)<span style=color:#f92672>&gt;</span>;
-</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;&#39;</span><span style=color:#a6e22e>a</span>, E<span style=color:#f92672>&gt;</span> From<span style=color:#f92672>&lt;</span>E<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> <span style=color:#f92672>&#39;</span><span style=color:#a6e22e>a</span>)<span style=color:#f92672>&gt;</span>
-</span></span><span style=display:flex><span>             <span style=color:#66d9ef>where</span> E: <span style=color:#a6e22e>std</span>::error::Error, E: <span style=color:#f92672>&#39;</span><span style=color:#a6e22e>a</span>;
-</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;&#39;</span><span style=color:#a6e22e>a</span><span style=color:#f92672>&gt;</span> From<span style=color:#f92672>&lt;</span>Cow<span style=color:#f92672>&lt;&#39;</span><span style=color:#a6e22e>a</span>, <span style=color:#66d9ef>str</span><span style=color:#f92672>&gt;&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> <span style=color:#f92672>&#39;</span>static)<span style=color:#f92672>&gt;</span>;
-</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;&gt;</span> From<span style=color:#f92672>&lt;&amp;</span><span style=color:#66d9ef>str</span><span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> <span style=color:#f92672>&#39;</span>static)<span style=color:#f92672>&gt;</span>;
+</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span> From<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> &#39;static)<span style=color:#f92672>&gt;</span>;
+</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;</span><span style=color:#a6e22e>&#39;a</span>, E<span style=color:#f92672>&gt;</span> From<span style=color:#f92672>&lt;</span>E<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> <span style=color:#a6e22e>&#39;a</span>)<span style=color:#f92672>&gt;</span>
+</span></span><span style=display:flex><span>             <span style=color:#66d9ef>where</span> E: <span style=color:#a6e22e>std</span>::error::Error, E: <span style=color:#a6e22e>&#39;a</span>;
+</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;</span><span style=color:#a6e22e>&#39;a</span><span style=color:#f92672>&gt;</span> From<span style=color:#f92672>&lt;</span>Cow<span style=color:#f92672>&lt;</span><span style=color:#a6e22e>&#39;a</span>, <span style=color:#66d9ef>str</span><span style=color:#f92672>&gt;&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> &#39;static)<span style=color:#f92672>&gt;</span>;
+</span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;&gt;</span> From<span style=color:#f92672>&lt;&amp;</span><span style=color:#66d9ef>str</span><span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Box<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>dyn</span> std::error::Error <span style=color:#f92672>+</span> &#39;static)<span style=color:#f92672>&gt;</span>;
 </span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;</span>T<span style=color:#f92672>&gt;</span> From<span style=color:#f92672>&lt;!&gt;</span> <span style=color:#66d9ef>for</span> T;
 </span></span><span style=display:flex><span>           <span style=color:#f92672>-</span> <span style=color:#66d9ef>impl</span><span style=color:#f92672>&lt;</span>T<span style=color:#f92672>&gt;</span> From<span style=color:#f92672>&lt;</span>T<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> T;
 </span></span><span style=display:flex><span>   <span style=color:#f92672>=</span> note: <span style=color:#a6e22e>required</span> <span style=color:#66d9ef>for</span> <span style=color:#960050;background-color:#1e0010>`</span>Result<span style=color:#f92672>&lt;</span>Command, Box<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>dyn</span> std::error::Error<span style=color:#f92672>&gt;&gt;</span><span style=color:#960050;background-color:#1e0010>`</span> to implement <span style=color:#960050;background-color:#1e0010>`</span>FromResidual<span style=color:#f92672>&lt;</span>Result<span style=color:#f92672>&lt;</span>Infallible, _<span style=color:#f92672>&gt;&gt;</span><span style=color:#960050;background-color:#1e0010>`</span>
@@ -738,7 +738,7 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>   <span style=color:#f92672>|</span>
 </span></span><span style=display:flex><span><span style=color:#ae81ff>16</span> <span style=color:#f92672>|</span> <span style=color:#75715e>#[derive(Builder::&lt;E&gt;)]</span>
 </span></span><span style=display:flex><span>   <span style=color:#f92672>|</span>                 <span style=color:#f92672>+++++</span>
-</span></span></code></pre></div><p>And I don&rsquo;t really want to specify the return types right now&mldr; so we&rsquo;ll go with the first option for the time being!</p><p>All tests pass, let&rsquo;s do part 5!</p><h2 id=5-method-chaining>5. Method chaining</h2><p>This one is actually why we&rsquo;ve been return <code>&mut Self</code> this whole time. By doing that, we can chain the methods, turning this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>main</span>() {
+</span></span></code></pre></div><p>And I don&rsquo;t really want to specify the return types right now&mldr; so we&rsquo;ll go with the first option for the time being!</p><p>All tests pass, let&rsquo;s do part 5!</p><h2 id=5-method-chaining>5. Method chaining</h2><p>This one is actually why we&rsquo;ve been return <code>&amp;mut Self</code> this whole time. By doing that, we can chain the methods, turning this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>main</span>() {
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> builder <span style=color:#f92672>=</span> Command::builder()
 </span></span><span style=display:flex><span>    builder.executable(<span style=color:#e6db74>&#34;cargo&#34;</span>.to_owned());
 </span></span><span style=display:flex><span>    builder.args(vec![<span style=color:#e6db74>&#34;build&#34;</span>.to_owned(), <span style=color:#e6db74>&#34;--release&#34;</span>.to_owned()]);
@@ -771,15 +771,15 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span><span style=color:#75715e>// ----- lib.rs -----
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#75715e>#[proc_macro_derive(Builder)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>derive</span>(input: <span style=color:#a6e22e>proc_macro</span>::TokenStream) -&gt; <span style=color:#a6e22e>proc_macro</span>::TokenStream {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input<span style=color:#f92672>!</span>(input <span style=color:#66d9ef>as</span> syn::DeriveInput);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ast <span style=color:#f92672>=</span> parse_macro_input!(input <span style=color:#66d9ef>as</span> syn::DeriveInput);
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ident <span style=color:#f92672>=</span> ast.ident.clone();
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident<span style=color:#f92672>!</span>(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> builder_ident <span style=color:#f92672>=</span> format_ident!(<span style=color:#e6db74>&#34;{ident}Builder&#34;</span>);
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> fields <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> ast {
 </span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>    };
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    println!(<span style=color:#e6db74>&#34;{:#?}&#34;</span>, fields.iter().last().unwrap());
+</span></span><span style=display:flex><span>    println!(<span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{:#?}</span><span style=color:#e6db74>&#34;</span>, fields.iter().last().unwrap());
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>}
@@ -901,7 +901,7 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> ty <span style=color:#f92672>=</span> try_optional(<span style=color:#f92672>&amp;</span>field.ty).or(std::option::Option::Some(field.ty));
 </span></span><span style=display:flex><span>        
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> { #id: <span style=color:#a6e22e>std</span>::option::Option<span style=color:#f92672>&lt;</span>#ty<span style=color:#f92672>&gt;</span> }
+</span></span><span style=display:flex><span>        quote! { #id: <span style=color:#a6e22e>std</span>::option::Option<span style=color:#f92672>&lt;</span>#ty<span style=color:#f92672>&gt;</span> }
 </span></span><span style=display:flex><span>    });
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
@@ -912,7 +912,7 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> ty <span style=color:#f92672>=</span> try_optional(<span style=color:#f92672>&amp;</span>field.ty).or(std::option::Option::Some(field.ty));
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        quote! {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>fn</span> #id(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, value: #ty) -&gt; <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> Self {
 </span></span><span style=display:flex><span>                self.#id <span style=color:#f92672>=</span> std::option::Option::Some(value);
 </span></span><span style=display:flex><span>                self
@@ -926,16 +926,16 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>    <span style=color:#66d9ef>let</span> build_checkers <span style=color:#f92672>=</span> fields.iter().map(<span style=color:#f92672>|</span>field<span style=color:#f92672>|</span> {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> field <span style=color:#f92672>=</span> field.clone();
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> format!(<span style=color:#e6db74>&#34;{id} was not set&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> err <span style=color:#f92672>=</span> format!(<span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{id}</span><span style=color:#e6db74> was not set&#34;</span>);
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> try_optional(<span style=color:#f92672>&amp;</span>field.ty).is_none() {
-</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>            quote! {
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> self.#id.is_none() {
 </span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> std::result::Result::Err(#err.into());
 </span></span><span style=display:flex><span>                }
 </span></span><span style=display:flex><span>            }
 </span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
-</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {}
+</span></span><span style=display:flex><span>            quote! {}
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    });
 </span></span><span style=display:flex><span>
@@ -945,11 +945,11 @@ using the impl From<string> for Box<dyn error>.</p><div class=highlight><pre tab
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> id <span style=color:#f92672>=</span> field.ident.unwrap();
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> try_optional(<span style=color:#f92672>&amp;</span>field.ty).is_some() {
-</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>            quote! {
 </span></span><span style=display:flex><span>               #id: <span style=color:#a6e22e>self</span>.#id.clone()
 </span></span><span style=display:flex><span>            }
 </span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
-</span></span><span style=display:flex><span>            quote<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>            quote! {
 </span></span><span style=display:flex><span>               #id: <span style=color:#a6e22e>self</span>.#id.clone().unwrap()
 </span></span><span style=display:flex><span>            }
 </span></span><span style=display:flex><span>        }

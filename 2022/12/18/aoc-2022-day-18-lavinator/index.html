@@ -35,7 +35,7 @@
 </span></span><span style=display:flex><span>}
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> Point3D {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>const</span> UNITS: [Point3D; <span style=color:#ae81ff>6</span>] <span style=color:#f92672>=</span> [
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>const</span> <span style=color:#66d9ef>UNITS</span>: [Point3D; <span style=color:#ae81ff>6</span>] <span style=color:#f92672>=</span> [
 </span></span><span style=display:flex><span>        Point3D { x: <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, y: <span style=color:#ae81ff>0</span>, z: <span style=color:#ae81ff>0</span> },
 </span></span><span style=display:flex><span>        Point3D { x: <span style=color:#ae81ff>1</span>, y: <span style=color:#ae81ff>0</span>, z: <span style=color:#ae81ff>0</span> },
 </span></span><span style=display:flex><span>        Point3D { x: <span style=color:#ae81ff>0</span>, y: <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, z: <span style=color:#ae81ff>0</span> },
@@ -93,7 +93,7 @@
 </span></span><span style=display:flex><span>        .points
 </span></span><span style=display:flex><span>        .iter()
 </span></span><span style=display:flex><span>        .map(<span style=color:#f92672>|</span>p<span style=color:#f92672>|</span> {
-</span></span><span style=display:flex><span>            Point3D::UNITS
+</span></span><span style=display:flex><span>            Point3D::<span style=color:#66d9ef>UNITS</span>
 </span></span><span style=display:flex><span>                .iter()
 </span></span><span style=display:flex><span>                .map(<span style=color:#f92672>|</span>s<span style=color:#f92672>|</span> <span style=color:#f92672>!</span>cloud.contains(<span style=color:#f92672>*</span>p <span style=color:#f92672>+</span> <span style=color:#f92672>*</span>s))
 </span></span><span style=display:flex><span>                .filter(<span style=color:#f92672>|</span>v<span style=color:#f92672>|</span> <span style=color:#f92672>*</span>v)
@@ -104,8 +104,8 @@
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>Elegant. Great the point cloud, than for each point, for each side of that point, if the cube to the side of the point is not itself in the cloud, the side counts for surface area.</p><p>I&rsquo;m not sure that was any easier to read than the code honestly. 😄</p><h2 id=part-2>Part 2</h2><blockquote><p>The collection of points is hollow. Calculate only the external surface area.</p></blockquote><p>Well that&rsquo;s neat.</p><p>To do this, the first thing I want to do is to create a second set of points: <code>external</code>. For this, I want all points that are &lsquo;outside&rsquo; of the <code>cloud</code>. To generate this list, I need <code>Point3DCloud::bounds</code>, a bound outside of the <code>bounds</code>, and to <a href=https://en.wikipedia.org/wiki/flood%20fill>flood fill</a> from that point to fill the bounds.</p><p>Once I&rsquo;ve done that, any points in the flood fill are <code>external</code>, so we can use very nearly the same code as above. If for each cube, for each side, if the next cube on that side is <code>external</code>, this is an external surface.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Point3DCloud {
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>bounds</span>(<span style=color:#f92672>&amp;</span>self) -&gt; (Point3D, Point3D) {
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> min_bound <span style=color:#f92672>=</span> Point3D::new(<span style=color:#66d9ef>isize</span>::MAX, <span style=color:#66d9ef>isize</span>::MAX, <span style=color:#66d9ef>isize</span>::MAX);
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> max_bound <span style=color:#f92672>=</span> Point3D::new(<span style=color:#66d9ef>isize</span>::MIN, <span style=color:#66d9ef>isize</span>::MIN, <span style=color:#66d9ef>isize</span>::MIN);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> min_bound <span style=color:#f92672>=</span> Point3D::new(<span style=color:#66d9ef>isize</span>::<span style=color:#66d9ef>MAX</span>, <span style=color:#66d9ef>isize</span>::<span style=color:#66d9ef>MAX</span>, <span style=color:#66d9ef>isize</span>::<span style=color:#66d9ef>MAX</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> max_bound <span style=color:#f92672>=</span> Point3D::new(<span style=color:#66d9ef>isize</span>::<span style=color:#66d9ef>MIN</span>, <span style=color:#66d9ef>isize</span>::<span style=color:#66d9ef>MIN</span>, <span style=color:#66d9ef>isize</span>::<span style=color:#66d9ef>MIN</span>);
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        self.points.iter().for_each(<span style=color:#f92672>|</span>p<span style=color:#f92672>|</span> {
 </span></span><span style=display:flex><span>            min_bound.x <span style=color:#f92672>=</span> min_bound.x.min(p.x);
@@ -162,7 +162,7 @@
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>        external.insert(p);
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#75715e>// Check all neighbors
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        Point3D::UNITS.iter().for_each(<span style=color:#f92672>|</span>s<span style=color:#f92672>|</span> q.push_back(p <span style=color:#f92672>+</span> <span style=color:#f92672>*</span>s));
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        Point3D::<span style=color:#66d9ef>UNITS</span>.iter().for_each(<span style=color:#f92672>|</span>s<span style=color:#f92672>|</span> q.push_back(p <span style=color:#f92672>+</span> <span style=color:#f92672>*</span>s));
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#75715e>// Any side adjacent to an external cube is external
@@ -170,7 +170,7 @@
 </span></span><span style=display:flex><span>        .points
 </span></span><span style=display:flex><span>        .iter()
 </span></span><span style=display:flex><span>        .map(<span style=color:#f92672>|</span>p<span style=color:#f92672>|</span> {
-</span></span><span style=display:flex><span>            Point3D::UNITS
+</span></span><span style=display:flex><span>            Point3D::<span style=color:#66d9ef>UNITS</span>
 </span></span><span style=display:flex><span>                .iter()
 </span></span><span style=display:flex><span>                .map(<span style=color:#f92672>|</span>s<span style=color:#f92672>|</span> external.contains(<span style=color:#f92672>&amp;</span>(<span style=color:#f92672>*</span>p <span style=color:#f92672>+</span> <span style=color:#f92672>*</span>s)))
 </span></span><span style=display:flex><span>                .filter(<span style=color:#f92672>|</span>v<span style=color:#f92672>|</span> <span style=color:#f92672>*</span>v)

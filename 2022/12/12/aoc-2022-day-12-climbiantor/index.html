@@ -23,8 +23,8 @@
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> height <span style=color:#f92672>=</span> lines.len();
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> data <span style=color:#f92672>=</span> Matrix::new(width, height);
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> src <span style=color:#f92672>=</span> Point::ORIGIN;
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> dst <span style=color:#f92672>=</span> Point::ORIGIN;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> src <span style=color:#f92672>=</span> Point::<span style=color:#66d9ef>ORIGIN</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> dst <span style=color:#f92672>=</span> Point::<span style=color:#66d9ef>ORIGIN</span>;
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (y, line) <span style=color:#66d9ef>in</span> lines.iter().enumerate() {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> (x, c) <span style=color:#66d9ef>in</span> line.chars().enumerate() {
@@ -53,7 +53,7 @@
 </span></span><span style=display:flex><span>        HeightMap { data, src, dst }
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>Sweet.</p><p>Next, calculate <code>DistanceMap</code> from that <code>HeightMap</code>. We don&rsquo;t need them (yet?) but I&rsquo;m going to go ahead and store the actual path as well, as a second <code>Matrix</code> of directions showing which way to go next. It&rsquo;s a single time computation, so I&rsquo;m actually going to put the entire functionality into the <code>from(&HeightMap)</code> function.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
+</span></span></code></pre></div><p>Sweet.</p><p>Next, calculate <code>DistanceMap</code> from that <code>HeightMap</code>. We don&rsquo;t need them (yet?) but I&rsquo;m going to go ahead and store the actual path as well, as a second <code>Matrix</code> of directions showing which way to go next. It&rsquo;s a single time computation, so I&rsquo;m actually going to put the entire functionality into the <code>from(&amp;HeightMap)</code> function.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Debug)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>DistanceMap</span> {
 </span></span><span style=display:flex><span>    distances: <span style=color:#a6e22e>Matrix</span><span style=color:#f92672>&lt;</span>Option<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>usize</span><span style=color:#f92672>&gt;&gt;</span>,
 </span></span><span style=display:flex><span>    directions: <span style=color:#a6e22e>Matrix</span><span style=color:#f92672>&lt;</span>Point<span style=color:#f92672>&gt;</span>,
@@ -80,7 +80,7 @@
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>let</span> d_dst_p <span style=color:#f92672>=</span> distances.at(<span style=color:#f92672>&amp;</span>p_dst);
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> d_dst <span style=color:#f92672>=</span> d_dst_p.unwrap();
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> m <span style=color:#66d9ef>in</span> MOVES.into_iter() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> m <span style=color:#66d9ef>in</span> <span style=color:#66d9ef>MOVES</span>.into_iter() {
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> p_src <span style=color:#f92672>=</span> p_dst <span style=color:#f92672>+</span> m;
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>distances.in_bounds(p_src.x <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>, p_src.y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>) {
@@ -138,10 +138,10 @@
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> x <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>height_map.data.width() {
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>match</span> distance_map.distances[[x, y]] {
 </span></span><span style=display:flex><span>                    Some(d) <span style=color:#f92672>=&gt;</span> { 
-</span></span><span style=display:flex><span>                        print!(<span style=color:#e6db74>&#34;{:4}&#34;</span>, d);
+</span></span><span style=display:flex><span>                        print!(<span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{:4}</span><span style=color:#e6db74>&#34;</span>, d);
 </span></span><span style=display:flex><span>                    },
 </span></span><span style=display:flex><span>                    None <span style=color:#f92672>=&gt;</span> {
-</span></span><span style=display:flex><span>                        print!(<span style=color:#e6db74>&#34;{:4}&#34;</span>, <span style=color:#e6db74>&#39;.&#39;</span>);
+</span></span><span style=display:flex><span>                        print!(<span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{:4}</span><span style=color:#e6db74>&#34;</span>, <span style=color:#e6db74>&#39;.&#39;</span>);
 </span></span><span style=display:flex><span>                    }
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>                }
@@ -153,7 +153,7 @@
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> y <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>height_map.data.height() {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> x <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>height_map.data.width() {
 </span></span><span style=display:flex><span>                print!(
-</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;{}&#34;</span>,
+</span></span><span style=display:flex><span>                    <span style=color:#e6db74>&#34;</span><span style=color:#e6db74>{}</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>                    <span style=color:#66d9ef>match</span> distance_map.directions[[x, y]] {
 </span></span><span style=display:flex><span>                        Point { x: <span style=color:#ae81ff>0</span>, y: <span style=color:#ae81ff>1</span> } <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;^&#39;</span>,
 </span></span><span style=display:flex><span>                        Point { x: <span style=color:#ae81ff>0</span>, y: <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span> } <span style=color:#f92672>=&gt;</span> <span style=color:#e6db74>&#39;v&#39;</span>,
@@ -284,7 +284,7 @@
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> height_map <span style=color:#f92672>=</span> HeightMap::from(lines);
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> distance_map <span style=color:#f92672>=</span> DistanceMap::from(<span style=color:#f92672>&amp;</span>height_map);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> best_distance <span style=color:#f92672>=</span> <span style=color:#66d9ef>usize</span>::MAX;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> best_distance <span style=color:#f92672>=</span> <span style=color:#66d9ef>usize</span>::<span style=color:#66d9ef>MAX</span>;
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> y <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>height_map.data.height() {
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> x <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>height_map.data.width() {

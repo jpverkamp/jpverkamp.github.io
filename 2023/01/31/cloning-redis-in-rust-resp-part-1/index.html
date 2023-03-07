@@ -58,8 +58,8 @@
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><h2 id=display-turning-structs-into-strings><code>Display</code>: Turning structs into strings</h2><p>Now we&rsquo;re getting into the meat of the algorithm. Basically, each of the <code>Redis</code> types starts with a single key character and ends with <code>\r\n</code>:</p><ul><li><code>+</code> - basic (non-binary) strings, cannot contain newlines or binary data</li><li><code>-</code> - errors, no newlines, the same as <code>+</code></li><li><code>:</code> - integers, represented as the digits in text (not directly as binary)</li></ul><p>Then we have the two &rsquo;length&rsquo; types:</p><ul><li><code>$</code> - represents a bulk string / binary data; the first line has the length of remaining data, then the data itself; example: <code>$11\r\nHello world\r\n</code> represents the string <code>Hello world</code> as a bulk string&ndash;&ldquo;11&rdquo; characters, a <code>\r\n</code>, then those 11 characters, then another <code>\r\n</code> (unnecessary, since we know the length; but there anyways)</li><li><code>*</code> - an array, encoded the same way; so the list <code>[1, 2, 3]</code> would be <code>*3\r\n:1\r\n:2\r\n:3\r\n</code>&ndash;array of 3 then each of the values</li></ul><p>There are also (as I mentioned) the two special cases:</p><ul><li><code>$-1\r\n</code> is a null bulk string (not an empty bulk string, that is <code>$0\r\n\r\n</code>&ndash;note the &rsquo;extra&rsquo; <code>\r\n</code> even with no actual items, or an empty simple string would be <code>+\r\n</code>)</li><li><code>*-1\r\n</code> is a null bulk array (empty array: <code>*0\r\n\r\n</code>)</li></ul><p>And that&rsquo;s it. So if we want to print those things out:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Display <span style=color:#66d9ef>for</span> RedisType {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>fmt</span>(<span style=color:#f92672>&amp;</span>self, f: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> std::fmt::Formatter<span style=color:#f92672>&lt;&#39;</span>_<span style=color:#f92672>&gt;</span>) -&gt; <span style=color:#a6e22e>std</span>::fmt::Result {
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> crlf <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;\r\n&#34;</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>fmt</span>(<span style=color:#f92672>&amp;</span>self, f: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>mut</span> std::fmt::Formatter<span style=color:#f92672>&lt;</span>&#39;_<span style=color:#f92672>&gt;</span>) -&gt; <span style=color:#a6e22e>std</span>::fmt::Result {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> crlf <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>;
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self {
 </span></span><span style=display:flex><span>            RedisType::NullString <span style=color:#f92672>=&gt;</span> write!(f, <span style=color:#e6db74>&#34;$-1{}&#34;</span>, crlf),
@@ -105,11 +105,11 @@
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Err(RedisTypeParseError::MissingPrefix);
 </span></span><span style=display:flex><span>            }
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>s.contains(<span style=color:#e6db74>&#34;\r\n&#34;</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>s.contains(<span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>) {
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Err(RedisTypeParseError::InvalidSuffix);
 </span></span><span style=display:flex><span>            }
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> crlf <span style=color:#f92672>=</span> s.find(<span style=color:#e6db74>&#34;\r\n&#34;</span>).unwrap();
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> crlf <span style=color:#f92672>=</span> s.find(<span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>).unwrap();
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> payload <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>s[<span style=color:#ae81ff>1</span><span style=color:#f92672>..</span>crlf];
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> rest <span style=color:#f92672>=</span> <span style=color:#f92672>&amp;</span>s[crlf <span style=color:#f92672>+</span> <span style=color:#ae81ff>2</span><span style=color:#f92672>..</span>];
 </span></span><span style=display:flex><span>
@@ -179,9 +179,9 @@
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>Pretty cool I think. And it even handles extra data pretty well.</p><p>I don&rsquo;t think I&rsquo;m using errors quite right&mldr; but for the moment, it does work.</p><h2 id=tests-all-around>Tests all around</h2><p>So I started writing some tests. As one does.</p><p>And I realized that they were <em>super</em> repetitive.</p><p>And how do fix repetitive things in programming?</p><p>MACROS!</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>macro_rules! make_tests {
+</span></span></code></pre></div><p>Pretty cool I think. And it even handles extra data pretty well.</p><p>I don&rsquo;t think I&rsquo;m using errors quite right&mldr; but for the moment, it does work.</p><h2 id=tests-all-around>Tests all around</h2><p>So I started writing some tests. As one does.</p><p>And I realized that they were <em>super</em> repetitive.</p><p>And how do fix repetitive things in programming?</p><p>MACROS!</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>macro_rules<span style=color:#f92672>!</span> make_tests {
 </span></span><span style=display:flex><span>    (<span style=color:#75715e>$name</span>:<span style=color:#a6e22e>tt</span>, <span style=color:#75715e>$string</span>:<span style=color:#a6e22e>expr</span>, <span style=color:#75715e>$redis</span>:<span style=color:#a6e22e>expr</span>) <span style=color:#f92672>=&gt;</span> {
-</span></span><span style=display:flex><span>        paste::item<span style=color:#f92672>!</span> {
+</span></span><span style=display:flex><span>        paste::item! {
 </span></span><span style=display:flex><span>            <span style=color:#75715e>#[test]</span>
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>fn</span> [<span style=color:#f92672>&lt;</span> test_ <span style=color:#75715e>$name</span> _from_str <span style=color:#f92672>&gt;</span>]() {
 </span></span><span style=display:flex><span>                assert_eq!(RedisType::from_str(<span style=color:#75715e>$string</span>).unwrap(), <span style=color:#75715e>$redis</span>);
@@ -204,56 +204,56 @@
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    };
 </span></span><span style=display:flex><span>}
-</span></span></code></pre></div><p>This uses the <a href=https://docs.rs/paste/1.0.11/paste/><code>paste</code> crate</a> to build identifiers for each of four test functions that we&rsquo;ll output:</p><ul><li>Using <code>from_str</code> to parse a string into a <code>RedisType</code></li><li>Using <code>to_string</code> / <code>Display</code> to go back to a string</li><li>Round tripping with <code>to_string</code> first</li><li>Round tripping the other way</li></ul><p>I absolutely did not need those last two, but 🤷</p><p>Actual test cases:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(null, <span style=color:#e6db74>&#34;$-1\r\n&#34;</span>, RedisType::NullString);
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(null_array, <span style=color:#e6db74>&#34;*-1\r\n&#34;</span>, RedisType::NullArray);
+</span></span></code></pre></div><p>This uses the <a href=https://docs.rs/paste/1.0.11/paste/><code>paste</code> crate</a> to build identifiers for each of four test functions that we&rsquo;ll output:</p><ul><li>Using <code>from_str</code> to parse a string into a <code>RedisType</code></li><li>Using <code>to_string</code> / <code>Display</code> to go back to a string</li><li>Round tripping with <code>to_string</code> first</li><li>Round tripping the other way</li></ul><p>I absolutely did not need those last two, but 🤷</p><p>Actual test cases:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>make_tests!(null, <span style=color:#e6db74>&#34;$-1</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>, RedisType::NullString);
+</span></span><span style=display:flex><span>make_tests!(null_array, <span style=color:#e6db74>&#34;*-1</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>, RedisType::NullArray);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    simple_string,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;+Hello world\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;+Hello world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::String {
 </span></span><span style=display:flex><span>        value: <span style=color:#e6db74>&#34;Hello world&#34;</span>.to_owned()
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    empty_string,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;$0\r\n\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;$0</span><span style=color:#ae81ff>\r\n\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::String {
 </span></span><span style=display:flex><span>        value: <span style=color:#e6db74>&#34;&#34;</span>.to_owned()
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    bulk_string,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;$5\r\nYo\0\r\n\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;$5</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>Yo</span><span style=color:#ae81ff>\0\r\n\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::String {
-</span></span><span style=display:flex><span>        value: <span style=color:#e6db74>&#34;Yo\0\r\n&#34;</span>.to_owned()
+</span></span><span style=display:flex><span>        value: <span style=color:#e6db74>&#34;Yo</span><span style=color:#ae81ff>\0\r\n</span><span style=color:#e6db74>&#34;</span>.to_owned()
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    err,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;-ERR Goodbye world\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;-ERR Goodbye world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::Error {
 </span></span><span style=display:flex><span>        value: <span style=color:#e6db74>&#34;ERR Goodbye world&#34;</span>.to_owned()
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    positive_integer,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;:42\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;:42</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::Integer { value: <span style=color:#ae81ff>42</span> }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    negative_integer,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;:-1337\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;:-1337</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::Integer { value: <span style=color:#f92672>-</span><span style=color:#ae81ff>1337</span> }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    array,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;*3\r\n+Hello world\r\n:42\r\n-ERR Goodbye world\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;*3</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>+Hello world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>:42</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>-ERR Goodbye world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::Array {
 </span></span><span style=display:flex><span>        value: <span style=color:#a6e22e>vec</span><span style=color:#f92672>!</span>[
 </span></span><span style=display:flex><span>            RedisType::String {
@@ -267,13 +267,13 @@
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    null_in_array,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;*3\r\n$3\r\nYo\0\r\n$-1\r\n-ERR Goodbye world\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;*3</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>$3</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>Yo</span><span style=color:#ae81ff>\0\r\n</span><span style=color:#e6db74>$-1</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>-ERR Goodbye world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::Array {
 </span></span><span style=display:flex><span>        value: <span style=color:#a6e22e>vec</span><span style=color:#f92672>!</span>[
 </span></span><span style=display:flex><span>            RedisType::String {
-</span></span><span style=display:flex><span>                value: <span style=color:#e6db74>&#34;Yo\0&#34;</span>.to_owned()
+</span></span><span style=display:flex><span>                value: <span style=color:#e6db74>&#34;Yo</span><span style=color:#ae81ff>\0</span><span style=color:#e6db74>&#34;</span>.to_owned()
 </span></span><span style=display:flex><span>            },
 </span></span><span style=display:flex><span>            RedisType::NullString,
 </span></span><span style=display:flex><span>            RedisType::Error {
@@ -283,9 +283,9 @@
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>make_tests<span style=color:#f92672>!</span>(
+</span></span><span style=display:flex><span>make_tests!(
 </span></span><span style=display:flex><span>    nested_array,
-</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;*4\r\n+Hello world\r\n:42\r\n-ERR Goodbye world\r\n*3\r\n+Hello world\r\n:42\r\n-ERR Goodbye world\r\n&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;*4</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>+Hello world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>:42</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>-ERR Goodbye world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>*3</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>+Hello world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>:42</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>-ERR Goodbye world</span><span style=color:#ae81ff>\r\n</span><span style=color:#e6db74>&#34;</span>,
 </span></span><span style=display:flex><span>    RedisType::Array {
 </span></span><span style=display:flex><span>        value: <span style=color:#a6e22e>vec</span><span style=color:#f92672>!</span>[
 </span></span><span style=display:flex><span>            RedisType::String {

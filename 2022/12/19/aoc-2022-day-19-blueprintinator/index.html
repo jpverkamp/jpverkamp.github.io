@@ -12,10 +12,10 @@
 <a href=https://blog.jverkamp.com/2022/12/20/aoc-2022-day-20-deencryptinator/ class=next-link>Next</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2022/12/18/aoc-2022-day-18-lavinator/ class=previous-link>Prev</a>
 <a href=https://blog.jverkamp.com/2022/12/20/the-wicked--the-divine-vol.-2-fandemonium/ class=next-link>Next</a></ul></li></ul></div></div></header><div class=entry-content><h2 id=source-not-enough-mineralshttpsadventofcodecom2022day19>Source: <a href=https://adventofcode.com/2022/day/19>Not Enough Minerals</a></h2><h2 id=part-1>Part 1</h2><blockquote><p>Given a series of given a series of <code>blueprints</code>, each of which gives instructions for how to build a single <code>robot</code> from a collection of <code>materials</code> that in turn will produce one of a given <code>material</code> per turn, determine the best order of builds to maximize your <code>geode</code> (the most valuable <code>material</code>) production for each <code>blueprint</code> given a time limit of <code>24 minutes</code>.</p></blockquote><p>Neat! I went a few different ways for this one, trying to make a more general solution at first that could handle multiple different ways to make each robot, but &mldr; that wasn&rsquo;t actually necessary. There are always exactly 4 resources and always exactly 4 kinds of robots that make them (one for each). So let&rsquo;s do that.</p><p>To start out, I&rsquo;m going to create some aliases for types, mostly so I can change how much memory I&rsquo;m using:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>ID</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>u16</span>;
 </span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Qty</span> <span style=color:#f92672>=</span> <span style=color:#66d9ef>u16</span>;
-</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Qtys</span> <span style=color:#f92672>=</span> [Qty; Material::COUNT];
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Qtys</span> <span style=color:#f92672>=</span> [Qty; Material::<span style=color:#66d9ef>COUNT</span>];
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>make_qtys</span>() -&gt; <span style=color:#a6e22e>Qtys</span> {
-</span></span><span style=display:flex><span>    [<span style=color:#ae81ff>0</span>; Material::COUNT]
+</span></span><span style=display:flex><span>    [<span style=color:#ae81ff>0</span>; Material::<span style=color:#66d9ef>COUNT</span>]
 </span></span><span style=display:flex><span>}
 </span></span></code></pre></div><p>Also a helper function to make our main data structure, a <code>Qtys</code>, which is (in this case) a <code>[Qty; 4]</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, Eq, PartialEq)]</span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>Material</span> {
@@ -26,7 +26,7 @@
 </span></span><span style=display:flex><span>}
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> Material {
-</span></span><span style=display:flex><span>    <span style=color:#66d9ef>const</span> COUNT: <span style=color:#66d9ef>usize</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>4</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>const</span> <span style=color:#66d9ef>COUNT</span>: <span style=color:#66d9ef>usize</span> <span style=color:#f92672>=</span> <span style=color:#ae81ff>4</span>;
 </span></span><span style=display:flex><span>}
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span><span style=color:#66d9ef>impl</span> From<span style=color:#f92672>&lt;</span>String<span style=color:#f92672>&gt;</span> <span style=color:#66d9ef>for</span> Material {
@@ -36,7 +36,7 @@
 </span></span><span style=display:flex><span>            <span style=color:#e6db74>&#34;clay&#34;</span> <span style=color:#f92672>=&gt;</span> Material::Clay,
 </span></span><span style=display:flex><span>            <span style=color:#e6db74>&#34;obsidian&#34;</span> <span style=color:#f92672>=&gt;</span> Material::Obsidian,
 </span></span><span style=display:flex><span>            <span style=color:#e6db74>&#34;geode&#34;</span> <span style=color:#f92672>=&gt;</span> Material::Geode,
-</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;unknown material {s}&#34;</span>),
+</span></span><span style=display:flex><span>            _ <span style=color:#f92672>=&gt;</span> panic!(<span style=color:#e6db74>&#34;unknown material </span><span style=color:#e6db74>{s}</span><span style=color:#e6db74>&#34;</span>),
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>    }
 </span></span><span style=display:flex><span>}
@@ -58,10 +58,10 @@
 </span></span><span style=display:flex><span>            .expect(<span style=color:#e6db74>&#34;must have id&#34;</span>)
 </span></span><span style=display:flex><span>            .strip_suffix(<span style=color:#e6db74>&#34;:&#34;</span>)
 </span></span><span style=display:flex><span>            .expect(<span style=color:#e6db74>&#34;ID ends with :&#34;</span>)
-</span></span><span style=display:flex><span>            .parse::<span style=color:#f92672>&lt;</span>ID<span style=color:#f92672>&gt;</span>()
+</span></span><span style=display:flex><span>            .parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>ID</span><span style=color:#f92672>&gt;</span>()
 </span></span><span style=display:flex><span>            .expect(<span style=color:#e6db74>&#34;ID must be numeric&#34;</span>);
 </span></span><span style=display:flex><span>
-</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> re <span style=color:#f92672>=</span> Regex::new(<span style=color:#e6db74>r&#34;Each (\w+) robot costs (.*?)\.&#34;).expect(&#34;regex creation failed&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> re <span style=color:#f92672>=</span> Regex::new(<span style=color:#e6db74>r</span><span style=color:#e6db74>&#34;Each (\w+) robot costs (.*?)\.&#34;</span>).expect(<span style=color:#e6db74>&#34;regex creation failed&#34;</span>);
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> robots <span style=color:#f92672>=</span> re
 </span></span><span style=display:flex><span>            .captures_iter(<span style=color:#f92672>&amp;</span>line)
@@ -94,7 +94,7 @@
 </span></span><span style=display:flex><span>            time: <span style=color:#66d9ef>u16</span>,
 </span></span><span style=display:flex><span>            inventory: <span style=color:#a6e22e>Qtys</span>,
 </span></span><span style=display:flex><span>            population: <span style=color:#a6e22e>Qtys</span>,
-</span></span><span style=display:flex><span>            builds: Vec<span style=color:#f92672>&lt;</span>Option<span style=color:#f92672>&lt;</span>ID<span style=color:#f92672>&gt;&gt;</span>,
+</span></span><span style=display:flex><span>            builds: Vec<span style=color:#f92672>&lt;</span>Option<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>ID</span><span style=color:#f92672>&gt;&gt;</span>,
 </span></span><span style=display:flex><span>        }
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> queue <span style=color:#f92672>=</span> Vec::new();
@@ -111,7 +111,7 @@
 </span></span><span style=display:flex><span>        });
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#75715e>// Best case is # of geodes + the build order to get there
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> best <span style=color:#f92672>=</span> (<span style=color:#ae81ff>0</span> <span style=color:#66d9ef>as</span> ID, Vec::new());
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> best <span style=color:#f92672>=</span> (<span style=color:#ae81ff>0</span> <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>ID</span>, Vec::new());
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>        <span style=color:#66d9ef>while</span> <span style=color:#f92672>!</span>queue.is_empty() {
 </span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> State {
@@ -197,7 +197,7 @@
 </span></span><span style=display:flex><span>                <span style=color:#66d9ef>for</span> _ <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>(ticks <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>) {
 </span></span><span style=display:flex><span>                    new_builds.push(None);
 </span></span><span style=display:flex><span>                }
-</span></span><span style=display:flex><span>                new_builds.push(Some(id <span style=color:#66d9ef>as</span> ID));
+</span></span><span style=display:flex><span>                new_builds.push(Some(id <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>ID</span>));
 </span></span><span style=display:flex><span>
 </span></span><span style=display:flex><span>                <span style=color:#75715e>// Add to queue
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span>                queue.push(State {
@@ -252,10 +252,10 @@
 </span></span><span style=display:flex><span>took 155.567067083s
 </span></span></code></pre></div><p>I really would much rather get that under a minute, but for the moment&mldr; I&rsquo;m moving on!</p><h2 id=edit-dec-25-optimizing-max-builds>Edit Dec 25, Optimizing Max Builds</h2><p>So On digging back into this problem (my longest by far), I did come up with one (pretty major) improvement:</p><p>We can only build one robot per turn. So the most resources we&rsquo;ll ever need per turn is the maximum of that resource to build any robot. Once we&rsquo;ve built that many, stop building that kind of robot. This will mostly stop looking down branches where we build the smallest robots.</p><p>Implementation wise, there are only two small changes:</p><ol><li><p>At the top of the loop before processing the <code>queue</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Figure out the most of each resource we need to build any given robot
 </span></span></span><span style=display:flex><span><span style=color:#75715e>// We don&#39;t need more than that many production robots, since you can only build one per frame
-</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> max_needed <span style=color:#f92672>=</span> (<span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>Material::COUNT)
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> max_needed <span style=color:#f92672>=</span> (<span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>Material::<span style=color:#66d9ef>COUNT</span>)
 </span></span><span style=display:flex><span>    .map(<span style=color:#f92672>|</span>i<span style=color:#f92672>|</span> self.robots.iter().map(<span style=color:#f92672>|</span>r<span style=color:#f92672>|</span> r.inputs[i]).max().unwrap())
 </span></span><span style=display:flex><span>    .collect::<span style=color:#f92672>&lt;</span>Vec<span style=color:#f92672>&lt;</span>_<span style=color:#f92672>&gt;&gt;</span>();
-</span></span><span style=display:flex><span>max_needed[Material::Geode <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>] <span style=color:#f92672>=</span> Qty::MAX;
+</span></span><span style=display:flex><span>max_needed[Material::Geode <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>] <span style=color:#f92672>=</span> Qty::<span style=color:#66d9ef>MAX</span>;
 </span></span></code></pre></div></li><li><p>In the loop before even checking if it&rsquo;s possible to build one:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// We don&#39;t need any more of this one
 </span></span></span><span style=display:flex><span><span style=color:#75715e></span><span style=color:#66d9ef>if</span> id <span style=color:#f92672>!=</span> (Material::Geode <span style=color:#66d9ef>as</span> Qty) {
 </span></span><span style=display:flex><span>    <span style=color:#75715e>// We are creating enough resources each tick to build any robot
