@@ -1,0 +1,397 @@
+<!doctype html><html><head><title>Redis in Rust: Evictions and Implementations – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><script src=/jquery_5823201688106629450.min.30448892aa1f91e9c4cb5494e5c5e5abc13b7778de7786e5256cdc7d2424813a.js integrity="sha256-MESIkqofkenEy1SU5cXlq8E7d3jed4blJWzcfSQkgTo=" defer></script>
+<script src=/jquery.fancybox_6181813213021922412.min.6ba037466db9f8843b66c38c32fe5a353344e7fd68ecda97efb63a84c881f828.js integrity="sha256-a6A3Rm25+IQ7ZsOMMv5aNTNE5/1o7NqX77Y6hMiB+Cg=" defer></script>
+<script src=/katex_12008035502722260518.min.3cc3a080c0368785179e37b0cd0a71c6cf60c4fc5a8dce503f5a542ec0a25043.js integrity="sha256-PMOggMA2h4UXnjewzQpxxs9gxPxajc5QP1pULsCiUEM=" defer></script>
+<script src=/bigfoot_8444447145154709333.min.5e80bd85ebaeb95607834d6777bfe7013d1d161f0f02a31b845e4bd765898316.js integrity="sha256-XoC9heuuuVYHg01nd7/nAT0dFh8PAqMbhF5L12WJgxY=" defer></script>
+<script src=/mermaid_12365941879912544862.min.e8f19283a632077085b9ad74aecad54abe84429c69789fd29ffa3a254d86abdd.js integrity="sha256-6PGSg6YyB3CFua10rsrVSr6EQpxpeJ/Sn/o6JU2Gq90=" defer></script>
+<script src=/main.min.982c2d7bb434b4cf8b19c2cf38ef7e7f7162ddbed610e5bdddbb937001e26574.js integrity="sha256-mCwte7Q0tM+LGcLPOO9+f3Fi3b7WEOW93buTcAHiZXQ=" defer></script>
+<link rel=stylesheet href=/katex_14163593549783030822.min.16bacd59fb224ae6c97a749ab0ac1e708cb5e0c9ce5c9a08d7fd73dc8e69429f.css integrity="sha256-FrrNWfsiSubJenSasKwecIy14MnOXJoI1/1z3I5pQp8="><link rel=stylesheet href=/bigfoot-default_16482899066638414220.min.f15d4faa4519addb976f9d69b42bd9eb491b3596b6b2eda83aa3e9e1f48b8f14.css integrity="sha256-8V1PqkUZrduXb51ptCvZ60kbNZa2su2oOqPp4fSLjxQ="><link rel=stylesheet href=/jquery.fancybox_16222217791602823071.min.e28b5d7d9d89efacb5f708ac30cbd76b1b9a0f816dfd9da96631d1d09cbbdd76.css integrity="sha256-4otdfZ2J76y19wisMMvXaxuaD4Ft/Z2pZjHR0Jy73XY="><link rel=stylesheet href=/css_4780214198035419921.min.7cfac95bdd962d85ceec560e50fe7b04c44b58a76e5202006ef36ca8c0a7d836.css integrity="sha256-fPrJW92WLYXO7FYOUP57BMRLWKduUgIAbvNsqMCn2DY="><link rel=stylesheet href=/main.min.9efa38cb8d96be1a2d31208e5279a2f48fd2a15f6bcc9173c7375c675225b767.css integrity="sha256-nvo4y42WvhotMSCOUnmi9I/SoV9rzJFzxzdcZ1Ilt2c="></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=//www.google.com/search method=get onsubmit='(function(e){e.q.value="site:blog.jverkamp.com "+e.qfront.value})(this)' class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=hidden>
+<input name=qfront type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article><header><h1 class=entry-title>Redis in Rust: Evictions and Implementations</h1><div class=entry-meta><span class=entry-date>2023-03-26</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/client>Client</a></li><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/networking>Networking</a></li><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/parsing>Parsing</a></li><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/redis>Redis</a></li><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/repl>REPL</a></li><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/tcp>TCP</a></li></ul></li><li><a class=taxonomy-key href=/series/>Series</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2023/02/28/redis-in-rust-testing-redis-cli--get/set-support/ class=previous-link></a><a class=taxonomy-value href=/series/cloning-redis-in-rust>Cloning Redis in Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2023/03/19/keyboard-chords-with-hammerspoon/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2023/03/26/the-player-of-games/ class=previous-link>Prev</a></ul></li></ul></div></div></header><div class=entry-content><p>Another Redis in Rust series. It&rsquo;s really starting to come together now!</p><p>In this post, updating the state to store expiration times + a thread to handle said eviction + the implementation of a small pile more of the general Redis functions.</p><nav id=TableOfContents><ul><li><a href=#better-redis-function-definitions>Better Redis function definitions</a></li><li><a href=#re-parsing-set>Re-parsing SET</a></li><li><a href=#implementing-ttl-on-the-state>Implementing TTL on the state</a></li><li><a href=#expiration-thread>Expiration thread</a></li><li><a href=#a-few-more-examples>A few more examples</a><ul><li><a href=#decr>DECR</a></li><li><a href=#getrange>GETRANGE</a></li><li><a href=#mget>MGET</a></li></ul></li><li><a href=#github-copilot>Github Copilot</a></li><li><a href=#full-source>Full source</a></li><li><a href=#next-steps>Next steps</a></li></ul></nav><h2 id=better-redis-function-definitions>Better Redis function definitions</h2><p>Where we left off last time, I was doing a lot to manually parse the parameters of more complicated functions (such as <code>SET</code>, which really ends up being one of the most complicated, amusingly). But doing all that by hand is a bit annoying, not to mention long and error prone.</p><p>We&rsquo;re writing in Rust, let&rsquo;s write some macros to handle that for us!</p><p>To start with, all of these macros are currently part of the same <code>lazy_static!</code> block that I&rsquo;ve been using to define the <code>COMMANDS</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>lazy_static! {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>ref</span> <span style=color:#66d9ef>COMMANDS</span>: <span style=color:#a6e22e>HashMap</span><span style=color:#f92672>&lt;&amp;</span>&#39;static <span style=color:#66d9ef>str</span>, Command<span style=color:#f92672>&gt;</span> <span style=color:#f92672>=</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> m <span style=color:#f92672>=</span> HashMap::new();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        macro_rules<span style=color:#f92672>!</span> assert_n_args {
+</span></span><span style=display:flex><span>            (<span style=color:#75715e>$args</span>:<span style=color:#a6e22e>ident</span>, <span style=color:#75715e>$n</span>:<span style=color:#a6e22e>literal</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> <span style=color:#75715e>$args</span>.len() <span style=color:#f92672>!=</span> <span style=color:#75715e>$n</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Expected </span><span style=color:#e6db74>{}</span><span style=color:#e6db74> args, got </span><span style=color:#e6db74>{}</span><span style=color:#e6db74>&#34;</span>, <span style=color:#75715e>$n</span>, <span style=color:#75715e>$args</span>.len())));
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>
+</span></span><span style=display:flex><span>        m
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>And therein, we have the first. Essentially, when we are processing the <code>args</code> sent to a command, we can call <code>assert_n_args(args, 2)</code>. If the <code>args</code> doesn&rsquo;t have exactly 2 values, return an error. Turns the 3 lines into one much simpler one.</p><p>Likewise, if we have to have at least 2:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>macro_rules<span style=color:#f92672>!</span> assert_n_or_more_args {
+</span></span><span style=display:flex><span>    (<span style=color:#75715e>$args</span>:<span style=color:#a6e22e>ident</span>, <span style=color:#75715e>$n</span>:<span style=color:#a6e22e>literal</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> <span style=color:#75715e>$args</span>.len() <span style=color:#f92672>&lt;</span> <span style=color:#75715e>$n</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Expected at least </span><span style=color:#e6db74>{}</span><span style=color:#e6db74> args, got </span><span style=color:#e6db74>{}</span><span style=color:#e6db74>&#34;</span>, <span style=color:#75715e>$n</span>, <span style=color:#75715e>$args</span>.len())));
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>What starts getting more interesting is when we want to pull a specific kind of value out of the args. In this case, what if we want a string. Because we want to automatically convert types, we are going to handle two different cases here: <code>RedisType::String</code> (direct comparison) and <code>RedisType::Integer</code> (cast to a string first):</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>macro_rules<span style=color:#f92672>!</span> get_string_arg {
+</span></span><span style=display:flex><span>    (<span style=color:#75715e>$args</span>:<span style=color:#a6e22e>ident</span>, <span style=color:#75715e>$index</span>:<span style=color:#a6e22e>expr</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#75715e>$index</span> <span style=color:#f92672>&gt;=</span> <span style=color:#75715e>$args</span>.len() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Err(String::from(<span style=color:#e6db74>&#34;Not enough args&#34;</span>));
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>].clone() {
+</span></span><span style=display:flex><span>                RedisType::String{value} <span style=color:#f92672>=&gt;</span> value,
+</span></span><span style=display:flex><span>                RedisType::Integer{value} <span style=color:#f92672>=&gt;</span> value.to_string(),
+</span></span><span style=display:flex><span>                _ <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Attempted to use </span><span style=color:#e6db74>{}</span><span style=color:#e6db74> as a string&#34;</span>, <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>]))),
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Now we&rsquo;re really getting into the savings. This not only checks that there <em>is</em> actually the requisite arg (handling index out of bounds for me) but also that we can <code>match</code> on the type. All in one line:</p><pre tabindex=0><code>let key = get_string_arg(args, 0);
+let value = get_string_arg(args, 1);
+</code></pre><p>Two lines instead of ~20. Not bad.</p><p>Next, we often want to do string comparisons (for keywords, such as <code>SET key value NX</code>). So a macro for that:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>macro_rules<span style=color:#f92672>!</span> is_string_eq {
+</span></span><span style=display:flex><span>    (<span style=color:#75715e>$args</span>:<span style=color:#a6e22e>ident</span>, <span style=color:#75715e>$index</span>:<span style=color:#a6e22e>expr</span>, <span style=color:#75715e>$value</span>:<span style=color:#a6e22e>literal</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        get_string_arg!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span>).to_ascii_uppercase() <span style=color:#f92672>==</span> <span style=color:#75715e>$value</span>.to_ascii_uppercase()
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>And it even uses <code>get_string_arg!</code> behind the scenes!</p><p>Okay, what about other types? Well, we&rsquo;re dealing with casting again, so how about integers and floats:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>macro_rules<span style=color:#f92672>!</span> get_integer_arg {
+</span></span><span style=display:flex><span>    (<span style=color:#75715e>$args</span>:<span style=color:#a6e22e>ident</span>, <span style=color:#75715e>$index</span>:<span style=color:#a6e22e>expr</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#75715e>$index</span> <span style=color:#f92672>&gt;=</span> <span style=color:#75715e>$args</span>.len() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Err(String::from(<span style=color:#e6db74>&#34;Not enough args&#34;</span>));
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>].clone() {
+</span></span><span style=display:flex><span>                RedisType::String{value} <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>match</span> value.parse() {
+</span></span><span style=display:flex><span>                        Ok(value) <span style=color:#f92672>=&gt;</span> value,
+</span></span><span style=display:flex><span>                        Err(_) <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Attempted to use </span><span style=color:#e6db74>{}</span><span style=color:#e6db74> as an integer&#34;</span>, <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>]))),
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                },
+</span></span><span style=display:flex><span>                RedisType::Integer{value} <span style=color:#f92672>=&gt;</span> value,
+</span></span><span style=display:flex><span>                _ <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Attempted to use </span><span style=color:#e6db74>{}</span><span style=color:#e6db74> as an integer&#34;</span>, <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>]))),
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>macro_rules<span style=color:#f92672>!</span> get_float_arg {
+</span></span><span style=display:flex><span>    (<span style=color:#75715e>$args</span>:<span style=color:#a6e22e>ident</span>, <span style=color:#75715e>$index</span>:<span style=color:#a6e22e>expr</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#75715e>$index</span> <span style=color:#f92672>&gt;=</span> <span style=color:#75715e>$args</span>.len() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Err(String::from(<span style=color:#e6db74>&#34;Not enough args&#34;</span>));
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>].clone() {
+</span></span><span style=display:flex><span>                RedisType::String{value} <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>match</span> value.parse() {
+</span></span><span style=display:flex><span>                        Ok(value) <span style=color:#f92672>=&gt;</span> value,
+</span></span><span style=display:flex><span>                        Err(_) <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Attempted to use </span><span style=color:#e6db74>{}</span><span style=color:#e6db74> as a float&#34;</span>, <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>]))),
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                },
+</span></span><span style=display:flex><span>                RedisType::Integer{value} <span style=color:#f92672>=&gt;</span> value <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>f64</span>,
+</span></span><span style=display:flex><span>                _ <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Attempted to use </span><span style=color:#e6db74>{}</span><span style=color:#e6db74> as a float&#34;</span>, <span style=color:#75715e>$args</span>[<span style=color:#75715e>$index</span>]))),
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Again, if it&rsquo;s the right type, we can just convert it, but if we have something that&rsquo;s a string and <em>can</em> be a number, try to convert it. If not, error with details.</p><p>Not bad!</p><p>I do have one more, but that&rsquo;s mostly specific to <code>SET</code>, so let&rsquo;s leave it for that.</p><h2 id=re-parsing-set>Re-parsing SET</h2><p>Okay, so how how do we handle <code>SET</code>?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>m.insert(<span style=color:#e6db74>&#34;SET&#34;</span>, Command {
+</span></span><span style=display:flex><span>    help: String::from(<span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\</span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>SET key value [NX | XX] [GET] [EX seconds | PX milliseconds | EXAT unix-time-seconds | PXAT unix-time-milliseconds | KEEPTTL]
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>Sets key to a given value.
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>NX|XX - only set if the key does not / does already exist.
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>EX|PX|EXAT|PXAT - key expires after seconds/milliseconds or at a Unix timestamp in seconds/milliseconds
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>KEEPTTL - retain the previously set TTL
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>GET - return the previous value, returns NIL and doesn&#39;t return if the key wasn&#39;t set
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>Returns OK if SET succeeded, nil if SET was not performed for NX|XX or because of GET, the old value if GET was specified. 
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>    &#34;</span>),
+</span></span><span style=display:flex><span>    f: Box::new(<span style=color:#f92672>|</span>state, args<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        assert_n_or_more_args!(args, <span style=color:#ae81ff>2</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> key <span style=color:#f92672>=</span> get_string_arg!(args, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> get_string_arg!(args, <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> nx <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> xx <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> keepttl <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> get <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> expiration <span style=color:#f92672>=</span> None;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> i <span style=color:#f92672>=</span> <span style=color:#ae81ff>2</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> i <span style=color:#f92672>&gt;=</span> args.len() {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> is_string_eq!(args, i, <span style=color:#e6db74>&#34;NX&#34;</span>) {
+</span></span><span style=display:flex><span>                nx <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                i <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> is_string_eq!(args, i, <span style=color:#e6db74>&#34;XX&#34;</span>) {
+</span></span><span style=display:flex><span>                xx <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                i <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> is_string_eq!(args, i, <span style=color:#e6db74>&#34;KEEPTTL&#34;</span>) {
+</span></span><span style=display:flex><span>                keepttl <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                i <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> is_string_eq!(args, i, <span style=color:#e6db74>&#34;GET&#34;</span>) {
+</span></span><span style=display:flex><span>                get <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                i <span style=color:#f92672>+=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(ex) <span style=color:#f92672>=</span> get_expiration!(args, i) {
+</span></span><span style=display:flex><span>                expiration <span style=color:#f92672>=</span> Some(ex);
+</span></span><span style=display:flex><span>                i<span style=color:#f92672>+=</span> <span style=color:#ae81ff>2</span>;
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Err(String::from(format!(<span style=color:#e6db74>&#34;Unexpected parameter: </span><span style=color:#e6db74>{:?}</span><span style=color:#e6db74>&#34;</span>, args[i])));
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> nx <span style=color:#f92672>&amp;&amp;</span> xx {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Err(String::from(<span style=color:#e6db74>&#34;SET: Cannot set both NX and XX&#34;</span>));
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> keepttl <span style=color:#f92672>&amp;&amp;</span> expiration.is_some() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Err(String::from(<span style=color:#e6db74>&#34;SET: Cannot set more than one of EX/PX/EXAT/PXAT/KEEPTTL&#34;</span>));
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> expiration.is_some() {
+</span></span><span style=display:flex><span>            tracing::debug!(<span style=color:#e6db74>&#34;Setting expiration for key {} to {:?}&#34;</span>, key, expiration);
+</span></span><span style=display:flex><span>            state.ttl.push(key.clone(), expiration.unwrap());
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> keepttl {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// do nothing
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            state.ttl.remove(<span style=color:#f92672>&amp;</span>key);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> nx <span style=color:#f92672>&amp;&amp;</span> state.keystore.contains_key(<span style=color:#f92672>&amp;</span>key) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Ok(RedisType::NullString);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> xx <span style=color:#f92672>&amp;&amp;</span> <span style=color:#f92672>!</span>state.keystore.contains_key(<span style=color:#f92672>&amp;</span>key) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Ok(RedisType::NullString);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> result <span style=color:#f92672>=</span> <span style=color:#66d9ef>if</span> get {
+</span></span><span style=display:flex><span>            Ok(<span style=color:#66d9ef>match</span> state.keystore.get(<span style=color:#f92672>&amp;</span>key) {
+</span></span><span style=display:flex><span>                Some(value) <span style=color:#f92672>=&gt;</span> RedisType::String { value: <span style=color:#a6e22e>value</span>.to_owned() },
+</span></span><span style=display:flex><span>                None <span style=color:#f92672>=&gt;</span> RedisType::NullString,
+</span></span><span style=display:flex><span>            })
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            Ok(RedisType::String { value: <span style=color:#e6db74>&#34;OK&#34;</span>.to_owned() })
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        state.keystore.insert(key, value);
+</span></span><span style=display:flex><span>        result
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>});
+</span></span></code></pre></div><p>There are a few changes there (<code>help</code> and <code>state.ttl</code>) that I&rsquo;ll have to come back to in a moment. I expect, you can guess what they do. But here already, you can see how helpful it is to have these macros. I can pull off <code>key</code> and <code>value</code> in two lines, then start processing the keywords (<code>NX</code>/<code>XX</code> etc) directly.</p><p>But then we come to the pile of arguments that set expiration. We&rsquo;ll use them again, so how about we macro that as well:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>macro_rules<span style=color:#f92672>!</span> get_expiration {
+</span></span><span style=display:flex><span>    (<span style=color:#75715e>$args</span>:<span style=color:#a6e22e>ident</span>, <span style=color:#75715e>$index</span>:<span style=color:#a6e22e>expr</span>) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> is_string_eq!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span>, <span style=color:#e6db74>&#34;EX&#34;</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Seconds from now
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> get_integer_arg!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            Some((
+</span></span><span style=display:flex><span>                SystemTime::now()
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> Duration::from_secs(value <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u64</span>)
+</span></span><span style=display:flex><span>            ))
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> is_string_eq!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span>, <span style=color:#e6db74>&#34;PX&#34;</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Milliseconds from now
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> get_integer_arg!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            Some((
+</span></span><span style=display:flex><span>                SystemTime::now()
+</span></span><span style=display:flex><span>                <span style=color:#f92672>+</span> Duration::from_millis(value <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u64</span>)
+</span></span><span style=display:flex><span>            ))
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> is_string_eq!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span>, <span style=color:#e6db74>&#34;EXAT&#34;</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Seconds since epoch
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> get_integer_arg!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            Some(<span style=color:#66d9ef>UNIX_EPOCH</span> <span style=color:#f92672>+</span> Duration::from_secs(value <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u64</span>))
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> <span style=color:#66d9ef>if</span> is_string_eq!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span>, <span style=color:#e6db74>&#34;PXAT&#34;</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Milliseconds since epoch
+</span></span></span><span style=display:flex><span><span style=color:#75715e></span>            <span style=color:#66d9ef>let</span> value <span style=color:#f92672>=</span> get_integer_arg!(<span style=color:#75715e>$args</span>, <span style=color:#75715e>$index</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            Some(<span style=color:#66d9ef>UNIX_EPOCH</span> <span style=color:#f92672>+</span> Duration::from_millis(value <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>u64</span>))
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            None
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Now this is an interesting one, since there are four ways to set expiration. Either in seconds or milliseconds and either as an absolute timestamp (since epoch) or relative to &rsquo;now&rsquo;. In all cases, we can parse each and turn them into an absolute <code>SystemTime</code> of when it will expire.</p><h2 id=implementing-ttl-on-the-state>Implementing TTL on the state</h2><p>Okay, we can parse the expiration time for <code>SET</code>, now we need a place to store it. You might have noticed that we&rsquo;re setting the <code>ttl</code> in the <code>State</code>, so what&rsquo;s that?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Debug, Default)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>State</span> {
+</span></span><span style=display:flex><span>    keystore: <span style=color:#a6e22e>HashMap</span><span style=color:#f92672>&lt;</span>String, String<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    ttl: <span style=color:#a6e22e>PriorityQueue</span><span style=color:#f92672>&lt;</span>String, SystemTime<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>That&rsquo;s it. A <code>PriorityQueue</code> in this case is implemented so that items in it (the expiration times) are sorted. That means that the next to expire will be first. It also has efficient <span class=latex-inline>O(log(n))</span>
+removal by key, which is nice.</p><h2 id=expiration-thread>Expiration thread</h2><p>So now that we have <em>that</em>, how do we actually expire stored values?</p><p>Well, one open would be to expire them on demand. When we fetch a key, check if it&rsquo;s expired. But that&rsquo;s not super elegant, so instead let&rsquo;s more as expected: make a thread that periodically checks the next-to-expire keys and expires any that have passed their date.</p><p>Something like this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[tokio::main]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>async</span> <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>main</span>() -&gt; <span style=color:#a6e22e>std</span>::io::Result<span style=color:#f92672>&lt;</span>()<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    tracing_subscriber::fmt::init();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> addr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;0.0.0.0:6379&#34;</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> listener <span style=color:#f92672>=</span> TcpListener::bind(addr).<span style=color:#66d9ef>await</span><span style=color:#f92672>?</span>;
+</span></span><span style=display:flex><span>    tracing::info!(<span style=color:#e6db74>&#34;Listening on {addr}&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> state <span style=color:#f92672>=</span> Arc::new(Mutex::new(State::default()));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> ttl_state <span style=color:#f92672>=</span> state.clone();
+</span></span><span style=display:flex><span>    tokio::spawn(<span style=color:#66d9ef>async</span> <span style=color:#66d9ef>move</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> now <span style=color:#f92672>=</span> SystemTime::now();
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> evict <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> ttl_state.lock().<span style=color:#66d9ef>await</span>.ttl.peek() {
+</span></span><span style=display:flex><span>                    Some((_, eviction_time)) <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>eviction_time <span style=color:#f92672>&lt;</span> now,
+</span></span><span style=display:flex><span>                    None <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>false</span>,
+</span></span><span style=display:flex><span>                };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> evict {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> ttl_state <span style=color:#f92672>=</span> ttl_state.lock().<span style=color:#66d9ef>await</span>;
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>let</span> (key, _) <span style=color:#f92672>=</span> ttl_state.ttl.pop().unwrap();
+</span></span><span style=display:flex><span>                    tracing::debug!(<span style=color:#e6db74>&#34;Evicting {key} from keystore&#34;</span>);
+</span></span><span style=display:flex><span>                    ttl_state.keystore.remove(<span style=color:#f92672>&amp;</span>key);
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            tokio::time::sleep(Duration::from_secs(<span style=color:#ae81ff>1</span>)).<span style=color:#66d9ef>await</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    });
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> (stream, addr) <span style=color:#f92672>=</span> listener.accept().<span style=color:#66d9ef>await</span><span style=color:#f92672>?</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> thread_state <span style=color:#f92672>=</span> state.clone();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        tracing::debug!(<span style=color:#e6db74>&#34;Accepted connection from {addr:?}&#34;</span>);
+</span></span><span style=display:flex><span>        tokio::spawn(<span style=color:#66d9ef>async</span> <span style=color:#66d9ef>move</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Err(e) <span style=color:#f92672>=</span> handle(stream, addr, thread_state).<span style=color:#66d9ef>await</span> {
+</span></span><span style=display:flex><span>                tracing::warn!(<span style=color:#e6db74>&#34;An error occurred: {e:?}&#34;</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        });
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>One difference here is that we&rsquo;re using <code>Arc&lt;Mutex&lt;State>></code>. An <code>Arc</code> is a <a href=https://en.wikipedia.org/wiki/reference%20counter>reference counter</a> to the item held inside, so that that as long as at least one copy still exists, it will stay in scope. In this case, we have one copy for the eviction thread and then one more per connected client.</p><p>This actually does make our client truly multi-threaded and thread safe, since we&rsquo;re passing the same <code>state</code> to each.</p><p>The <code>Arc</code> alone though means we can&rsquo;t actually modify the <code>state</code>, just read it in multiple threads. Not super helpful. The <code>Mutex</code> on the other hand, allows us to request a <code>lock</code> in each thread and (once given the lock) read or modify. If we had more readers than writers, we could instead have used a <code>RwLock</code> and I may try that in the future. But for now, it works great.</p><p>All that being said, now we have the ability to <code>state.lock().await</code> to get a lock on the <code>Mutex</code> so that we can read or write to it. While we have it, any other thread will <code>await</code> the release.</p><p>And with that, we can run a thread once per second to check for eviction. It&rsquo;s not nanosecond perfect for eviction, but I don&rsquo;t think that&rsquo;s a guarantee that we need.</p><p>The one last gotcha is in the eviction loop:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> now <span style=color:#f92672>=</span> SystemTime::now();
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> evict <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> ttl_state.lock().<span style=color:#66d9ef>await</span>.ttl.peek() {
+</span></span><span style=display:flex><span>            Some((_, eviction_time)) <span style=color:#f92672>=&gt;</span> <span style=color:#f92672>*</span>eviction_time <span style=color:#f92672>&lt;</span> now,
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> <span style=color:#66d9ef>false</span>,
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> evict {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> ttl_state <span style=color:#f92672>=</span> ttl_state.lock().<span style=color:#66d9ef>await</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> (key, _) <span style=color:#f92672>=</span> ttl_state.ttl.pop().unwrap();
+</span></span><span style=display:flex><span>            tracing::debug!(<span style=color:#e6db74>&#34;Evicting {key} from keystore&#34;</span>);
+</span></span><span style=display:flex><span>            ttl_state.keystore.remove(<span style=color:#f92672>&amp;</span>key);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    tokio::time::sleep(Duration::from_secs(<span style=color:#ae81ff>1</span>)).<span style=color:#66d9ef>await</span>;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Why do I calculate <code>evict</code> first and then get another lock to actually evict it? Well, that&rsquo;s Rust&rsquo;s fault. It doesn&rsquo;t want to let me borrow <code>ttl_state</code> as mutable (since we&rsquo;re writing to it) if we&rsquo;ve already borrowed it as read only (with the <code>peek</code>). And we do want to peek, since if we actually did a <code>pop</code>, then we&rsquo;d have to always put the item back on.</p><p>Took a bit to get that working.</p><p>With all that together, we have eviction!</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> $ RUST_LOG<span style=color:#f92672>=</span>debug cargo run --bin server
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span>    Compiling redis-rs v0.1.0 <span style=color:#f92672>(</span>/Users/jp/Projects/redis-rs<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span>     Finished dev <span style=color:#f92672>[</span>unoptimized + debuginfo<span style=color:#f92672>]</span> target<span style=color:#f92672>(</span>s<span style=color:#f92672>)</span> in 3.29s
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span>      Running <span style=color:#e6db74>`</span>target/debug/server<span style=color:#e6db74>`</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:23.329020Z  INFO server: Listening on 0.0.0.0:6379
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>client<span style=color:#f92672>]</span> $ redis-cli
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:24.660161Z DEBUG server: Accepted connection from 127.0.0.1:49923
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:24.660314Z  INFO server: <span style=color:#f92672>[</span>127.0.0.1:49923<span style=color:#f92672>]</span> Accepted connection
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:24.660388Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923<span style=color:#f92672>]</span> Received <span style=color:#ae81ff>27</span> bytes
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:24.660441Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923 Received: COMMAND <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;DOCS&#34;</span> <span style=color:#f92672>}]</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>client<span style=color:#f92672>]</span> 127.0.0.1:6379&gt; SET test value EX <span style=color:#ae81ff>5</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:30.420285Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923<span style=color:#f92672>]</span> Received <span style=color:#ae81ff>49</span> bytes
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:30.420417Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923 Received: SET <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;test&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;value&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;EX&#34;</span> <span style=color:#f92672>}</span>, String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;5&#34;</span> <span style=color:#f92672>}]</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:30.420585Z DEBUG server: Setting expiration <span style=color:#66d9ef>for</span> key test to Some<span style=color:#f92672>(</span>SystemTime <span style=color:#f92672>{</span> tv_sec: 1679891735, tv_nsec: <span style=color:#ae81ff>420567000</span> <span style=color:#f92672>})</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>client<span style=color:#f92672>]</span> <span style=color:#e6db74>&#34;OK&#34;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>client<span style=color:#f92672>]</span> 127.0.0.1:6379&gt; GET test
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:31.539128Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923<span style=color:#f92672>]</span> Received <span style=color:#ae81ff>23</span> bytes
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:31.539222Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923 Received: GET <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;test&#34;</span> <span style=color:#f92672>}]</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>client<span style=color:#f92672>]</span> <span style=color:#e6db74>&#34;value&#34;</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:36.353723Z DEBUG server: Evicting test from keystore
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>client<span style=color:#f92672>]</span> 127.0.0.1:6379&gt; GET test
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:40.465655Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923<span style=color:#f92672>]</span> Received <span style=color:#ae81ff>23</span> bytes
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:40.465713Z DEBUG server: <span style=color:#f92672>[</span>127.0.0.1:49923 Received: GET <span style=color:#f92672>[</span>String <span style=color:#f92672>{</span> value: <span style=color:#e6db74>&#34;test&#34;</span> <span style=color:#f92672>}]</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>client<span style=color:#f92672>]</span> <span style=color:#f92672>(</span>nil<span style=color:#f92672>)</span>
+</span></span><span style=display:flex><span><span style=color:#f92672>[</span>server<span style=color:#f92672>]</span> 2023-03-26T18:35:41.746856Z  INFO server: <span style=color:#f92672>[</span>127.0.0.1:49923<span style=color:#f92672>]</span> Ending connection
+</span></span></code></pre></div><p>Still need to figure out a better way to format that.</p><p>But in any case, we set <code>test = value</code> with an expiration of 5 seconds. A <code>GET test</code> within those five seconds returns <code>value</code> and after: <code>(nil)</code>. Nice!</p><p>So we&rsquo;ve got eviction.</p><p>Cool.</p><h2 id=a-few-more-examples>A few more examples</h2><p>That&rsquo;s enough to write all of the <a href="https://redis.io/commands/?group=string">string commands</a>. Let&rsquo;s do it. You can see them all in the <a href=https://github.com/jpverkamp/redis-rs/>full source</a>, but I&rsquo;ll point out a few interesting ones here:</p><h3 id=decr>DECR</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>m.insert(<span style=color:#e6db74>&#34;DECR&#34;</span>, Command {
+</span></span><span style=display:flex><span>    help: String::from(<span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\</span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>DECR key
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>Decrement the number stored at key by one.
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>If the key does not exist, it is set to 0 before performing the operation. An error is returned if the key contains a value of the wrong type or contains a string that can not be represented as integer. This operation is limited to 64 bit signed integers. 
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>    &#34;</span>),
+</span></span><span style=display:flex><span>    f: Box::new(<span style=color:#f92672>|</span>state, args<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        assert_n_args!{args, <span style=color:#ae81ff>1</span>};
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> key <span style=color:#f92672>=</span> get_string_arg!(args, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(current) <span style=color:#f92672>=</span> state.keystore.get_mut(<span style=color:#f92672>&amp;</span>key) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> current.parse::<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>i64</span><span style=color:#f92672>&gt;</span>() {
+</span></span><span style=display:flex><span>                Ok(value) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#f92672>*</span>current <span style=color:#f92672>=</span> (value <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>).to_string();
+</span></span><span style=display:flex><span>                    Ok(RedisType::Integer{ value: <span style=color:#a6e22e>value</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span> })
+</span></span><span style=display:flex><span>                },
+</span></span><span style=display:flex><span>                Err(_) <span style=color:#f92672>=&gt;</span> Err(String::from(<span style=color:#e6db74>&#34;Value is not an integer or out of range&#34;</span>)),
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            state.keystore.insert(key.clone(), <span style=color:#e6db74>&#34;-1&#34;</span>.to_owned());
+</span></span><span style=display:flex><span>            Ok(RedisType::Integer{ value: <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span> })
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>});
+</span></span></code></pre></div><p>Primarily interesting because of the typing. If the value is already a string, cast it to an integer, subtract one, and cast it back. Ugly, but that&rsquo;s how it must be.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>127.0.0.1:6379&gt; SET test 10
+</span></span><span style=display:flex><span>&#34;OK&#34;
+</span></span><span style=display:flex><span>127.0.0.1:6379&gt; DECR test
+</span></span><span style=display:flex><span>(integer) 9
+</span></span><span style=display:flex><span>127.0.0.1:6379&gt; DECR test
+</span></span><span style=display:flex><span>(integer) 8
+</span></span><span style=display:flex><span>127.0.0.1:6379&gt; DECR test2
+</span></span><span style=display:flex><span>(integer) -1
+</span></span></code></pre></div><h3 id=getrange>GETRANGE</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>m.insert(<span style=color:#e6db74>&#34;GETRANGE&#34;</span>, Command {
+</span></span><span style=display:flex><span>    help: String::from(<span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\</span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>GETRANGE key start end
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>Get a substring of the string stored at a key.&#34;</span>
+</span></span><span style=display:flex><span>    ),
+</span></span><span style=display:flex><span>    f: Box::new(<span style=color:#f92672>|</span>state, args<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        assert_n_args!(args, <span style=color:#ae81ff>3</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> key <span style=color:#f92672>=</span> get_string_arg!(args, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> start <span style=color:#f92672>=</span> get_integer_arg!(args, <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> end <span style=color:#f92672>=</span> get_integer_arg!(args, <span style=color:#ae81ff>2</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Ok(<span style=color:#66d9ef>match</span> state.keystore.get(<span style=color:#f92672>&amp;</span>key) {
+</span></span><span style=display:flex><span>            Some(value) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                start <span style=color:#f92672>=</span> start.max(<span style=color:#ae81ff>0</span>).min(value.len() <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>i64</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>                end <span style=color:#f92672>=</span> end.max(<span style=color:#ae81ff>0</span>).min(value.len() <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>i64</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> start <span style=color:#f92672>&gt;</span> end {
+</span></span><span style=display:flex><span>                    RedisType::String { value: String::new() }
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    RedisType::String { value: <span style=color:#a6e22e>value</span>[start <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span><span style=color:#f92672>..</span>end <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>].to_owned() }
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> RedisType::NullString,
+</span></span><span style=display:flex><span>        })
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>});
+</span></span></code></pre></div><p>Fetches substrings (although I think it&rsquo;s supposed to work on arrays to? not yet anyways). I think the <code>start.max(0).min(value.len() as i64 - 1)</code> is particularly neat.</p><h3 id=mget>MGET</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span>m.insert(<span style=color:#e6db74>&#34;MGET&#34;</span>, Command {
+</span></span><span style=display:flex><span>    help: String::from(<span style=color:#e6db74>&#34;</span><span style=color:#ae81ff>\</span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>MGET key [key ...]
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>Get the values of all the given keys.
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>For every key that does not hold a string value or does not exist, the special value nil is returned.
+</span></span></span><span style=display:flex><span><span style=color:#e6db74>    &#34;</span>),
+</span></span><span style=display:flex><span>    f: Box::new(<span style=color:#f92672>|</span>state, args<span style=color:#f92672>|</span> {
+</span></span><span style=display:flex><span>        assert_n_or_more_args!(args, <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> values <span style=color:#f92672>=</span> Vec::new();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> i <span style=color:#66d9ef>in</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>..</span>args.len() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>let</span> key <span style=color:#f92672>=</span> get_string_arg!(args, i);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> state.keystore.get(<span style=color:#f92672>&amp;</span>key) {
+</span></span><span style=display:flex><span>                Some(value) <span style=color:#f92672>=&gt;</span> values.push(RedisType::String { value: <span style=color:#a6e22e>value</span>.to_owned() }),
+</span></span><span style=display:flex><span>                None <span style=color:#f92672>=&gt;</span> values.push(RedisType::NullString),
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Ok(RedisType::Array { value: <span style=color:#a6e22e>values</span> })
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>});
+</span></span></code></pre></div><p>It&rsquo;s pretty cool to be able to use <code>get_string_arg!(args, i)</code> in a loop and it just works. And matching on the <code>Option</code> of getting a value and pushing <code>(nil)</code> if it&rsquo;s not. Elegant.</p><h2 id=github-copilot>Github Copilot</h2><p>Full disclaimer time. Implementing all of those functions is a lot of busy work. I wasn&rsquo;t particularly looking forward to it. But there&rsquo;s been a big (and absolutely) fascinating push around AI/ML tools recently, so I decided to actually stop putting it off and give Github Copilot a try.</p><p>Holy crap.</p><p>That&rsquo;s kind of awesome.</p><p>All I had to do was starting typing <code>m.insert</code> and it would already somehow from context figure out that I was implementing Redis commands and start filling out the next one. Including help text (right in all but one case) and a description. Then in most cases, it would generate code for the function for me.</p><p>And the absolutely craziest part (to me)?</p><p>It used the helper macros that I&rsquo;d already written.</p><p>So it not only understands the problem, but also understands the structure that I&rsquo;ve already put in place.</p><p>Now don&rsquo;t get me wrong, the code isn&rsquo;t perfect. A few of them I&rsquo;ve rewritten in part or in whole. In a few cases, it suggested additional macros (like for <code>MSET</code> it wanted <code>assert_even_args!</code> which, while cool, is just not necessary). And in a few cases, it just did something that wouldn&rsquo;t work at all.</p><p>But for the moment&mldr; that&rsquo;s really impressive.</p><p>Now there are also ethical concerns around Github Copilot: did Microsoft train it on private or GPL code? Probably. Will the code it generates have either no copywrite (if I don&rsquo;t modify it) or step on someone else&rsquo;s? Possibly. I feel like these are solvable problems though.</p><p>Am I still going to play with this more? Absolutely.</p><h2 id=full-source>Full source</h2><p>As always (although I don&rsquo;t know if I&rsquo;ve said it), the full source is <a href=https://github.com/jpverkamp/redis-rs/>on GitHub</a> with <a href=https://github.com/jpverkamp/redis-rs/tags>tags available</a> for the code at the state of each blog post.</p><h2 id=next-steps>Next steps</h2><ul><li>Refactor commands into multiple files</li><li>Implement another data type (sets, hashes, sorted sets, streams, etc)</li><li>Implement persistance to disk / backups</li><li>Improve the client to handle quoted strings<ul><li>Test the improved client against the official server</li></ul></li><li>Try <a href=https://redis.io/docs/management/optimization/benchmarks/>redis-benchmark</a></li></ul><p>So many things!</p></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div></body></html>
