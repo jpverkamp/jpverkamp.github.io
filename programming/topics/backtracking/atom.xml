@@ -1,4 +1,95 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Backtracking on jverkamp.com</title><link>https://blog.jverkamp.com/programming/topics/backtracking/</link><description>Recent content in Backtracking on jverkamp.com</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/topics/backtracking/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 7: Mathinator</title><link>https://blog.jverkamp.com/2024/12/07/aoc-2024-day-7-mathinator/</link><pubDate>Sat, 07 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/07/aoc-2024-day-7-mathinator/</guid><description>&lt;h2 id="source-day-7-bridge-repairhttpsadventofcodecom2024day7">Source: &lt;a href="https://adventofcode.com/2024/day/7" target="_blank" rel="noopener">Day 7: Bridge Repair&lt;/a>&lt;/h2>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Backtracking on jverkamp.com</title><link>https://blog.jverkamp.com/programming/topics/backtracking/</link><description>Recent content in Backtracking on jverkamp.com</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><atom:link href="https://blog.jverkamp.com/programming/topics/backtracking/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 17: Virtual Machininator</title><link>https://blog.jverkamp.com/2024/12/17/aoc-2024-day-17-virtual-machininator/</link><pubDate>Tue, 17 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/17/aoc-2024-day-17-virtual-machininator/</guid><description>&lt;h2 id="source-day-17-chronospatial-computerhttpsadventofcodecom2024day17">Source: &lt;a href="https://adventofcode.com/2024/day/17" target="_blank" rel="noopener">Day 17: Chronospatial Computer&lt;/a>&lt;/h2>
+&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day17.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
+&lt;nav id="TableOfContents">
+&lt;ul>
+&lt;li>&lt;a href="#source-day-17-chronospatial-computerhttpsadventofcodecom2024day17">Source: &lt;a href="https://adventofcode.com/2024/day/17">Day 17: Chronospatial Computer&lt;/a>&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#part-1">Part 1&lt;/a>
+&lt;ul>
+&lt;li>&lt;a href="#instructions">Instructions&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#parameter-specification">Parameter specification&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#unit-tests">Unit tests&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;a href="#part-2">Part 2&lt;/a>
+&lt;ul>
+&lt;li>&lt;a href="#so-what-is-our-program-actually-doing">So what is our program actually doing?&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#psuedo-code-hash">Psuedo-code hash&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#whats-actually-changing">What&amp;rsquo;s actually changing?&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#zero-guarantees">Zero guarantees&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#the-actual-answer">The actual answer&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;/nav>
+&lt;h2 id="part-1">Part 1&lt;/h2>
+&lt;blockquote>
+&lt;p>Implement a virtual machine. The machine will have 3 unbounded signed registers, 8 opcodes (see below), a variable parameter scheme (see below that). You will be given the initial values of the 3 registers and a program. Find the final output.&lt;/p>
+&lt;/blockquote>
+&lt;h3 id="instructions">Instructions&lt;/h3>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>Opcode&lt;/th>
+&lt;th>Instruction&lt;/th>
+&lt;th>Description&lt;/th>
+&lt;th>Notes&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>0&lt;/td>
+&lt;td>&lt;code>adv reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>A = A &amp;gt;&amp;gt; OP&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>1&lt;/td>
+&lt;td>&lt;code>bxl val&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = B ^ OP&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>2&lt;/td>
+&lt;td>&lt;code>bst reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = OP &amp;amp; 0b111&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>3&lt;/td>
+&lt;td>&lt;code>jnz val&lt;/code>&lt;/td>
+&lt;td>If &lt;code>a =/= 0&lt;/code>, jump to &lt;code>LIT&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>4&lt;/td>
+&lt;td>&lt;code>bxc ignore&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = B ^ C&lt;/code>&lt;/td>
+&lt;td>Still takes param, but ignores it&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>5&lt;/td>
+&lt;td>&lt;code>out reg/val&lt;/code>&lt;/td>
+&lt;td>Output &lt;code>b&lt;/code>&lt;/td>
+&lt;td>Only outputs lowest 3 bits&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>6&lt;/td>
+&lt;td>&lt;code>bdv reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = A &amp;gt;&amp;gt; OP&lt;/code>&lt;/td>
+&lt;td>Same as &lt;code>adv&lt;/code> but writes to &lt;code>b&lt;/code>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>7&lt;/td>
+&lt;td>&lt;code>cdv reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>C = A &amp;gt;&amp;gt; OP&lt;/code>&lt;/td>
+&lt;td>Same as &lt;code>adv&lt;/code> but writes to &lt;code>c&lt;/code>&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="parameter-specification">Parameter specification&lt;/h3>
+&lt;p>For instructions that can take &lt;code>reg/val&lt;/code>, &lt;code>0&lt;/code> to &lt;code>3&lt;/code> (inclusive) are treated as literal values, &lt;code>4&lt;/code> is register &lt;code>A&lt;/code>, &lt;code>5&lt;/code> is &lt;code>B&lt;/code>, &lt;code>6&lt;/code>, is &lt;code>C&lt;/code>, and &lt;code>7&lt;/code> is an error (should never happen).&lt;/p>
+&lt;p>For instructions that only take &lt;code>val&lt;/code>, it&amp;rsquo;s always a literal value in the range &lt;code>0&lt;/code> to &lt;code>7&lt;/code> (inclusive).&lt;/p></description></item><item><title>AoC 2024 Day 7: Mathinator</title><link>https://blog.jverkamp.com/2024/12/07/aoc-2024-day-7-mathinator/</link><pubDate>Sat, 07 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/07/aoc-2024-day-7-mathinator/</guid><description>&lt;h2 id="source-day-7-bridge-repairhttpsadventofcodecom2024day7">Source: &lt;a href="https://adventofcode.com/2024/day/7" target="_blank" rel="noopener">Day 7: Bridge Repair&lt;/a>&lt;/h2>
 &lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day7.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
 &lt;nav id="TableOfContents">
 &lt;ul>

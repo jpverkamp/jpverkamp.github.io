@@ -1,4 +1,95 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>jverkamp.com</title><link>https://blog.jverkamp.com/</link><description>Recent content on jverkamp.com</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Mon, 16 Dec 2024 00:00:03 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 16: Astarinator</title><link>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</link><pubDate>Mon, 16 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</guid><description>&lt;h2 id="source-day-16-reindeer-mazehttpsadventofcodecom2024day16">Source: &lt;a href="https://adventofcode.com/2024/day/16" target="_blank" rel="noopener">Day 16: Reindeer Maze&lt;/a>&lt;/h2>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>jverkamp.com</title><link>https://blog.jverkamp.com/</link><description>Recent content on jverkamp.com</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Tue, 17 Dec 2024 00:00:03 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 17: Virtual Machininator</title><link>https://blog.jverkamp.com/2024/12/17/aoc-2024-day-17-virtual-machininator/</link><pubDate>Tue, 17 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/17/aoc-2024-day-17-virtual-machininator/</guid><description>&lt;h2 id="source-day-17-chronospatial-computerhttpsadventofcodecom2024day17">Source: &lt;a href="https://adventofcode.com/2024/day/17" target="_blank" rel="noopener">Day 17: Chronospatial Computer&lt;/a>&lt;/h2>
+&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day17.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
+&lt;nav id="TableOfContents">
+&lt;ul>
+&lt;li>&lt;a href="#source-day-17-chronospatial-computerhttpsadventofcodecom2024day17">Source: &lt;a href="https://adventofcode.com/2024/day/17">Day 17: Chronospatial Computer&lt;/a>&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#part-1">Part 1&lt;/a>
+&lt;ul>
+&lt;li>&lt;a href="#instructions">Instructions&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#parameter-specification">Parameter specification&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#unit-tests">Unit tests&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;a href="#part-2">Part 2&lt;/a>
+&lt;ul>
+&lt;li>&lt;a href="#so-what-is-our-program-actually-doing">So what is our program actually doing?&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#psuedo-code-hash">Psuedo-code hash&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#whats-actually-changing">What&amp;rsquo;s actually changing?&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#zero-guarantees">Zero guarantees&lt;/a>&lt;/li>
+&lt;li>&lt;a href="#the-actual-answer">The actual answer&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
+&lt;/ul>
+&lt;/nav>
+&lt;h2 id="part-1">Part 1&lt;/h2>
+&lt;blockquote>
+&lt;p>Implement a virtual machine. The machine will have 3 unbounded signed registers, 8 opcodes (see below), a variable parameter scheme (see below that). You will be given the initial values of the 3 registers and a program. Find the final output.&lt;/p>
+&lt;/blockquote>
+&lt;h3 id="instructions">Instructions&lt;/h3>
+&lt;table>
+&lt;thead>
+&lt;tr>
+&lt;th>Opcode&lt;/th>
+&lt;th>Instruction&lt;/th>
+&lt;th>Description&lt;/th>
+&lt;th>Notes&lt;/th>
+&lt;/tr>
+&lt;/thead>
+&lt;tbody>
+&lt;tr>
+&lt;td>0&lt;/td>
+&lt;td>&lt;code>adv reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>A = A &amp;gt;&amp;gt; OP&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>1&lt;/td>
+&lt;td>&lt;code>bxl val&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = B ^ OP&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>2&lt;/td>
+&lt;td>&lt;code>bst reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = OP &amp;amp; 0b111&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>3&lt;/td>
+&lt;td>&lt;code>jnz val&lt;/code>&lt;/td>
+&lt;td>If &lt;code>a =/= 0&lt;/code>, jump to &lt;code>LIT&lt;/code>&lt;/td>
+&lt;td>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>4&lt;/td>
+&lt;td>&lt;code>bxc ignore&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = B ^ C&lt;/code>&lt;/td>
+&lt;td>Still takes param, but ignores it&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>5&lt;/td>
+&lt;td>&lt;code>out reg/val&lt;/code>&lt;/td>
+&lt;td>Output &lt;code>b&lt;/code>&lt;/td>
+&lt;td>Only outputs lowest 3 bits&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>6&lt;/td>
+&lt;td>&lt;code>bdv reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>B = A &amp;gt;&amp;gt; OP&lt;/code>&lt;/td>
+&lt;td>Same as &lt;code>adv&lt;/code> but writes to &lt;code>b&lt;/code>&lt;/td>
+&lt;/tr>
+&lt;tr>
+&lt;td>7&lt;/td>
+&lt;td>&lt;code>cdv reg/val&lt;/code>&lt;/td>
+&lt;td>&lt;code>C = A &amp;gt;&amp;gt; OP&lt;/code>&lt;/td>
+&lt;td>Same as &lt;code>adv&lt;/code> but writes to &lt;code>c&lt;/code>&lt;/td>
+&lt;/tr>
+&lt;/tbody>
+&lt;/table>
+&lt;h3 id="parameter-specification">Parameter specification&lt;/h3>
+&lt;p>For instructions that can take &lt;code>reg/val&lt;/code>, &lt;code>0&lt;/code> to &lt;code>3&lt;/code> (inclusive) are treated as literal values, &lt;code>4&lt;/code> is register &lt;code>A&lt;/code>, &lt;code>5&lt;/code> is &lt;code>B&lt;/code>, &lt;code>6&lt;/code>, is &lt;code>C&lt;/code>, and &lt;code>7&lt;/code> is an error (should never happen).&lt;/p>
+&lt;p>For instructions that only take &lt;code>val&lt;/code>, it&amp;rsquo;s always a literal value in the range &lt;code>0&lt;/code> to &lt;code>7&lt;/code> (inclusive).&lt;/p></description></item><item><title>AoC 2024 Day 16: Astarinator</title><link>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</link><pubDate>Mon, 16 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</guid><description>&lt;h2 id="source-day-16-reindeer-mazehttpsadventofcodecom2024day16">Source: &lt;a href="https://adventofcode.com/2024/day/16" target="_blank" rel="noopener">Day 16: Reindeer Maze&lt;/a>&lt;/h2>
 &lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day16.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
 &lt;nav id="TableOfContents">
 &lt;ul>
@@ -846,9 +937,4 @@ Nightingale sighed. &amp;ldquo;No,&amp;rdquo; he said. &amp;ldquo;Not like Harry
 &lt;p>For &amp;hellip; reasons, Mrs. Piggle-Wiggle has moved out of town to a farm. Here, she takes the problem children and uses (farm style) household chores in order to help them be better.&lt;/p>
 &lt;p>It actually really works&amp;ndash;and is so much less likely than [[Mrs. Piggle-Wiggle&amp;rsquo;s Magic]]. I think this might actually be my favorite. It&amp;rsquo;s weird, writing this out, to realize how relatively few stories this one had though.&lt;/p></description></item><item><title>Mrs. Piggle-Wiggle's Magic</title><link>https://blog.jverkamp.com/2024/09/18/mrs.-piggle-wiggles-magic/</link><pubDate>Wed, 18 Sep 2024 00:00:02 +0000</pubDate><guid>https://blog.jverkamp.com/2024/09/18/mrs.-piggle-wiggles-magic/</guid><description>&lt;p>My thoughts for the series as a whole are on the review for &lt;a href="https://blog.jverkamp.com/2024/09/18/mrs.-piggle-wiggle/">Mrs. Piggle-Wiggle&lt;/a>. Really, if I&amp;rsquo;d only read that book and this one, I don&amp;rsquo;t know if I would have continued the series.&lt;/p>
 &lt;p>In the first, we have fairly mundane and reasonable solutions to realistic childhood issues. In this one&amp;ndash;straight out magic. I&amp;rsquo;m not a huge fan, especially with the tonal shift. But I do really like &lt;a href="https://blog.jverkamp.com/2024/09/18/mrs.-piggle-wiggles-farm/">Mrs. Piggle-Wiggle&amp;#39;s Farm&lt;/a> and (perhaps surprisingly) &lt;a href="https://blog.jverkamp.com/2024/09/18/happy-birthday-mrs.-piggle-wiggle/">Happy Birthday, Mrs. Piggle-Wiggle&lt;/a>, so I&amp;rsquo;m glad I continued.&lt;/p>
-&lt;p>That being said, this one does have some fun moments (the Tattletales, Lester the pig with his table manners), so it&amp;rsquo;s not all bad!&lt;/p></description></item><item><title>Mrs. Piggle-Wiggle</title><link>https://blog.jverkamp.com/2024/09/18/mrs.-piggle-wiggle/</link><pubDate>Wed, 18 Sep 2024 00:00:01 +0000</pubDate><guid>https://blog.jverkamp.com/2024/09/18/mrs.-piggle-wiggle/</guid><description>&lt;p>The Mrs. Piggle-Wiggle books are an interesting sort of children&amp;rsquo;s tales. Throughout the books, we&amp;rsquo;re introduced to familys with strange names, where always and without fail, the children are in some way, shape, or form misbehaving. One thing leads to another, their mother&lt;sup id="fnref:1">&lt;a href="#fn:1" class="footnote-ref" role="doc-noteref">1&lt;/a>&lt;/sup> is at her wit&amp;rsquo;s end, and&amp;hellip; they call Mrs. Piggle-Wiggle and she saves the day.&lt;/p>
-&lt;p>Originally published 1947-1957, the first four books are very much a product of their times. The family dynamics, the problems the children have, and even some of the (less magical) solutions. Yet a lot of the problems ring true, even today.&lt;/p>
-&lt;p>We&amp;rsquo;ve been listening to the 4 of the 5 books we&amp;rsquo;ve found audiobooks for in a somewhat random order. Mostly, the order doesn&amp;rsquo;t matter. Each story is fairly self contained&amp;ndash;with the exception of book 3: Mrs. Piggle-Wiggle&amp;rsquo;s farm, in which she&amp;rsquo;s moved out of town. Except in book 4, she&amp;rsquo;s back and no mention is made ever again. Anyways.&lt;/p>
-&lt;p>The last, published in book 5, actually fits fairly well with the first 4, despite the fact that it was published 50 years later by MacDonald&amp;rsquo;s daughter. Honestly, on just listening to them, it didn&amp;rsquo;t feel all that different.&lt;/p>
-&lt;p>I think the main decider on if I&amp;rsquo;d like a particular story or not depended entirely on how magical the solution was. While they&amp;rsquo;re all somewhat unbelievable (a day or two staying up late curing a TV addiction? sure), I like the ones with a practical solution. In particular, Mrs. Piggle-Wiggle (1), her Farm (3), and Happy Birthday (5) are my favorites. Conversely, her Magic (2) and Hello (4) are much more about magical pills and tonics that miraculously solve problems&amp;ndash;not particularly applicable that, even if they are fun to read about.&lt;/p>
-&lt;p>Overall, they&amp;rsquo;re a lot of fun to read/listen to and I don&amp;rsquo;t expect they&amp;rsquo;ll go away any time soon.&lt;/p></description></item></channel></rss>
+&lt;p>That being said, this one does have some fun moments (the Tattletales, Lester the pig with his table manners), so it&amp;rsquo;s not all bad!&lt;/p></description></item></channel></rss>
