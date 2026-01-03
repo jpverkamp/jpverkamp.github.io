@@ -1,90 +1,94 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Pathfinding on jverkamp.com</title><link>https://blog.jverkamp.com/programming/topics/pathfinding/</link><description>Recent content in Pathfinding on jverkamp.com</description><generator>Hugo</generator><language>en-us</language><lastBuildDate>Fri, 20 Dec 2024 00:00:03 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/programming/topics/pathfinding/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 20: Shadow Catinator</title><link>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</link><pubDate>Fri, 20 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</guid><description>&lt;h2 id="source-day-20-race-condition">Source: &lt;a href="https://adventofcode.com/2024/day/20" target="_blank" rel="noopener">Day 20: Race Condition&lt;/a>&lt;/h2>
-&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day20.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-day-20-race-condition">Source: &lt;a href="https://adventofcode.com/2024/day/20">Day 20: Race Condition&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#version-1-entirely-over-complicated">Version 1: Entirely over complicated&amp;hellip;&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#version-2-floodfill">Version 2: Floodfill&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#version-3-directly-scan-along-the-path">Version 3: Directly scan along the path&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-1-calculate-distances-once-dijkstras-algorithm">Optimization 1: Calculate distances once (Dijkstra&amp;rsquo;s algorithm)&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-2-store-distances-in-a-grid">Optimization 2: Store distances in a &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#pretty-pictures">Pretty pictures&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-3-store-distances-in-a-grid">Optimization 3: Store distances in a &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-4-inverting-the-loop">Optimization 4: Inverting the loop&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#prettier-pictures">Prettier pictures&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Pathfinding on jverkamp.com</title><link>https://blog.jverkamp.com/programming/topics/pathfinding/</link><description>Recent content in Pathfinding on jverkamp.com</description><generator>Hugo</generator><language>en-us</language><lastBuildDate>Fri, 20 Dec 2024 00:00:03 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/programming/topics/pathfinding/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 20: Shadow Catinator</title><link>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</link><pubDate>Fri, 20 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</guid><description>&lt;h2 id="source-day-20-race-condition"&gt;Source: &lt;a href="https://adventofcode.com/2024/day/20" target="_blank" rel="noopener"&gt;Day 20: Race Condition&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day20.rs" target="_blank" rel="noopener"&gt;Full solution&lt;/a&gt; for today (spoilers!).&lt;/p&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-day-20-race-condition"&gt;Source: Day 20: Race Condition&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#version-1-entirely-over-complicated"&gt;Version 1: Entirely over complicated&amp;hellip;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#version-2-floodfill"&gt;Version 2: Floodfill&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#version-3-directly-scan-along-the-path"&gt;Version 3: Directly scan along the path&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-1-calculate-distances-once-dijkstras-algorithm"&gt;Optimization 1: Calculate distances once (Dijkstra&amp;rsquo;s algorithm)&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-2-store-distances-in-a-grid"&gt;Optimization 2: Store distances in a &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#pretty-pictures"&gt;Pretty pictures&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-3-store-distances-in-a-grid"&gt;Optimization 3: Store distances in a &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-4-inverting-the-loop"&gt;Optimization 4: Inverting the loop&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#prettier-pictures"&gt;Prettier pictures&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#benchmarks"&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>Given a maze with exactly one path, find how many single walls you can walk through (remove) that shorten the best path by at least 100 units.&lt;/p>&lt;/blockquote></description></item><item><title>AoC 2024 Day 18: Last Chancinator</title><link>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</link><pubDate>Wed, 18 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</guid><description>&lt;h2 id="source-day-18-ram-run">Source: &lt;a href="https://adventofcode.com/2024/day/18" target="_blank" rel="noopener">Day 18: RAM Run&lt;/a>&lt;/h2>
-&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day18.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-day-18-ram-run">Source: &lt;a href="https://adventofcode.com/2024/day/18">Day 18: RAM Run&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-1-using-grid">Optimization 1: Using &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-2-two-neighbors">Optimization 2: Two neighbors&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-3-using-grid">Optimization 3: Using &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-4-on-the-best-path">Optimization 4: On the best path&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-5-binary-search">Optimization 5: Binary search&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Given a maze with exactly one path, find how many single walls you can walk through (remove) that shorten the best path by at least 100 units.&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>AoC 2024 Day 18: Last Chancinator</title><link>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</link><pubDate>Wed, 18 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</guid><description>&lt;h2 id="source-day-18-ram-run"&gt;Source: &lt;a href="https://adventofcode.com/2024/day/18" target="_blank" rel="noopener"&gt;Day 18: RAM Run&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day18.rs" target="_blank" rel="noopener"&gt;Full solution&lt;/a&gt; for today (spoilers!).&lt;/p&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-day-18-ram-run"&gt;Source: Day 18: RAM Run&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-1-using-grid"&gt;Optimization 1: Using &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-2-two-neighbors"&gt;Optimization 2: Two neighbors&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-3-using-grid"&gt;Optimization 3: Using &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-4-on-the-best-path"&gt;Optimization 4: On the best path&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-5-binary-search"&gt;Optimization 5: Binary search&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#benchmarks"&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>You are given a series of points on a &lt;code>71x71&lt;/code> grid. Taking only the first 1024 points, how long is the shortest path from &lt;code>(0, 0)&lt;/code> to &lt;code>(70, 70)&lt;/code>?&lt;/p>&lt;/blockquote></description></item><item><title>AoC 2024 Day 16: Astarinator</title><link>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</link><pubDate>Mon, 16 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</guid><description>&lt;h2 id="source-day-16-reindeer-maze">Source: &lt;a href="https://adventofcode.com/2024/day/16" target="_blank" rel="noopener">Day 16: Reindeer Maze&lt;/a>&lt;/h2>
-&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day16.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-day-16-reindeer-maze">Source: &lt;a href="https://adventofcode.com/2024/day/16">Day 16: Reindeer Maze&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-1-a">Optimization 1: A*&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;You are given a series of points on a &lt;code&gt;71x71&lt;/code&gt; grid. Taking only the first 1024 points, how long is the shortest path from &lt;code&gt;(0, 0)&lt;/code&gt; to &lt;code&gt;(70, 70)&lt;/code&gt;?&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>AoC 2024 Day 16: Astarinator</title><link>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</link><pubDate>Mon, 16 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</guid><description>&lt;h2 id="source-day-16-reindeer-maze"&gt;Source: &lt;a href="https://adventofcode.com/2024/day/16" target="_blank" rel="noopener"&gt;Day 16: Reindeer Maze&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day16.rs" target="_blank" rel="noopener"&gt;Full solution&lt;/a&gt; for today (spoilers!).&lt;/p&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-day-16-reindeer-maze"&gt;Source: Day 16: Reindeer Maze&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-1-a"&gt;Optimization 1: A*&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#benchmarks"&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>Given a maze, what is the shortest path between &lt;code>S&lt;/code> and &lt;code>E&lt;/code> where walking straight costs one and turning costs 1000.&lt;/p>&lt;/blockquote></description></item><item><title>AoC 2024 Day 10: Take-a-Hikinator</title><link>https://blog.jverkamp.com/2024/12/10/aoc-2024-day-10-take-a-hikinator/</link><pubDate>Tue, 10 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/10/aoc-2024-day-10-take-a-hikinator/</guid><description>&lt;h2 id="source-day-10-hoof-it">Source: &lt;a href="https://adventofcode.com/2024/day/10" target="_blank" rel="noopener">Day 10: Hoof It&lt;/a>&lt;/h2>
-&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day10.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-day-10-hoof-it">Source: &lt;a href="https://adventofcode.com/2024/day/10">Day 10: Hoof It&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-1-using-dynamic-programming">Optimization 1: Using dynamic programming&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-2-smarter-bitmasks">Optimization 2: Smarter bitmasks&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Given a maze, what is the shortest path between &lt;code&gt;S&lt;/code&gt; and &lt;code&gt;E&lt;/code&gt; where walking straight costs one and turning costs 1000.&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>AoC 2024 Day 10: Take-a-Hikinator</title><link>https://blog.jverkamp.com/2024/12/10/aoc-2024-day-10-take-a-hikinator/</link><pubDate>Tue, 10 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/10/aoc-2024-day-10-take-a-hikinator/</guid><description>&lt;h2 id="source-day-10-hoof-it"&gt;Source: &lt;a href="https://adventofcode.com/2024/day/10" target="_blank" rel="noopener"&gt;Day 10: Hoof It&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day10.rs" target="_blank" rel="noopener"&gt;Full solution&lt;/a&gt; for today (spoilers!).&lt;/p&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-day-10-hoof-it"&gt;Source: Day 10: Hoof It&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-1-using-dynamic-programming"&gt;Optimization 1: Using dynamic programming&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-2-smarter-bitmasks"&gt;Optimization 2: Smarter bitmasks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#benchmarks"&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>Given a heightmap (&lt;code>0&lt;/code> to &lt;code>9&lt;/code>), for each &lt;code>0&lt;/code> count how many &lt;code>9&lt;/code> you can reach on paths that only ever increase height by exactly 1 at a time. Sum these values.&lt;/p>&lt;/blockquote></description></item><item><title>Solving Cosmic Express</title><link>https://blog.jverkamp.com/2024/09/02/solving-cosmic-express/</link><pubDate>Mon, 02 Sep 2024 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2024/09/02/solving-cosmic-express/</guid><description>&lt;p>Another &lt;a href="https://blog.jverkamp.com/series/rust-solvers/">Rust Solvers&lt;/a> puzzle: &lt;a href="https://store.steampowered.com/app/583270/Cosmic_Express/" target="_blank" rel="noopener">Cosmic Express&lt;/a>. Basically, it&amp;rsquo;s a routefinding puzzle. You have a train that needs a track from entrance to exit, picking up and dropping off cargo on the way.&lt;/p>
-&lt;p>It&amp;rsquo;s actual a relatively simple puzzle, so far as things go, but one thing that&amp;rsquo;s interesting from a solving perspective is that branching paths &lt;em>really&lt;/em> don&amp;rsquo;t work great with my solver code. Paths just have a crazy branching factor when compared to (for example) &lt;a href="https://blog.jverkamp.com/2024/06/17/the-golf-peaks-of-solving/">playing one of a handful of cards&lt;/a>.&lt;/p>
-&lt;p>But it&amp;rsquo;s still an interesting puzzle!&lt;/p></description></item></channel></rss>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Given a heightmap (&lt;code&gt;0&lt;/code&gt; to &lt;code&gt;9&lt;/code&gt;), for each &lt;code&gt;0&lt;/code&gt; count how many &lt;code&gt;9&lt;/code&gt; you can reach on paths that only ever increase height by exactly 1 at a time. Sum these values.&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>Solving Cosmic Express</title><link>https://blog.jverkamp.com/2024/09/02/solving-cosmic-express/</link><pubDate>Mon, 02 Sep 2024 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2024/09/02/solving-cosmic-express/</guid><description>&lt;p&gt;Another &lt;a href="https://blog.jverkamp.com/series/rust-solvers/"&gt;Rust Solvers&lt;/a&gt; puzzle: &lt;a href="https://store.steampowered.com/app/583270/Cosmic_Express/" target="_blank" rel="noopener"&gt;Cosmic Express&lt;/a&gt;. Basically, it&amp;rsquo;s a routefinding puzzle. You have a train that needs a track from entrance to exit, picking up and dropping off cargo on the way.&lt;/p&gt;
+&lt;p&gt;It&amp;rsquo;s actual a relatively simple puzzle, so far as things go, but one thing that&amp;rsquo;s interesting from a solving perspective is that branching paths &lt;em&gt;really&lt;/em&gt; don&amp;rsquo;t work great with my solver code. Paths just have a crazy branching factor when compared to (for example) &lt;a href="https://blog.jverkamp.com/2024/06/17/the-golf-peaks-of-solving/"&gt;playing one of a handful of cards&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;But it&amp;rsquo;s still an interesting puzzle!&lt;/p&gt;</description></item></channel></rss>

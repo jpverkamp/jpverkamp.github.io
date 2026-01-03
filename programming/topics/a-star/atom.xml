@@ -1,108 +1,112 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>A-Star on jverkamp.com</title><link>https://blog.jverkamp.com/programming/topics/a-star/</link><description>Recent content in A-Star on jverkamp.com</description><generator>Hugo</generator><language>en-us</language><lastBuildDate>Fri, 20 Dec 2024 00:00:03 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/programming/topics/a-star/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 20: Shadow Catinator</title><link>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</link><pubDate>Fri, 20 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</guid><description>&lt;h2 id="source-day-20-race-condition">Source: &lt;a href="https://adventofcode.com/2024/day/20" target="_blank" rel="noopener">Day 20: Race Condition&lt;/a>&lt;/h2>
-&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day20.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-day-20-race-condition">Source: &lt;a href="https://adventofcode.com/2024/day/20">Day 20: Race Condition&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#version-1-entirely-over-complicated">Version 1: Entirely over complicated&amp;hellip;&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#version-2-floodfill">Version 2: Floodfill&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#version-3-directly-scan-along-the-path">Version 3: Directly scan along the path&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-1-calculate-distances-once-dijkstras-algorithm">Optimization 1: Calculate distances once (Dijkstra&amp;rsquo;s algorithm)&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-2-store-distances-in-a-grid">Optimization 2: Store distances in a &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#pretty-pictures">Pretty pictures&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-3-store-distances-in-a-grid">Optimization 3: Store distances in a &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-4-inverting-the-loop">Optimization 4: Inverting the loop&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#prettier-pictures">Prettier pictures&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>A-Star on jverkamp.com</title><link>https://blog.jverkamp.com/programming/topics/a-star/</link><description>Recent content in A-Star on jverkamp.com</description><generator>Hugo</generator><language>en-us</language><lastBuildDate>Fri, 20 Dec 2024 00:00:03 +0000</lastBuildDate><atom:link href="https://blog.jverkamp.com/programming/topics/a-star/atom.xml" rel="self" type="application/rss+xml"/><item><title>AoC 2024 Day 20: Shadow Catinator</title><link>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</link><pubDate>Fri, 20 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/20/aoc-2024-day-20-shadow-catinator/</guid><description>&lt;h2 id="source-day-20-race-condition"&gt;Source: &lt;a href="https://adventofcode.com/2024/day/20" target="_blank" rel="noopener"&gt;Day 20: Race Condition&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day20.rs" target="_blank" rel="noopener"&gt;Full solution&lt;/a&gt; for today (spoilers!).&lt;/p&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-day-20-race-condition"&gt;Source: Day 20: Race Condition&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#version-1-entirely-over-complicated"&gt;Version 1: Entirely over complicated&amp;hellip;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#version-2-floodfill"&gt;Version 2: Floodfill&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#version-3-directly-scan-along-the-path"&gt;Version 3: Directly scan along the path&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-1-calculate-distances-once-dijkstras-algorithm"&gt;Optimization 1: Calculate distances once (Dijkstra&amp;rsquo;s algorithm)&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-2-store-distances-in-a-grid"&gt;Optimization 2: Store distances in a &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#pretty-pictures"&gt;Pretty pictures&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-3-store-distances-in-a-grid"&gt;Optimization 3: Store distances in a &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-4-inverting-the-loop"&gt;Optimization 4: Inverting the loop&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#prettier-pictures"&gt;Prettier pictures&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#benchmarks"&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>Given a maze with exactly one path, find how many single walls you can walk through (remove) that shorten the best path by at least 100 units.&lt;/p>&lt;/blockquote></description></item><item><title>AoC 2024 Day 18: Last Chancinator</title><link>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</link><pubDate>Wed, 18 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</guid><description>&lt;h2 id="source-day-18-ram-run">Source: &lt;a href="https://adventofcode.com/2024/day/18" target="_blank" rel="noopener">Day 18: RAM Run&lt;/a>&lt;/h2>
-&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day18.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-day-18-ram-run">Source: &lt;a href="https://adventofcode.com/2024/day/18">Day 18: RAM Run&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-1-using-grid">Optimization 1: Using &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-2-two-neighbors">Optimization 2: Two neighbors&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-3-using-grid">Optimization 3: Using &lt;code>Grid&lt;/code>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-4-on-the-best-path">Optimization 4: On the best path&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-5-binary-search">Optimization 5: Binary search&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Given a maze with exactly one path, find how many single walls you can walk through (remove) that shorten the best path by at least 100 units.&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>AoC 2024 Day 18: Last Chancinator</title><link>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</link><pubDate>Wed, 18 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/18/aoc-2024-day-18-last-chancinator/</guid><description>&lt;h2 id="source-day-18-ram-run"&gt;Source: &lt;a href="https://adventofcode.com/2024/day/18" target="_blank" rel="noopener"&gt;Day 18: RAM Run&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day18.rs" target="_blank" rel="noopener"&gt;Full solution&lt;/a&gt; for today (spoilers!).&lt;/p&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-day-18-ram-run"&gt;Source: Day 18: RAM Run&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-1-using-grid"&gt;Optimization 1: Using &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-2-two-neighbors"&gt;Optimization 2: Two neighbors&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-3-using-grid"&gt;Optimization 3: Using &lt;code&gt;Grid&lt;/code&gt;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-4-on-the-best-path"&gt;Optimization 4: On the best path&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-5-binary-search"&gt;Optimization 5: Binary search&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#benchmarks"&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>You are given a series of points on a &lt;code>71x71&lt;/code> grid. Taking only the first 1024 points, how long is the shortest path from &lt;code>(0, 0)&lt;/code> to &lt;code>(70, 70)&lt;/code>?&lt;/p>&lt;/blockquote></description></item><item><title>AoC 2024 Day 16: Astarinator</title><link>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</link><pubDate>Mon, 16 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</guid><description>&lt;h2 id="source-day-16-reindeer-maze">Source: &lt;a href="https://adventofcode.com/2024/day/16" target="_blank" rel="noopener">Day 16: Reindeer Maze&lt;/a>&lt;/h2>
-&lt;p>&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day16.rs" target="_blank" rel="noopener">Full solution&lt;/a> for today (spoilers!).&lt;/p>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-day-16-reindeer-maze">Source: &lt;a href="https://adventofcode.com/2024/day/16">Day 16: Reindeer Maze&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimization-1-a">Optimization 1: A*&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#benchmarks">Benchmarks&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;You are given a series of points on a &lt;code&gt;71x71&lt;/code&gt; grid. Taking only the first 1024 points, how long is the shortest path from &lt;code&gt;(0, 0)&lt;/code&gt; to &lt;code&gt;(70, 70)&lt;/code&gt;?&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>AoC 2024 Day 16: Astarinator</title><link>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</link><pubDate>Mon, 16 Dec 2024 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2024/12/16/aoc-2024-day-16-astarinator/</guid><description>&lt;h2 id="source-day-16-reindeer-maze"&gt;Source: &lt;a href="https://adventofcode.com/2024/day/16" target="_blank" rel="noopener"&gt;Day 16: Reindeer Maze&lt;/a&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;a href="https://github.com/jpverkamp/advent-of-code/blob/master/2024/src/day16.rs" target="_blank" rel="noopener"&gt;Full solution&lt;/a&gt; for today (spoilers!).&lt;/p&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-day-16-reindeer-maze"&gt;Source: Day 16: Reindeer Maze&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimization-1-a"&gt;Optimization 1: A*&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#benchmarks"&gt;Benchmarks&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>Given a maze, what is the shortest path between &lt;code>S&lt;/code> and &lt;code>E&lt;/code> where walking straight costs one and turning costs 1000.&lt;/p>&lt;/blockquote></description></item><item><title>AoC 2022 Day 16: Pressurinator</title><link>https://blog.jverkamp.com/2022/12/16/aoc-2022-day-16-pressurinator/</link><pubDate>Fri, 16 Dec 2022 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2022/12/16/aoc-2022-day-16-pressurinator/</guid><description>&lt;h2 id="source-proboscidea-volcanium">Source: &lt;a href="https://adventofcode.com/2022/day/16" target="_blank" rel="noopener">Proboscidea Volcanium&lt;/a>&lt;/h2>
-&lt;nav id="TableOfContents">
- &lt;ul>
- &lt;li>&lt;a href="#source-proboscidea-volcanium">Source: &lt;a href="https://adventofcode.com/2022/day/16">Proboscidea Volcanium&lt;/a>&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#part-1">Part 1&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#optimized-version-with-multiple-steps-and-no-repeats">Optimized version with multiple steps and no-repeats&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#the-actual-code">The actual code&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#attempted-to-solve-via-30-steps-of-all-possibilities">Attempted to solve via 30 steps of all possibilities&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#a-priority-queue-edit-2-dec-20">A Priority Queue (Edit 2, Dec 20)&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#part-2">Part 2&lt;/a>
- &lt;ul>
- &lt;li>&lt;a href="#simulating-n-agents">Simulating &lt;em>n&lt;/em> agents&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#new-multi-agent-code-with-one-agent">New multi-agent code with one agent&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#checking-with-multiple-agents">Checking with multiple agents&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#problems-with-memory-">Problems with memory (?)&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#improving-memory-usage">Improving memory usage&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#improving-runtime">Improving runtime&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#to-be-continued">To be continued&amp;hellip;&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#let-it-run-edit-dec-20">Let it run! (Edit, Dec 20)&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#queues-to-the-rescue-edit-3-dec-20">Queues to the rescue (Edit 3, Dec 20)&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-remaining_best_case-edit-4-dec-21">Optimization: &lt;code>remaining_best_case&lt;/code> (Edit 4, Dec 21)&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#optimization-seen_skip-edit-4-dec-21">Optimization: &lt;code>seen_skip&lt;/code> (Edit 4, Dec 21)&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#threading">Threading&lt;/a>&lt;/li>
- &lt;/ul>
- &lt;/li>
- &lt;li>&lt;a href="#graphviz-visualizations">Graphviz visualizations&lt;/a>&lt;/li>
- &lt;li>&lt;a href="#performance">Performance&lt;/a>&lt;/li>
- &lt;/ul>
-&lt;/nav>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Given a maze, what is the shortest path between &lt;code&gt;S&lt;/code&gt; and &lt;code&gt;E&lt;/code&gt; where walking straight costs one and turning costs 1000.&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>AoC 2022 Day 16: Pressurinator</title><link>https://blog.jverkamp.com/2022/12/16/aoc-2022-day-16-pressurinator/</link><pubDate>Fri, 16 Dec 2022 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2022/12/16/aoc-2022-day-16-pressurinator/</guid><description>&lt;h2 id="source-proboscidea-volcanium"&gt;Source: &lt;a href="https://adventofcode.com/2022/day/16" target="_blank" rel="noopener"&gt;Proboscidea Volcanium&lt;/a&gt;&lt;/h2&gt;
+&lt;nav id="TableOfContents"&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#source-proboscidea-volcanium"&gt;Source: Proboscidea Volcanium&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-1"&gt;Part 1&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#optimized-version-with-multiple-steps-and-no-repeats"&gt;Optimized version with multiple steps and no-repeats&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#the-actual-code"&gt;The actual code&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#attempted-to-solve-via-30-steps-of-all-possibilities"&gt;Attempted to solve via 30 steps of all possibilities&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#a-priority-queue-edit-2-dec-20"&gt;A Priority Queue (Edit 2, Dec 20)&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#part-2"&gt;Part 2&lt;/a&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;a href="#simulating-n-agents"&gt;Simulating &lt;em&gt;n&lt;/em&gt; agents&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#new-multi-agent-code-with-one-agent"&gt;New multi-agent code with one agent&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#checking-with-multiple-agents"&gt;Checking with multiple agents&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#problems-with-memory-"&gt;Problems with memory (?)&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#improving-memory-usage"&gt;Improving memory usage&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#improving-runtime"&gt;Improving runtime&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#to-be-continued"&gt;To be continued&amp;hellip;&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#let-it-run-edit-dec-20"&gt;Let it run! (Edit, Dec 20)&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#queues-to-the-rescue-edit-3-dec-20"&gt;Queues to the rescue (Edit 3, Dec 20)&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-remaining_best_case-edit-4-dec-21"&gt;Optimization: &lt;code&gt;remaining_best_case&lt;/code&gt; (Edit 4, Dec 21)&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#optimization-seen_skip-edit-4-dec-21"&gt;Optimization: &lt;code&gt;seen_skip&lt;/code&gt; (Edit 4, Dec 21)&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#threading"&gt;Threading&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+ &lt;/li&gt;
+ &lt;li&gt;&lt;a href="#graphviz-visualizations"&gt;Graphviz visualizations&lt;/a&gt;&lt;/li&gt;
+ &lt;li&gt;&lt;a href="#performance"&gt;Performance&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+&lt;/nav&gt;
 
-&lt;h2 id="part-1">Part 1&lt;/h2>
-&lt;blockquote>
-&lt;p>Given a graph of nodes, some of which have a &lt;code>pressure&lt;/code> (per tick output value) and an agent that can move through the graph and activate specific nodes (so that they output their per tick value every future tick), what is the maximum total output possible in 30 steps?&lt;/p>&lt;/blockquote></description></item><item><title>AoC 2021 Day 23: Amphipodinator</title><link>https://blog.jverkamp.com/2021/12/23/aoc-2021-day-23-amphipodinator/</link><pubDate>Thu, 23 Dec 2021 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/23/aoc-2021-day-23-amphipodinator/</guid><description>&lt;h3 id="source-amphipod">Source: &lt;a href="https://adventofcode.com/2021/day/23" target="_blank" rel="noopener">Amphipod&lt;/a>&lt;/h3>
-&lt;h4 id="part-1-given-4-rooms-full-of-amphipods-with-various-energy-costs-for-movement-a1-b10-c100-d1000-and-a-hallway-how-much-energy-does-it-take-at-minimum-to-sort-the-amphipods-into-their-own-rooms-with-the-following-conditions">&lt;strong>Part 1:&lt;/strong> Given 4 rooms full of amphipods with various energy costs for movement (a=1, b=10, c=100, d=1000) and a hallway, how much energy does it take (at minimum) to sort the amphipods into their own rooms with the following conditions:&lt;/h4></description></item><item><title>AoC 2021 Day 15: Low Ceiling Simulator</title><link>https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/</link><pubDate>Wed, 15 Dec 2021 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/</guid><description>&lt;h3 id="source-chiton">Source: &lt;a href="https://adventofcode.com/2021/day/15" target="_blank" rel="noopener">Chiton&lt;/a>&lt;/h3>
-&lt;h4 id="part-1-given-a-grid-of-weights-find-the-minimum-path-from-top-left-to-top-right-return-the-total-weight-along-that-path">&lt;strong>Part 1:&lt;/strong> Given a grid of weights, find the minimum path from top left to top right. Return the total weight along that path.&lt;/h4></description></item><item><title>AoC 2021 Day 12: Submarine Spider</title><link>https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/</link><pubDate>Sun, 12 Dec 2021 00:00:15 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/</guid><description>&lt;h3 id="source-passage-pathing">Source: &lt;a href="https://adventofcode.com/2021/day/12" target="_blank" rel="noopener">Passage Pathing&lt;/a>&lt;/h3>
-&lt;h4 id="part-1-given-a-list-of-edges-in-a-bi-directional-graph-count-the-number-of-paths-from-start-to-end-such-that-nodes-named-with-lowercase-letters-are-visited-once-and-nodes-with-uppercase-letters-can-be-visited-any-number-of-times">&lt;strong>Part 1:&lt;/strong> Given a list of edges in a bi-directional graph, count the number of paths from &lt;code>start&lt;/code> to &lt;code>end&lt;/code> such that nodes named with lowercase letters are visited once, and nodes with uppercase letters can be visited any number of times.&lt;/h4></description></item></channel></rss>
+&lt;h2 id="part-1"&gt;Part 1&lt;/h2&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Given a graph of nodes, some of which have a &lt;code&gt;pressure&lt;/code&gt; (per tick output value) and an agent that can move through the graph and activate specific nodes (so that they output their per tick value every future tick), what is the maximum total output possible in 30 steps?&lt;/p&gt;
+&lt;/blockquote&gt;</description></item><item><title>AoC 2021 Day 23: Amphipodinator</title><link>https://blog.jverkamp.com/2021/12/23/aoc-2021-day-23-amphipodinator/</link><pubDate>Thu, 23 Dec 2021 00:00:03 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/23/aoc-2021-day-23-amphipodinator/</guid><description>&lt;h3 id="source-amphipod"&gt;Source: &lt;a href="https://adventofcode.com/2021/day/23" target="_blank" rel="noopener"&gt;Amphipod&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id="part-1-given-4-rooms-full-of-amphipods-with-various-energy-costs-for-movement-a1-b10-c100-d1000-and-a-hallway-how-much-energy-does-it-take-at-minimum-to-sort-the-amphipods-into-their-own-rooms-with-the-following-conditions"&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given 4 rooms full of amphipods with various energy costs for movement (a=1, b=10, c=100, d=1000) and a hallway, how much energy does it take (at minimum) to sort the amphipods into their own rooms with the following conditions:&lt;/h4&gt;</description></item><item><title>AoC 2021 Day 15: Low Ceiling Simulator</title><link>https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/</link><pubDate>Wed, 15 Dec 2021 00:00:00 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/15/aoc-2021-day-15-low-ceiling-simulator/</guid><description>&lt;h3 id="source-chiton"&gt;Source: &lt;a href="https://adventofcode.com/2021/day/15" target="_blank" rel="noopener"&gt;Chiton&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id="part-1-given-a-grid-of-weights-find-the-minimum-path-from-top-left-to-top-right-return-the-total-weight-along-that-path"&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a grid of weights, find the minimum path from top left to top right. Return the total weight along that path.&lt;/h4&gt;</description></item><item><title>AoC 2021 Day 12: Submarine Spider</title><link>https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/</link><pubDate>Sun, 12 Dec 2021 00:00:15 +0000</pubDate><guid>https://blog.jverkamp.com/2021/12/12/aoc-2021-day-12-submarine-spider/</guid><description>&lt;h3 id="source-passage-pathing"&gt;Source: &lt;a href="https://adventofcode.com/2021/day/12" target="_blank" rel="noopener"&gt;Passage Pathing&lt;/a&gt;&lt;/h3&gt;
+&lt;h4 id="part-1-given-a-list-of-edges-in-a-bi-directional-graph-count-the-number-of-paths-from-start-to-end-such-that-nodes-named-with-lowercase-letters-are-visited-once-and-nodes-with-uppercase-letters-can-be-visited-any-number-of-times"&gt;&lt;strong&gt;Part 1:&lt;/strong&gt; Given a list of edges in a bi-directional graph, count the number of paths from &lt;code&gt;start&lt;/code&gt; to &lt;code&gt;end&lt;/code&gt; such that nodes named with lowercase letters are visited once, and nodes with uppercase letters can be visited any number of times.&lt;/h4&gt;</description></item></channel></rss>
