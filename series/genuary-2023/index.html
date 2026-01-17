@@ -85,13 +85,41 @@ function draw() {
 function setup() {
     // Store a copy of the original params
     const defaultParams = typeof params !== "undefined" ? { ...params } : {};
+    window.defaultParams = defaultParams; // Store for use in updateQueryParameters
 
-    // Load saved settings from the browser hash fragment
-    if (parent.location.hash && typeof params !== "undefined") {
-        try {
-            var settings = JSON.parse(atob(parent.location.hash.substring(1)));
-            Object.keys(params).forEach((key) => params[key] = key in settings ? settings[key] : params[key]);
-        } catch(ex) {
+    if (typeof params !== "undefined") {
+        const urlParams = new URLSearchParams(parent.window.location.search);
+        let hasQueryParams = false;
+        
+        for (const key in params) {
+            if (urlParams.has(key)) {
+                hasQueryParams = true;
+                break;
+            }
+        }
+
+        // Load from query parameters if present
+        // Fallback to legacy hash fragment
+        if (hasQueryParams) {
+            for (const key in params) {
+                if (urlParams.has(key)) {
+                    const value = urlParams.get(key);
+                    // Parse the value based on the type of the default param
+                    if (typeof defaultParams[key] === &#39;boolean&#39;) {
+                        params[key] = value === &#39;true&#39;;
+                    } else if (typeof defaultParams[key] === &#39;number&#39;) {
+                        params[key] = parseFloat(value);
+                    } else {
+                        params[key] = value;
+                    }
+                }
+            }
+        } else if (parent.location.hash) {
+            try {
+                var settings = JSON.parse(atob(parent.location.hash.substring(1)));
+                Object.keys(params).forEach((key) => params[key] = key in settings ? settings[key] : params[key]);
+            } catch(ex) {
+            }
         }
     }
 
@@ -124,16 +152,13 @@ function setup() {
         window.location.reload();
     });
 
-    /*
     if (typeof params !== "undefined") {
         createButton("default").mousePressed(() => {
-            for (const key in defaultParams) {
-                params[key] = defaultParams[key];
-            }
-            parent.location.hash = btoa(JSON.stringify(params));
-            window.location.reload();
+            // Load without query parameters to re-default
+            parent.window.location.href = parent.window.location.pathname;
         });
 
+        /*
         createButton("randomize").mousePressed(() => {
             // Grab all inputs inside the GUI container
             const guiContainer = document.querySelector(&#39;.qs_main&#39;); 
@@ -174,18 +199,39 @@ function setup() {
             // Save the random state to hash
             parent.location.hash = btoa(JSON.stringify(params));
         });
+        */
     }
-    */
 
     if (typeof params !== "undefined") {
         for (var el of document.querySelectorAll(&#39;input&#39;)) {
             if (el.id && el.id.startsWith(&#39;qs_&#39;)) {
                 el.addEventListener(&#39;change&#39;, () => {
-                    parent.location.hash = btoa(JSON.stringify(params));
+                    updateQueryParameters();
                 });
             }
         }
     }
+}
+
+function updateQueryParameters() {
+    if (typeof params === "undefined") return;
+    
+    const defaultParams = typeof window.defaultParams !== "undefined" ? window.defaultParams : {};
+    const urlParams = new URLSearchParams();
+    
+    // Only add parameters that differ from the default
+    for (const key in params) {
+        const value = params[key];
+        if (JSON.stringify(value) !== JSON.stringify(defaultParams[key])) {
+            urlParams.set(key, value);
+        }
+    }
+    
+    // Update URL without saving to history
+    const newUrl = urlParams.toString() ? 
+        parent.window.location.pathname + &#39;?&#39; + urlParams.toString() :
+        parent.window.location.pathname;
+    parent.window.history.replaceState({}, &#39;&#39;, newUrl);
 }
 
             </script>
