@@ -72,11 +72,15 @@ function setup() {
             for (const key in params) {
                 if (urlParams.has(key)) {
                     const value = urlParams.get(key);
+                    const defaultValue = defaultParams[key];
                     // Parse the value based on the type of the default param
-                    if (typeof defaultParams[key] === &#39;boolean&#39;) {
+                    if (typeof defaultValue === &#39;boolean&#39;) {
                         params[key] = value === &#39;true&#39;;
-                    } else if (typeof defaultParams[key] === &#39;number&#39;) {
+                    } else if (typeof defaultValue === &#39;number&#39;) {
                         params[key] = parseFloat(value);
+                    } else if (Array.isArray(defaultValue)) {
+                        params[key] = params[key].filter(v => v !== value);
+                        params[key].unshift(value);
                     } else {
                         params[key] = value;
                     }
@@ -176,26 +180,43 @@ function setup() {
     }
 
     if (typeof params !== "undefined") {
-        for (var el of document.querySelectorAll(&#39;input&#39;)) {
-            if (el.id && el.id.startsWith(&#39;qs_&#39;)) {
-                el.addEventListener(&#39;change&#39;, () => {
-                    updateQueryParameters();
-                });
+        document.addEventListener(&#39;change&#39;, (e) => {
+            if ([...e.target.classList].some(cls => cls.startsWith(&#39;qs_&#39;)) || 
+                (e.target.id && e.target.id.startsWith(&#39;qs_&#39;))) {
+                updateQueryParameters();
             }
-        }
+        });
+        
+        document.addEventListener(&#39;input&#39;, (e) => {
+            if ([...e.target.classList].some(cls => cls.startsWith(&#39;qs_&#39;)) || 
+                (e.target.id && e.target.id.startsWith(&#39;qs_&#39;))) {
+                updateQueryParameters();
+            }
+        });
     }
 }
 
 function updateQueryParameters() {
     if (typeof params === "undefined") return;
+
+    console.log("Updating URL query parameters based on params:", params);
     
     const defaultParams = typeof window.defaultParams !== "undefined" ? window.defaultParams : {};
     const urlParams = new URLSearchParams();
     
     // Only add parameters that differ from the default
+    // If the defaultParams is an array, compare to the first element
+    // The value will be the selected element, &#39;cause p5.gui does funny things to params :)
     for (const key in params) {
         const value = params[key];
-        if (JSON.stringify(value) !== JSON.stringify(defaultParams[key])) {
+
+        if (Array.isArray(defaultParams[key])) {
+            console.debug("Comparing array parameter for URL:", key, value, defaultParams[key][0]);
+
+            if (value !== defaultParams[key][0]) {
+                urlParams.set(key, value);
+            }
+        } else if (JSON.stringify(value) !== JSON.stringify(defaultParams[key])) {
             urlParams.set(key, value);
         }
     }
