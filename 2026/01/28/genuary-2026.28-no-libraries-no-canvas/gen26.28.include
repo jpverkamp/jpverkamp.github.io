@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Genuary 26.28</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: #0b0b0b;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+  }
+
+  .controls {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 0.75rem;
+    color: white;
+    font-size: 0.85rem;
+    backdrop-filter: blur(6px);
+  }
+
+  .controls label {
+    display: block;
+    margin-top: 0.5rem;
+  }
+
+  .controls input {
+    width: 160px;
+  }
+
+  .node {
+    position: absolute;
+    border-radius: 50%;
+    animation:
+      pulse 4s ease-in-out infinite,
+      drift 20s linear infinite;
+    transform-origin: center;
+  }
+
+  .node::after {
+    content: "";
+    position: absolute;
+    inset: 20%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    filter: blur(6px);
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(0.9); }
+    50% { transform: scale(1.15); }
+  }
+
+  @keyframes drift {
+    from { rotate: 0deg; }
+    to { rotate: 360deg; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <label>
+    Max Depth
+    <input id="depth" type="range" min="1" max="8" step="1" value="6">
+  </label>
+
+  <label>
+    Split Chance
+    <input id="split" type="range" min="0" max="1" step="0.01" value="0.6">
+  </label>
+</div>
+
+<script>
+  let MAX_DEPTH = 6;
+  let SPLIT_CHANCE = 0.6;
+
+  const depthSlider = document.getElementById("depth");
+  const splitSlider = document.getElementById("split");
+
+  depthSlider.addEventListener("input", reset);
+  splitSlider.addEventListener("input", reset);
+
+  function reset() {
+    MAX_DEPTH = +depthSlider.value;
+    SPLIT_CHANCE = +splitSlider.value;
+
+    document.querySelectorAll(".node").forEach(n => n.remove());
+
+    createNode(
+      300,
+      300,
+      120,
+      0
+    );
+  }
+
+  function createNode(x, y, size, depth) {
+    const node = document.createElement("div");
+    node.className = "node";
+
+    node.style.width = size + "px";
+    node.style.height = size + "px";
+    node.style.left = x - size / 2 + "px";
+    node.style.top = y - size / 2 + "px";
+
+    const hue = (depth * 60 + Math.random() * 40) % 360;
+    node.style.background = `hsla(${hue}, 80%, 60%, 0.7)`;
+    node.style.animationDuration =
+      `${6 + Math.random() * 10}s, ${15 + Math.random() * 20}s`;
+
+    document.body.appendChild(node);
+
+    if (depth >= MAX_DEPTH || size < 20) return;
+
+    setTimeout(() => {
+      if (Math.random() < SPLIT_CHANCE) {
+        splitNode(x, y, size, depth);
+      } else {
+        budNode(x, y, size, depth);
+      }
+    }, 300 + Math.random() * 1200);
+  }
+
+  function splitNode(x, y, size, depth) {
+    const count = 2 + Math.floor(Math.random() * 3);
+    const radius = size * 0.9;
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      createNode(
+        x + Math.cos(angle) * radius,
+        y + Math.sin(angle) * radius,
+        size * 0.6,
+        depth + 1
+      );
+    }
+  }
+
+  function budNode(x, y, size, depth) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = size * (0.6 + Math.random());
+
+    createNode(
+      x + Math.cos(angle) * distance,
+      y + Math.sin(angle) * distance,
+      size * 0.75,
+      depth + 1
+    );
+  }
+
+  reset();
+</script>
+
+</body>
+</html>
