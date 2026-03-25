@@ -1,0 +1,769 @@
+<!doctype html><html><head><title>Rescuing Gentoos with a Rust Solver (Part 1) – jverkamp.com</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta charset=utf-8><link rel=alternate type=application/atom+xml title="jverkamp.com (Atom 2.0)" href=//blog.jverkamp.com/feed/><script src=/jquery_17422284542669262002.min.834c1e2313951f0c25b90152fe8b62250eab4a2e8cbd2560fa1a1cdc91c71733.js integrity="sha256-g0weIxOVHwwluQFS/otiJQ6rSi6MvSVg+hoc3JHHFzM=" defer></script><script src=/jquery.fancybox_16245765822111608191.min.a8e11addf4349ee2ca5045f7f3cbf1febbf2c3a2840be2143ea69539c10f8c7f.js integrity="sha256-qOEa3fQ0nuLKUEX388vx/rvyw6KEC+IUPqaVOcEPjH8=" defer></script><script src=/katex_17296078054267651618.min.4a06464d8d6f8358d8896de62b53b5a89205d335dfd8c5b6b27edd7c039ae9d8.js integrity="sha256-SgZGTY1vg1jYiW3mK1O1qJIF0zXf2MW2sn7dfAOa6dg=" defer></script><script src=/auto-render_14944144240389301023.min.e694d9d5eae2917984179683ead27b998784a81398e8836c369373d2c67fc32a.js integrity="sha256-5pTZ1erikXmEF5aD6tJ7mYeEqBOY6INsNpNz0sZ/wyo=" defer></script><script src=/bigfoot_28293813221957978.min.af671f08986f0a2267c5a0cb2748b005489e47fa25f55479b200e2a563d23022.js integrity="sha256-r2cfCJhvCiJnxaDLJ0iwBUieR/ol9VR5sgDipWPSMCI=" defer></script><script src=/mermaid_9520146763733687737.min.a17078917a4403310cd19178939257b706fb5e1da76167c9f4a6d2123c9d59c4.js integrity="sha256-oXB4kXpEAzEM0ZF4k5JXtwb7Xh2nYWfJ9KbSEjydWcQ=" defer></script><script src=/main.min.d60298c89fc4f1e938aceb45c60926efee8b03efc8b50683082e669a100da643.js integrity="sha256-1gKYyJ/E8ek4rOtFxgkm7+6LA+/ItQaDCC5mmhANpkM=" defer></script><link rel=stylesheet href=/katex_13658330645258633971.min.16bacd59fb224ae6c97a749ab0ac1e708cb5e0c9ce5c9a08d7fd73dc8e69429f.css integrity="sha256-FrrNWfsiSubJenSasKwecIy14MnOXJoI1/1z3I5pQp8="><link rel=stylesheet href=/bigfoot-default_8781527669040159104.min.f15d4faa4519addb976f9d69b42bd9eb491b3596b6b2eda83aa3e9e1f48b8f14.css integrity="sha256-8V1PqkUZrduXb51ptCvZ60kbNZa2su2oOqPp4fSLjxQ="><link rel=stylesheet href=/jquery.fancybox_5330465509389191777.min.7420a1602c62a85d4b50881c1d8ce42f72c049dc2b097d440696425d6e54bb1e.css integrity="sha256-dCChYCxiqF1LUIgcHYzkL3LASdwrCX1EBpZCXW5Uux4="><link rel=stylesheet href=/css_1846377409604050217.min.fffe842bc000dd1fe8661ac6427a392a08faa95e8edab1ea7fb98c5f8dac6a6f.css integrity="sha256-//6EK8AA3R/oZhrGQno5Kgj6qV6O2rHqf7mMX42sam8="><link rel=stylesheet href=/main.min.5ff4b87c40715a96119d8b5f34d971604fc65ab18f4870fd8da6ede9fd1e6188.css integrity="sha256-X/S4fEBxWpYRnYtfNNlxYE/GWrGPSHD9jabt6f0eYYg="></head><body><div id=wrapper><header id=page-header role=banner><h1><a href=/>JP's Blog</a></h1><ul id=page-header-links><li><a href=https://github.com/jpverkamp>GitHub</a> *
+<a href=https://www.flickr.com/photos/jpverkamp>Flickr</a> *
+<a href=/resume>Resume</a></li><li><form action=/search/ method=get class="navbar-form navbar-right" role=search _lpchecked=1><div class=form-group><input name=q type=text class=form-control placeholder=Search>
+<button type=submit class="btn btn-default" value=Search>Search</button></div></form></li></ul><nav id=header-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=https://blog.jverkamp.com/programming/>Programming</a></li><li><a href=https://blog.jverkamp.com/reviews/>Reviews</a></li><li><a href=https://blog.jverkamp.com/maker/>Maker</a></li><li><a href=https://blog.jverkamp.com/photography/>Photography</a></li><li><a href=https://blog.jverkamp.com/home-automation/>Automation</a></li><li><a href=https://blog.jverkamp.com/writing/>Writing</a></li><li><a href=https://blog.jverkamp.com/research/>Research</a></li><li class=subscription data-subscription=rss><a href=/atom.xml rel=subscribe-rss title="subscribe via RSS">RSS</a></li></ul></nav></header><div id=page-content-wrapper><div id=page-content><article data-pagefind-body><header><h1 class=entry-title data-pagefind-meta=title>Rescuing Gentoos with a Rust Solver (Part 1)</h1><div class=entry-meta><span class=entry-date>2026-03-25</span></div><div class=entry-taxonomies><div class=entry-tags><ul class=taxonomy-keys><li><a class=taxonomy-key href=/programming/languages/>Languages</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2025/12/12/aoc-2025-day-12-knapsackinator/ class=previous-link></a><a class=taxonomy-value href=/programming/languages/rust>Rust</a></li></ul></li><li><a class=taxonomy-key href=/programming/topics/>Topics</a><ul class=taxonomy-values><li><a href=https://blog.jverkamp.com/2025/12/05/aoc-2025-day-5-range-merginator/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/algorithms>Algorithms</a></li><li><a href=https://blog.jverkamp.com/2025/12/12/aoc-2025-day-12-knapsackinator/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/backtracking>Backtracking</a></li><li><a href=https://blog.jverkamp.com/2025/04/21/solving-woodworm/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/generators>Generators</a></li><li><a href=https://blog.jverkamp.com/2025/04/21/solving-woodworm/ class=previous-link></a><a class=taxonomy-value href=/programming/topics/puzzles>Puzzles</a></li></ul></li><li><a class=taxonomy-key href=/programming>programming</a><ul><li><a href=https://blog.jverkamp.com/2026/03/16/syncing-kobo-annotations...-again/ class=previous-link>Prev</a></ul></li><li><a class=taxonomy-key href=/>All Posts</a><ul><li><a href=https://blog.jverkamp.com/2026/03/21/doctor-who-season-5/ class=previous-link>Prev</a></ul></li></ul></div></div></header><div class=entry-content><p>Months ago now<sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>, I started playing <a href=https://store.steampowered.com/app/2830480/Gentoo_Rescue/ target=_blank rel=noopener>Gentoo Rescue</a> (after seeing the <a href="https://www.youtube.com/watch?v=XK9AhMh5K_o&amp;list=PLIwiAebpd5CIoqMDun9X7aMJIINeHT4Vz&amp;index=1" target=_blank rel=noopener>Aliensrock video</a>). At the core, it&rsquo;s a Sokoban style puzzle game where you have to guide cute little sliding penguins to their color coded nests&mldr; but oh man does it start getting more complicated quickly.</p><p>On top of that, it has a really interesting nesting level concept&ndash;the level select screens are levels themselves. You can go several &rsquo;levels&rsquo; deep into levels or eventually further back out. And that&rsquo;s just with how far I&rsquo;ve gotten so far&mldr;</p><p>Overall, it&rsquo;s been a fun est of my solving framework. But before I spend too much time on even <em>more</em> levels, I wanted to finally get into writing up the first half of it.</p><p>If you&rsquo;d like to follow along with the code I&rsquo;ve written so far, <a href=https://github.com/jpverkamp/rust-solvers/compare/e47949c3af88589fd3b13775c51819b73969acdd...b17946447238c98ea50b7050cba9295ea08cbd9c target=_blank rel=noopener>here are the commits</a> from my initial work on this puzzle up through the end of part 1.</p><p>Onward!</p><hr><h2 id=table-of-contents>Table of contents</h2><nav id=TableOfContents><ul><li><a href=#table-of-contents>Table of contents</a></li><li><a href=#initial-solver>Initial solver</a><ul><li><a href=#map-loader>Map loader</a></li><li><a href=#local-state>Local state</a></li></ul></li><li><a href=#adding-seals>Adding seals</a></li><li><a href=#restructuring-to-only-local-state>Restructuring to only local state</a></li><li><a href=#lets-get-cracking>Let&rsquo;s get cracking</a></li><li><a href=#springs-and-things>Springs and things</a></li><li><a href=#hammer-time>Hammer time</a></li><li><a href=#a-wall-for-thee-but-not-for-me>A wall for thee but not for me</a></li><li><a href=#eat-my-dust>Eat my dust</a></li><li><a href=#small-tweaks>Small tweaks</a></li><li><a href=#now-youre-thinking>Now you&rsquo;re thinking&mldr;</a></li><li><a href=#crutches>Crutches</a></li><li><a href=#state-so-far>State so far</a></li></ul></nav><h2 id=initial-solver>Initial solver</h2><p>Okay, let&rsquo;s get started. Here&rsquo;s the <a href=https://github.com/jpverkamp/rust-solvers/commit/bc257029c5513fbdfd803fc3f5f8728ec4ad92fd target=_blank rel=noopener>first commit</a> for this solver.</p><h3 id=map-loader>Map loader</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Several things have colors: penguins, seals, and nests at first
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>Color</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[default]</span>
+</span></span><span style=display:flex><span>    Red,
+</span></span><span style=display:flex><span>    Yellow,
+</span></span><span style=display:flex><span>    Green,
+</span></span><span style=display:flex><span>    Blue,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Store tiles that are part of the map (walls are between tiles)
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>Tile</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[default]</span>
+</span></span><span style=display:flex><span>    Water,
+</span></span><span style=display:flex><span>    Floor,
+</span></span><span style=display:flex><span>    CrackedFloor,
+</span></span><span style=display:flex><span>    Nest(Color),
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>WallKind</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[default]</span>
+</span></span><span style=display:flex><span>    Empty,
+</span></span><span style=display:flex><span>    Solid,
+</span></span><span style=display:flex><span>    Cracked,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Critters are the things you can move around (unless they are gray)
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>CritterKind</span> {
+</span></span><span style=display:flex><span>    Penguin,
+</span></span><span style=display:flex><span>    Seal,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Critter</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) kind: <span style=color:#a6e22e>CritterKind</span>,
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) color: <span style=color:#a6e22e>Color</span>,
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) location: <span style=color:#a6e22e>Point</span>,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Finally the global state of the game
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[derive(Debug, Clone, Default)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Global</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> width: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span> height: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    tiles: Vec<span style=color:#f92672>&lt;</span>Tile<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    h_walls: Vec<span style=color:#f92672>&lt;</span>WallKind<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    v_walls: Vec<span style=color:#f92672>&lt;</span>WallKind<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    initial_critters: Vec<span style=color:#f92672>&lt;</span>Critter<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>This lets us set up some fairly complicated maps!</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>....
+</span></span><span style=display:flex><span>...~
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>.....
+</span></span><span style=display:flex><span>.|...
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>--..
+</span></span><span style=display:flex><span>....
+</span></span><span style=display:flex><span>---.
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>1 4 red penguin
+</span></span><span style=display:flex><span>1 3 red nest
+</span></span><span style=display:flex><span>2 1 blue penguin
+</span></span></code></pre></div><p>So this is kind of a crazy way to define it, but it is quick to type. The first map is the kind of floor. For example <code>~</code> is water, <code>.</code> is a floor, and <code>x</code> is a cracked floor. The second is only vertical walls (<code>:</code> is cracked), so it&rsquo;s one tile wider. Then we have horizontal walls (<code>~</code> is cracked his time).</p><p>Finally, we have a list of all the critters and objects in the level.</p><p>That all comes together to make a level like this:</p><p><img src=assistance.png alt="Showing the level defined in the map above: Assistance"></p><h3 id=local-state>Local state</h3><p>Luckily, the local state is somewhat simpler at least to model. For now, we only have to track the <code>critters</code>. Although we will soon need to keep track of which cracked walls have been broken.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Clone, Debug, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Local</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) critters: Vec<span style=color:#f92672>&lt;</span>Critter<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>But now, the actual simulation. This is like a lot of my <a href=https://en.wikipedia.org/wiki/sokoban>sokoban</a> style solvers: choose a single critter to move and (in this case) move them until they hit something:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Local {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[tracing::instrument(skip(self, global), ret)]</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move</span>(
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&amp;</span>self,
+</span></span><span style=display:flex><span>        global: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Global</span>,
+</span></span><span style=display:flex><span>        index: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>        direction: <span style=color:#a6e22e>Direction</span>,
+</span></span><span style=display:flex><span>    ) -&gt; Option<span style=color:#f92672>&lt;</span>Local<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> pt <span style=color:#f92672>=</span> self.critters[index].location;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we&#39;re on water, stop moving
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> global.tile_at(pt) <span style=color:#f92672>==</span> Tile::Water {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at water&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Bumped into a wall
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> global.wall_at(pt, direction) <span style=color:#f92672>!=</span> WallKind::Empty {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at wall&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Bumped into any other critter
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> self
+</span></span><span style=display:flex><span>                .critters
+</span></span><span style=display:flex><span>                .iter()
+</span></span><span style=display:flex><span>                .any(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.location <span style=color:#f92672>==</span> pt <span style=color:#f92672>+</span> direction.into())
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at critter&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            pt <span style=color:#f92672>=</span> pt <span style=color:#f92672>+</span> direction.into();
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;moved to {pt:?}&#34;</span>);
+</span></span><span style=display:flex><span>            moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If we didn&#39;t move, this is invalid location
+</span></span></span><span style=display:flex><span>        <span style=color:#75715e>// TODO: Handle bouncing etc
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>moved {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> result <span style=color:#f92672>=</span> self.clone();
+</span></span><span style=display:flex><span>        result.critters[index].location <span style=color:#f92672>=</span> pt;
+</span></span><span style=display:flex><span>        Some(result)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>What they hit changes how it reacts.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Local {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[tracing::instrument(skip(self, global), ret)]</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move</span>(
+</span></span><span style=display:flex><span>        <span style=color:#f92672>&amp;</span>self,
+</span></span><span style=display:flex><span>        global: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Global</span>,
+</span></span><span style=display:flex><span>        index: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>        direction: <span style=color:#a6e22e>Direction</span>,
+</span></span><span style=display:flex><span>    ) -&gt; Option<span style=color:#f92672>&lt;</span>Local<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> pt <span style=color:#f92672>=</span> self.critters[index].location;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// If we&#39;re on water, stop moving
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> global.tile_at(pt) <span style=color:#f92672>==</span> Tile::Water {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at water&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Bumped into a wall
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> global.wall_at(pt, direction) <span style=color:#f92672>!=</span> WallKind::Empty {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at wall&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Bumped into any other critter
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> self
+</span></span><span style=display:flex><span>                .critters
+</span></span><span style=display:flex><span>                .iter()
+</span></span><span style=display:flex><span>                .any(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.location <span style=color:#f92672>==</span> pt <span style=color:#f92672>+</span> direction.into())
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at critter&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            pt <span style=color:#f92672>=</span> pt <span style=color:#f92672>+</span> direction.into();
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;moved to {pt:?}&#34;</span>);
+</span></span><span style=display:flex><span>            moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If we didn&#39;t move, this is invalid location
+</span></span></span><span style=display:flex><span>        <span style=color:#75715e>// TODO: Handle bouncing etc
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>moved {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> result <span style=color:#f92672>=</span> self.clone();
+</span></span><span style=display:flex><span>        result.critters[index].location <span style=color:#f92672>=</span> pt;
+</span></span><span style=display:flex><span>        Some(result)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>For now, our state is always valid (we don&rsquo;t generate <code>next_states</code> that we can&rsquo;t get into). And a map is solved if each <code>Nest</code> has a <code>Penguin</code> that matches them. This will get more complicated as we learn new rules. Speaking of, here is <code>next_states</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[tracing::instrument(skip(global))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>next_states</span>(<span style=color:#f92672>&amp;</span>self, global: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Global</span>) -&gt; Option<span style=color:#f92672>&lt;</span>Vec<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>i64</span>, Step, Local)<span style=color:#f92672>&gt;&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> next_states <span style=color:#f92672>=</span> <span style=color:#a6e22e>vec!</span>[];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (index, _critter) <span style=color:#66d9ef>in</span> self.critters.iter().enumerate() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> d <span style=color:#66d9ef>in</span> Direction::all() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(next) <span style=color:#f92672>=</span> self.try_move(global, index, d) {
+</span></span><span style=display:flex><span>                next_states.push((<span style=color:#ae81ff>1</span>, (index, d), next))
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we have any new states, return them
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>next_states.is_empty() {
+</span></span><span style=display:flex><span>        Some(next_states)
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        None
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Just&mldr; try to move. That&rsquo;s it. (For now!)</p><h2 id=adding-seals>Adding seals</h2><p>Next up&mldr; seals! Or perhaps walruses? I called them seals in the code, so that&rsquo;s how they&rsquo;ll probably stick. <a href=https://github.com/jpverkamp/rust-solvers/commit/b88fed2c03c04ddd752d8e7f437077aa49a50ccd target=_blank rel=noopener>Here is the commit</a></p><p><img src=escape.png alt="A screenshot showing the first level with seals"></p><p>Seals don&rsquo;t have nests, obviously. Instead, you have to clear them off the level (there are a couple of ways to do this, but for now, go through an opening in the walls) in order to complete it.</p><p>Luckily, this change is pretty straight forward:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[tracing::instrument(skip(global))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>next_states</span>(<span style=color:#f92672>&amp;</span>self, global: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Global</span>) -&gt; Option<span style=color:#f92672>&lt;</span>Vec<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>i64</span>, Step, Local)<span style=color:#f92672>&gt;&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> next_states <span style=color:#f92672>=</span> <span style=color:#a6e22e>vec!</span>[];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>for</span> (index, _critter) <span style=color:#66d9ef>in</span> self.critters.iter().enumerate() {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> d <span style=color:#66d9ef>in</span> Direction::all() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(move_to) <span style=color:#f92672>=</span> self.try_move(global, index, d) {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> new_local <span style=color:#f92672>=</span> self.clone();
+</span></span><span style=display:flex><span>                
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> global.tile_at(move_to) <span style=color:#f92672>==</span> Tile::Water {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// The critter went swimming
+</span></span></span><span style=display:flex><span>                    new_local.critters.remove(index);
+</span></span><span style=display:flex><span>                } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                    new_local.critters[index].location <span style=color:#f92672>=</span> move_to;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                
+</span></span><span style=display:flex><span>                next_states.push((<span style=color:#ae81ff>1</span>, (index, d), new_local))
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we have any new states, return them
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>next_states.is_empty() {
+</span></span><span style=display:flex><span>        Some(next_states)
+</span></span><span style=display:flex><span>    } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>        None
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>If they move into water, remove them from the <code>critters</code> list. Then check that in <code>is_solved</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[tracing::instrument(skip(global), ret)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>is_solved</span>(<span style=color:#f92672>&amp;</span>self, global: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Global</span>) -&gt; <span style=color:#66d9ef>bool</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// All nests have a matching penguin on them
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// There can&#39;t be any seals left (they all have to leave the level)
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> self.critters.iter().any(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.kind <span style=color:#f92672>==</span> CritterKind::Seal) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Voila. Seals.</p><h2 id=restructuring-to-only-local-state>Restructuring to only local state</h2><p>Okay, <a href=https://github.com/jpverkamp/rust-solvers/commit/b0d35b0f427d8d60d13546779501f43549e16e85 target=_blank rel=noopener>next up</a>, I&rsquo;m going to make a relatively big change that I really should push into the solver framework itself: I&rsquo;m going to do away with the global state.</p><p>Mostly, everything changes. The floors and walls can be broken, critters move around (and sometimes wander off entirely), and the items that we&rsquo;ll be dealing with soon get picked up and moved around with the critters. Better to just make everything mutable:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Clone, PartialEq, Eq, Hash, Debug)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Map</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) width: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) height: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    tiles: Vec<span style=color:#f92672>&lt;</span>Tile<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    h_walls: Vec<span style=color:#f92672>&lt;</span>WallKind<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    v_walls: Vec<span style=color:#f92672>&lt;</span>WallKind<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) critters: Vec<span style=color:#f92672>&lt;</span>Critter<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) active_critter: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>While I was doing this, I did a major refactor as well, moving <code>color</code>, <code>critter</code>, <code>tile</code>, and <code>wall</code> into their own files. Modularity or something.</p><p>As an aside: The entire reason that I had global and local state separate for such a long time was that these solvers can branch <em>a lot</em>, which means that I need a ton of memory to store all of the different states. If you have a part of the problem that doesn&rsquo;t change, it doesn&rsquo;t really make sense to copy that over and over (and over and over), but&mldr; you really don&rsquo;t have to. Just <code><a href=https://docs.rs/rc/latest/rc/>rc</a></code>
+(or <code><a href=https://docs.rs/arc/latest/arc/>arc</a></code>
+) it&mldr;</p><p>Yeah. I know. Obvious in hindsight. Having one copy of the global with a reference (counted) link to it in each object?</p><p>Sigh.</p><p>It doesn&rsquo;t really help in this case (since, as above, everything changes), but I&rsquo;ll probably do this as a major refactor at some point. Perhaps a <code>Solver2</code> object?</p><h2 id=lets-get-cracking>Let&rsquo;s get cracking</h2><p>Okay, <a href=https://github.com/jpverkamp/rust-solvers/commit/ead5b2cc3c29a6224da1fbb38cc0d9ef1e3fde0e target=_blank rel=noopener>next up</a>. Cracking!</p><p><img src=separation.png alt="Level showing cracking floors"></p><p>When anything (penguin or seal) slides across a cracking floor, it breaks and is treated as water after that. If you crash into cracked wall, the first time it will hold, but it will remove the wall so that anything else after that will just go right through it.</p><p>Useful when the default method of movement is just to keep going until you hit something!</p><p>For this, I&rsquo;m going to add some helpers to get/break the floor at a specific tile or the wall at a tile + direction:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Map {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>tile_at</span>(<span style=color:#f92672>&amp;</span>self, p: <span style=color:#a6e22e>Point</span>) -&gt; <span style=color:#a6e22e>Tile</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> p.x <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>||</span> p.x <span style=color:#f92672>&gt;=</span> (self.width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) <span style=color:#f92672>||</span> p.y <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>||</span> p.y <span style=color:#f92672>&gt;=</span> (self.height <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Tile::Water;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> index <span style=color:#f92672>=</span> (p.y <span style=color:#f92672>*</span> (self.width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) <span style=color:#f92672>+</span> p.x) <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>;
+</span></span><span style=display:flex><span>        self.tiles[index]
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>break_floor</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, p: <span style=color:#a6e22e>Point</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>assert!</span>(
+</span></span><span style=display:flex><span>            p.x <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>||</span> p.x <span style=color:#f92672>&lt;</span> (self.width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) <span style=color:#f92672>||</span> p.y <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>||</span> p.y <span style=color:#f92672>&lt;</span> (self.height <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>),
+</span></span><span style=display:flex><span>            <span style=color:#e6db74>&#34;Tried to break a floor out of bounds at {p:?}&#34;</span>
+</span></span><span style=display:flex><span>        );
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> index <span style=color:#f92672>=</span> (p.y <span style=color:#f92672>*</span> (self.width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) <span style=color:#f92672>+</span> p.x) <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>;
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>assert_eq!</span>(
+</span></span><span style=display:flex><span>            self.tiles[index],
+</span></span><span style=display:flex><span>            Tile::CrackedFloor,
+</span></span><span style=display:flex><span>            <span style=color:#e6db74>&#34;Tried to break a non-cracked floor at {p:?}&#34;</span>
+</span></span><span style=display:flex><span>        );
+</span></span><span style=display:flex><span>        self.tiles[index] <span style=color:#f92672>=</span> Tile::Water;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>wall_index</span>(<span style=color:#f92672>&amp;</span>self, p: <span style=color:#a6e22e>Point</span>, d: <span style=color:#a6e22e>Direction</span>) -&gt; Option<span style=color:#f92672>&lt;</span>(<span style=color:#66d9ef>bool</span>, <span style=color:#66d9ef>usize</span>)<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> p.x <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>||</span> p.x <span style=color:#f92672>&gt;=</span> (self.width <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) <span style=color:#f92672>||</span> p.y <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>0</span> <span style=color:#f92672>||</span> p.y <span style=color:#f92672>&gt;=</span> (self.height <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>isize</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> x <span style=color:#f92672>=</span> p.x <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> y <span style=color:#f92672>=</span> p.y <span style=color:#66d9ef>as</span> <span style=color:#66d9ef>usize</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> d {
+</span></span><span style=display:flex><span>            Direction::Up <span style=color:#f92672>=&gt;</span> Some((<span style=color:#66d9ef>true</span>, x <span style=color:#f92672>+</span> y <span style=color:#f92672>*</span> self.width)),
+</span></span><span style=display:flex><span>            Direction::Down <span style=color:#f92672>=&gt;</span> Some((<span style=color:#66d9ef>true</span>, x <span style=color:#f92672>+</span> (y <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>*</span> self.width)),
+</span></span><span style=display:flex><span>            Direction::Left <span style=color:#f92672>=&gt;</span> Some((<span style=color:#66d9ef>false</span>, x <span style=color:#f92672>+</span> y <span style=color:#f92672>*</span> (self.width <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>))),
+</span></span><span style=display:flex><span>            Direction::Right <span style=color:#f92672>=&gt;</span> Some((<span style=color:#66d9ef>false</span>, (x <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>) <span style=color:#f92672>+</span> y <span style=color:#f92672>*</span> (self.width <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>))),
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>wall_at</span>(<span style=color:#f92672>&amp;</span>self, p: <span style=color:#a6e22e>Point</span>, d: <span style=color:#a6e22e>Direction</span>) -&gt; <span style=color:#a6e22e>WallKind</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self.wall_index(p, d) {
+</span></span><span style=display:flex><span>            Some((<span style=color:#66d9ef>true</span>, index)) <span style=color:#f92672>=&gt;</span> self.h_walls[index],
+</span></span><span style=display:flex><span>            Some((<span style=color:#66d9ef>false</span>, index)) <span style=color:#f92672>=&gt;</span> self.v_walls[index],
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> WallKind::Empty,
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>break_wall</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, p: <span style=color:#a6e22e>Point</span>, d: <span style=color:#a6e22e>Direction</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(wall) <span style=color:#f92672>=</span> <span style=color:#66d9ef>match</span> self.wall_index(p, d) {
+</span></span><span style=display:flex><span>            Some((<span style=color:#66d9ef>true</span>, index)) <span style=color:#f92672>=&gt;</span> self.h_walls.get_mut(index),
+</span></span><span style=display:flex><span>            Some((<span style=color:#66d9ef>false</span>, index)) <span style=color:#f92672>=&gt;</span> self.v_walls.get_mut(index),
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> None,
+</span></span><span style=display:flex><span>        } {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>assert_eq!</span>(
+</span></span><span style=display:flex><span>                <span style=color:#f92672>*</span>wall,
+</span></span><span style=display:flex><span>                WallKind::Cracked,
+</span></span><span style=display:flex><span>                <span style=color:#e6db74>&#34;Tried to break a n non-cracked wall at {p:?} {d:?}&#34;</span>
+</span></span><span style=display:flex><span>            );
+</span></span><span style=display:flex><span>            <span style=color:#f92672>*</span>wall <span style=color:#f92672>=</span> WallKind::Empty
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>And then use that in movement:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Map {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Try to move the active critter in the given direction
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>// Returns the point the critter moves to (if it moves) + if the critter changed
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>#[tracing::instrument(skip(self), ret)]</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move</span>(<span style=color:#f92672>&amp;</span>self, _: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Global</span>, direction: <span style=color:#a6e22e>Direction</span>) -&gt; Option<span style=color:#f92672>&lt;</span>(Map, <span style=color:#66d9ef>bool</span>)<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> self.critters.is_empty() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> pt <span style=color:#f92672>=</span> self.critters[self.active_critter].location;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// We will throw this away if it&#39;s invalid, but this is necessary to update cracked walls/floors
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> new_map <span style=color:#f92672>=</span> self.clone();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> new_map.tile_at(pt) {
+</span></span><span style=display:flex><span>                Tile::Water <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// If we&#39;re on water, stop moving
+</span></span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at water&#34;</span>);
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                Tile::CrackedFloor <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Cracked tiles turn into water
+</span></span></span><span style=display:flex><span>                    <span style=color:#75715e>// But we&#39;re allowed to continue (will stop if we hit it again)
+</span></span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} broke the floor&#34;</span>);
+</span></span><span style=display:flex><span>                    new_map.break_floor(pt);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                Tile::Nest(_) <span style=color:#f92672>|</span> Tile::Floor <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Everything else just keep on sliding
+</span></span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> new_map.wall_at(pt, direction) {
+</span></span><span style=display:flex><span>                WallKind::Empty <span style=color:#f92672>=&gt;</span> {}
+</span></span><span style=display:flex><span>                WallKind::Solid <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Bumped into a wall
+</span></span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at wall&#34;</span>);
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                WallKind::Cracked <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Bumped into a cracked wall, break it
+</span></span></span><span style=display:flex><span>                    <span style=color:#75715e>// This counts as moving even even though we stopped
+</span></span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at cracked wall, breaking it&#34;</span>);
+</span></span><span style=display:flex><span>                    new_map.break_wall(pt, direction);
+</span></span><span style=display:flex><span>                    moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Bumped into any other critter
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> self
+</span></span><span style=display:flex><span>                .critters
+</span></span><span style=display:flex><span>                .iter()
+</span></span><span style=display:flex><span>                .any(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.location <span style=color:#f92672>==</span> pt <span style=color:#f92672>+</span> direction.into())
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;{pt:?} stopped at critter&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            pt <span style=color:#f92672>=</span> pt <span style=color:#f92672>+</span> direction.into();
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;moved to {pt:?}&#34;</span>);
+</span></span><span style=display:flex><span>            moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If we didn&#39;t move, this is invalid location
+</span></span></span><span style=display:flex><span>        <span style=color:#75715e>// TODO: Handle bouncing etc
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> <span style=color:#f92672>!</span>moved {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If the critter is on water, remove it and choose a new active critter
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> self.tile_at(pt) <span style=color:#f92672>==</span> Tile::Water {
+</span></span><span style=display:flex><span>            new_map.critters.remove(self.active_critter);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> new_map.active_critter <span style=color:#f92672>&gt;=</span> new_map.critters.len() {
+</span></span><span style=display:flex><span>                new_map.active_critter <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Some((new_map, <span style=color:#66d9ef>true</span>));
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Otherwise, the critter just moved
+</span></span></span><span style=display:flex><span>        new_map.critters[self.active_critter].location <span style=color:#f92672>=</span> pt;
+</span></span><span style=display:flex><span>        Some((new_map, <span style=color:#66d9ef>false</span>))
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>There is a lot of cloning going on here (when we may very well end up in an impossible state), but cloning once and throwing away makes the code <em>so much</em> simpler compared to cloning at each point. I suppose I could have had <code>break_*</code> return a new Map&mldr;</p><p>Anyways, that&rsquo;s enough to solve these levels. Onward!</p><h2 id=springs-and-things>Springs and things</h2><p>Okay, next new concept! Springs (and things)!</p><p><a href=https://github.com/jpverkamp/rust-solvers/commit/5ed902a23a5a5c828a152b987cd4aec80ccf67a5 target=_blank rel=noopener>Commit</a></p><p>Basically, a <code>Thing</code> is something that can be placed on the <code>Map</code> and be picked up by any <code>Critter</code> that walks across it<sup id=fnref:4><a href=#fn:4 class=footnote-ref role=doc-noteref>4</a></sup>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>ThingKind</span> {
+</span></span><span style=display:flex><span>    Spring,
+</span></span><span style=display:flex><span>    Hammer,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>The first one here is the <code>Spring</code>. When a <code>Critter</code> carrying a <code>Spring</code> hits a wall, they bounce backwards one spot. Which makes a level like this&mldr; actually solvable!</p><p><img src=skipping.png alt="A level showing springs"></p><p>In this case, if Blue moves right, they will pick up the spring on the way and end up on the nest. Green, on the other hand, has to go around theirs or there is no way to get to that nest. They&rsquo;ll always bounce back rather than stopping on it.</p><p>The changes to the <code>simulation</code> are actually fairly minimal (for now!):</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>impl</span> Map {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Try to move the active critter in the given direction
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>// Returns the point the critter moves to (if it moves) + if the critter changed
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>#[tracing::instrument(skip(self), ret)]</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move</span>(<span style=color:#f92672>&amp;</span>self, _: <span style=color:#66d9ef>&amp;</span><span style=color:#a6e22e>Global</span>, direction: <span style=color:#a6e22e>Direction</span>) -&gt; Option<span style=color:#f92672>&lt;</span>(Map, <span style=color:#66d9ef>bool</span>)<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> self.critters.is_empty() {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> pt <span style=color:#f92672>=</span> self.critters[self.active_critter].location;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> moved <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// We will throw this away if it&#39;s invalid, but this is necessary to update cracked walls/floors
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> <span style=color:#66d9ef>mut</span> new_map <span style=color:#f92672>=</span> self.clone();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>loop</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Standing on a thing, pick it up
+</span></span></span><span style=display:flex><span>            <span style=color:#75715e>// TODO: Only if not carrying something, is this correct?
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> new_map.critters[new_map.active_critter].carrying.is_none()
+</span></span><span style=display:flex><span>                <span style=color:#f92672>&amp;&amp;</span> <span style=color:#66d9ef>let</span> Some(index) <span style=color:#f92672>=</span> self.things.iter().position(<span style=color:#f92672>|</span>t<span style=color:#f92672>|</span> t.location <span style=color:#f92672>==</span> pt)
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> thing <span style=color:#f92672>=</span> new_map.things.remove(index);
+</span></span><span style=display:flex><span>                new_map.critters[new_map.active_critter].carrying <span style=color:#f92672>=</span> Some(thing.kind);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// If, at the end of moving, the critter is carrying a spring, they bounce backwards one
+</span></span></span><span style=display:flex><span>        <span style=color:#75715e>// TODO: Handle bouncing backwards over a wall
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> new_map.critters[new_map.active_critter].carrying <span style=color:#f92672>==</span> Some(ThingKind::Spring) {
+</span></span><span style=display:flex><span>            pt <span style=color:#f92672>=</span> pt <span style=color:#f92672>-</span> direction.into();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>For the moment, it works just fine to bounce &lsquo;back to where you came from&rsquo;, although that will eventually et trickier<sup id=fnref1:3><a href=#fn:3 class=footnote-ref role=doc-noteref>3</a></sup>. I do end up refactoring <code>try_move</code> into a separate <code>try_move_one</code> function in the <a href=https://github.com/jpverkamp/rust-solvers/commit/c837227d0a8739d590e7b383d7d1642e71333834 target=_blank rel=noopener>next commit</a> to start to solve this.</p><p>One interesting gotcha that I had to work out with springs is that it is possible to move them one space. If you have something like this:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-text data-lang=text><span style=display:flex><span>Y B .
+</span></span></code></pre></div><p>Where <code>Y</code> is Yellow, <code>B</code> is Blue with a spring, and <code>.</code> is open, if Blue moves to the left, they will slide into Yellow, bounce back one space, and then stop moving at <code>.</code>. Since we couldn&rsquo;t move single spaces before, this will come in handy!</p><p>I did end up with one more weirdness with springs that I <a href=https://github.com/jpverkamp/rust-solvers/commit/e91c43d5f170ae4807e71f284dac1042386183f4 target=_blank rel=noopener>fixed here</a>:</p><p><img src=twist.png alt="Demo of the weirdness of infinite bouncing"></p><p>What happens if Blue tries to move?</p><p><img src=twist-flight.png alt="Result of infinite bouncing"></p><p>Basically, if a <code>critter</code> gets stuck in a loop, they will fly right off the level. Which I suppose is another way to get rid of seals?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Internal function to move a single tile in a direction, looped to slide or used once to bounce
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Modifies the map in place
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Returns if we should continue moving
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[tracing::instrument(skip(self), ret, fields(pt = ?self.critters[self.active_critter].location))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move_one</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, direction: <span style=color:#a6e22e>Direction</span>, depth: <span style=color:#66d9ef>usize</span>) -&gt; <span style=color:#66d9ef>bool</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we&#39;re stuck in a bouncing loop, launch off the map 
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>// TODO: Do we have to actually stop at a specific point or just &#39;off&#39;?
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>// TODO: Magick constants!
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> depth <span style=color:#f92672>&gt;</span> <span style=color:#ae81ff>10</span> { 
+</span></span><span style=display:flex><span>        self.critters[self.active_critter].location <span style=color:#f92672>=</span> Point { x: <span style=color:#f92672>-</span><span style=color:#ae81ff>10</span>, y: <span style=color:#f92672>-</span><span style=color:#ae81ff>10</span> };
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>It doesn&rsquo;t actually help solve this level, but I did have to solve it or the solver would get stuck in an infinite loop / with solutions that don&rsquo;t actually work. Those are always interesting.</p><h2 id=hammer-time>Hammer time</h2><p>In <a href=https://github.com/jpverkamp/rust-solvers/commit/5a6bfa6ee32c4114e7e7d92458647ef72fee0fec target=_blank rel=noopener>this change</a>, we have a new <code>Thing</code>: <code>Hammers</code>!</p><p><img src=nails.png alt="Demonstrating hammers"></p><p>Basically, when a <code>Critter</code> is carrying a <code>Hammer</code> and they run into another <code>Critter</code>, they will stop, but they will also send the <code>Critter</code> they hit sliding recursively&ndash;plus the one with the hammer ends up in their spot! So in this level, Green cannot pick up the hammer because when they hit the top Gray, they will be stuck to the right of their nest. But Yellow can, since they do want to end up where bottom Gray is.</p><p>This, we&rsquo;ll implement in <code>try_move_one</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Internal function to move a single tile in a direction, looped to slide or used once to bounce
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Modifies the map in place
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Returns if we should continue moving
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[tracing::instrument(skip(self), ret, fields(pt = ?self.critters[self.active_critter].location))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move_one</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, direction: <span style=color:#a6e22e>Direction</span>, depth: <span style=color:#66d9ef>usize</span>) -&gt; <span style=color:#66d9ef>bool</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Bumped into any other critter
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(other_critter) <span style=color:#f92672>=</span> self
+</span></span><span style=display:flex><span>        .critters
+</span></span><span style=display:flex><span>        .iter()
+</span></span><span style=display:flex><span>        .position(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.location <span style=color:#f92672>==</span> me.location <span style=color:#f92672>+</span> direction.into())
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self.critters[self.active_critter].carrying {
+</span></span><span style=display:flex><span>            Some(ThingKind::Spring) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;bounced off another critter&#34;</span>);
+</span></span><span style=display:flex><span>                self.try_move_one(direction.flip(), depth <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>            Some(ThingKind::Hammer) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;hammered off another critter&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>let</span> my_index <span style=color:#f92672>=</span> self.active_critter;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// The other critter gets bumped out of our way
+</span></span></span><span style=display:flex><span>                self.active_critter <span style=color:#f92672>=</span> other_critter;
+</span></span><span style=display:flex><span>                self.try_move_one(direction, depth <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>                
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// We take that spot
+</span></span></span><span style=display:flex><span>                self.active_critter <span style=color:#f92672>=</span> my_index;
+</span></span><span style=display:flex><span>                self.try_move_one(direction, depth <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;hit another critter&#34;</span>);
+</span></span><span style=display:flex><span>            },
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> dst <span style=color:#f92672>=</span> me.location <span style=color:#f92672>+</span> direction.into();
+</span></span><span style=display:flex><span>    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;moved to {dst:?}&#34;</span>);
+</span></span><span style=display:flex><span>    self.critters[self.active_critter].location <span style=color:#f92672>=</span> dst;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>For now, we&rsquo;re keeping track of the <code>active_critter</code> in the <code>Map</code>. We&rsquo;ll change it so that we can slide the other critter and then slide it back at the end for the final single movement into their spot. This won&rsquo;t work once things start being able to hit the same critter more than once<sup id=fnref:5><a href=#fn:5 class=footnote-ref role=doc-noteref>5</a></sup>, but for now, that&rsquo;s all we need!</p><p>But there is actually a second behavior of a <code>Hammer</code> that we&rsquo;ll get to <a href=https://github.com/jpverkamp/rust-solvers/commit/801b8e191f73d53da2e3872d189ef241e10adfc8 target=_blank rel=noopener>here</a>: If a <code>Critter</code> with a <code>Hammer</code> hits a <code>Cracked Wall</code>, they don&rsquo;t stop and break it. They just break it and keep right on sliding!</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Internal function to move a single tile in a direction, looped to slide or used once to bounce
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Modifies the map in place
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Returns if we should continue moving
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[tracing::instrument(skip(self), ret, fields(pt = ?self.critters[self.active_critter].location))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move_one</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, direction: <span style=color:#a6e22e>Direction</span>, depth: <span style=color:#66d9ef>usize</span>) -&gt; <span style=color:#66d9ef>bool</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> wall <span style=color:#f92672>=</span> self.wall_at(me.location, direction);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>match</span> wall {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>        WallKind::Cracked <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;hit a cracked wall, breaking it&#34;</span>);
+</span></span><span style=display:flex><span>            self.break_wall(me.location, direction);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> self.critters[self.active_critter].carrying {
+</span></span><span style=display:flex><span>                Some(ThingKind::Spring) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;bounced off a wall&#34;</span>);
+</span></span><span style=display:flex><span>                    self.try_move_one(direction.flip(), depth <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                Some(ThingKind::Hammer) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;smashed right on through it&#34;</span>);
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                None <span style=color:#f92672>=&gt;</span> {}
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Either way, don&#39;t keep moving
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=a-wall-for-thee-but-not-for-me>A wall for thee but not for me</h2><p>Okay, <a href=https://github.com/jpverkamp/rust-solvers/commit/23a92dfab8fbfd6d439532bb7959e1c01e8f03ba target=_blank rel=noopener>next up</a>: color coded walls!</p><p><img src=trail.png alt="Demonstrating colored walls"></p><p>As you might expect, color coded walls work differently depending on which color of penguin runs into them. It really could go either way (either Red goes right through red walls or <em>only</em> Red is stopped by them), but in this case it&rsquo;s the first: only Red can go through a red wall.</p><p>This does mean we need a new <code>Wall</code> type for the first time in a while:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>WallKind</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[default]</span>
+</span></span><span style=display:flex><span>    Empty,
+</span></span><span style=display:flex><span>    Solid,
+</span></span><span style=display:flex><span>    Cracked,
+</span></span><span style=display:flex><span>    Color(Color),
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>But otherwise, it&rsquo;s only a very small change to the <code>try_move_one</code> wall handling code:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>let</span> wall <span style=color:#f92672>=</span> self.wall_at(me.location, direction);
+</span></span><span style=display:flex><span><span style=color:#66d9ef>match</span> wall {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>    WallKind::Color(c) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> c <span style=color:#f92672>==</span> me.color {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Go right through my own colored walls!
+</span></span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Treat every other color as solid
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> self.critters[self.active_critter].carrying <span style=color:#f92672>==</span> Some(ThingKind::Spring) {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;bounced off a mis-matched colored wall&#34;</span>);
+</span></span><span style=display:flex><span>                self.try_move_one(direction.flip(), depth <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;hit colored wall&#34;</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Either way, don&#39;t keep moving
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>One thing I do love about Rust is the exhaustiveness checks on <code>match</code> statements. When you add a new type to an <code>enum</code> (like the <code>Wall</code> here), the compiler will very helpful tell you everywhere you will need to change to make that work.</p><p>And that&rsquo;s it! An easy one.</p><h2 id=eat-my-dust>Eat my dust</h2><p><a href=https://github.com/jpverkamp/rust-solvers/commit/3d30f1949257943b9aa143dcc91317e2f84a5ad3 target=_blank rel=noopener>Next up</a>, dust clouds!</p><p><img src=smash.png alt="An example of a level with dust"></p><p>These don&rsquo;t actually affect movement at all. They could have been like a sandtrap, which stops movement, but I expect we&rsquo;ll get something else to do that later. Instead, they only come into play if a <code>Critter</code> stops (otherwise) in them. If a <code>Critter</code> is in a dust cloud, <em>you</em> can&rsquo;t move it, but other <code>Critters</code> (with a <code>Hammer</code>) can move them.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move</span>(<span style=color:#f92672>&amp;</span>self, direction: <span style=color:#a6e22e>Direction</span>) -&gt; Option<span style=color:#f92672>&lt;</span>(Map, <span style=color:#66d9ef>bool</span>)<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ... 
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If the current critter is on a dust cloud it cannot move
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> self.tile_at(self.critters[self.active_critter].location) <span style=color:#f92672>==</span> Tile::Dust {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>This is already handled in the calling <code>next_states</code> function. If a critter cannot move, don&rsquo;t generate moves for it.</p><h2 id=small-tweaks>Small tweaks</h2><p>A few small changes to clean things up before the next big change.</p><ol><li><p><a href=https://github.com/jpverkamp/rust-solvers/commit/9fa8000eb417b002e792c7029f6fddc4a264807c target=_blank rel=noopener>Fix what happens</a> when you pick up a second/new <code>Thing</code>.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Standing on a thing, pick it up
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// If we were already holding something, chuck our current thing into the water
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(index) <span style=color:#f92672>=</span> self.things.iter().position(<span style=color:#f92672>|</span>t<span style=color:#f92672>|</span> t.location <span style=color:#f92672>==</span> me.location)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> thing <span style=color:#f92672>=</span> self.things.remove(index);
+</span></span><span style=display:flex><span>    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;picked up {thing:?}&#34;</span>);
+</span></span><span style=display:flex><span>    self.critters[self.active_critter].carrying <span style=color:#f92672>=</span> Some(thing.kind);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div></li><li><p><a href=https://github.com/jpverkamp/rust-solvers/commit/7d29a7e4494e54c8457749aabf7b4611cc3144c4 target=_blank rel=noopener>Handle (ish)</a> what happens if one critter bumps another and then gets <code>Hammered</code> before we return to evaluating it</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// The other critter gets bumped out of our way
+</span></span></span><span style=display:flex><span>self.active_critter <span style=color:#f92672>=</span> other_critter;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>match</span> self.try_move(direction) {
+</span></span><span style=display:flex><span>    Some((<span style=color:#66d9ef>mut</span> new_map, _)) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        std::mem::swap(self, <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> new_map);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    None <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        self.critters.remove(other_critter);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Find the original critter and switch back
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// TODO: Handle recursion that moves the original critter out of the way
+</span></span></span><span style=display:flex><span><span style=color:#66d9ef>match</span> self
+</span></span><span style=display:flex><span>    .critters
+</span></span><span style=display:flex><span>    .iter()
+</span></span><span style=display:flex><span>    .position(<span style=color:#f92672>|</span>oc<span style=color:#f92672>|</span> oc.location <span style=color:#f92672>==</span> my_position)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    Some(new_index) <span style=color:#f92672>=&gt;</span> self.active_critter <span style=color:#f92672>=</span> new_index,
+</span></span><span style=display:flex><span>    None <span style=color:#f92672>=&gt;</span> <span style=color:#a6e22e>panic!</span>(<span style=color:#e6db74>&#34;Could not find original critter after hammer time&#34;</span>),
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div></li><li><p><a href=https://github.com/jpverkamp/rust-solvers/commit/deca14c5b6e558fe8db6f2a8a495e374547cd520 target=_blank rel=noopener>Bouncing off a wall into a crack</a></p><p>Or rather, stopping when don&rsquo;t hit a cracked wall / loop but one of them is cracked.</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>match</span> wall {
+</span></span><span style=display:flex><span>    WallKind::Empty <span style=color:#f92672>=&gt;</span> {}
+</span></span><span style=display:flex><span>    WallKind::Solid <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> self.critters[self.active_critter].carrying <span style=color:#f92672>==</span> Some(ThingKind::Spring) {
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;bounced off a wall&#34;</span>);
+</span></span><span style=display:flex><span>            self.try_move_one(direction.flip(), depth <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>, <span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;hit wall&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Either way, don&#39;t keep moving
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    WallKind::Color(c) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> c <span style=color:#f92672>==</span> me.color {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Go right through my own colored walls!
+</span></span></span><span style=display:flex><span>        } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Treat every other color as solid
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> self.critters[self.active_critter].carrying <span style=color:#f92672>==</span> Some(ThingKind::Spring) {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;bounced off a mis-matched colored wall&#34;</span>);
+</span></span><span style=display:flex><span>                self.try_move_one(direction.flip(), depth <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>, <span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>            } <span style=color:#66d9ef>else</span> {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;hit colored wall&#34;</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Either way, don&#39;t keep moving
+</span></span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>}
+</span></span></code></pre></div></li></ol><h2 id=now-youre-thinking>Now you&rsquo;re thinking&mldr;</h2><p><img src=thinking.png alt="&mldr;with portals"></p><p>Yup. We <a href=https://github.com/jpverkamp/rust-solvers/commit/c8fcb6a566bdcb7c299a9079f996f7122a9fe847 target=_blank rel=noopener>get to solve</a> portals.</p><p>One the easy side, when a <code>Critter</code> hits a portal source they teleport to the portal destination and continue in the same direction they were moving.</p><p>On the complicated side? Multiple sources! Multiple destinations! Infinite loops! TELEFRAGGING!</p><p>It&rsquo;s going to be fun.</p><p>For basic implementation, a <code>Teleport</code> is actually just the source with a field storing the destination. This does mean that (as you can see in the map above), a destination can be directly onto a <code>Nest</code> or <code>Thing</code>&mldr; or even a <code>Critter</code> (we&rsquo;ll come back to that).</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>enum</span> <span style=color:#a6e22e>Tile</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>#[default]</span>
+</span></span><span style=display:flex><span>    Water,
+</span></span><span style=display:flex><span>    Floor,
+</span></span><span style=display:flex><span>    CrackedFloor,
+</span></span><span style=display:flex><span>    Nest(Color),
+</span></span><span style=display:flex><span>    Wall,
+</span></span><span style=display:flex><span>    Dust,
+</span></span><span style=display:flex><span>    Teleport(Point),
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>For now, just move them and keep going:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move</span>(<span style=color:#f92672>&amp;</span>self, direction: <span style=color:#a6e22e>Direction</span>) -&gt; Option<span style=color:#f92672>&lt;</span>(Map, <span style=color:#66d9ef>bool</span>)<span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>match</span> self.tile_at(me.location) {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>        Tile::Teleport(target) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;on teleport at {:?}&#34;</span>, me.location);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>match</span> self.critters.iter().position(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.location <span style=color:#f92672>==</span> target) {
+</span></span><span style=display:flex><span>                Some(_) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;cannot teleport to {target:?}, occupied&#34;</span>);
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// There is a critter where you&#39;re going
+</span></span></span><span style=display:flex><span>                    <span style=color:#75715e>// Don&#39;t do that
+</span></span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>                None <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                    <span style=color:#75715e>// Teleport there and keep going!
+</span></span></span><span style=display:flex><span>                    tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;teleporting to {target:?}&#34;</span>);
+</span></span><span style=display:flex><span>                    self.critters[self.active_critter].location <span style=color:#f92672>=</span> target;
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>However that needed <a href=https://github.com/jpverkamp/rust-solvers/commit/99964179fbdd7aaed9f0028dbca733c1b2faee57 target=_blank rel=noopener>a refactor</a> as it didn&rsquo;t handle the case that if you teleport directly onto another source, you don&rsquo;t teleport again. And it doesn&rsquo;t solve infinite loops (<code>* . B . x</code> with <code>Teleport</code> from <code>*</code> to <code>x</code> and Blue moving left), so we needed a new helper for that, plus additional state tracking:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>maybe_do_teleport</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, direction: <span style=color:#a6e22e>Direction</span>) -&gt; Option<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>bool</span><span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> me <span style=color:#f92672>=</span> self.critters[self.active_critter];
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Tile::Teleport(target) <span style=color:#f92672>=</span> self.tile_at(me.location) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> self.teleport_cooldown {
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;Cannot teleport, on cooldown&#34;</span>);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> None;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> self.used_teleports.contains(<span style=color:#f92672>&amp;</span>(direction, me.location)) {
+</span></span><span style=display:flex><span>            tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;teleport loop detected, not using teleport LAUNCHING&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// TODO: Magic constants
+</span></span></span><span style=display:flex><span>            self.critters[self.active_critter].location <span style=color:#f92672>=</span> Point { x: <span style=color:#f92672>-</span><span style=color:#ae81ff>10</span>, y: <span style=color:#f92672>-</span><span style=color:#ae81ff>10</span> };
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> Some(<span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self.critters.iter().position(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.location <span style=color:#f92672>==</span> target) {
+</span></span><span style=display:flex><span>            Some(_) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;cannot teleport to {target:?}, occupied&#34;</span>);
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// There is a critter where you&#39;re going
+</span></span></span><span style=display:flex><span>                <span style=color:#75715e>// Don&#39;t do that
+</span></span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Some(<span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Teleport there and keep going!
+</span></span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;teleporting to {target:?}&#34;</span>);
+</span></span><span style=display:flex><span>                self.used_teleports.push((direction, me.location));
+</span></span><span style=display:flex><span>                self.teleport_cooldown <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                self.critters[self.active_critter].location <span style=color:#f92672>=</span> target;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Some(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    None
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>And then we did have to <a href=https://github.com/jpverkamp/rust-solvers/commit/c79d70810aa822f57c23bec497fde1f5c7b40fcf target=_blank rel=noopener>deal with the case</a> of a <code>Critter</code> sitting right where you&rsquo;re going&mldr;</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>maybe_do_teleport</span>(<span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self, direction: <span style=color:#a6e22e>Direction</span>) -&gt; Option<span style=color:#f92672>&lt;</span><span style=color:#66d9ef>bool</span><span style=color:#f92672>&gt;</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>let</span> me <span style=color:#f92672>=</span> self.critters[self.active_critter];
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Tile::Teleport(target) <span style=color:#f92672>=</span> self.tile_at(me.location) {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>match</span> self.critters.iter().position(<span style=color:#f92672>|</span>c<span style=color:#f92672>|</span> c.location <span style=color:#f92672>==</span> target) {
+</span></span><span style=display:flex><span>            Some(other_critter) <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;teleporting to {target:?}, TELEFRAG&#34;</span>);
+</span></span><span style=display:flex><span>                self.critters[other_critter].location <span style=color:#f92672>=</span> Point { x: <span style=color:#f92672>-</span><span style=color:#ae81ff>10</span>, y: <span style=color:#f92672>-</span><span style=color:#ae81ff>10</span> };
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Some(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            None <span style=color:#f92672>=&gt;</span> {
+</span></span><span style=display:flex><span>                <span style=color:#75715e>// Teleport there and keep going!
+</span></span></span><span style=display:flex><span>                tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;teleporting to {target:?}&#34;</span>);
+</span></span><span style=display:flex><span>                self.used_teleports.push((direction, me.location));
+</span></span><span style=display:flex><span>                self.teleport_cooldown <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                self.critters[self.active_critter].location <span style=color:#f92672>=</span> target;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>return</span> Some(<span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    None
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>Which is yet another way to deal with seals, so that&rsquo;s cool!</p><p>This led to even more issues with escaping critters though. Since, as you see, I was just teleporting them off the map (to <code>-10, -10</code>), but that isn&rsquo;t <em>really</em> right, so <a href=https://github.com/jpverkamp/rust-solvers/commit/39c8ea820a90eca8f6c97f682f7c44f029bd7f0f target=_blank rel=noopener>here</a> I added an <code>escaped</code> flag to critters basically making them non-interactive (along with some other rewrites):</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span> <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>Critter</span> {
+</span></span><span style=display:flex><span>    kind: <span style=color:#a6e22e>CritterKind</span>,
+</span></span><span style=display:flex><span>    color: <span style=color:#a6e22e>Color</span>,
+</span></span><span style=display:flex><span>    location: <span style=color:#a6e22e>Point</span>,
+</span></span><span style=display:flex><span>    carrying: Option<span style=color:#f92672>&lt;</span>ThingKind<span style=color:#f92672>&gt;</span>,
+</span></span><span style=display:flex><span>    escaped: <span style=color:#66d9ef>bool</span>,
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=crutches>Crutches</h2><p>And <a href=https://github.com/jpverkamp/rust-solvers/commit/99028c34a7f213a7eded9781e3cccabd5306dad6 target=_blank rel=noopener>finally</a><sup id=fnref:6><a href=#fn:6 class=footnote-ref role=doc-noteref>6</a></sup>, we get <code>Crutches</code>. This is such a silly thing to get so relatively far into the game but <code>Crutches</code> let you&mldr; walk a single square at a time. That&rsquo;s it. Although give how much we&rsquo;ve dealt with sliding all over the place, that&rsquo;s actually something&mldr;</p><p><img src=crutches.png alt="Demo level for crutches"></p><p>The main complication with these is those cracked floors. If you&rsquo;re only walking one at a time, stopping on a cracked floor <em>will</em> send you off the level. Which, sometimes, is a good thing?</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-rust data-lang=rust><span style=display:flex><span><span style=color:#75715e>// Try to move the active critter in the given direction
+</span></span></span><span style=display:flex><span><span style=color:#75715e>// Returns if the move is possible (and something actually changed)
+</span></span></span><span style=display:flex><span><span style=color:#75715e>#[tracing::instrument(skip(self), ret, fields(critter = %self.critters[critter_index]))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>pub</span>(<span style=color:#66d9ef>crate</span>) <span style=color:#66d9ef>fn</span> <span style=color:#a6e22e>try_move</span>(
+</span></span><span style=display:flex><span>    <span style=color:#f92672>&amp;</span><span style=color:#66d9ef>mut</span> self,
+</span></span><span style=display:flex><span>    critter_index: <span style=color:#66d9ef>usize</span>,
+</span></span><span style=display:flex><span>    direction: <span style=color:#a6e22e>Direction</span>,
+</span></span><span style=display:flex><span>    first_call: <span style=color:#66d9ef>bool</span>,
+</span></span><span style=display:flex><span>) -&gt; <span style=color:#66d9ef>bool</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Standing on a thing, pick it up
+</span></span></span><span style=display:flex><span>    <span style=color:#75715e>// If we were already holding something, chuck our current thing into the water
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#66d9ef>let</span> Some(index) <span style=color:#f92672>=</span> self.things.iter().position(<span style=color:#f92672>|</span>t<span style=color:#f92672>|</span> t.location <span style=color:#f92672>==</span> me.location()) {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>let</span> thing <span style=color:#f92672>=</span> self.things.remove(index);
+</span></span><span style=display:flex><span>        tracing::<span style=color:#a6e22e>debug!</span>(<span style=color:#e6db74>&#34;picked up {thing:?}&#34;</span>);
+</span></span><span style=display:flex><span>        self.critters[critter_index].pick_up(thing.kind);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Crutches stop movement immediately
+</span></span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> thing.kind <span style=color:#f92672>==</span> ThingKind::Crutch {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...
+</span></span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// If we&#39;re carrying a crutch, only move once
+</span></span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> self.critters[critter_index].carrying() <span style=color:#f92672>==</span> Some(ThingKind::Crutch) {
+</span></span><span style=display:flex><span>        self.maybe_do_teleport(critter_index, direction);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>true</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>That first one is a neat bit though. <code>Crutches</code> actually give you a way to stop mid-flight, which is another thing we&rsquo;ve been lacking. If a <code>Critter</code> picks up <code>Crutches</code>, they will stop immediately.</p><h2 id=state-so-far>State so far</h2><p><a href=https://github.com/jpverkamp/rust-solvers/compare/e47949c3af88589fd3b13775c51819b73969acdd...b17946447238c98ea50b7050cba9295ea08cbd9c target=_blank rel=noopener>That&mldr; was a lot</a>.</p><p>Penguins and seals; springs, hammers, and crutches; walls, portals, and dust clouds. And that&rsquo;s not even everything! I&rsquo;m currently sitting at <em>8 of 32</em> achievements of the game! There are levels I don&rsquo;t even know <em>how</em> to get to yet. And apparently, when you beat a nested world, you can take the penguin that beat that world and &mldr; take them with you up a level?!</p><p>Man there is so much more to go.</p><p>I&rsquo;ve enjoyed this game a ton. If you think it&rsquo;s something you might like <a href=https://store.steampowered.com/app/2830480/Gentoo_Rescue/ target=_blank rel=noopener>buy a copy</a>! I&rsquo;ll be back with part 2 soon™<sup id=fnref:7><a href=#fn:7 class=footnote-ref role=doc-noteref>7</a></sup>.</p><div class=footnotes role=doc-endnotes><hr><ol><li id=fn:1><p>Man time flies<sup id=fnref:2><a href=#fn:2 class=footnote-ref role=doc-noteref>2</a></sup>. I meant to write this up back in late October/early November last year, but now here it is half a hear later.&#160;<a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:2><p>Time flies like an arrow. Fruit flies like a banana.&#160;<a href=#fnref:2 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:3><p>Teleporters.&#160;<a href=#fnref:3 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a>&#160;<a href=#fnref1:3 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:4><p>They can also start holding a <code>Thing</code>. I actually hacked this into the level definition by just putting them on the same spot and running a pick up on load. It works pretty much exactly the same so far! I wonder if that&rsquo;s how they implemented it in the game.&#160;<a href=#fnref:4 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:5><p>Teleporters<sup id=fnref:3><a href=#fn:3 class=footnote-ref role=doc-noteref>3</a></sup>. Again.&#160;<a href=#fnref:5 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:6><p>For part 1! Now that this is written, I can start solving more levels!&#160;<a href=#fnref:6 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li><li id=fn:7><p>Hopefully when I beat the levels. Not another six months after that&mldr;&#160;<a href=#fnref:7 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p></li></ol></div></div></article></div></div><footer id=page-footer role=contentinfo><nav id=footer-navigation role=navigation class=ribbon><ul class=main-navigation><li><a href=/archive-by-date/>All posts: By Date</a></li><li><a href=/archive-by-tag/>All posts: By Tag</a></li><li><a href=/atom.xml>RSS: All <sup><svg width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li><li><a href=/programming/atom.xml>RSS: programming<sup><svg width="8" height="8" viewBox="0 0 24 24"><path fill="#fff" d="M6.503 20.752C6.503 22.546 5.047 24 3.252 24c-1.796.0-3.252-1.454-3.252-3.248s1.456-3.248 3.252-3.248c1.795.001 3.251 1.454 3.251 3.248zM0 8.18v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817C15.777 15.29 8.721 8.242.0 8.18zm0-3.368C10.58 4.858 19.152 13.406 19.183 24H24c-.03-13.231-10.755-23.954-24-24v4.812z"/></svg></sup></a></li></ul></nav><div id=page-footer-content data-pagefind-ignore=all><div class=legal><p>All posts unless otherwise mentioned are licensed under
+<a rel=license href=//creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US><img alt="Creative Commons License" style=border-width:0 src=//i.creativecommons.org/l/by-nc-sa/3.0/80x15.png></a></p><p>Any source code unless otherwise mentioned is licensed under the <a href=//directory.fsf.org/wiki/License:BSD_3Clause>3 clause BSD license</a></p></div></div></footer></div></body></html>
