@@ -1,0 +1,55 @@
+syntax:
+  NODE                    = NAME PARAMS? BLOCK?
+
+  PARAMS                  = "(" delimited(PARAM, ",") ")"
+  PARAM                   = NAME (":" DEFAULT)?
+
+  BLOCK                   = NODE | STACK | LIST
+  STACK                   = "{" NODE+ "}"
+  LIST                    = "[" NODE+ "]" 
+                          | "[" NODE "for" NAME "in" ITERABLE "]"
+                          | "[" NODE "times" EXPRESSION "]"
+
+  ITERABLE                = EXPRESSION ".." EXPRESSION | NAME | LIST | "(" delimited(EXPRESSION, ",") ")"
+
+terminals:                all terminals either have () for params or if no () then assume defaults for all params
+
+  null                    - draws nothing (mostly used to fill spaces in a stacker)
+  circle                  - draws a circle with the current stoke/fill
+  circleText(s: "")       - circle of text instead of a line
+  arc(min: 0, max: 0.5)   - draws an arc around the circle, 0 is up, goes clockwise up to 1; can also use 1rad / 45deg units
+  line(min: 0, max: 1)    - draws a vertical line, min/max are 0 at the center, 1 at the top, -1 at the bottom of the current region
+  polygon(n: 4)           - draws a polygon with a point upwards, equivalent to star(n, 1)
+  star(n: 5, m: 2)        - draws a star with a point upwards with n points and m points between each, a standard star is star(5, 2)
+  text(s: "")             - a string of text
+  character(i: 32)        - a character represented by a unicode codepoint as an integer
+
+modifiers:                all modifiers include the next element automatically, use a {} block if you want to apply to more than one
+
+  double(offset: 0.1)     - repeat the child twice with the given scaling factor
+  scale(n: 1)             - scale children by the scaling factor, 0 is none, 1 is no scale, 2 is double
+  translate(x:0, y:0)     - offset by by proportion of current size, -1 to 1 would be an entire shift left/right for example
+  rotate(a: 0.25)         - rotate by the given value, unitless is 0 to 1 for a full circle, can also specify units: 1rad, 90deg
+  invert                  - equivalent to rotate(0.5)
+  fill(color: "black")    - change the fill of all children to the given value
+  stroke(                 - change the stroke weight/color of all children to the given values
+    weight: 1,
+    color: "black"
+  )                       
+
+stackers:                 work like modifiers that apply to a group created with [] instead of a single element
+
+  radial(                 - arrange the list of children in a circle
+    scale: 1/n,               apply to each child, n (number of children) can be used in any expressions
+    offset: 1                 translation from center, 0 is center, 1 is on the circle, n can be used
+  )
+                          
+  linear(                 - arrange elements in a line from the center to the edge
+    min: 0,                   the offset of the first element from the center
+    max: 1,                   the offset of the last element from the center (1 is the edge)
+    scale: 1/n                apply to each child, n (number of children) can be used in any expressions
+  )
+
+functions:
+  randomCharacter(set)    - random character from the given character set, used for text/circleText
+  randomString(set, n)    - call randomCharacter from the given set n times, used for text/circleText
